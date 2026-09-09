@@ -8,6 +8,7 @@ import type {
   ApproveClearanceRequest,
   BulkChecklistRequest,
   CompleteRunRequest,
+  CostAnalysisParams,
   CreateChecklistEntryRequest,
   CreateCompressedAirRequest,
   CreateElectricityRequest,
@@ -29,6 +30,7 @@ import type {
   CreateWasteLogRequest,
   CreateWaterRequest,
   ManagerDecisionRequest,
+  PlanCheckRequest,
   ResolveBreakdownRequest,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
@@ -113,7 +115,7 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'oee-trend', params] as const,
   downtimePareto: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'downtime-pareto', params] as const,
-  costAnalysis: (params?: AnalyticsParams) =>
+  costAnalysis: (params?: CostAnalysisParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'cost-analysis', params] as const,
   wasteTrend: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'waste-trend', params] as const,
@@ -301,6 +303,27 @@ export function useRunDetail(runId: number | null) {
     queryFn: () => executionApi.getRunDetail(runId!),
     enabled: !!runId,
     staleTime: 0,
+  });
+}
+
+/**
+ * Readiness of the plan being typed: RM/PM availability, clashes with other
+ * plans, and the derived finish time.
+ *
+ * A query rather than a mutation so the answer re-fetches as the form changes
+ * and stays cached per input combination. `enabled` waits for a SKU and a
+ * quantity — before those exist there is no requirement to price, and firing
+ * a SAP round trip per keystroke on the quantity field would be unkind to
+ * HANA; the caller passes a debounced quantity.
+ */
+export function useRunPlanCheck(payload: PlanCheckRequest, enabled = true) {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'plan-check', payload] as const,
+    queryFn: () => executionApi.planCheck(payload),
+    enabled: enabled && !!payload.item_code && !!payload.required_qty,
+    staleTime: 60 * 1000,
+    retry: false,
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -1401,7 +1424,7 @@ export function useDowntimeParetoReport(params?: AnalyticsParams) {
   });
 }
 
-export function useCostAnalysisReport(params?: AnalyticsParams) {
+export function useCostAnalysisReport(params?: CostAnalysisParams) {
   return useQuery({
     queryKey: EXECUTION_QUERY_KEYS.costAnalysis(params),
     queryFn: () => executionApi.getCostAnalysisReport(params),

@@ -930,6 +930,7 @@ export const API_ENDPOINTS = {
       `/production-execution/checklist-templates/${templateId}/`,
     // Production Runs
     RUNS: '/production-execution/runs/',
+    RUN_PLAN_CHECK: '/production-execution/runs/plan-check/',
     RUN_DETAIL: (runId: number) => `/production-execution/runs/${runId}/`,
     RUN_COMPLETE: (runId: number) => `/production-execution/runs/${runId}/complete/`,
     // Breakdown Categories

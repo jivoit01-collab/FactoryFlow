@@ -11,6 +11,7 @@ import type {
   BulkChecklistRequest,
   ChecklistTemplate,
   CompleteRunRequest,
+  CostAnalysisParams,
   CostAnalysisReport,
   CreateBreakdownCategoryRequest,
   CreateChecklistEntryRequest,
@@ -50,6 +51,8 @@ import type {
   MonthlySummaryReport,
   OEEAnalytics,
   OEETrendReport,
+  PlanCheckRequest,
+  PlanCheckResult,
   PlanVsProductionReport,
   ProcurementVsPlannedReport,
   ProductionLine,
@@ -221,6 +224,16 @@ export const executionApi = {
 
   async getRunDetail(runId: number): Promise<ProductionRunDetail> {
     const res = await apiClient.get<ProductionRunDetail>(EP.RUN_DETAIL(runId));
+    return res.data;
+  },
+
+  /**
+   * Readiness of a proposed run before it is saved: is the RM/PM in the
+   * warehouse, has another plan already claimed it, does the window clash.
+   * A POST because the payload carries a machine list and the call hits SAP.
+   */
+  async planCheck(data: PlanCheckRequest): Promise<PlanCheckResult> {
+    const res = await apiClient.post<PlanCheckResult>(EP.RUN_PLAN_CHECK, data);
     return res.data;
   },
 
@@ -951,7 +964,7 @@ export const executionApi = {
     return res.data;
   },
 
-  async getCostAnalysisReport(params?: AnalyticsParams): Promise<CostAnalysisReport> {
+  async getCostAnalysisReport(params?: CostAnalysisParams): Promise<CostAnalysisReport> {
     const res = await apiClient.get<CostAnalysisReport>(EP.REPORTS_COST_ANALYSIS, { params });
     return res.data;
   },
