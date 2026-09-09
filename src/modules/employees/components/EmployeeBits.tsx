@@ -10,9 +10,14 @@
  * `EmployeeAvatar` is the module's most-repeated element: it appears in the org
  * chart, in every directory row, in the manager card and in a dozen pickers. It
  * falls back to initials on a level-tinted ring, so a company with no photos
- * uploaded still reads as a chart of people rather than a wall of grey circles,
- * and it carries the employment status as a dot on the rim — colour *and*
- * position, never colour alone.
+ * uploaded still reads as a chart of people rather than a wall of grey circles.
+ *
+ * The **ring carries the hierarchy level and the dot carries the status** —
+ * deliberately two different facts on two different channels. Ringing by status
+ * instead left every active person in the company circled the same green, which
+ * said nothing, while the level ramp that makes a chart scannable went unseen.
+ * Somebody who has left loses both: the ring goes neutral and the photo goes
+ * grey, which is the one case where the avatar itself should stop competing.
  *
  * `SalaryValue` is where this module's privacy rule becomes visible. A figure
  * the viewer may not see is not blank and not zero: it is a lock and the word
@@ -84,7 +89,7 @@ export function EmployeeAvatar({
         className={cn(
           AVATAR_SIZE[size],
           'ring-2 ring-offset-2 ring-offset-background',
-          status.gone ? 'ring-border grayscale' : status.ring,
+          status.gone ? 'ring-border grayscale' : accent.ring,
         )}
       >
         {employee.photo ? (
@@ -108,6 +113,12 @@ export function EmployeeAvatar({
   );
 }
 
+/** `ON_LEAVE` → `On leave`. Only a fallback: the API sends a display label. */
+function prettyStatus(status: string) {
+  const words = status.replaceAll('_', ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function StatusChip({
   status,
   label,
@@ -127,7 +138,7 @@ export function StatusChip({
       )}
     >
       <span className={cn('h-1.5 w-1.5 rounded-full', style.dot)} />
-      {label ?? status.replace('_', ' ').toLowerCase()}
+      {label ?? prettyStatus(status)}
     </span>
   );
 }

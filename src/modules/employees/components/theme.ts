@@ -11,7 +11,9 @@
  * deficiency, and being seen at a glance in a dense list — the chip text says
  * it too, and the colour is never the only signal.
  *
- * **Hierarchy level** is ordered, not categorical, so it gets an ordered ramp:
+ * **Hierarchy level** is ordered, not categorical, so it gets an ordered ramp
+ * — used for the card's accent bar, its level chip, and the ring around the
+ * avatar:
  * a cool progression from indigo at the top of the company down through blue,
  * sky, cyan and teal, flattening to slate below the sixth level. It borrows the
  * app's shared dashboard accents rather than inventing colours, so an org chart
@@ -104,9 +106,26 @@ export const LEVEL_ACCENTS: readonly AccentKey[] = [
   'emerald',
 ];
 
-export function levelAccent(level: number): Accent {
-  const key = LEVEL_ACCENTS[Math.max(0, Math.min(level - 1, LEVEL_ACCENTS.length - 1))];
-  return ACCENTS[level > LEVEL_ACCENTS.length ? 'slate' : key];
+/** Ring class per level, for the avatar rim. Literal strings, for the JIT. */
+const LEVEL_RINGS: readonly string[] = [
+  'ring-indigo-400/70 dark:ring-indigo-500/50',
+  'ring-blue-400/70 dark:ring-blue-500/50',
+  'ring-sky-400/70 dark:ring-sky-500/50',
+  'ring-cyan-400/70 dark:ring-cyan-500/50',
+  'ring-teal-400/70 dark:ring-teal-500/50',
+  'ring-emerald-400/70 dark:ring-emerald-500/50',
+];
+
+const SLATE_RING = 'ring-slate-300/70 dark:ring-slate-500/50';
+
+/** The accent for a level, plus the ring the avatar wears at that level. */
+export function levelAccent(level: number): Accent & { ring: string } {
+  const index = Math.max(0, Math.min(level - 1, LEVEL_ACCENTS.length - 1));
+  const beyondRamp = level > LEVEL_ACCENTS.length;
+  return {
+    ...ACCENTS[beyondRamp ? 'slate' : LEVEL_ACCENTS[index]],
+    ring: beyondRamp ? SLATE_RING : LEVEL_RINGS[index],
+  };
 }
 
 /** Ordinal for the level chip: "L1" reads better than "Level 1" in a dense card. */

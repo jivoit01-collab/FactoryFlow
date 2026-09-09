@@ -36,6 +36,11 @@
  * Every chart carries a tooltip, and every chart's numbers are also on the page
  * as text — so nothing is gated behind hovering, and the figures survive being
  * printed in black and white.
+ *
+ * Nothing animates in. A bar that grows from zero is a bar that reads as *empty*
+ * for the first half-second — in print, in a screenshot, and on a slow render it
+ * may never finish growing at all. The rest of the app's charts made the same
+ * call.
  */
 import type { ReactNode } from 'react';
 import {
@@ -183,6 +188,7 @@ export function CountBarChart({
           fill={SERIES.one}
           radius={[0, 4, 4, 0]}
           barSize={BAR_SIZE}
+          isAnimationActive={false}
           // The value at the tip: bars carry their number so the chart reads
           // without the axis and without hovering.
           label={{ position: 'right', fill: AXIS, fontSize: 11 }}
@@ -227,6 +233,7 @@ export function DistributionChart({
           fill={SERIES.one}
           radius={[4, 4, 0, 0]}
           barSize={BAR_SIZE}
+          isAnimationActive={false}
           label={{ position: 'top', fill: AXIS, fontSize: 11 }}
         >
           {rows.map((row) => (
@@ -279,6 +286,7 @@ export function HeadcountTrendChart({
             strokeWidth={2}
             dot={{ r: 4, fill: SERIES.one, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
             activeDot={{ r: 5 }}
+            isAnimationActive={false}
           />
           <Line
             type="monotone"
@@ -288,6 +296,7 @@ export function HeadcountTrendChart({
             strokeWidth={2}
             dot={{ r: 4, fill: SERIES.two, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
             activeDot={{ r: 5 }}
+            isAnimationActive={false}
           />
         </LineChart>
       </ResponsiveContainer>

@@ -119,10 +119,18 @@ export function EmployeeTable({
                   </div>
                 </td>
                 <td className="max-w-[180px] px-3 py-2">
-                  <div className="truncate">{employee.job_title || '—'}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">
-                    {employee.designation_name || '—'}
+                  <div className="truncate">
+                    {employee.job_title || employee.designation_name || '—'}
                   </div>
+                  {/* The rung, but only when it says something the job title
+                      does not — plenty of people's title *is* their designation,
+                      and printing it twice looks like a rendering fault. */}
+                  {employee.designation_name &&
+                    employee.designation_name !== employee.job_title && (
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        {employee.designation_name}
+                      </div>
+                    )}
                 </td>
                 <td className="max-w-[150px] truncate px-3 py-2">
                   {employee.department_name || '—'}
