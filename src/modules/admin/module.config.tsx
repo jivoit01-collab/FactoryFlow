@@ -6,6 +6,7 @@ import {
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
+  SAP_IDENTITY_PERMISSIONS,
   SAP_REPORTS_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
@@ -29,6 +30,7 @@ const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPa
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
 const WarehouseManagersPage = lazy(() => import('./pages/WarehouseManagersPage'));
 const SapReportAccessPage = lazy(() => import('./pages/SapReportAccessPage'));
+const SapIdentitiesPage = lazy(() => import('./pages/SapIdentitiesPage'));
 const CostMasterPage = lazy(() => import('./pages/CostMasterPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
 // mirrored here so approvers find every queue in one place. One page, two routes.
@@ -64,9 +66,7 @@ const goodsReturnApprovalPermissions = [GOODS_RETURN_PERMISSIONS.APPROVE] as con
 
 // Not an approval queue -- it decides who runs which warehouse, which is why it
 // is gated on its own admin permission rather than on any movement permission.
-const warehouseManagerPermissions = [
-  WAREHOUSE_PERMISSIONS.MANAGE_USER_WAREHOUSES,
-] as const;
+const warehouseManagerPermissions = [WAREHOUSE_PERMISSIONS.MANAGE_USER_WAREHOUSES] as const;
 
 // Manage-only, mirroring warehouse managers: VIEW is for costing/report
 // consumers and must not pull the Admin module into their sidebar.
@@ -75,9 +75,14 @@ const costMasterPermissions = [COST_MASTER_PERMISSIONS.MANAGE] as const;
 // Manage-only for the same reason: VIEW is held by everyone who runs reports.
 const sapReportAccessPermissions = [SAP_REPORTS_PERMISSIONS.MANAGE] as const;
 
+// Who each user is inside SAP. Its own admin permission, like warehouse
+// managers: it decides who may sign a SAP approval, not who may see one.
+const sapIdentityPermissions = [SAP_IDENTITY_PERMISSIONS.MANAGE] as const;
+
 const adminPermissions = [
   ...warehouseManagerPermissions,
   ...sapReportAccessPermissions,
+  ...sapIdentityPermissions,
   ...costMasterPermissions,
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
@@ -154,6 +159,13 @@ export const adminModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Report Access' },
     },
     {
+      path: '/admin/sap-identities',
+      element: <SapIdentitiesPage />,
+      layout: 'main',
+      permissions: sapIdentityPermissions,
+      breadcrumb: { label: 'SAP Identities' },
+    },
+    {
       path: '/admin/cost-master',
       element: <CostMasterPage />,
       layout: 'main',
@@ -216,6 +228,11 @@ export const adminModuleConfig: ModuleConfig = {
           path: '/admin/sap-report-access',
           title: 'SAP Report Access',
           permissions: sapReportAccessPermissions,
+        },
+        {
+          path: '/admin/sap-identities',
+          title: 'SAP Identities',
+          permissions: sapIdentityPermissions,
         },
         {
           path: '/admin/cost-master',

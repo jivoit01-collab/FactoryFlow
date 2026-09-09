@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  SapApprovalDecisionPayload,
+  SapApprovalStatus,
   TransferApprovePayload,
   TransferCreateBSTPayload,
   TransferPostAllocation,
@@ -8,7 +10,11 @@ import type {
   TransferRequestCreatePayload,
   TransferSecondLegPayload,
 } from '../types';
-import { transferRequestApi, type TransferRequestListParams } from './transferRequest.api';
+import {
+  sapTransferApprovalApi,
+  transferRequestApi,
+  type TransferRequestListParams,
+} from './transferRequest.api';
 
 // ============================================================================
 // Query keys
@@ -143,13 +149,8 @@ export function useCreateTransferRequest() {
 export function useApproveTransferRequest() {
   const invalidate = useTransferInvalidation();
   return useMutation({
-    mutationFn: ({
-      requestId,
-      data,
-    }: {
-      requestId: number;
-      data?: TransferApprovePayload;
-    }) => transferRequestApi.approve(requestId, data ?? {}),
+    mutationFn: ({ requestId, data }: { requestId: number; data?: TransferApprovePayload }) =>
+      transferRequestApi.approve(requestId, data ?? {}),
     onSuccess: (_result, variables) => invalidate(variables.requestId),
   });
 }
@@ -181,13 +182,8 @@ export function useCreateBSTFromTransfer() {
   const queryClient = useQueryClient();
   const invalidate = useTransferInvalidation();
   return useMutation({
-    mutationFn: ({
-      requestId,
-      data,
-    }: {
-      requestId: number;
-      data?: TransferCreateBSTPayload;
-    }) => transferRequestApi.createBST(requestId, data ?? {}),
+    mutationFn: ({ requestId, data }: { requestId: number; data?: TransferCreateBSTPayload }) =>
+      transferRequestApi.createBST(requestId, data ?? {}),
     onSuccess: (_result, variables) => {
       invalidate(variables.requestId);
       // A new BST appears on the BST dashboard, which is a different key tree.
@@ -199,13 +195,45 @@ export function useCreateBSTFromTransfer() {
 export function usePostTransferSecondLeg() {
   const invalidate = useTransferInvalidation();
   return useMutation({
-    mutationFn: ({
-      requestId,
-      data,
-    }: {
-      requestId: number;
-      data?: TransferSecondLegPayload;
-    }) => transferRequestApi.postSecondLeg(requestId, data ?? {}),
+    mutationFn: ({ requestId, data }: { requestId: number; data?: TransferSecondLegPayload }) =>
+      transferRequestApi.postSecondLeg(requestId, data ?? {}),
     onSuccess: (_result, variables) => invalidate(variables.requestId),
+  });
+}
+
+// ============================================================================
+// SAP transfer approvals (SAP's own queue on transfer drafts)
+// ============================================================================
+
+export const SAP_TRANSFER_APPROVAL_QUERY_KEYS = {
+  all: ['warehouse', 'sap-transfer-approvals'] as const,
+  list: (status: SapApprovalStatus | 'ALL') =>
+    [...SAP_TRANSFER_APPROVAL_QUERY_KEYS.all, 'list', status] as const,
+};
+
+/** Pass `enabled: false` for a permission-gated tab that must not fetch. */
+export function useSapTransferApprovals(
+  status: SapApprovalStatus | 'ALL' = 'PENDING',
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: SAP_TRANSFER_APPROVAL_QUERY_KEYS.list(status),
+    queryFn: () => sapTransferApprovalApi.list(status),
+    enabled,
+  });
+}
+
+export function useDecideSapTransferApproval() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ wddCode, payload }: { wddCode: number; payload: SapApprovalDecisionPayload }) =>
+      sapTransferApprovalApi.decide(wddCode, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_APPROVAL_QUERY_KEYS.all });
+      // An approved stock transfer moves stock, so the app's own transfer
+      // views and the BST dashboard can both be stale afterwards.
+      queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
+    },
   });
 }

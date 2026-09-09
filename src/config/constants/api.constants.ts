@@ -1152,6 +1152,22 @@ export const API_ENDPOINTS = {
       `/warehouse/transfer-requests/${requestId}/post-second-leg/`,
     TRANSFER_REQUEST_VERIFY_BATCHES: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/verify-batches/`,
+
+    // SAP's own approval queue on transfer drafts — shown beside the app's
+    // transfer requests, decided as the SAP authorizer of the current stage.
+    SAP_TRANSFER_APPROVALS: '/warehouse/sap-transfer-approvals/',
+    SAP_TRANSFER_APPROVAL_STATUS: (wddCode: number) =>
+      `/warehouse/sap-transfer-approvals/${wddCode}/status/`,
+  },
+
+  // Which SAP B1 account each app user is, per company. Approval decisions
+  // are signed as the mapped account, so this is what makes a decision
+  // attributable to a person rather than to a shared credential.
+  SAP_IDENTITY: {
+    IDENTITIES: '/sap-identity/identities/',
+    IDENTITY_DETAIL: (id: number) => `/sap-identity/identities/${id}/`,
+    SAP_USERS: '/sap-identity/sap-users/',
+    ME: '/sap-identity/me/',
   },
 
   BARCODE: {

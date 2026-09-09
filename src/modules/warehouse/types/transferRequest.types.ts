@@ -225,3 +225,63 @@ export interface TransferReconcileReport {
   findings: TransferReconcileFinding[];
   summary: Record<string, number>;
 }
+
+// ---------------------------------------------------------------------------
+// SAP transfer approvals
+// ---------------------------------------------------------------------------
+// SAP's own approval procedure holds inventory transfers (ObjType 67) and
+// transfer requests (1250000001) as drafts until the one authorizer its
+// template names decides them. This queue is company-wide — a transfer's two
+// warehouses have different managers and the authorizer is often neither.
+
+export type SapApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface SapTransferApprovalLine {
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  quantity: number | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  /** On hand at the SENDING warehouse — what decides whether this can move. */
+  source_stock: number | null;
+}
+
+export interface SapTransferApproval {
+  /** OWDD.WddCode — the id the decision endpoint acts on. */
+  id: number;
+  obj_type: string;
+  doc_type_label: string;
+  draft_entry: number;
+  doc_num: number | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  doc_date: string | null;
+  comments: string | null;
+  status: SapApprovalStatus;
+  rejection_reason: string | null;
+  current_step: number | null;
+  /** The single SAP user this request is waiting on. */
+  approver_code: string | null;
+  approver_name: string | null;
+  /** Whether we hold that user's SAP password. */
+  credentials_configured: boolean;
+  /** The caller's own mapped SAP account IS this request's authorizer. */
+  is_mine: boolean;
+  /** mine + password configured + still pending + caller may approve. */
+  can_decide: boolean;
+  lines: SapTransferApprovalLine[];
+  created_at: string | null;
+  created_by: string | null;
+}
+
+export interface SapApprovalDecisionPayload {
+  status: 'APPROVED' | 'REJECTED';
+  rejection_reason?: string;
+}
+
+export interface SapApprovalDecisionResult {
+  message: string;
+  /** The SAP user the decision was signed as. */
+  signed_as: string;
+}

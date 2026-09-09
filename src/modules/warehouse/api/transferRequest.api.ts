@@ -2,6 +2,10 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  SapApprovalDecisionPayload,
+  SapApprovalDecisionResult,
+  SapApprovalStatus,
+  SapTransferApproval,
   TransferAllocationPreview,
   TransferApprovePayload,
   TransferBatchVerification,
@@ -161,6 +165,38 @@ export const transferRequestApi = {
     const res = await apiClient.post<TransferRequestDetail>(
       EP.TRANSFER_REQUEST_SECOND_LEG(requestId),
       data,
+    );
+    return res.data;
+  },
+};
+
+/**
+ * SAP's own approval queue on transfer drafts.
+ *
+ * Separate from `transferRequestApi` because the ids are SAP's (`OWDD.WddCode`)
+ * and the rows are not the app's transfer requests at all — most were raised
+ * straight in the SAP client.
+ */
+export const sapTransferApprovalApi = {
+  /** `status: 'ALL'` drops the filter; default is PENDING. */
+  async list(status: SapApprovalStatus | 'ALL' = 'PENDING'): Promise<SapTransferApproval[]> {
+    const res = await apiClient.get<SapTransferApproval[]>(EP.SAP_TRANSFER_APPROVALS, {
+      params: { status },
+    });
+    return res.data;
+  },
+
+  /**
+   * Approve or reject in SAP. The backend re-reads the current stage and signs
+   * as that authorizer, so no approver is sent from here.
+   */
+  async decide(
+    wddCode: number,
+    payload: SapApprovalDecisionPayload,
+  ): Promise<SapApprovalDecisionResult> {
+    const res = await apiClient.patch<SapApprovalDecisionResult>(
+      EP.SAP_TRANSFER_APPROVAL_STATUS(wddCode),
+      payload,
     );
     return res.data;
   },

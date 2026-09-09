@@ -8,3 +8,5 @@ export * from './dockingApproval.api';
 export * from './dockingApproval.queries';
 export * from './partialScanApproval.api';
 export * from './partialScanApproval.queries';
+export * from './sapIdentity.api';
+export * from './sapIdentity.queries';

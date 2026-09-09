@@ -49,6 +49,13 @@ export {
   type GoodsReturnPermission,
 } from './goods-return.permissions';
 
+// SAP Identity (which SAP B1 account each app user is, per company)
+export {
+  SAP_IDENTITY_MODULE_PREFIX,
+  SAP_IDENTITY_PERMISSIONS,
+  type SapIdentityPermission,
+} from './sap-identity.permissions';
+
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {
   SAP_REPORTS_ACCESS,
