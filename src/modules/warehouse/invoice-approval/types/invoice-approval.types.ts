@@ -95,6 +95,21 @@ export interface InvoiceLog {
   branch: string | null;
   warehouse: string | null;
   status: InvoiceStatus;
+  /**
+   * The single SAP user this request's current stage is waiting on. SAP accepts
+   * a decision from that account only — anyone else gets -6006 — so these four
+   * fields decide whether the actions are offered at all. SAP-source rows only;
+   * OMS rows leave them undefined.
+   */
+  current_step?: number | null;
+  approver_code?: string | null;
+  approver_name?: string | null;
+  /** The app holds that SAP account's password. */
+  credentials_configured?: boolean;
+  /** The caller's own mapped SAP account IS this authorizer. */
+  is_mine?: boolean;
+  /** is_mine + password configured + still pending. */
+  can_decide?: boolean;
   rejection_reason: string | null;
   error_message: string | null;
   invoice_payload: InvoicePayload;
