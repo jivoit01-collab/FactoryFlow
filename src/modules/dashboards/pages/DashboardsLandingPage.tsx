@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  Boxes,
   ClipboardCheck,
   DoorOpen,
   Factory,
@@ -70,6 +71,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/sales-planning-requirement',
     color: 'text-rose-600',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
+  },
+  {
+    title: 'Packing Material',
+    description:
+      'Packaging stock store by store, what production issued, and what shipped out inside bills',
+    icon: <Boxes className="h-5 w-5" />,
+    route: '/dashboards/packing-material',
+    color: 'text-cyan-600',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
   },
   {
     title: 'Production Movement',

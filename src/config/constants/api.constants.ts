@@ -514,6 +514,15 @@ export const API_ENDPOINTS = {
     REPORT: '/non-moving-rm/report/',
     ITEM_GROUPS: '/non-moving-rm/item-groups/',
   },
+  // Packing Material board. Three endpoints for three panels rather than one
+  // for the board: stock is a snapshot of now and does not move when the month
+  // changes, the two top lists are a period, and only the dispatch list
+  // changes when the SAP/FactoryFlow toggle is flipped.
+  PACKING_MATERIAL: {
+    STOCK: '/packing-material/stock/',
+    PRODUCTION: '/packing-material/production/',
+    DISPATCH: '/packing-material/dispatch/',
+  },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.
   FACTORY_EXPENSE: {

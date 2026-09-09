@@ -31,6 +31,9 @@ const SalesPlanningRequirementDashboardPage = lazy(
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
 );
+const PackingMaterialDashboardPage = lazy(
+  () => import('./packing-material/pages/PackingMaterialDashboardPage'),
+);
 const DispatchDayDashboardPage = lazy(
   () => import('./dispatch/pages/DispatchDayDashboardPage'),
 );
@@ -104,6 +107,16 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Gate' },
+    },
+    {
+      // Packing material stock in the three packaging stores, the packing
+      // material production issued, and the packing material that shipped out
+      // inside dispatched bills.
+      path: '/dashboards/packing-material',
+      element: <PackingMaterialDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+      breadcrumb: { label: 'Packing Material' },
     },
     {
       path: '/dashboards/production',
@@ -305,6 +318,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production-movement',
           title: 'Production Movement',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+        },
+        {
+          path: '/dashboards/packing-material',
+          title: 'Packing Material',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
         },
         {
           path: '/dashboards/dispatch',
