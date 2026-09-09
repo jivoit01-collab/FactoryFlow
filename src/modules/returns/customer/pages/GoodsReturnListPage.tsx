@@ -21,6 +21,7 @@ const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
   { value: 'AWAITING_ARRIVAL', label: 'Awaiting Arrival' },
   { value: 'ARRIVED', label: 'Arrived' },
   { value: 'RECEIVED', label: 'Received (not in SAP)' },
+  { value: 'PARTIALLY_POSTED', label: 'Partly posted' },
   { value: 'POSTED', label: 'Posted' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
@@ -59,7 +60,13 @@ export default function GoodsReturnListPage() {
     const query = search.trim().toLowerCase();
     if (!query) return entries;
     return entries.filter((entry) =>
-      [entry.entry_no, entry.customer_name, entry.customer_code, entry.vehicle_no]
+      [
+        entry.entry_no,
+        entry.customer_name,
+        entry.customer_code,
+        entry.vehicle_no,
+        ...entry.invoice_doc_nums,
+      ]
         .join(' ')
         .toLowerCase()
         .includes(query),
@@ -123,7 +130,7 @@ export default function GoodsReturnListPage() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search entry, customer, vehicle"
+              placeholder="Search entry, customer, vehicle, invoice"
               className="pl-9"
             />
           </div>
@@ -143,6 +150,7 @@ export default function GoodsReturnListPage() {
                       <th className="px-4 py-3">Entry No.</th>
                       <th className="px-4 py-3">Basis</th>
                       <th className="px-4 py-3">Customer</th>
+                      <th className="px-4 py-3">Invoices</th>
                       <th className="px-4 py-3">Items</th>
                       <th className="px-4 py-3">Vehicle</th>
                       <th className="px-4 py-3">Expected</th>
@@ -166,6 +174,9 @@ export default function GoodsReturnListPage() {
                         <td className="px-4 py-3 font-medium">{entry.entry_no}</td>
                         <td className="px-4 py-3 text-muted-foreground">{BASIS_LABELS[entry.basis]}</td>
                         <td className="px-4 py-3">{entry.customer_name || entry.customer_code || '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {entry.invoice_doc_nums.length ? entry.invoice_doc_nums.join(', ') : '-'}
+                        </td>
                         <td className="px-4 py-3">{entry.line_count}</td>
                         <td className="px-4 py-3">{entry.vehicle_no || '-'}</td>
                         <td className="px-4 py-3 text-muted-foreground">

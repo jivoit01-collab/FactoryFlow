@@ -1,5 +1,5 @@
-import { ArrowLeft, ArrowRight, FileCheck2, Loader2, Plus, Trash2 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, FileCheck2, Loader2, Plus, ReceiptText, Trash2 } from 'lucide-react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { StepHeader } from '@/modules/gate/components';
@@ -12,7 +12,7 @@ import {
   useSaveGoodsReturnItems,
 } from '../api';
 import { ReturnItemPicker } from '../components/ReturnItemPicker';
-import { CONDITION_OPTIONS } from '../utils';
+import { CONDITION_OPTIONS, invoiceNumbersByRef } from '../utils';
 
 interface EditableLine {
   key: string;
@@ -68,6 +68,24 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
   const [lines, setLines] = useState<EditableLine[]>(() => buildLines(detail));
   const [error, setError] = useState<string | null>(null);
   const manualCounter = useRef(0);
+  // Which bill each line came off. The backend hands the lines back grouped by
+  // invoice, so a heading whenever the invoice changes splits the list into the
+  // documents it will post as — one A/R Return per invoice.
+  const invoiceNumbers = useMemo(
+    () => invoiceNumbersByRef(detail.invoice_refs),
+    [detail.invoice_refs],
+  );
+  const showInvoices = detail.invoice_refs.length > 0;
+  const returningByRef = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const line of lines) {
+      if (Number(line.return_quantity) > 0) {
+        const key = String(line.invoice_ref ?? 'none');
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [lines]);
 
   function updateLine(key: string, patch: Partial<EditableLine>) {
     setLines((prev) => prev.map((line) => (line.key === key ? { ...line, ...patch } : line)));
@@ -148,7 +166,12 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
         <span>
           {detail.entry_no} · {detail.customer_name || detail.customer_code || 'No customer'}
         </span>
-        <span>{returningCount} item(s) returning</span>
+        <span>
+          {returningCount} item(s) returning
+          {showInvoices
+            ? ` · ${detail.invoice_refs.length} invoice(s), one SAP return each`
+            : ''}
+        </span>
       </div>
 
       <Card>
@@ -174,119 +197,138 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
                ancestor clips it. Rows are a wrapping grid instead, which also means
                the page never scrolls sideways on a phone. */
             <div className="space-y-3">
-              {lines.map((line) => (
-                <div key={line.key} className="space-y-2 rounded-lg border p-3">
-                  {line.manual ? (
-                    <>
-                      <ReturnItemPicker
-                        returnId={id}
-                        inputId={`return-item-${line.key}`}
-                        value={line.item_code}
-                        onSelect={(item) =>
-                          // The unit and the tax code come from the item's own
-                          // sales history — the posted return has to reverse the
-                          // code the original sale used.
-                          updateLine(line.key, {
-                            item_code: item?.item_code ?? '',
-                            item_name: item?.item_name ?? '',
-                            uom: item?.uom ?? '',
-                          })
-                        }
-                      />
-                      {line.item_name && (
-                        <p className="text-xs text-muted-foreground">{line.item_name}</p>
-                      )}
-                    </>
-                  ) : (
-                    <div>
-                      <p className="text-sm font-medium">{line.item_name || line.item_code}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {line.item_code} · invoiced {line.invoice_quantity} {line.uom}
+              {lines.map((line, index) => (
+                <Fragment key={line.key}>
+                  {showInvoices && line.invoice_ref !== lines[index - 1]?.invoice_ref && (
+                    <div className="flex items-center justify-between gap-2 border-b pb-1 pt-2 first:pt-0">
+                      <p className="flex items-center gap-2 text-sm font-semibold">
+                        <ReceiptText className="h-4 w-4 text-muted-foreground" />
+                        {line.invoice_ref
+                          ? `Invoice ${invoiceNumbers[line.invoice_ref] ?? line.invoice_ref}`
+                          : 'Not against an invoice'}
                       </p>
+                      <span className="text-xs text-muted-foreground">
+                        {returningByRef[String(line.invoice_ref ?? 'none')] ?? 0} returning
+                      </span>
                     </div>
                   )}
-
-                  <div className="grid gap-2 sm:grid-cols-[100px_130px_minmax(0,1fr)_150px_auto]">
+                  <div className="space-y-2 rounded-lg border p-3">
                     {line.manual ? (
+                      <>
+                        <ReturnItemPicker
+                          returnId={id}
+                          inputId={`return-item-${line.key}`}
+                          value={line.item_code}
+                          onSelect={(item) =>
+                            // The unit and the tax code come from the item's own
+                            // sales history — the posted return has to reverse the
+                            // code the original sale used.
+                            updateLine(line.key, {
+                              item_code: item?.item_code ?? '',
+                              item_name: item?.item_name ?? '',
+                              uom: item?.uom ?? '',
+                            })
+                          }
+                        />
+                        {line.item_name && (
+                          <p className="text-xs text-muted-foreground">{line.item_name}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-medium">{line.item_name || line.item_code}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {line.item_code}
+                          {line.invoice_ref && invoiceNumbers[line.invoice_ref]
+                            ? ` · invoice ${invoiceNumbers[line.invoice_ref]}`
+                            : ''}{' '}
+                          · invoiced {line.invoice_quantity} {line.uom}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="grid gap-2 sm:grid-cols-[100px_130px_minmax(0,1fr)_150px_auto]">
+                      {line.manual ? (
+                        <label className="space-y-1">
+                          <span className="text-xs text-muted-foreground">Unit</span>
+                          <Input
+                            value={line.uom}
+                            onChange={(event) => updateLine(line.key, { uom: event.target.value })}
+                            placeholder="UOM"
+                            className="h-9"
+                          />
+                        </label>
+                      ) : (
+                        <div className="space-y-1">
+                          <span className="text-xs text-muted-foreground">Unit</span>
+                          <p className="h-9 leading-9 text-sm">{line.uom || '—'}</p>
+                        </div>
+                      )}
+
                       <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Unit</span>
+                        <span className="text-xs text-muted-foreground">Returning</span>
                         <Input
-                          value={line.uom}
-                          onChange={(event) => updateLine(line.key, { uom: event.target.value })}
-                          placeholder="UOM"
+                          type="number"
+                          min={0}
+                          step="0.001"
+                          max={line.invoice_quantity || undefined}
+                          value={line.return_quantity}
+                          onChange={(event) =>
+                            updateLine(line.key, { return_quantity: event.target.value })
+                          }
+                          className="h-9"
+                          // A number input edits itself when scrolled past; blurring
+                          // hands the scroll back to the page.
+                          onWheel={(event) => event.currentTarget.blur()}
+                        />
+                      </label>
+
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Reason</span>
+                        <Input
+                          value={line.reason}
+                          onChange={(event) => updateLine(line.key, { reason: event.target.value })}
+                          placeholder="Damaged, shortage…"
                           className="h-9"
                         />
                       </label>
-                    ) : (
-                      <div className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Unit</span>
-                        <p className="h-9 leading-9 text-sm">{line.uom || '—'}</p>
-                      </div>
-                    )}
 
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Returning</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.001"
-                        max={line.invoice_quantity || undefined}
-                        value={line.return_quantity}
-                        onChange={(event) =>
-                          updateLine(line.key, { return_quantity: event.target.value })
-                        }
-                        className="h-9"
-                        // A number input edits itself when scrolled past; blurring
-                        // hands the scroll back to the page.
-                        onWheel={(event) => event.currentTarget.blur()}
-                      />
-                    </label>
-
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Reason</span>
-                      <Input
-                        value={line.reason}
-                        onChange={(event) => updateLine(line.key, { reason: event.target.value })}
-                        placeholder="Damaged, shortage…"
-                        className="h-9"
-                      />
-                    </label>
-
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Condition</span>
-                      <select
-                        value={line.condition}
-                        onChange={(event) =>
-                          updateLine(line.key, {
-                            condition: event.target.value as GoodsReturnItemCondition,
-                          })
-                        }
-                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                      >
-                        {CONDITION_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    {!isInvoiceBasis && (
-                      <div className="flex items-end">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`Remove ${line.item_code || 'this line'}`}
-                          onClick={() =>
-                            setLines((prev) => prev.filter((item) => item.key !== line.key))
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Condition</span>
+                        <select
+                          value={line.condition}
+                          onChange={(event) =>
+                            updateLine(line.key, {
+                              condition: event.target.value as GoodsReturnItemCondition,
+                            })
                           }
+                          className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                          {CONDITION_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      {!isInvoiceBasis && (
+                        <div className="flex items-end">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Remove ${line.item_code || 'this line'}`}
+                            onClick={() =>
+                              setLines((prev) => prev.filter((item) => item.key !== line.key))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Fragment>
               ))}
             </div>
           )}

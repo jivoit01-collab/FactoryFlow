@@ -1,6 +1,7 @@
 import type {
   GoodsReturnApprovalStatus,
   GoodsReturnBasis,
+  GoodsReturnInvoiceRef,
   GoodsReturnItemCondition,
   GoodsReturnStatus,
 } from './api';
@@ -16,6 +17,7 @@ export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
   AWAITING_ARRIVAL: 'Awaiting Arrival',
   ARRIVED: 'Arrived',
   RECEIVED: 'Received (not in SAP)',
+  PARTIALLY_POSTED: 'Partly posted to SAP',
   POSTED: 'Posted to SAP',
   CANCELLED: 'Cancelled',
 };
@@ -27,6 +29,9 @@ export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
   // Deliberately not the same green as POSTED: the goods are in, but there is
   // no SAP document behind it yet.
   RECEIVED: 'bg-teal-100 text-teal-800',
+  // Some of its invoices are in SAP and some are not — read as unfinished, not
+  // as a failure: the documents SAP took are real.
+  PARTIALLY_POSTED: 'bg-orange-100 text-orange-800',
   POSTED: 'bg-emerald-100 text-emerald-800',
   CANCELLED: 'bg-rose-100 text-rose-800',
 };
@@ -60,6 +65,19 @@ export const ATTACHMENT_TYPE_BY_BASIS: Record<
   DEBIT_NOTE: 'DEBIT_NOTE',
   LETTER_PAD: 'LETTER_PAD',
 };
+
+/** Invoice-ref id → the invoice number to show against a line.
+ *
+ *  A return line knows only which ref it belongs to, and every page that lists
+ *  lines has to name the bill they came off: each invoice posts its own A/R
+ *  Return, so the invoice is what says which document a line will land on. Falls
+ *  back to the SAP doc entry for the rare ref whose number was never snapshotted.
+ */
+export function invoiceNumbersByRef(refs: GoodsReturnInvoiceRef[]): Record<number, string> {
+  return Object.fromEntries(
+    refs.map((ref) => [ref.id, ref.sap_invoice_doc_num || String(ref.sap_invoice_doc_entry)]),
+  );
+}
 
 export function formatDateTime(value?: string | null): string {
   if (!value) return '-';

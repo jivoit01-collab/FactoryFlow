@@ -7,7 +7,7 @@ import { StepHeader } from '@/modules/gate/components';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGoodsReturn, useSubmitGoodsReturn } from '../api';
-import { BASIS_LABELS, formatDate } from '../utils';
+import { BASIS_LABELS, formatDate, invoiceNumbersByRef } from '../utils';
 
 export default function GoodsReturnReviewPage() {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ export default function GoodsReturnReviewPage() {
   const { data: detail, isLoading } = useGoodsReturn(id);
   const submit = useSubmitGoodsReturn(id);
   const [error, setError] = useState<string | null>(null);
+  const invoiceNumbers = invoiceNumbersByRef(detail?.invoice_refs ?? []);
 
   async function handleSubmit() {
     setError(null);
@@ -55,7 +56,15 @@ export default function GoodsReturnReviewPage() {
             <Field label="Vehicle" value={detail.vehicle_no || '-'} />
             <Field label="Driver" value={detail.driver_name || '-'} />
             <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
-            <Field label="Invoices" value={String(detail.invoice_refs.length || '-')} />
+            {/* The numbers, not the count: each of these posts its own A/R Return. */}
+            <Field
+              label="Invoices"
+              value={
+                detail.invoice_refs.length
+                  ? detail.invoice_refs.map((ref) => ref.sap_invoice_doc_num).join(', ')
+                  : '-'
+              }
+            />
             <Field label="Attachments" value={String(detail.attachments.length)} />
           </dl>
         </CardContent>
@@ -69,6 +78,7 @@ export default function GoodsReturnReviewPage() {
               <thead>
                 <tr className="border-b text-left text-xs uppercase text-muted-foreground">
                   <th className="px-2 py-2">Item</th>
+                  {detail.invoice_refs.length > 0 && <th className="px-2 py-2">Invoice</th>}
                   <th className="px-2 py-2">Return Qty</th>
                   <th className="px-2 py-2">Reason</th>
                   <th className="px-2 py-2">Condition</th>
@@ -81,6 +91,11 @@ export default function GoodsReturnReviewPage() {
                       <p className="font-medium">{line.item_name || line.item_code}</p>
                       <p className="text-xs text-muted-foreground">{line.item_code}</p>
                     </td>
+                    {detail.invoice_refs.length > 0 && (
+                      <td className="px-2 py-2 text-muted-foreground">
+                        {line.invoice_ref ? (invoiceNumbers[line.invoice_ref] ?? '-') : '-'}
+                      </td>
+                    )}
                     <td className="px-2 py-2">
                       {Number(line.return_quantity)} {line.uom}
                     </td>

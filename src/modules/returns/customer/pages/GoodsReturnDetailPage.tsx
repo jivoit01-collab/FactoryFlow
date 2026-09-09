@@ -19,6 +19,7 @@ import {
   BASIS_LABELS,
   formatDate,
   formatDateTime,
+  invoiceNumbersByRef,
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
 } from '../utils';
@@ -28,6 +29,7 @@ export default function GoodsReturnDetailPage() {
   const { entryId } = useParams<{ entryId: string }>();
   const id = Number(entryId);
   const { data: detail, isLoading } = useGoodsReturn(id);
+  const invoiceNumbers = invoiceNumbersByRef(detail?.invoice_refs ?? []);
 
   if (isLoading || !detail) {
     return (
@@ -54,12 +56,20 @@ export default function GoodsReturnDetailPage() {
           </div>
           <p className="text-muted-foreground">{BASIS_LABELS[detail.basis]}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Only a posted return has a SAP document to print — a DN/LP return
-              closes as RECEIVED with no document behind it. */}
-          {detail.sap_gr_doc_num && (
-            <GoodsReturnPrintButton id={id} docNum={detail.sap_gr_doc_num} />
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* One button per posted document: a return booked against two invoices
+              posts two A/R Returns, and each is its own Return Note. Only a
+              posted return has any — a DN/LP return closes as RECEIVED with no
+              document behind it. */}
+          {printableDocuments(detail).map((document) => (
+            <GoodsReturnPrintButton
+              key={document.docEntry ?? document.docNum}
+              id={id}
+              docNum={document.docNum}
+              docEntry={document.docEntry}
+              label={document.label}
+            />
+          ))}
           {/* The gate is waiting for this truck until it marks it in, and until
               then the customer can still send a different one. */}
           {!detail.gated_in_at && detail.status === 'AWAITING_ARRIVAL' && (
@@ -93,7 +103,14 @@ export default function GoodsReturnDetailPage() {
               value={detail.invoice_refs.map((ref) => ref.sap_invoice_doc_num).join(', ')}
             />
           )}
-          {detail.sap_gr_doc_num && <Field label="SAP Return Doc" value={detail.sap_gr_doc_num} />}
+          {/* One document per invoice, so this is a list. The per-invoice table
+              below says which document answers for which bill. */}
+          {(detail.sap_gr_doc_nums ?? []).length > 0 && (
+            <Field
+              label={detail.sap_gr_doc_nums.length > 1 ? 'SAP Return Docs' : 'SAP Return Doc'}
+              value={detail.sap_gr_doc_nums.join(', ')}
+            />
+          )}
           {detail.sap_return_warehouse && (
             <Field label="Return Warehouse" value={detail.sap_return_warehouse} />
           )}
@@ -104,7 +121,11 @@ export default function GoodsReturnDetailPage() {
         </CardContent>
       </Card>
 
-      {detail.status === 'ARRIVED' && <ReceivePanel id={id} detail={detail} />}
+      {(detail.status === 'ARRIVED' || detail.status === 'PARTIALLY_POSTED') && (
+        <ReceivePanel id={id} detail={detail} />
+      )}
+
+      <SapDocumentsCard detail={detail} />
 
       <Card>
         <CardContent className="space-y-3 p-6">
@@ -116,6 +137,9 @@ export default function GoodsReturnDetailPage() {
               <thead>
                 <tr className="border-b text-left text-xs uppercase text-muted-foreground">
                   <th className="px-2 py-2">Item</th>
+                  {/* Which bill the line came off — and therefore which of the
+                      return's SAP documents it landed on. */}
+                  {detail.invoice_refs.length > 0 && <th className="px-2 py-2">Invoice</th>}
                   <th className="px-2 py-2">Invoice Qty</th>
                   <th className="px-2 py-2">Return Qty</th>
                   <th className="px-2 py-2">Reason</th>
@@ -129,6 +153,11 @@ export default function GoodsReturnDetailPage() {
                       <p className="font-medium">{line.item_name || line.item_code}</p>
                       <p className="text-xs text-muted-foreground">{line.item_code}</p>
                     </td>
+                    {detail.invoice_refs.length > 0 && (
+                      <td className="px-2 py-2 text-muted-foreground">
+                        {line.invoice_ref ? (invoiceNumbers[line.invoice_ref] ?? '-') : '-'}
+                      </td>
+                    )}
                     <td className="px-2 py-2 text-muted-foreground">
                       {Number(line.invoice_quantity) || '-'} {line.uom}
                     </td>
@@ -182,11 +211,17 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
   const blocked = awaitingApproval || approvalRejected;
 
   const receive = useReceiveGoodsReturn(id);
-  // Every basis posts the same standalone A/R Return, so every basis needs a
-  // warehouse to post it into.
+  // Every basis posts standalone A/R Returns, so every basis needs a warehouse
+  // to post them into.
   const { data: warehouses = [], isLoading: warehousesLoading } =
     useReturnWarehouses(!blocked);
-  const [warehouseCode, setWarehouseCode] = useState('');
+  // A retry has to use the warehouse the first run posted into — the stock
+  // already in SAP went there — so it is fixed rather than asked for again.
+  const retry = detail.status === 'PARTIALLY_POSTED';
+  const [warehouseCode, setWarehouseCode] = useState(
+    retry ? detail.sap_return_warehouse : '',
+  );
+  const owed = detail.invoice_refs.filter((ref) => ref.sap_gr_doc_entry === null);
 
   if (blocked) {
     return (
@@ -212,10 +247,19 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     }
     try {
       const updated = await receive.mutateAsync(warehouseCode);
+      // `detail` is only set when SAP refused some of the return's invoices; the
+      // rest posted and stand, so this is a warning, not a failure.
+      if (updated.detail) {
+        toast.warning(updated.detail);
+        return;
+      }
+      const posted = updated.sap_gr_doc_nums ?? [];
       toast.success(
-        updated.sap_gr_doc_num
-          ? `Received — SAP Return ${updated.sap_gr_doc_num} posted`
-          : 'Goods return received',
+        posted.length > 1
+          ? `Received — ${posted.length} SAP Returns posted (${posted.join(', ')})`
+          : posted.length === 1
+            ? `Received — SAP Return ${posted[0]} posted`
+            : 'Goods return received',
       );
     } catch (err) {
       const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -227,11 +271,18 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     <Card className="border-primary/40">
       <CardContent className="space-y-4 p-6">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <PackageCheck className="h-4 w-4 text-primary" /> Confirm Receipt
+          <PackageCheck className="h-4 w-4 text-primary" />{' '}
+          {retry ? 'Post the Remaining Invoices' : 'Confirm Receipt'}
         </div>
         <p className="text-sm text-muted-foreground">
-          The vehicle is marked in at the gate. Confirm the goods physically arrived — this
-          posts an A/R Returns document to SAP and brings the stock into the warehouse below.
+          {retry
+            ? `SAP refused ${owed.length} of this return's invoices${
+                owed.length ? ` (${owed.map((ref) => ref.sap_invoice_doc_num).join(', ')})` : ''
+              }. The documents it accepted stand — a posted return cannot be withdrawn — so this
+               retries only the refused ones, into the same warehouse.`
+            : `The vehicle is marked in at the gate. Confirm the goods physically arrived — this
+               posts one A/R Return per invoice to SAP and brings the stock into the warehouse
+               below.`}
         </p>
 
         <div className="space-y-2 sm:max-w-sm">
@@ -239,7 +290,7 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           <select
             value={warehouseCode}
             onChange={(event) => setWarehouseCode(event.target.value)}
-            disabled={warehousesLoading}
+            disabled={warehousesLoading || retry}
             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
           >
             <option value="">{warehousesLoading ? 'Loading…' : 'Select warehouse'}</option>
@@ -263,11 +314,91 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           ) : (
             <PackageCheck className="mr-2 h-4 w-4" />
           )}
-          Confirm Receipt &amp; Post to SAP
+          {retry ? 'Retry the Refused Invoices' : 'Confirm Receipt & Post to SAP'}
         </Button>
       </CardContent>
     </Card>
   );
+}
+
+/** Which invoice got which A/R Return, and what SAP said about the ones it
+ *  refused. Only shown once something has been posted or refused: before that
+ *  there is nothing to say that the summary above does not. */
+function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
+  const refs = detail.invoice_refs;
+  const anything = refs.some((ref) => ref.sap_gr_doc_entry !== null || ref.sap_post_error);
+  if (refs.length === 0 || !anything) return null;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-6">
+        <h4 className="flex items-center gap-2 text-sm font-semibold">
+          <FileText className="h-4 w-4" /> SAP Returns ({refs.length})
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          One A/R Return per invoice — the credit note that follows is raised against the
+          invoice, and each bill carries its own place of supply.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                <th className="px-2 py-2">Invoice</th>
+                <th className="px-2 py-2">SAP Return</th>
+                <th className="px-2 py-2">Posted</th>
+                <th className="px-2 py-2">Warehouse</th>
+              </tr>
+            </thead>
+            <tbody>
+              {refs.map((ref) => (
+                <tr key={ref.id} className="border-b align-top">
+                  <td className="px-2 py-2 font-medium">
+                    {ref.sap_invoice_doc_num || ref.sap_invoice_doc_entry}
+                  </td>
+                  <td className="px-2 py-2">
+                    {ref.sap_gr_doc_num ? (
+                      <span className="font-medium">{ref.sap_gr_doc_num}</span>
+                    ) : (
+                      <span className="text-destructive">
+                        {ref.sap_post_error || 'Not posted'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-muted-foreground">
+                    {formatDateTime(ref.posted_at)}
+                  </td>
+                  <td className="px-2 py-2 text-muted-foreground">
+                    {ref.sap_return_warehouse || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The return's printable documents, one per posted invoice.
+ *
+ *  A debit-note or letter-pad return has no invoice ref to hang its document on,
+ *  so the header's own number is the only one there is. */
+function printableDocuments(detail: GoodsReturnDetail) {
+  const fromInvoices = detail.invoice_refs
+    .filter((ref) => ref.sap_gr_doc_entry !== null)
+    .map((ref) => ({
+      docEntry: ref.sap_gr_doc_entry,
+      docNum: ref.sap_gr_doc_num,
+      label:
+        detail.invoice_refs.length > 1
+          ? `Print Return Note (Inv ${ref.sap_invoice_doc_num || ref.sap_invoice_doc_entry})`
+          : 'Print Return Note',
+    }));
+  if (fromInvoices.length > 0) return fromInvoices;
+  return detail.sap_gr_doc_num
+    ? [{ docEntry: null, docNum: detail.sap_gr_doc_num, label: 'Print Return Note' }]
+    : [];
 }
 
 function Field({ label, value }: { label: string; value: string }) {

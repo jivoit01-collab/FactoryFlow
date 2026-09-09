@@ -33,7 +33,12 @@ export const goodsReturnKeys = {
  * copy is the kind of error nobody catches.
  */
 export function useGoodsReturnPrint() {
-  return useMutation({ mutationFn: (id: number) => goodsReturnApi.getPrint(id) });
+  return useMutation({
+    // `docEntry` picks one of a multi-invoice return's documents; omitted, the
+    // first is read.
+    mutationFn: ({ id, docEntry }: { id: number; docEntry?: number | null }) =>
+      goodsReturnApi.getPrint(id, docEntry),
+  });
 }
 
 /**

@@ -259,7 +259,15 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
                     key={ref.id}
                     className="flex items-center justify-between rounded-md border p-3 text-sm"
                   >
-                    <p className="font-medium">Invoice {ref.sap_invoice_doc_num}</p>
+                    <div>
+                      <p className="font-medium">Invoice {ref.sap_invoice_doc_num}</p>
+                      {/* Each invoice posts its own A/R Return, so the split is
+                          worth stating where the invoices are chosen. */}
+                      <p className="text-xs text-muted-foreground">
+                        {detail.lines.filter((line) => line.invoice_ref === ref.id).length} item(s)
+                        returning · posts its own SAP return
+                      </p>
+                    </div>
                     <Button
                       type="button"
                       size="icon"

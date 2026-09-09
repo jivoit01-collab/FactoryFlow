@@ -26,6 +26,9 @@ export type GoodsReturnStatus =
   // Goods in and the return closed, but no SAP document — only invoice-basis
   // returns post today.
   | 'RECEIVED'
+  // One A/R Return is posted per source invoice, and SAP can take some and
+  // refuse others. Receiving again retries only the refused ones.
+  | 'PARTIALLY_POSTED'
   | 'POSTED'
   | 'CANCELLED';
 export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
@@ -48,6 +51,8 @@ export interface GoodsReturnListItem {
   requires_approval: boolean;
   approval_status: GoodsReturnApprovalStatus;
   line_count: number;
+  /** The bills this return is booked against — one A/R Return each. */
+  invoice_doc_nums: string[];
   /** Null while the clerk is still filling the return in. */
   submitted_at: string | null;
   created_at: string;
@@ -65,10 +70,18 @@ export interface GoodsReturnGateHistoryParams {
   search?: string;
 }
 
+/** One source invoice, and the A/R Return posted for it — one per invoice. */
 export interface GoodsReturnInvoiceRef {
   id: number;
   sap_invoice_doc_entry: number;
   sap_invoice_doc_num: string;
+  /** Null until this invoice's own return is in SAP. */
+  sap_gr_doc_entry: number | null;
+  sap_gr_doc_num: string;
+  sap_return_warehouse: string;
+  posted_at: string | null;
+  /** Why SAP refused this invoice, when it did. Blank otherwise. */
+  sap_post_error: string;
 }
 
 export interface GoodsReturnItem {
@@ -132,7 +145,10 @@ export interface GoodsReturnDetail {
   approval_status: GoodsReturnApprovalStatus;
   approval_remarks: string;
   approved_at: string | null;
+  /** The first of the return's documents — see `sap_gr_doc_nums` for all. */
   sap_gr_doc_num: string;
+  /** Every A/R Return this return posted, one per invoice. */
+  sap_gr_doc_nums: string[];
   sap_return_warehouse: string;
   remarks: string;
   submitted_at: string | null;
@@ -142,6 +158,10 @@ export interface GoodsReturnDetail {
   attachments: GoodsReturnAttachment[];
   invoice_preview?: GoodsReturnInvoicePreview[];
 }
+
+/** The return as it stands after a receive, plus `detail` when SAP refused some
+ *  of its invoices (HTTP 207) — the rest posted and are recorded here. */
+export type GoodsReturnReceiveResult = GoodsReturnDetail & { detail?: string };
 
 /** One line of SAP's own Return layout. Amounts arrive as strings — JSON floats
  *  would round money. */
@@ -385,10 +405,16 @@ export const goodsReturnApi = {
     return response.data;
   },
 
-  /** SAP's Return Note for a posted return. 404s until the return has posted. */
-  async getPrint(id: number): Promise<GoodsReturnPrintPayload> {
+  /** SAP's Return Note for one of a return's posted documents.
+   *
+   *  A return booked against several invoices has a document per invoice, so
+   *  `docEntry` says which to print; without it the first is printed, which is
+   *  the whole set for a single-invoice return. 404s until the return has posted.
+   */
+  async getPrint(id: number, docEntry?: number | null): Promise<GoodsReturnPrintPayload> {
     const response = await apiClient.get<GoodsReturnPrintPayload>(
       API_ENDPOINTS.GOODS_RETURN.PRINT(id),
+      { params: docEntry ? { doc_entry: docEntry } : undefined },
     );
     return response.data;
   },
@@ -398,8 +424,14 @@ export const goodsReturnApi = {
     return response.data;
   },
 
-  async receive(id: number, warehouseCode?: string): Promise<GoodsReturnDetail> {
-    const response = await apiClient.post<GoodsReturnDetail>(
+  /** Confirm receipt, posting one A/R Return per invoice.
+   *
+   *  A run SAP half-accepts comes back 207 with `detail` naming the invoices it
+   *  refused — the documents it did accept cannot be withdrawn, so they stand and
+   *  the record returned already carries them.
+   */
+  async receive(id: number, warehouseCode?: string): Promise<GoodsReturnReceiveResult> {
+    const response = await apiClient.post<GoodsReturnReceiveResult>(
       API_ENDPOINTS.GOODS_RETURN.RECEIVE(id),
       { warehouse_code: warehouseCode ?? '' },
     );

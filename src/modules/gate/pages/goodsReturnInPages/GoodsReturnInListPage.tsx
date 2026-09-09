@@ -91,6 +91,7 @@ export default function GoodsReturnInListPage() {
         entry.driver_name,
         entry.customer_name,
         entry.customer_code,
+        ...entry.invoice_doc_nums,
       ]
         .join(' ')
         .toLowerCase()
@@ -222,6 +223,7 @@ function HistoryTable({ entries }: { entries: GoodsReturnGateHistoryItem[] }) {
                 <th className="px-4 py-3">Entry No.</th>
                 <th className="px-4 py-3">Customer</th>
                 <th className="px-4 py-3">Driver</th>
+                <th className="px-4 py-3">Invoices</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Marked In By</th>
                 <th className="px-4 py-3">Company</th>
@@ -238,6 +240,9 @@ function HistoryTable({ entries }: { entries: GoodsReturnGateHistoryItem[] }) {
                   <td className="px-4 py-3 text-muted-foreground">{entry.entry_no}</td>
                   <td className="px-4 py-3">{entry.customer_name || entry.customer_code || '-'}</td>
                   <td className="px-4 py-3">{entry.driver_name || '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {entry.invoice_doc_nums.length ? entry.invoice_doc_nums.join(', ') : '-'}
+                  </td>
                   <td className="px-4 py-3">{entry.line_count}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {entry.gated_in_by_name || '-'}
