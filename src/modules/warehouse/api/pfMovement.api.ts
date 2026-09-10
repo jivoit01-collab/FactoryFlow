@@ -1,19 +1,42 @@
 import { API_ENDPOINTS } from '@/config/constants/api.constants';
 import { apiClient } from '@/core/api';
 
-/** One item on a declared consignment, counted in boxes. */
+/** One item on a declared consignment, counted in pieces. */
 export interface PFMovementLine {
   id: number;
   item_code: string;
   item_name: string;
   uom: string;
-  boxes: number;
+  /** Pieces — SAP's inventory UoM, the unit the keeper types. */
+  pieces: number;
   /** OITM.SalFactor2 as it stood when the line was typed. Null when SAP had none. */
   pieces_per_box: number | null;
-  /** boxes x pieces_per_box, or null without a pack size — never a misleading zero. */
-  pieces: number | null;
+  /** Whole boxes the pieces come to; null without a pack size. */
+  full_boxes: number | null;
+  /** Pieces left over after those boxes; null without a pack size. */
+  loose_pieces: number | null;
+  /**
+   * OITM.SalPackUn as it stood when the line was typed — litres in one piece.
+   * Null for an item SAP does not measure in litres (a carton, a preform).
+   */
+  litres_per_piece: string | null;
+  /**
+   * pieces x litres_per_piece, to 3 places. A string, not a number: the factor
+   * has 6 decimal places and a float would round a 0.8242-litre pouch
+   * differently per client. Null — never "0" — when the item is not a litre
+   * item at all.
+   */
+  litres: string | null;
   remarks: string;
 }
+
+/**
+ * Where a load is headed. Not every one goes to another godown — plenty leaves
+ * the floor straight onto a customer's truck, and a dispatch carries no
+ * destination warehouse at all rather than a placeholder code that would show
+ * up as a real godown on every grouped report.
+ */
+export type PFMovementDestinationKind = 'GODOWN' | 'DISPATCH';
 
 /** What a keeper declared he is sending out of his floor, and to where. */
 export interface PFMovement {
@@ -24,18 +47,29 @@ export interface PFMovement {
   movement_date: string;
   from_warehouse: string;
   from_warehouse_name: string;
+  destination_kind: PFMovementDestinationKind;
+  /** The destination in one string — the godown code, or "Dispatch". */
+  destination_display: string;
+  is_dispatch: boolean;
+  /** Blank on a dispatch: there is no destination godown. */
   to_warehouse: string;
   to_warehouse_name: string;
-  to_company: number;
+  /** Null on a dispatch. */
+  to_company: number | null;
   to_company_code: string;
   to_company_name: string;
-  /** The destination belongs to another company — the Gupta godown case. */
+  /** The destination belongs to another company — the Gupta godown case. Always
+   * false for a dispatch, which has no destination company at all. */
   is_cross_company: boolean;
   vehicle_no: string;
+  /** Invoice or bilty number, when the paperwork exists yet. */
+  reference: string;
   remarks: string;
   lines: PFMovementLine[];
   line_count: number;
-  total_boxes: number;
+  total_pieces: number;
+  /** Litres over the document, to 3 places, counting only the litre items. */
+  total_litres: string;
   is_active: boolean;
   cancelled_at: string | null;
   cancelled_by_name: string;
@@ -53,9 +87,12 @@ export interface PFMovementEvent {
   id: number;
   action: PFMovementAction;
   movement_date: string | null;
+  /** Snapshotted so the trail can say "was going to BH-BT, now a dispatch". */
+  destination_kind: PFMovementDestinationKind | '';
   to_warehouse: string;
   line_count: number;
-  total_boxes: number;
+  total_pieces: number;
+  total_litres: string;
   note: string;
   changed_by_name: string;
   changed_at: string;
@@ -73,7 +110,17 @@ export interface PFMovementList {
   default_from_warehouse: string;
   unrestricted: boolean;
   managed_warehouse_codes: string[];
-  summary: { movements: number; total_boxes: number };
+  summary: {
+    movements: number;
+    total_pieces: number;
+    /** Of the total, what left on a direct dispatch rather than to a godown. */
+    dispatched_pieces: number;
+    to_godown_pieces: number;
+    /** Litres to 3 places, as strings for the same reason as on a line. */
+    total_litres: string;
+    dispatched_litres: string;
+    to_godown_litres: string;
+  };
   movements: PFMovement[];
 }
 
@@ -89,7 +136,12 @@ export interface PFMovementItem {
   uom: string;
   /** OITM.SalFactor2 — the authoritative pack size, never a name parse. */
   pieces_per_box: number | null;
-  /** SAP's own on-hand for the source floor. */
+  /**
+   * OITM.SalPackUn gated on U_IsLitre — litres in one piece. Null for an item
+   * SAP does not measure in litres; 315 of 405 finished-goods items carry one.
+   */
+  litres_per_piece: number | null;
+  /** SAP's own on-hand for the source floor, in pieces — the unit typed here. */
   sap_on_hand: number | null;
 }
 
@@ -105,6 +157,7 @@ export interface PFMovementDestinationCompany {
 export interface PFMovementListParams {
   fromWarehouse?: string;
   toWarehouse?: string;
+  destinationKind?: PFMovementDestinationKind;
   dateFrom?: string;
   dateTo?: string;
   search?: string;
@@ -117,19 +170,24 @@ export interface PFMovementLineInput {
   item_code: string;
   item_name?: string;
   uom?: string;
-  boxes: number;
+  pieces: number;
+  /** Both from the SAP picker, never typed. */
   pieces_per_box?: number | null;
+  litres_per_piece?: number | null;
   remarks?: string;
 }
 
 export interface CreatePFMovementPayload {
   from_warehouse?: string;
-  to_warehouse: string;
-  to_company: number;
+  destination_kind?: PFMovementDestinationKind;
+  /** Both omitted on a dispatch; both required for a godown move. */
+  to_warehouse?: string;
+  to_company?: number | null;
   from_warehouse_name?: string;
   to_warehouse_name?: string;
   movement_date?: string;
   vehicle_no?: string;
+  reference?: string;
   remarks?: string;
   lines: PFMovementLineInput[];
 }
@@ -148,6 +206,7 @@ export const pfMovementApi = {
       params: {
         ...(params?.fromWarehouse ? { from_warehouse: params.fromWarehouse } : {}),
         ...(params?.toWarehouse ? { to_warehouse: params.toWarehouse } : {}),
+        ...(params?.destinationKind ? { destination_kind: params.destinationKind } : {}),
         ...(params?.dateFrom ? { date_from: params.dateFrom } : {}),
         ...(params?.dateTo ? { date_to: params.dateTo } : {}),
         ...(params?.search ? { search: params.search } : {}),

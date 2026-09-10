@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { PFMovement } from '@/modules/warehouse/api';
+import type { PFMovement, PFMovementDestinationKind } from '@/modules/warehouse/api';
 import {
   useCancelPFMovement,
   usePFMovements,
@@ -29,6 +29,8 @@ import {
   Checkbox,
   Input,
   Label,
+  NativeSelect,
+  SelectOption,
 } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 import { getErrorMessage } from '@/shared/utils';
@@ -38,6 +40,8 @@ import { MovementHistoryDialog } from './MovementHistoryDialog';
 
 /** Only until the server's `default_from_warehouse` lands with the first response. */
 const DEFAULT_FROM_WAREHOUSE_FALLBACK = 'BH-PF';
+
+const ALL_KINDS = 'ALL';
 
 function firstOfMonth(): string {
   const now = new Date();
@@ -54,6 +58,11 @@ function firstOfMonth(): string {
  * actually moved. The move that has to happen *through* the system is Transfer
  * Requests.
  *
+ * A load either goes to another godown or leaves on a direct dispatch, and the
+ * two are kept apart throughout — including in the totals — because they are
+ * reconciled against different SAP documents: a godown move against inventory
+ * transfers, a dispatch against its sales invoices.
+ *
  * Everyone with view access sees every movement — a register whose totals
  * change depending on who is looking cannot be read against anything — but only
  * the manager of a floor may declare movements out of it, so the New button
@@ -69,6 +78,9 @@ export default function GodownMovementPage() {
   const [dateFrom, setDateFrom] = useState(firstOfMonth);
   const [dateTo, setDateTo] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [kindFilter, setKindFilter] = useState<PFMovementDestinationKind | typeof ALL_KINDS>(
+    ALL_KINDS,
+  );
   const [showCancelled, setShowCancelled] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PFMovement | null>(null);
@@ -80,6 +92,7 @@ export default function GodownMovementPage() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
     search: search.trim() || undefined,
+    destinationKind: kindFilter === ALL_KINDS ? undefined : kindFilter,
     includeCancelled: showCancelled,
   });
   const { data: warehouseData } = useWMSWarehouses();
@@ -126,9 +139,13 @@ export default function GodownMovementPage() {
   async function handleCancel(movement: PFMovement) {
     const ok = await confirmDialog({
       title: `Retract ${movement.entry_no}?`,
-      description: `The declaration that ${movement.total_boxes} box${
-        movement.total_boxes === 1 ? '' : 'es'
-      } were going to ${movement.to_warehouse} is kept and marked retracted, not deleted. You can put it back afterwards.`,
+      description: `The declaration that ${movement.total_pieces.toLocaleString()} pc${
+        movement.total_pieces === 1 ? '' : 's'
+      } ${
+        movement.is_dispatch
+          ? 'were going out on a dispatch'
+          : `were going to ${movement.to_warehouse}`
+      } is kept and marked retracted, not deleted. You can put it back afterwards.`,
       confirmLabel: 'Retract',
       destructive: true,
     });
@@ -154,7 +171,7 @@ export default function GodownMovementPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Godown Stock Movements"
-        description="What you are sending out of your godown, and to which godown"
+        description="What you are sending out of your godown — to another godown, or straight out"
         {...(canFile
           ? {
               primaryAction: {
@@ -210,6 +227,22 @@ export default function GodownMovementPage() {
           />
         </div>
 
+        <div className="space-y-1">
+          <Label htmlFor="pf-filter-kind">Going where</Label>
+          <NativeSelect
+            id="pf-filter-kind"
+            className="w-[190px]"
+            value={kindFilter}
+            onChange={(e) =>
+              setKindFilter(e.target.value as PFMovementDestinationKind | typeof ALL_KINDS)
+            }
+          >
+            <SelectOption value={ALL_KINDS}>Everything</SelectOption>
+            <SelectOption value="GODOWN">To another godown</SelectOption>
+            <SelectOption value="DISPATCH">Dispatched directly</SelectOption>
+          </NativeSelect>
+        </div>
+
         <label className="flex h-9 items-center gap-2 text-sm">
           <Checkbox
             checked={showCancelled}
@@ -218,12 +251,28 @@ export default function GodownMovementPage() {
           Show retracted
         </label>
 
-        <p className="ml-auto pb-2 text-sm text-muted-foreground">
-          {data?.summary.movements ?? 0} movement
-          {(data?.summary.movements ?? 0) === 1 ? '' : 's'},{' '}
-          {(data?.summary.total_boxes ?? 0).toLocaleString()} box
-          {(data?.summary.total_boxes ?? 0) === 1 ? '' : 'es'}
-        </p>
+        <div className="ml-auto pb-2 text-right text-sm text-muted-foreground">
+          <p>
+            {data?.summary.movements ?? 0} movement
+            {(data?.summary.movements ?? 0) === 1 ? '' : 's'},{' '}
+            {(data?.summary.total_pieces ?? 0).toLocaleString()} pc
+            {(data?.summary.total_pieces ?? 0) === 1 ? '' : 's'}
+            {Number(data?.summary.total_litres ?? 0) > 0 &&
+              ` · ${Number(data?.summary.total_litres).toLocaleString(undefined, {
+                maximumFractionDigits: 3,
+              })} L`}
+          </p>
+          {/* Split out because the two halves are reconciled against different
+              SAP documents — a godown move against inventory transfers, a
+              dispatch against its sales invoices. Shown only when the filter
+              is not already narrowed to one of them. */}
+          {kindFilter === ALL_KINDS && (data?.summary.total_pieces ?? 0) > 0 && (
+            <p className="text-xs">
+              {(data?.summary.to_godown_pieces ?? 0).toLocaleString()} to godowns ·{' '}
+              {(data?.summary.dispatched_pieces ?? 0).toLocaleString()} dispatched
+            </p>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -259,6 +308,9 @@ export default function GodownMovementPage() {
                       {!movement.is_active && (
                         <Badge className="bg-red-100 text-xs text-red-800">Retracted</Badge>
                       )}
+                      {movement.is_dispatch && (
+                        <Badge className="bg-blue-100 text-xs text-blue-800">Dispatch</Badge>
+                      )}
                       {movement.is_cross_company && (
                         <Badge variant="outline" className="text-xs">
                           to {movement.to_company_name}
@@ -268,7 +320,10 @@ export default function GodownMovementPage() {
                     <p className="mt-1 text-sm">
                       <span className="font-medium">{movement.from_warehouse}</span>
                       <span className="text-muted-foreground"> → </span>
-                      <span className="font-medium">{movement.to_warehouse}</span>
+                      {/* `destination_display` rather than the raw code: it is
+                          blank on a dispatch, and an empty cell reads as
+                          missing data instead of as the answer. */}
+                      <span className="font-medium">{movement.destination_display}</span>
                       {movement.to_warehouse_name && (
                         <span className="text-muted-foreground">
                           {' '}
@@ -278,9 +333,14 @@ export default function GodownMovementPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {movement.line_count} item{movement.line_count === 1 ? '' : 's'},{' '}
-                      {movement.total_boxes.toLocaleString()} box
-                      {movement.total_boxes === 1 ? '' : 'es'}
+                      {movement.total_pieces.toLocaleString()} pc
+                      {movement.total_pieces === 1 ? '' : 's'}
+                      {Number(movement.total_litres) > 0 &&
+                        ` · ${Number(movement.total_litres).toLocaleString(undefined, {
+                          maximumFractionDigits: 3,
+                        })} L`}
                       {movement.vehicle_no ? ` · ${movement.vehicle_no}` : ''}
+                      {movement.reference ? ` · ${movement.reference}` : ''}
                       {movement.created_by_name ? ` · ${movement.created_by_name}` : ''}
                     </p>
                     {movement.remarks && (
@@ -349,8 +409,9 @@ export default function GodownMovementPage() {
                       <thead>
                         <tr className="text-left text-xs text-muted-foreground">
                           <th className="px-2 py-1">Item</th>
-                          <th className="px-2 py-1 text-right">Boxes</th>
                           <th className="px-2 py-1 text-right">Pieces</th>
+                          <th className="px-2 py-1 text-right">Ltr</th>
+                          <th className="px-2 py-1 text-right">Boxes</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -361,12 +422,25 @@ export default function GodownMovementPage() {
                               <span className="ml-2">{line.item_name}</span>
                             </td>
                             <td className="px-2 py-1 text-right font-medium tabular-nums">
-                              {line.boxes.toLocaleString()}
+                              {line.pieces.toLocaleString()}
                             </td>
-                            {/* An em dash, not 0: SAP had no pack size to
-                                snapshot, which is not a piece count of zero. */}
+                            {/* An em dash, not 0: SAP holds no volume for this
+                                item, which is not the same as zero litres. */}
+                            <td className="px-2 py-1 text-right tabular-nums">
+                              {line.litres != null
+                                ? Number(line.litres).toLocaleString(undefined, {
+                                    maximumFractionDigits: 3,
+                                  })
+                                : '—'}
+                            </td>
+                            {/* The box equivalent — the floor still counts in
+                                boxes — floored, with any part box beside it. */}
                             <td className="px-2 py-1 text-right tabular-nums text-muted-foreground">
-                              {line.pieces != null ? line.pieces.toLocaleString() : '—'}
+                              {line.full_boxes != null
+                                ? `${line.full_boxes.toLocaleString()}${
+                                    line.loose_pieces ? ` + ${line.loose_pieces}` : ''
+                                  }`
+                                : '—'}
                             </td>
                           </tr>
                         ))}

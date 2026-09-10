@@ -15,6 +15,7 @@ export const PF_MOVEMENT_QUERY_KEYS = {
       'list',
       params?.fromWarehouse ?? '',
       params?.toWarehouse ?? '',
+      params?.destinationKind ?? '',
       params?.dateFrom ?? '',
       params?.dateTo ?? '',
       params?.search ?? '',

@@ -27,7 +27,7 @@ export interface MovementHistoryDialogProps {
  * Everything that has happened to one declaration, newest first.
  *
  * Each row shows the totals as the document stood *after* that change, which is
- * what makes a correction readable — "34 boxes, was 12" rather than a bare
+ * what makes a correction readable — "680 pcs, was 240" rather than a bare
  * "edited".
  */
 export function MovementHistoryDialog({ movement, onClose }: MovementHistoryDialogProps) {
@@ -42,7 +42,7 @@ export function MovementHistoryDialog({ movement, onClose }: MovementHistoryDial
             {movement?.entry_no}
           </DialogTitle>
           <DialogDescription>
-            {movement?.from_warehouse} → {movement?.to_warehouse}
+            {movement?.from_warehouse} → {movement?.destination_display}
             {movement?.to_warehouse_name ? ` (${movement.to_warehouse_name})` : ''}
           </DialogDescription>
         </DialogHeader>
@@ -64,7 +64,8 @@ export function MovementHistoryDialog({ movement, onClose }: MovementHistoryDial
                   <th className="px-3 py-2">Change</th>
                   <th className="px-3 py-2">To godown</th>
                   <th className="px-3 py-2 text-right">Items</th>
-                  <th className="px-3 py-2 text-right">Boxes</th>
+                  <th className="px-3 py-2 text-right">Pieces</th>
+                  <th className="px-3 py-2 text-right">Ltr</th>
                   <th className="px-3 py-2">By</th>
                 </tr>
               </thead>
@@ -84,14 +85,29 @@ export function MovementHistoryDialog({ movement, onClose }: MovementHistoryDial
                           </p>
                         )}
                       </td>
+                      {/* "Dispatch" where the event recorded no godown, so a
+                          switch reads as "was going to BH-BT, now a dispatch"
+                          rather than as a destination that just emptied. */}
                       <td className="whitespace-nowrap px-3 py-2 font-mono text-xs">
-                        {event.to_warehouse || '—'}
+                        {event.to_warehouse ||
+                          (event.destination_kind === 'DISPATCH' ? 'Dispatch' : '—')}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {event.line_count}
                       </td>
                       <td className="px-3 py-2 text-right font-medium tabular-nums">
-                        {event.total_boxes}
+                        {event.total_pieces.toLocaleString()}
+                      </td>
+                      {/* Events filed before the register moved to pieces carry
+                          no piece total — a box total cannot be converted
+                          without the per-line pack sizes an event never stored.
+                          An em dash says so rather than implying zero. */}
+                      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                        {Number(event.total_litres) > 0
+                          ? Number(event.total_litres).toLocaleString(undefined, {
+                              maximumFractionDigits: 3,
+                            })
+                          : '—'}
                       </td>
                       <td className="px-3 py-2">{event.changed_by_name || '—'}</td>
                     </tr>
