@@ -786,3 +786,81 @@ export interface ServiceGRPOHistoryEntry {
   lines: ServiceGRPOHistoryLine[];
   attachments: GRPOAttachment[];
 }
+
+// ---------------------------------------------------------------------------
+// Goods Receipt Note print — SAP's own layout, read fresh from HANA per print
+// ---------------------------------------------------------------------------
+
+export interface GRPOPrintLine {
+  sno: number;
+  item_code: string;
+  description: string;
+  warehouse_code: string;
+  /** Money and quantities arrive as strings so JSON floats cannot round them. */
+  quantity: string;
+  uom: string;
+  po_no: string;
+  po_price: string;
+  /** SAP's own stub — a literal 9 on every printed note. See the reader. */
+  top3_price: string;
+  price: string;
+  amount: string;
+}
+
+/** One row of the money column: a tax component, a charge, or a round-off. */
+export interface GRPOPrintTotalRow {
+  label: string;
+  amount: string;
+}
+
+export interface GRPOPrintTotals {
+  total_qty: string;
+  sub_total: string;
+  discount: string;
+  taxes: GRPOPrintTotalRow[];
+  /** Printed whether or not the receipt carries charges (blank label, 0.00). */
+  expenses: GRPOPrintTotalRow;
+  /** Only when SAP rounded the document. */
+  round_off: GRPOPrintTotalRow | null;
+  grand_total: string;
+}
+
+export interface GRPOPrintPayload {
+  posting_id: number;
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  due_date: string | null;
+  created_on: string | null;
+  branch_id: number | null;
+  currency: string;
+  po_ref_no: string;
+  /** Always null — SAP's layout prints the label with no field behind it. */
+  po_ref_date: string | null;
+  supplier_ref_no: string;
+  payment_terms: string;
+  remarks: string;
+  company: {
+    name: string;
+    phone: string;
+    fssai_no: string;
+    tin_no: string;
+    cst_no: string;
+    pan_no: string;
+  };
+  vendor: {
+    code: string;
+    name: string;
+    address_lines: string[];
+    contact_person: string;
+    contact_no: string;
+    email: string;
+    gst_no: string;
+    /** Empty by construction in SAP's layout — the labels print, values never do. */
+    tin_no: string;
+    cst_no: string;
+    pan_no: string;
+  };
+  lines: GRPOPrintLine[];
+  totals: GRPOPrintTotals;
+}

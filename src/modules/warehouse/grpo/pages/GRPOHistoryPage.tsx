@@ -8,7 +8,7 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { useGRPOHistory } from '../api';
-import { GRPOMonthFilter } from '../components';
+import { GRPOMonthFilter, GRPOPrintButton } from '../components';
 import { GRPO_STATUS, GRPO_STATUS_CONFIG } from '../constants';
 import type { GRPOStatus } from '../types';
 
@@ -263,6 +263,13 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                         )}
                       </div>
                       <div className="flex items-center gap-3">
+                        {entry.status === GRPO_STATUS.POSTED && (
+                          <GRPOPrintButton
+                            posting={entry}
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                          />
+                        )}
                         {(entry.status === GRPO_STATUS.FAILED ||
                           entry.status === GRPO_STATUS.PARTIALLY_POSTED ||
                           entry.status === GRPO_STATUS.DRAFT) &&

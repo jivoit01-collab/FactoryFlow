@@ -8,7 +8,12 @@ import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';
-import { AttachmentsSection, QCReportButton, useQCReportPrint } from '../components';
+import {
+  AttachmentsSection,
+  GRPOPrintButton,
+  QCReportButton,
+  useQCReportPrint,
+} from '../components';
 import { GRPO_STATUS_CONFIG } from '../constants';
 
 // Format date/time for display
@@ -112,13 +117,17 @@ export default function GRPOHistoryDetailPage() {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Posting Information</h3>
-                {statusConfig && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
-                  >
-                    {statusConfig.label}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* SAP's own Goods Receipt Note, for a posting SAP accepted. */}
+                  <GRPOPrintButton posting={posting} size="sm" className="h-7 px-2 text-xs" />
+                  {statusConfig && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
+                    >
+                      {statusConfig.label}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">

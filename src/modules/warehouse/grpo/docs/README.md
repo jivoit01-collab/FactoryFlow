@@ -58,6 +58,25 @@ Gate Entry Completed → Appears in GRPO Pending List
                      Appears in GRPO History
 ```
 
+## Printing a Goods Receipt Note
+
+`GRPOPrintButton` shows on POSTED rows in **History** and on the posting detail
+sheet, and prints SAP's own "Goods Receipt Note" — the note the stores and the
+vendor already hold, not a redesign of it. Nothing renders for a draft or a
+failed posting: there is no SAP document to print.
+
+- The note is read on click (`grpoApi.getPrint`) and never cached — SAP can
+  still amend a receipt after we post it, and printing a stale copy is an error
+  nobody catches until the vendor does.
+- `GRPOGoodsReceiptNotePrint` draws the sheet in points on an A4 page, measured
+  off a SAP-generated PDF's own vector geometry. Its docstring records that
+  geometry, the oddities reproduced on purpose (the literal `9` in "Top 3
+  Price", the empty "Reff. Po Date", "Contact Persion") and the two Crystal
+  drawing artifacts deliberately left out.
+- Every row of the sheet is cut from the same 13 columns; the component's test
+  asserts that, because a row that adds up to 12 or 14 shifts its rules off the
+  item grid's and the result reads as a different document.
+
 ## Key Types
 
 - `PendingGRPOEntry` — Vehicle entry awaiting GRPO posting

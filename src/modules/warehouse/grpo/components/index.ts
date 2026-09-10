@@ -1,6 +1,12 @@
 export { AttachmentsSection } from './AttachmentsSection';
 export { ExtraChargesSection } from './ExtraChargesSection';
+export {
+  GRPO_NOTE_PRINT_STYLE,
+  GRPOGoodsReceiptNotePrint,
+} from './GRPOGoodsReceiptNotePrint';
 export { GRPOMonthFilter } from './GRPOMonthFilter';
+export type { GRPOPrintButtonPosting } from './GRPOPrintButton';
+export { GRPOPrintButton } from './GRPOPrintButton';
 export {
   GRPOInspectionReportPrintStyles,
   GRPOInspectionReportPrintView,

@@ -422,6 +422,8 @@ export const API_ENDPOINTS = {
     DRAFT_POST: (postingId: number) => `/grpo/draft/${postingId}/post/`,
     HISTORY: '/grpo/history/',
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
+    // SAP's own Goods Receipt Note, as data, for one posted GRPO
+    PRINT: (postingId: number) => `/grpo/${postingId}/print/`,
     SERVICE_PENDING: '/grpo/service/pending/',
     SERVICE_OPTIONS: '/grpo/service/options/',
     SERVICE_PREVIEW: (dispatchPlanId: number) => `/grpo/service/preview/${dispatchPlanId}/`,

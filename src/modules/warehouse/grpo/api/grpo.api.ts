@@ -11,6 +11,7 @@ import type {
   GRPOHistoryEntry,
   GRPOInspectionReport,
   GRPOListParams,
+  GRPOPrintPayload,
   PaginatedResponse,
   PendingGRPOEntryWithSuppliers,
   PlanBiltyAttachmentState,
@@ -205,6 +206,12 @@ export const grpoApi = {
   // Get single posting detail
   async getDetail(postingId: number): Promise<GRPOHistoryEntry> {
     const response = await apiClient.get<GRPOHistoryEntry>(API_ENDPOINTS.GRPO.DETAIL(postingId));
+    return response.data;
+  },
+
+  /** SAP's own Goods Receipt Note for one posted GRPO, read fresh from HANA. */
+  async getPrint(postingId: number): Promise<GRPOPrintPayload> {
+    const response = await apiClient.get<GRPOPrintPayload>(API_ENDPOINTS.GRPO.PRINT(postingId));
     return response.data;
   },
 
