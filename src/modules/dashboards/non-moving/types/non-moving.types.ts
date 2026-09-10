@@ -1,3 +1,5 @@
+import type { MovementStatus } from '../utils/movementStatus';
+
 // ============================================================================
 // Filters
 // ============================================================================
@@ -8,7 +10,17 @@ export interface NonMovingFilters {
   search?: string;
   warehouse?: string[];
   sub_group?: string[];
+  status?: MovementStatus[];
 }
+
+export type NonMovingSortCol =
+  | 'item_code'
+  | 'item_name'
+  | 'warehouse'
+  | 'quantity'
+  | 'value'
+  | 'days_since_last_movement'
+  | 'consumption_ratio';
 
 // ============================================================================
 // Non-Moving Item
@@ -21,11 +33,22 @@ export interface NonMovingItem {
   item_group_name: string;
   sub_group: string;
   warehouse: string;
+  warehouse_name?: string;
   quantity: number;
   value: number;
   last_movement_date: string | null;
   days_since_last_movement: number;
   consumption_ratio: number;
+}
+
+/**
+ * One table line: either a single (item, warehouse) row, or every warehouse
+ * holding that item folded into one line.
+ */
+export interface NonMovingRow extends NonMovingItem {
+  /** Warehouse codes folded into this line, in code order. */
+  warehouses: string[];
+  warehouse_count: number;
 }
 
 // ============================================================================

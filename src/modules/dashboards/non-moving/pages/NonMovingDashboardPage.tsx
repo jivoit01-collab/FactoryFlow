@@ -1,25 +1,46 @@
+import { Download } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 import type { ApiError } from '@/core/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Button } from '@/shared/components/ui';
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import { findDefaultMaterialGroup } from '../../utils/itemGroupDefaults';
 import { useItemGroups, useNonMovingReport } from '../api';
+import { NonMovingFilters, NonMovingMetaCards, NonMovingTable } from '../components';
 import {
-  NonMovingFilters,
-  NonMovingMetaCards,
-  NonMovingWarehouseSummary,
-} from '../components';
+  DEFAULT_NON_MOVING_AGE,
+  DEFAULT_NON_MOVING_STATUS_FILTER,
+  NON_MOVING_PAGE_SIZE,
+} from '../constants';
 import type {
-  BranchSummary,
   NonMovingFilters as NonMovingFiltersType,
-  ReportSummary,
+  NonMovingRow,
+  NonMovingSortCol,
 } from '../types';
+import { getMovementStatus, type MovementStatus } from '../utils/movementStatus';
+import { groupNonMovingRowsBySku } from '../utils/nonMovingGrouping';
 import {
-  buildNonMovingWarehouseGroups,
-  groupNonMovingItemsBySku,
-} from '../utils/nonMovingGrouping';
+  filterNonMovingItems,
+  filterRowsByStatus,
+  pageOf,
+  sortNonMovingRows,
+  statusTotals,
+  subGroupOptions,
+  totalPagesOf,
+  totalsFor,
+  warehouseOptions,
+  warehouseRowsForItem,
+} from '../utils/nonMovingRows';
+
+const STATUS_LABELS: Record<MovementStatus, string> = {
+  recent: 'Recently Moved',
+  'slow-moving': 'Slow Moving',
+  'non-moving': 'Non Moving',
+};
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -30,11 +51,17 @@ export default function NonMovingDashboardPage() {
   const itemGroupsQuery = useItemGroups();
 
   const [filters, setFilters] = useState<NonMovingFiltersType>({
-    age: 45,
+    age: DEFAULT_NON_MOVING_AGE,
     item_group: 0,
+    status: [...DEFAULT_NON_MOVING_STATUS_FILTER],
   });
   const [filterResetSignal, setFilterResetSignal] = useState(0);
   const [hasSelectedMaterialType, setHasSelectedMaterialType] = useState(false);
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<{ col: NonMovingSortCol; dir: 'asc' | 'desc' }>({
+    col: 'days_since_last_movement',
+    dir: 'desc',
+  });
 
   const materialTypesResolved = Boolean(itemGroupsQuery.data) || itemGroupsQuery.isError;
 
@@ -52,74 +79,72 @@ export default function NonMovingDashboardPage() {
   );
 
   const reportQuery = useNonMovingReport(effectiveFilters, materialTypesResolved);
+  const items = useMemo(() => reportQuery.data?.data ?? [], [reportQuery.data]);
 
-  const subGroups = useMemo(() => {
-    const items = reportQuery.data?.data ?? [];
-    return [...new Set(items.map((item) => item.sub_group).filter(Boolean))].sort();
-  }, [reportQuery.data]);
+  const warehouses = useMemo(() => warehouseOptions(items), [items]);
+  const subGroups = useMemo(() => subGroupOptions(items), [items]);
 
-  const filteredItems = useMemo(() => {
-    let result = reportQuery.data?.data ?? [];
-    result = result.filter(
-      (item) =>
-        effectiveFilters.age <= 0 || item.days_since_last_movement > effectiveFilters.age,
-    );
-    if (effectiveFilters.sub_group?.length) {
-      result = result.filter((item) => effectiveFilters.sub_group!.includes(item.sub_group));
-    }
-    if (effectiveFilters.search) {
-      const term = effectiveFilters.search.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.item_code.toLowerCase().includes(term) ||
-          item.item_name.toLowerCase().includes(term) ||
-          item.branch.toLowerCase().includes(term),
-      );
-    }
-    return result;
-  }, [
-    reportQuery.data,
-    effectiveFilters.age,
-    effectiveFilters.sub_group,
-    effectiveFilters.search,
-  ]);
-
-  const groupedItems = useMemo(() => groupNonMovingItemsBySku(filteredItems), [filteredItems]);
-
-  const warehouseGroups = useMemo(
-    () => buildNonMovingWarehouseGroups(reportQuery.data?.warehouse_summary ?? [], filteredItems),
-    [reportQuery.data, filteredItems],
+  // Everything but the status filter — the meta cards need the full split.
+  const scopedItems = useMemo(
+    () =>
+      filterNonMovingItems(items, {
+        age: effectiveFilters.age,
+        warehouse: effectiveFilters.warehouse,
+        sub_group: effectiveFilters.sub_group,
+        search: effectiveFilters.search,
+      }),
+    [
+      items,
+      effectiveFilters.age,
+      effectiveFilters.warehouse,
+      effectiveFilters.sub_group,
+      effectiveFilters.search,
+    ],
   );
 
-  const filteredSummary = useMemo((): ReportSummary | undefined => {
-    if (!reportQuery.data) return undefined;
-    const branchMap = new Map<string, BranchSummary>();
-    for (const item of groupedItems) {
-      const existing = branchMap.get(item.branch);
-      if (existing) {
-        existing.item_count += 1;
-        existing.total_value += item.value;
-        existing.total_quantity += item.quantity;
-      } else {
-        branchMap.set(item.branch, {
-          branch: item.branch,
-          item_count: 1,
-          total_value: item.value,
-          total_quantity: item.quantity,
-        });
-      }
-    }
-    return {
-      total_items: groupedItems.length,
-      total_value: groupedItems.reduce((s, i) => s + i.value, 0),
-      total_quantity: groupedItems.reduce((s, i) => s + i.quantity, 0),
-      by_branch: [...branchMap.values()],
-    };
-  }, [reportQuery.data, groupedItems]);
+  // One line per SKU; the warehouses behind it open in the row's detail panel.
+  const groupedRows = useMemo(() => groupNonMovingRowsBySku(scopedItems), [scopedItems]);
+
+  const cardTotals = useMemo(() => statusTotals(groupedRows), [groupedRows]);
+  const overallTotals = useMemo(() => totalsFor(groupedRows), [groupedRows]);
+
+  const sortedRows = useMemo(
+    () =>
+      sortNonMovingRows(
+        filterRowsByStatus(groupedRows, effectiveFilters.status),
+        sort.col,
+        sort.dir,
+      ),
+    [groupedRows, effectiveFilters.status, sort],
+  );
+
+  const totalPages = totalPagesOf(sortedRows.length, NON_MOVING_PAGE_SIZE);
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = useMemo(
+    () => pageOf(sortedRows, currentPage, NON_MOVING_PAGE_SIZE),
+    [sortedRows, currentPage],
+  );
+
+  const warehouseRowsFor = useCallback(
+    (row: NonMovingRow) => warehouseRowsForItem(scopedItems, row),
+    [scopedItems],
+  );
 
   const handleFiltersChange = useCallback((f: NonMovingFiltersType) => {
     setHasSelectedMaterialType(true);
     setFilters(f);
+    setPage(1);
+  }, []);
+
+  const handleSortChange = useCallback((col: NonMovingSortCol, dir: 'asc' | 'desc') => {
+    setSort({ col, dir });
+    setPage(1);
+  }, []);
+
+  const handleStatusCardSelect = useCallback((statuses: MovementStatus[]) => {
+    setFilters((current) => ({ ...current, status: [...statuses] }));
+    setFilterResetSignal((current) => current + 1);
+    setPage(1);
   }, []);
 
   const handleItemSearchSelect = useCallback((term: string) => {
@@ -127,36 +152,94 @@ export default function NonMovingDashboardPage() {
     if (!search) return;
     setFilters((current) => ({ ...current, search }));
     setFilterResetSignal((current) => current + 1);
+    setPage(1);
   }, []);
+
+  const handleExport = useCallback(() => {
+    if (sortedRows.length === 0) {
+      toast.error('Nothing to export');
+      return;
+    }
+
+    const rows = sortedRows.map((row) => ({
+      'Item Code': row.item_code,
+      'Item Name': row.item_name,
+      Branch: row.branch,
+      Warehouse: row.warehouses.join(', ') || row.warehouse,
+      'Sub Group': row.sub_group,
+      Quantity: row.quantity,
+      Value: row.value,
+      'Days Idle': row.days_since_last_movement,
+      'Last Movement': row.last_movement_date ?? '',
+      'Consumption %': row.consumption_ratio,
+      Status: STATUS_LABELS[getMovementStatus(row.days_since_last_movement)],
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0]).map((key) => ({
+      wch: Math.max(key.length, ...rows.map((r) => String(r[key as keyof typeof r] ?? '').length)) + 2,
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Non-Moving');
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(workbook, `non_moving_${stamp}.xlsx`);
+    toast.success('Export downloaded');
+  }, [sortedRows]);
+
+  const hasSAPError = Boolean(reportQuery.error && isSAPError(reportQuery.error));
 
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Non-Moving"
-        description="Inventory by movement age - identify recently moved, slow-moving, and non-moving stock"
-      />
+        description="Inventory by movement age — spot the stock that has stopped moving, and what it is worth"
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleExport}
+          disabled={hasSAPError || sortedRows.length === 0}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Excel
+        </Button>
+      </DashboardHeader>
 
       <NonMovingFilters
         onFiltersChange={handleFiltersChange}
-        isFetching={reportQuery.isFetching}
+        isFetching={itemGroupsQuery.isFetching || reportQuery.isFetching}
         defaultValues={effectiveFilters}
         itemGroups={itemGroupsQuery.data?.data ?? []}
         isLoadingGroups={itemGroupsQuery.isLoading}
+        warehouses={warehouses}
         subGroups={subGroups}
         externalResetSignal={filterResetSignal}
       />
 
-      {reportQuery.error && isSAPError(reportQuery.error) && (
+      {hasSAPError && (
         <SAPUnavailableBanner error={reportQuery.error as ApiError} onRetry={reportQuery.refetch} />
       )}
 
-      {!(reportQuery.error && isSAPError(reportQuery.error)) && materialTypesResolved && (
+      {!hasSAPError && materialTypesResolved && (
         <>
-          <NonMovingMetaCards summary={filteredSummary} />
-          <NonMovingWarehouseSummary
-            warehouses={warehouseGroups}
+          <NonMovingMetaCards
+            totals={cardTotals}
+            overall={overallTotals}
+            activeStatuses={effectiveFilters.status}
+            onStatusSelect={handleStatusCardSelect}
+          />
+          <NonMovingTable
+            rows={pageRows}
             isLoading={reportQuery.isLoading || reportQuery.isFetching}
-            onItemSelect={handleItemSearchSelect}
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={sortedRows.length}
+            onPageChange={setPage}
+            sortCol={sort.col}
+            sortDir={sort.dir}
+            onSortChange={handleSortChange}
+            warehouseRowsFor={warehouseRowsFor}
+            onSearchSelect={handleItemSearchSelect}
           />
         </>
       )}

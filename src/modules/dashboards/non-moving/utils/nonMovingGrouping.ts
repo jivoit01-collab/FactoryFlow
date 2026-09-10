@@ -1,5 +1,5 @@
 import { FACTORY_WAREHOUSE_PREFIXES } from '../constants';
-import type { NonMovingItem, WarehouseGroup, WarehouseSummary } from '../types';
+import type { NonMovingItem, NonMovingRow, WarehouseGroup, WarehouseSummary } from '../types';
 
 interface GroupedNonMovingItem {
   item: NonMovingItem;
@@ -15,7 +15,13 @@ function shouldUseMovementFrom(candidate: NonMovingItem, current: NonMovingItem)
   );
 }
 
-export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[] {
+/**
+ * Folds every warehouse holding an item into one line, the way the table shows
+ * it when more than one warehouse is in view. The line keeps the *freshest*
+ * movement of the group, so an item consumed in one store does not read as
+ * dead because a pallet of it sits untouched in another.
+ */
+export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] {
   const grouped = new Map<string, GroupedNonMovingItem>();
 
   for (const item of items) {
@@ -42,14 +48,26 @@ export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[
   }
 
   return [...grouped.values()].map(({ item, warehouses }) => {
-    const warehouseList = [...warehouses].filter(Boolean);
+    const warehouseList = [...warehouses].filter(Boolean).sort();
     return {
       ...item,
       warehouse:
         warehouseList.length > 1
           ? `${warehouseList.length} warehouses`
           : (warehouseList[0] ?? item.warehouse),
+      warehouses: warehouseList,
+      warehouse_count: warehouseList.length,
     };
+  });
+}
+
+/** The same fold, without the table-only columns. */
+export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[] {
+  return groupNonMovingRowsBySku(items).map((row): NonMovingItem => {
+    const { warehouses, warehouse_count, ...item } = row;
+    void warehouses;
+    void warehouse_count;
+    return item;
   });
 }
 

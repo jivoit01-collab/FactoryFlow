@@ -1,3 +1,5 @@
+import type { MovementStatus } from '../utils/movementStatus';
+
 // ============================================================================
 // Filter Options
 // ============================================================================
@@ -11,6 +13,25 @@ export const NON_MOVING_AGE_OPTIONS = [
   { value: 180, label: '180 Days' },
   { value: 365, label: '365 Days' },
 ] as const;
+
+export const NON_MOVING_STATUS_FILTER_OPTIONS = [
+  { value: 'recent', label: 'Recently Moved' },
+  { value: 'slow-moving', label: 'Slow Moving' },
+  { value: 'non-moving', label: 'Non Moving' },
+] as const;
+
+/**
+ * The report is fetched with no minimum idle age so the status split on the
+ * meta cards is real; the dashboard then hides the recently moved rows, which
+ * are one card click away. HANA computes the movement age either way — `age`
+ * only trims the rows it hands back — so asking for all of them costs the same
+ * query, just a longer answer.
+ */
+export const DEFAULT_NON_MOVING_AGE = 0;
+export const DEFAULT_NON_MOVING_STATUS_FILTER: MovementStatus[] = ['slow-moving', 'non-moving'];
+export const NON_MOVING_ALL_STATUSES: MovementStatus[] = ['recent', 'slow-moving', 'non-moving'];
+
+export const NON_MOVING_PAGE_SIZE = 50;
 
 // ============================================================================
 // Warehouse Scope

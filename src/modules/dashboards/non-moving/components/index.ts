@@ -1,4 +1,5 @@
 export { NonMovingFilters } from './NonMovingFilters';
+export { NonMovingItemDetailPanel } from './NonMovingItemDetailPanel';
 export { NonMovingMetaCards } from './NonMovingMetaCards';
 export { NonMovingStatusBadge } from './NonMovingStatusBadge';
-export { NonMovingWarehouseSummary } from './NonMovingWarehouseSummary';
+export { NonMovingTable } from './NonMovingTable';

@@ -148,35 +148,45 @@ Movement remain reachable — see the comment in `module.config.tsx`.
    errors show the banner.
 
 ### 5. Non-Moving (`non-moving/pages/NonMovingDashboardPage.tsx`)
+Built to the **Stock Benchmark** pattern: filter bar → clickable status cards →
+one sortable, paginated item table with an expandable per-warehouse panel.
 1. `useItemGroups()` fills the group dropdown; default group = packing material
    until the user picks one (`hasSelectedMaterialType`).
-2. `useNonMovingReport({ age, item_group })` — only `age` and `item_group` hit
-   the API. Default `age = 45`.
-3. **Client-side:** the page re-applies the age filter, `sub_group`, and
-   `search`, then **groups rows by `branch::item_code`**
-   (`groupNonMovingItemsBySku`) — merging multi-warehouse rows into one line and
-   keeping the freshest movement date. Those grouped rows now feed **only the
-   meta cards** (`filteredSummary`).
-4. `NonMovingWarehouseSummary` is the **only** item view — there is no separate
-   flat item table. Each warehouse row expands into its items, with the full
-   column set (code, name, branch, sub group, quantity, value, days idle,
-   status, last movement, consumption), age-coloured rows and its own sortable
-   headers; the sort persists as you open other warehouses. Report rows carry
-   **no warehouse** (`hana_reader` sets `warehouse: ""`), so the item↔warehouse
-   link comes from `warehouse_summary[].items` — the backend's pro-rated split
-   of each item across the warehouses where it currently holds stock.
-   `buildNonMovingWarehouseGroups` resolves those item codes against the
-   client-filtered rows and **recomputes each warehouse's item count, quantity,
-   and value** from what survived, so the row totals always match the expanded
-   list. A warehouse whose items are all filtered out disappears; if the
-   backend omits `items`, the row keeps its server totals and simply doesn't
-   expand. Clicking an item code or name inside a warehouse feeds it to the
-   search filter.
-5. **Factory scope:** only warehouses whose code starts with a
-   `FACTORY_WAREHOUSE_PREFIXES` entry (`BH`, `GP`) are shown. C&F depots
-   (`PB-*`, `DL-*`) and the backend's `Unassigned` bucket are dropped — so the
-   warehouse rows cover **less** stock than the meta cards, which still total
-   the whole report. Add a prefix to that constant to widen the scope.
+2. `useNonMovingReport({ age, item_group })` — still only `age` and
+   `item_group` hit the API, and only those two are in the query key. **Default
+   `age = 0`** (`DEFAULT_NON_MOVING_AGE`): HANA computes the movement age for
+   every stocked (item, warehouse) pair either way and `age` only trims the
+   rows it returns, so asking for all of them costs the same query and lets the
+   status cards show a real split. The **Status** filter defaults to
+   `slow-moving + non-moving`, so recently moved stock is fetched but hidden
+   until a card or the filter asks for it.
+3. **Client-side pipeline** (`utils/nonMovingRows.ts`):
+   `filterNonMovingItems` (age, warehouse, sub group, search) →
+   `groupNonMovingRowsBySku` → `filterRowsByStatus` → `sortNonMovingRows` →
+   `pageOf` (50 rows a page). Every stage is a pure function with tests.
+4. **Meta cards** (`NonMovingMetaCards`) are clickable status filters — Total
+   Items / Recently Moved / Slow Moving / Non Moving, each with its item count
+   and value. They are computed from the rows filtered by **everything except
+   status**, so the split stays visible while one status is selected. Clicking
+   a card sets the status filter and pushes it back into the filter bar
+   (`externalResetSignal`), exactly as Stock Benchmark does; the other filters
+   are left alone.
+5. **Table** (`NonMovingTable`): one line per `branch::item_code`, with every
+   warehouse holding it folded in (`groupNonMovingRowsBySku` keeps the
+   *freshest* movement, so a pallet rotting in one store does not mark an item
+   dead that another store consumes weekly). Sortable on code, name, warehouse,
+   quantity, value, days idle and consumption; rows are age-tinted; clicking an
+   item code or name feeds it to the search filter. A line covering more than
+   one warehouse expands into `NonMovingItemDetailPanel` — the per-warehouse
+   split, resolved **on the client** from the report rows, which already answer
+   at (item, warehouse) grain. No second request.
+6. **Export Excel** writes the full filtered + sorted set (not just the visible
+   page) client-side with `xlsx`; there is no backend export endpoint here.
+7. **Warehouse filter** options come from the warehouses present in the
+   response, so all of them — factory stores and C&F depots alike — are
+   selectable. The old factory-only warehouse breakdown card is gone;
+   `FACTORY_WAREHOUSE_PREFIXES` and `buildNonMovingWarehouseGroups` remain for
+   the **Warehouse Control** board, which still scopes to `BH`/`GP`.
 
 ### 6. Sales Planning vs Requirement (`sales-planning-requirement/pages/…`)
 1. **Refresh panel** (`SalesPlanningRequirementRefreshPanel`) shows last-success
@@ -214,8 +224,9 @@ Movement remain reachable — see the comment in `module.config.tsx`.
 - **Refresh is the only write** and is permission- and state-guarded (disabled
   while a run is `running`).
 - **Client-side filtering** is deliberate on SAP Plan (status), Inventory Age
-  (warehouse/sub_group/variety), and Non-Moving (age/sub_group/search + grouping);
-  server round-trips are minimised to the coarse filters only.
+  (warehouse/sub_group/variety), and Non-Moving (age/warehouse/sub_group/status/
+  search + grouping, sorting and paging); server round-trips are minimised to
+  the coarse filters only.
 
 ---
 
@@ -290,19 +301,22 @@ Each: **trigger → current behaviour → operator-visible symptom → risk/gap.
    → Symptom: numbers look current but are month-old; only the timestamp reveals it.
    → Risk: decisions on outdated forecast/PO coverage.
 
-8. **Broad filter → huge table.**
+8. **Broad filter → huge response.**
    → SAP Plan, Inventory Age, and Non-Moving return **unpaginated** results; a
-   wide filter (all groups, `age=0`) yields thousands of rows, all rendered.
-   → Symptom: long spinner, sluggish scrolling/sorting.
+   wide filter (all groups, `age=0`) yields thousands of rows over the wire.
+   → Non-Moving now **pages on the client** (50 rows), so only the payload and
+   the grouping pass scale with the filter, not the DOM. SAP Plan and Inventory
+   Age still render everything.
+   → Symptom: long spinner; on SAP Plan / Inventory Age, sluggish scrolling.
    → Risk: browser jank; ties to the backend pagination gap.
 
-9. **Non-Moving item counts don't reconcile.**
-   → The meta cards count distinct `branch::item_code`, while the warehouse
-   panel counts each item once **per warehouse** it holds stock in, on
-   backend-pro-rated quantity/value. Both derive from the same filtered rows,
-   but an item split across three warehouses counts three times in the panel.
-   → Symptom: warehouse item counts sum to more than the "Total Items" card.
-   → Risk: users question data integrity; by design for a warehouse breakdown.
+9. **Non-Moving counts are per SKU, not per warehouse row.**
+   → Cards and table both count distinct `branch::item_code`; an item held in
+   three warehouses is **one** line and **one** item, and its quantity/value are
+   the sum of the three. The per-warehouse split only appears inside an
+   expanded row.
+   → Symptom: the item count reads lower than the row count in SAP.
+   → Risk: mistaken for missing data; it is the same stock, added up once.
 
 10. **Slow-moving item missing from Stock "Critical" tile.**
     → The backend reports slow-moving (>30 days unconsumed) items as `none` and
@@ -360,10 +374,9 @@ Each: **trigger → current behaviour → operator-visible symptom → risk/gap.
 - **Add a Retry affordance for 502** (currently only 503 gets one).
 - **Explicit "not enabled for this company"** empty-state for Sales Planning on
   unsupported companies, distinct from a normal empty result.
-- **Paginate** the SAP Plan / Inventory Age / Non-Moving tables (or virtualise)
-  to handle large result sets; today they render everything.
-- **Reconcile Non-Moving counts** between the grouped table and the warehouse
-  summary panel, or label them clearly.
+- **Paginate** the SAP Plan / Inventory Age tables (or virtualise) to handle
+  large result sets; today they render everything. Non-Moving pages on the
+  client already.
 - **"Refresh looks stuck?" hint** on the Sales Planning panel after a long
   `running` state.
 - **Consolidate `isSAPError`** — it is copy-pasted into every page; extract once.
@@ -420,8 +433,12 @@ though its route remains reachable.
   `…Table`, `…WarehouseSummary`).
 - **non-moving/** — `pages/NonMovingDashboardPage.tsx`;
   `api/non-moving.{api,queries}.ts` (`useNonMovingReport`, `useItemGroups`);
-  `utils/nonMovingGrouping.ts` (`groupNonMovingItemsBySku`, +test);
-  `components/` (`NonMovingFilters`, `…MetaCards`, `…Table`, `…WarehouseSummary`).
+  `utils/nonMovingGrouping.ts` (`groupNonMovingRowsBySku`,
+  `groupNonMovingItemsBySku`, `buildNonMovingWarehouseGroups`, +test),
+  `utils/nonMovingRows.ts` (filter/sort/page/status totals, +test),
+  `utils/movementStatus.ts` (the one definition of "slow");
+  `components/` (`NonMovingFilters`, `…MetaCards`, `…Table`, `…StatusBadge`,
+  `NonMovingItemDetailPanel`).
 - **sales-planning-requirement/** — `pages/SalesPlanningRequirementDashboardPage.tsx`;
   `api/sales-planning-requirement.{api,queries}.ts` (`useSalesPlanningRequirementReport`,
   `…Status`, `…Analysis`, `useRefreshSalesPlanningRequirement`);
