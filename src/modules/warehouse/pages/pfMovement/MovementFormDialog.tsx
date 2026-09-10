@@ -1,4 +1,4 @@
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { ClipboardPaste, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ import type {
   PFMovementDestinationKind,
   PFMovementItem,
   PFMovementLineInput,
+  PFMovementPasteLine,
 } from '@/modules/warehouse/api';
 import {
   useCreatePFMovement,
@@ -32,6 +33,8 @@ import {
 } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 import { getErrorMessage } from '@/shared/utils';
+
+import { PasteLinesDialog } from './PasteLinesDialog';
 
 /** One warehouse, flattened out of the per-company destination lists. */
 interface Destination {
@@ -193,6 +196,7 @@ export function MovementFormDialog({
   const [pickedPieces, setPickedPieces] = useState('');
   const [itemSearch, setItemSearch] = useState('');
   const [pickerSeq, setPickerSeq] = useState(0);
+  const [pasteOpen, setPasteOpen] = useState(false);
 
   const debouncedSearch = useDebounce(itemSearch);
   const {
@@ -312,6 +316,32 @@ export function MovementFormDialog({
     setPickerSeq((n) => n + 1);
   }
 
+  /**
+   * Append rows read out of a pasted block.
+   *
+   * Items already on the form are skipped rather than summed or overwritten —
+   * the paste dialog says which, so the keeper decides. Summing would double a
+   * quantity he can no longer see the parts of, and overwriting would throw
+   * away a figure he typed by hand.
+   */
+  function addPastedLines(pasted: PFMovementPasteLine[]) {
+    setLines((current) => {
+      const present = new Set(current.map((line) => line.item_code));
+      const additions = pasted
+        .filter((line) => !present.has(line.item_code))
+        .map((line) => ({
+          item_code: line.item_code,
+          item_name: line.item_name,
+          uom: line.uom,
+          pieces: line.pieces,
+          pieces_per_box: line.pieces_per_box,
+          litres_per_piece: line.litres_per_piece,
+          sap_on_hand: line.sap_on_hand,
+        }));
+      return [...current, ...additions];
+    });
+  }
+
   function setLinePieces(itemCode: string, value: string) {
     setLines((current) =>
       current.map((line) =>
@@ -414,6 +444,7 @@ export function MovementFormDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
@@ -574,6 +605,19 @@ export function MovementFormDialog({
 
           {/* --- items ------------------------------------------------- */}
           <div className="space-y-2 rounded-md border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Search items one at a time, or paste the whole list.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPasteOpen(true)}
+              >
+                <ClipboardPaste className="mr-1 h-4 w-4" /> Paste from SAP / Excel
+              </Button>
+            </div>
             <div className="flex items-end gap-2">
               <div className="min-w-0 flex-1 space-y-1">
                 <Label htmlFor="pf-item">Finished goods</Label>
@@ -855,5 +899,17 @@ export function MovementFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* A sibling, not nested inside the form's DialogContent: two Radix dialogs
+        one inside the other share a focus trap and an Escape handler, and
+        Escape in the paste box would be as likely to close the whole form. */}
+    <PasteLinesDialog
+      open={pasteOpen}
+      onOpenChange={setPasteOpen}
+      fromWarehouse={fromWarehouse}
+      existingCodes={lines.map((line) => line.item_code)}
+      onAdd={addPastedLines}
+    />
+    </>
   );
 }

@@ -154,6 +154,68 @@ export interface PFMovementDestinationCompany {
   error: string;
 }
 
+/** Whether the numbers in a pasted block are pieces or boxes. */
+export type PFMovementPasteUnit = 'PCS' | 'BOX';
+
+/** One resolved row, ready to become a form line. */
+export interface PFMovementPasteLine {
+  item_code: string;
+  item_name: string;
+  uom: string;
+  /** Already in pieces — a BOX paste is multiplied server-side by SalFactor2. */
+  pieces: number;
+  pieces_per_box: number | null;
+  litres_per_piece: number | null;
+  sap_on_hand: number | null;
+  /** Which pasted row(s) this came from; more than one means they were summed. */
+  source_lines: number[];
+  /** The quantity as pasted, before any box-to-piece conversion. */
+  pasted_qty: string;
+  inactive_in_sap: boolean;
+}
+
+/** A row that could not be turned into a line, and why. */
+export interface PFMovementPasteSkip {
+  line: number;
+  text: string;
+  reason: string;
+}
+
+export interface PFMovementPasteUnresolved {
+  item_code: string;
+  qty: string;
+  lines: number[];
+  reason: string;
+}
+
+/**
+ * What the server made of a pasted block. Nothing is written by this — the
+ * lines become form rows the keeper reviews, and the ordinary save does the
+ * writing.
+ */
+export interface PFMovementPasteResult {
+  unit: PFMovementPasteUnit;
+  warehouse_code: string;
+  /** 1-based, or null when no header was recognisable and it read by position. */
+  header_row: number | null;
+  /** Column index -> the field it was read as, when a header was found. */
+  columns_read: Record<string, string>;
+  lines: PFMovementPasteLine[];
+  skipped: PFMovementPasteSkip[];
+  unresolved: PFMovementPasteUnresolved[];
+  /** Codes that appeared on more than one row and were added together. */
+  combined_codes: string[];
+  total_pieces: number;
+  /** Non-empty when SAP could not be reached to resolve the codes. */
+  lookup_error: string;
+}
+
+export interface PFMovementPastePayload {
+  text: string;
+  unit: PFMovementPasteUnit;
+  from_warehouse?: string;
+}
+
 export interface PFMovementListParams {
   fromWarehouse?: string;
   toWarehouse?: string;
@@ -249,6 +311,20 @@ export const pfMovementApi = {
       API_ENDPOINTS.WAREHOUSE.PF_MOVEMENT_DESTINATIONS,
     );
     return data.companies;
+  },
+
+  /**
+   * Read a block pasted out of SAP or Excel into movement lines.
+   *
+   * A POST because the block goes in the body — it is far too big for a query
+   * string — but it writes nothing and reserves nothing.
+   */
+  async paste(payload: PFMovementPastePayload): Promise<PFMovementPasteResult> {
+    const { data } = await apiClient.post<PFMovementPasteResult>(
+      API_ENDPOINTS.WAREHOUSE.PF_MOVEMENT_PASTE,
+      payload,
+    );
+    return data;
   },
 
   async create(payload: CreatePFMovementPayload): Promise<PFMovement> {

@@ -24,6 +24,12 @@ export type {
   PFMovementLineInput,
   PFMovementList,
   PFMovementListParams,
+  PFMovementPasteLine,
+  PFMovementPastePayload,
+  PFMovementPasteResult,
+  PFMovementPasteSkip,
+  PFMovementPasteUnit,
+  PFMovementPasteUnresolved,
   UpdatePFMovementPayload,
 } from './pfMovement.api';
 export { pfMovementApi } from './pfMovement.api';

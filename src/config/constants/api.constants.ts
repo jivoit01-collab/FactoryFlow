@@ -1121,6 +1121,7 @@ export const API_ENDPOINTS = {
     PF_MOVEMENTS: '/warehouse/pf-movements/',
     PF_MOVEMENT_ITEMS: '/warehouse/pf-movements/items/',
     PF_MOVEMENT_DESTINATIONS: '/warehouse/pf-movements/destinations/',
+    PF_MOVEMENT_PASTE: '/warehouse/pf-movements/paste/',
     PF_MOVEMENT_DETAIL: (id: number) => `/warehouse/pf-movements/${id}/`,
     PF_MOVEMENT_RESTORE: (id: number) => `/warehouse/pf-movements/${id}/restore/`,
     // Branch Stock Transfer (BST)

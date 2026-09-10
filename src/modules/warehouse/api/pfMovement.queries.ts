@@ -4,6 +4,7 @@ import {
   type CreatePFMovementPayload,
   pfMovementApi,
   type PFMovementListParams,
+  type PFMovementPastePayload,
   type UpdatePFMovementPayload,
 } from './pfMovement.api';
 
@@ -78,6 +79,16 @@ export function usePFMovementDestinations(options?: { enabled?: boolean }) {
     queryFn: () => pfMovementApi.destinations(),
     enabled: options?.enabled ?? true,
     staleTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Read a pasted block. A mutation rather than a query: it is an action the
+ * keeper takes, it is not cached, and re-pasting must always re-read.
+ */
+export function useParsePFMovementPaste() {
+  return useMutation({
+    mutationFn: (payload: PFMovementPastePayload) => pfMovementApi.paste(payload),
   });
 }
 
