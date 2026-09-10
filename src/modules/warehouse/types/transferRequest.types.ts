@@ -285,3 +285,53 @@ export interface SapApprovalDecisionResult {
   /** The SAP user the decision was signed as. */
   signed_as: string;
 }
+
+// ---------------------------------------------------------------------------
+// SAP transfer requests awaiting their actual transfer
+// ---------------------------------------------------------------------------
+// An approved inventory transfer request reserves stock but moves none. It
+// stays open, drawing OpenQty down, until enough inventory transfers are
+// posted against it — SAP allows that in several parts, and in practice it
+// usually takes more than one.
+
+export interface SapAwaitingTransferLine {
+  /** WTQ1.LineNum — the id a posted quantity is keyed on. */
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  /** Decimal strings: loose oil moves in fractions a float would round. */
+  quantity: string;
+  open_quantity: string;
+  served_quantity: string;
+  from_warehouse: string;
+  to_warehouse: string;
+}
+
+export interface SapAwaitingTransfer {
+  /** OWTQ.DocEntry. */
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  comments: string | null;
+  age_days: number;
+  /** Needs two legs through an in-transit warehouse, so not postable here. */
+  cross_branch: boolean;
+  can_post: boolean;
+  /** Why not, in words, when can_post is false. */
+  blocked_reason: string | null;
+  lines: SapAwaitingTransferLine[];
+}
+
+export interface SapTransferPostResult {
+  /** The inventory transfer SAP created. */
+  doc_entry: number | null;
+  doc_num: number | null;
+  request_doc_entry: number;
+  /** Whether that emptied the request, or it still owes stock. */
+  request_closed: boolean;
+  remaining_quantity: string;
+  lines_moved: number;
+}

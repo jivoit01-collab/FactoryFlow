@@ -5,7 +5,9 @@ import type {
   SapApprovalDecisionPayload,
   SapApprovalDecisionResult,
   SapApprovalStatus,
+  SapAwaitingTransfer,
   SapTransferApproval,
+  SapTransferPostResult,
   TransferAllocationPreview,
   TransferApprovePayload,
   TransferBatchVerification,
@@ -198,6 +200,31 @@ export const sapTransferApprovalApi = {
       EP.SAP_TRANSFER_APPROVAL_STATUS(wddCode),
       payload,
     );
+    return res.data;
+  },
+};
+
+/**
+ * SAP transfer requests that are approved but still owe stock.
+ *
+ * Separate from the approval queue because these are past their decision: the
+ * request is cleared and what remains is the movement itself.
+ */
+export const sapTransferPostApi = {
+  async awaiting(): Promise<SapAwaitingTransfer[]> {
+    const res = await apiClient.get<SapAwaitingTransfer[]>(EP.SAP_TRANSFER_AWAITING);
+    return res.data;
+  },
+
+  /**
+   * Post one transfer against a request. `quantities` is keyed by WTQ1.LineNum
+   * and carries decimal strings; a line left out is simply not moved and the
+   * request stays open for it.
+   */
+  async post(docEntry: number, quantities: Record<string, string>): Promise<SapTransferPostResult> {
+    const res = await apiClient.post<SapTransferPostResult>(EP.SAP_TRANSFER_POST(docEntry), {
+      quantities,
+    });
     return res.data;
   },
 };

@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Inbox, Plus, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowRightLeft, Inbox, PackageCheck, Plus, ShieldCheck, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,15 +10,17 @@ import { Button, Card, CardContent } from '@/shared/components/ui';
 import {
   useInTransitTransferRequests,
   usePendingTransferRequests,
+  useSapAwaitingTransfers,
   useSapTransferApprovals,
   useTransferRequests,
 } from '../../api';
 import type { TransferRequestListItem } from '../../types';
+import { SapAwaitingTransferTable } from './SapAwaitingTransferTable';
 import { SapTransferApprovalTable } from './SapTransferApprovalTable';
 import { ApprovalBadge, PostingBadge, Route, RouteBadge } from './TransferBadges';
 import { shortDate } from './transferFormat';
 
-type Tab = 'all' | 'pending' | 'in-transit' | 'sap';
+type Tab = 'all' | 'pending' | 'in-transit' | 'sap' | 'awaiting';
 
 export default function TransferRequestListPage() {
   const navigate = useNavigate();
@@ -35,6 +37,9 @@ export default function TransferRequestListPage() {
   // SAP's own queue on transfer drafts. Every HANA read costs a round trip, so
   // only fetch it once the operator opens the tab.
   const sapApprovals = useSapTransferApprovals('PENDING', tab === 'sap');
+  // Approved requests that still owe stock. Another HANA read, so it waits
+  // for the tab too.
+  const awaiting = useSapAwaitingTransfers(tab === 'awaiting');
 
   const active = tab === 'pending' ? pending : tab === 'in-transit' ? inTransit : all;
   const rows: TransferRequestListItem[] = active.data ?? [];
@@ -68,6 +73,15 @@ export default function TransferRequestListPage() {
       label: 'SAP approvals',
       icon: ShieldCheck,
       count: sapApprovals.data?.length,
+      show: true,
+    },
+    {
+      // The step after that queue: an approved REQUEST has reserved stock that
+      // nobody has moved yet, and it stays that way until posted.
+      key: 'awaiting',
+      label: 'Awaiting transfer',
+      icon: PackageCheck,
+      count: awaiting.data?.length,
       show: true,
     },
   ];
@@ -115,7 +129,13 @@ export default function TransferRequestListPage() {
           })}
       </div>
 
-      {tab === 'sap' ? (
+      {tab === 'awaiting' ? (
+        <SapAwaitingTransferTable
+          rows={awaiting.data ?? []}
+          isLoading={awaiting.isLoading}
+          isError={awaiting.isError}
+        />
+      ) : tab === 'sap' ? (
         <SapTransferApprovalTable
           rows={sapApprovals.data ?? []}
           isLoading={sapApprovals.isLoading}

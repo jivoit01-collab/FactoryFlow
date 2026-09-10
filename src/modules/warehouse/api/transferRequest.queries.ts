@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import {
   sapTransferApprovalApi,
+  sapTransferPostApi,
   transferRequestApi,
   type TransferRequestListParams,
 } from './transferRequest.api';
@@ -234,6 +235,44 @@ export function useDecideSapTransferApproval() {
       // views and the BST dashboard can both be stale afterwards.
       queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
+    },
+  });
+}
+
+// ============================================================================
+// SAP transfer requests awaiting their actual transfer
+// ============================================================================
+
+export const SAP_TRANSFER_AWAITING_QUERY_KEYS = {
+  all: ['warehouse', 'sap-transfer-awaiting'] as const,
+  list: () => [...SAP_TRANSFER_AWAITING_QUERY_KEYS.all, 'list'] as const,
+};
+
+/** Pass `enabled: false` for a tab that must not fetch until opened. */
+export function useSapAwaitingTransfers(enabled = true) {
+  return useQuery({
+    queryKey: SAP_TRANSFER_AWAITING_QUERY_KEYS.list(),
+    queryFn: () => sapTransferPostApi.awaiting(),
+    enabled,
+  });
+}
+
+export function usePostSapTransfer() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      docEntry,
+      quantities,
+    }: {
+      docEntry: number;
+      quantities: Record<string, string>;
+    }) => sapTransferPostApi.post(docEntry, quantities),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_AWAITING_QUERY_KEYS.all });
+      // Stock has actually moved, so every stock-derived view is stale.
+      queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse', 'sap-transfer-approvals'] });
     },
   });
 }

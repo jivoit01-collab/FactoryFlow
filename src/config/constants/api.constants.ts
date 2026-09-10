@@ -1201,6 +1201,12 @@ export const API_ENDPOINTS = {
     SAP_TRANSFER_APPROVALS: '/warehouse/sap-transfer-approvals/',
     SAP_TRANSFER_APPROVAL_STATUS: (wddCode: number) =>
       `/warehouse/sap-transfer-approvals/${wddCode}/status/`,
+
+    // Approving a transfer REQUEST clears the request; these move the stock
+    // against it, in as many parts as it takes.
+    SAP_TRANSFER_AWAITING: '/warehouse/sap-transfer-requests/awaiting/',
+    SAP_TRANSFER_POST: (docEntry: number) =>
+      `/warehouse/sap-transfer-requests/${docEntry}/post/`,
   },
 
   // Which SAP B1 account each app user is, per company. Approval decisions
