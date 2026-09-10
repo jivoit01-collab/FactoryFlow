@@ -180,8 +180,15 @@ one sortable, paginated item table with an expandable per-warehouse panel.
    one warehouse expands into `NonMovingItemDetailPanel` — the per-warehouse
    split, resolved **on the client** from the report rows, which already answer
    at (item, warehouse) grain. No second request.
-6. **Export Excel** writes the full filtered + sorted set (not just the visible
-   page) client-side with `xlsx`; there is no backend export endpoint here.
+6. **Export Excel** (`utils/nonMovingExport.ts`) writes the full filtered +
+   sorted set — not just the visible page — client-side with `xlsx`; there is
+   no backend export endpoint here. Sheet one, **All Warehouses**, is the
+   folded table; after it comes **one sheet per warehouse**, holding that
+   warehouse's own (item, warehouse) rows with its own days idle and status,
+   worst idle first. Warehouses follow the filter's selection order (all of
+   them in view when nothing is selected); one holding none of the exported
+   items gets no sheet. Sheet names are the warehouse code, stripped of the
+   characters Excel refuses and made unique inside its 31-character cap.
 7. **Warehouse filter** options come from the warehouses present in the
    response, so all of them — factory stores and C&F depots alike — are
    selectable. The old factory-only warehouse breakdown card is gone;

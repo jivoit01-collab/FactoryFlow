@@ -21,7 +21,8 @@ import type {
   NonMovingRow,
   NonMovingSortCol,
 } from '../types';
-import { getMovementStatus, type MovementStatus } from '../utils/movementStatus';
+import { type MovementStatus } from '../utils/movementStatus';
+import { buildNonMovingWorkbook } from '../utils/nonMovingExport';
 import { groupNonMovingRowsBySku } from '../utils/nonMovingGrouping';
 import {
   filterNonMovingItems,
@@ -35,12 +36,6 @@ import {
   warehouseOptions,
   warehouseRowsForItem,
 } from '../utils/nonMovingRows';
-
-const STATUS_LABELS: Record<MovementStatus, string> = {
-  recent: 'Recently Moved',
-  'slow-moving': 'Slow Moving',
-  'non-moving': 'Non Moving',
-};
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -161,30 +156,16 @@ export default function NonMovingDashboardPage() {
       return;
     }
 
-    const rows = sortedRows.map((row) => ({
-      'Item Code': row.item_code,
-      'Item Name': row.item_name,
-      Branch: row.branch,
-      Warehouse: row.warehouses.join(', ') || row.warehouse,
-      'Sub Group': row.sub_group,
-      Quantity: row.quantity,
-      Value: row.value,
-      'Days Idle': row.days_since_last_movement,
-      'Last Movement': row.last_movement_date ?? '',
-      'Consumption %': row.consumption_ratio,
-      Status: STATUS_LABELS[getMovementStatus(row.days_since_last_movement)],
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    worksheet['!cols'] = Object.keys(rows[0]).map((key) => ({
-      wch: Math.max(key.length, ...rows.map((r) => String(r[key as keyof typeof r] ?? '').length)) + 2,
-    }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Non-Moving');
+    // The folded table first, then one sheet per warehouse in view.
+    const workbook = buildNonMovingWorkbook({
+      rows: sortedRows,
+      items: scopedItems,
+      selectedWarehouses: effectiveFilters.warehouse,
+    });
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(workbook, `non_moving_${stamp}.xlsx`);
     toast.success('Export downloaded');
-  }, [sortedRows]);
+  }, [effectiveFilters.warehouse, scopedItems, sortedRows]);
 
   const hasSAPError = Boolean(reportQuery.error && isSAPError(reportQuery.error));
 
