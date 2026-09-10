@@ -29,6 +29,15 @@ function apiError(err: unknown, fallback: string): string {
 
 const CHIP = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium';
 
+/**
+ * ObjType 1250000001 — an inventory transfer *request*. Approving one clears
+ * the request only; the stock does not move until an actual transfer is posted
+ * against it, and SAP allows that in several parts (the request stays open,
+ * drawing OpenQty down, until it closes). ObjType 67 is the transfer itself,
+ * which does move stock on approval.
+ */
+const OBJ_TRANSFER_REQUEST = '1250000001';
+
 function StatusChip({ status }: { status: SapTransferApproval['status'] }) {
   if (status === 'APPROVED') {
     return (
@@ -150,6 +159,9 @@ export function SapTransferApprovalTable({
   // Mine but unsignable, i.e. my own SAP password is missing — the one case the
   // reader can fix themselves by asking an administrator for their account.
   const myPasswordMissing = pending.some((r) => r.is_mine && !r.credentials_configured);
+  // Requests and transfers mean different things on approval, so the banner
+  // only promises a stock movement when no request is in the list.
+  const requestsPending = pending.filter((r) => r.obj_type === OBJ_TRANSFER_REQUEST).length;
 
   return (
     <div className="space-y-4">
@@ -158,7 +170,17 @@ export function SapTransferApprovalTable({
         it accepts a decision from that person only. So you can act on the{' '}
         <span className="font-medium">{mine} waiting on you</span>
         {pending.length !== mine && `, out of ${pending.length} pending`}. Approving signs the
-        decision in SAP as your own account, and the stock moves the moment SAP accepts it.
+        decision in SAP as your own account.{' '}
+        {requestsPending > 0 ? (
+          <>
+            A <span className="font-medium">Stock Transfer</span> moves the stock the moment SAP
+            accepts it. A <span className="font-medium">Transfer Request</span> does not — approving
+            clears the request, and the actual transfer still has to be posted against it
+            afterwards.
+          </>
+        ) : (
+          'The stock moves the moment SAP accepts it.'
+        )}
         {myPasswordMissing && (
           <>
             {' '}
@@ -215,6 +237,11 @@ export function SapTransferApprovalTable({
                           <div className="text-xs text-muted-foreground tabular-nums">
                             {row.doc_num ? `SAP ${row.doc_num}` : `draft ${row.draft_entry}`}
                           </div>
+                          {row.obj_type === OBJ_TRANSFER_REQUEST && (
+                            <div className="mt-1 max-w-[11rem] text-xs text-muted-foreground">
+                              approving clears the request — the transfer is posted separately
+                            </div>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Route from={row.from_warehouse} to={row.to_warehouse} />
