@@ -1,12 +1,16 @@
-import { Plus, Search, X } from 'lucide-react';
+import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
-import { useLines, useRuns } from '../api';
+import { useDeleteRun, useLines, useRuns } from '../api';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
+import { RunDraftModal } from '../components/RunDraftModal';
 import type { ProductionRun } from '../types';
 
 function runSortTime(run: ProductionRun) {
@@ -48,6 +52,40 @@ function ExecutionDashboardPage() {
   const hasFilters = statusFilter !== 'ALL' || lineFilter !== 'ALL' || dateFrom || dateTo || search;
 
   const { data: runs, isLoading } = useRuns(filters);
+  const deleteRun = useDeleteRun();
+
+  // One dialog for both: `editing` null means a new plan.
+  const [draftOpen, setDraftOpen] = useState(false);
+  const [editing, setEditing] = useState<ProductionRun | null>(null);
+
+  const openNewDraft = () => {
+    setEditing(null);
+    setDraftOpen(true);
+  };
+
+  const openDraft = (run: ProductionRun) => {
+    setEditing(run);
+    setDraftOpen(true);
+  };
+
+  // Discarding is soft — the run keeps its number and stays recoverable — but
+  // it is still a plan disappearing off other people's board, so it is asked
+  // for rather than assumed.
+  const discardDraft = async (run: ProductionRun) => {
+    const confirmed = await confirmDialog({
+      title: `Discard Run #${run.run_number}?`,
+      description: `${run.product || 'This draft'} on ${run.line_name}, planned for ${run.date}. It disappears from the board; the record is kept.`,
+      confirmLabel: 'Discard draft',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deleteRun.mutateAsync(run.id);
+      toast.success(`Run #${run.run_number} discarded`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'The draft was not discarded.'));
+    }
+  };
 
   const sortedRuns = useMemo(
     () => [...(runs ?? [])].sort((a, b) => {
@@ -77,7 +115,7 @@ function ExecutionDashboardPage() {
         primaryAction={{
           label: 'Start Run',
           icon: <Plus className="h-4 w-4 mr-2" />,
-          onClick: () => navigate('/production/execution/start-run'),
+          onClick: openNewDraft,
         }}
       />
 
@@ -166,6 +204,7 @@ function ExecutionDashboardPage() {
                 <th className="px-3 py-2 text-right font-medium">Production</th>
                 <th className="px-3 py-2 font-medium">SAP Entry</th>
                 <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium sr-only">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -189,6 +228,35 @@ function ExecutionDashboardPage() {
                   <td className="px-3 py-3">
                     <ProductionStatusBadge status={run.live_status || run.status} />
                   </td>
+                  {/* A draft is still a plan on paper — it can be reworked or
+                      thrown away. Anything past DRAFT is the floor's now. */}
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    {run.status === 'DRAFT' && (
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          title="Edit draft"
+                          aria-label={`Edit draft Run #${run.run_number}`}
+                          onClick={() => openDraft(run)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          title="Discard draft"
+                          aria-label={`Discard draft Run #${run.run_number}`}
+                          disabled={deleteRun.isPending}
+                          onClick={() => discardDraft(run)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -201,6 +269,10 @@ function ExecutionDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Mounted only while open, so the form starts from the draft it was
+          opened on rather than from whatever the last one left behind. */}
+      {draftOpen && <RunDraftModal open onOpenChange={setDraftOpen} run={editing} />}
     </div>
   );
 }
