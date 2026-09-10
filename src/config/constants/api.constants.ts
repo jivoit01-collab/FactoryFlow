@@ -1115,6 +1115,14 @@ export const API_ENDPOINTS = {
     RM_STOCK_ITEMS: '/warehouse/rm-stock/items/',
     RM_STOCK_IMPORT: '/warehouse/rm-stock/import/',
     RM_STOCK_DETAIL: (id: number) => `/warehouse/rm-stock/${id}/`,
+
+    // Godown outward movements — what a keeper declares he is sending out of
+    // his floor. Data entry only; nothing here posts to SAP.
+    PF_MOVEMENTS: '/warehouse/pf-movements/',
+    PF_MOVEMENT_ITEMS: '/warehouse/pf-movements/items/',
+    PF_MOVEMENT_DESTINATIONS: '/warehouse/pf-movements/destinations/',
+    PF_MOVEMENT_DETAIL: (id: number) => `/warehouse/pf-movements/${id}/`,
+    PF_MOVEMENT_RESTORE: (id: number) => `/warehouse/pf-movements/${id}/restore/`,
     // Branch Stock Transfer (BST)
     BST_SAP_TRANSFERS: '/warehouse/bst/sap-transfers/',
     BST_SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/bst/sap-transfers/${docEntry}/`,

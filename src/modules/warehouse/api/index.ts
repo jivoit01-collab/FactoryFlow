@@ -13,6 +13,22 @@ export * from './bst.queries';
 export { printInfoApi } from './printInfo.api';
 export * from './printInfo.queries';
 export type {
+  CreatePFMovementPayload,
+  PFMovement,
+  PFMovementAction,
+  PFMovementDestinationCompany,
+  PFMovementDetail,
+  PFMovementEvent,
+  PFMovementItem,
+  PFMovementLine,
+  PFMovementLineInput,
+  PFMovementList,
+  PFMovementListParams,
+  UpdatePFMovementPayload,
+} from './pfMovement.api';
+export { pfMovementApi } from './pfMovement.api';
+export * from './pfMovement.queries';
+export type {
   RawMaterialItem,
   RawMaterialSheetImport,
   RawMaterialSheetItem,

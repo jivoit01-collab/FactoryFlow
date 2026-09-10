@@ -35,6 +35,9 @@ const billSummaryViewPermissions = [
 // The raw-material stock register — what each store states it is holding, as
 // distinct from SAP's own on-hand.
 const RawMaterialStockPage = lazy(() => import('./pages/rmStock/RawMaterialStockPage'));
+// What a godown keeper declares he is sending out of his floor, and to where.
+// Data entry only — the dashboard that reads it against SAP comes later.
+const GodownMovementPage = lazy(() => import('./pages/pfMovement/GodownMovementPage'));
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
@@ -112,6 +115,16 @@ export const warehouseModuleConfig: ModuleConfig = {
       // the page and finds it read-only rather than being refused the route.
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
       breadcrumb: { label: 'Raw Material Stock' },
+    },
+    {
+      path: '/warehouse/godown-movements',
+      element: <GodownMovementPage />,
+      layout: 'main',
+      // View only: recording is gated per row and per godown, so a reader
+      // reaches the page and finds it read-only rather than being refused the
+      // route.
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT],
+      breadcrumb: { label: 'Godown Movements' },
     },
     {
       path: '/warehouse/bom-requests',
@@ -235,6 +248,7 @@ export const warehouseModuleConfig: ModuleConfig = {
       permissions: [
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
         WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK,
+        WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT,
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
@@ -263,6 +277,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/rm-stock',
           title: 'Raw Material Stock',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
+        },
+        {
+          path: '/warehouse/godown-movements',
+          title: 'Godown Movements',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT],
         },
         {
           path: '/warehouse/bom-requests',

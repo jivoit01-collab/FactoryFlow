@@ -64,6 +64,14 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_RM_STOCK: 'warehouse.can_view_rm_stock',
   /** Set a raw-material quantity (store keeper) */
   SET_RM_STOCK: 'warehouse.can_set_rm_stock',
+
+  // Godown outward movements. Same shape as the register above, and the same
+  // second half: recording also requires a UserWarehouse assignment for the
+  // floor the stock is leaving.
+  /** Read the godown outward-movement register */
+  VIEW_PF_MOVEMENT: 'warehouse.can_view_pf_movement',
+  /** Declare what is leaving your floor (godown keeper) */
+  RECORD_PF_MOVEMENT: 'warehouse.can_record_pf_movement',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';
