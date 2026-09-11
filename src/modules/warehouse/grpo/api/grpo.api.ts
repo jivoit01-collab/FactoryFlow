@@ -15,6 +15,7 @@ import type {
   PaginatedResponse,
   PendingGRPOEntryWithSuppliers,
   PlanBiltyAttachmentState,
+  POPrintPayload,
   PostGRPORequest,
   PostGRPOResponse,
   PostServiceGRPORequest,
@@ -212,6 +213,14 @@ export const grpoApi = {
   /** SAP's own Goods Receipt Note for one posted GRPO, read fresh from HANA. */
   async getPrint(postingId: number): Promise<GRPOPrintPayload> {
     const response = await apiClient.get<GRPOPrintPayload>(API_ENDPOINTS.GRPO.PRINT(postingId));
+    return response.data;
+  },
+
+  /** SAP's own Purchase Order, for one PO on a gate entry. */
+  async getPOPrint(poReceiptId: number): Promise<POPrintPayload> {
+    const response = await apiClient.get<POPrintPayload>(
+      API_ENDPOINTS.GRPO.PO_PRINT(poReceiptId),
+    );
     return response.data;
   },
 

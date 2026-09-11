@@ -45,6 +45,7 @@ import {
 import {
   BatchNumbersInput,
   ExtraChargesSection,
+  POPrintButton,
   QCReportButton,
   QCStatusBadge,
   useQCReportPrint,
@@ -951,6 +952,12 @@ export default function GRPOPreviewPage() {
                             {po.branch_id != null && ` | Branch: ${po.branch_id}`}
                           </p>
                         </div>
+                        <POPrintButton
+                          receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                        />
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1053,10 +1060,18 @@ export default function GRPOPreviewPage() {
                       Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
-                    <AlertCircle className="h-3 w-3" />
-                    QC not passed
-                  </span>
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <POPrintButton
+                      receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                    />
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+                      <AlertCircle className="h-3 w-3" />
+                      QC not passed
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (
@@ -1109,6 +1124,13 @@ export default function GRPOPreviewPage() {
                     {po.supplier_name}
                     {formatPODate(po.po_date) && ` · PO Date: ${formatPODate(po.po_date)}`}
                   </p>
+                  <div className="mt-2">
+                    <POPrintButton
+                      receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (

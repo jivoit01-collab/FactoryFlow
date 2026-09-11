@@ -18,7 +18,13 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { useAllGRPOEntries } from '../api';
-import { GRPOMonthFilter, QCReportButton, QCStatusBadge, useQCReportPrint } from '../components';
+import {
+  GRPOMonthFilter,
+  POPrintButton,
+  QCReportButton,
+  QCStatusBadge,
+  useQCReportPrint,
+} from '../components';
 import type { AllGRPOEntryPOQC, EntryPhase } from '../types';
 
 const formatDateTime = (dateTime?: string | null) => {
@@ -416,11 +422,18 @@ function BillQCCard({
         >
           {billStatus.label}
         </span>
+        {/* Printing the order needs nothing posted — it exists in SAP already. */}
+        <POPrintButton
+          receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7 px-2 text-xs"
+        />
         {po.is_ready_for_grpo && !po.is_posted && (
           <Button
             size="sm"
             variant="outline"
-            className="ml-auto h-7 text-xs"
+            className="h-7 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               onPost();

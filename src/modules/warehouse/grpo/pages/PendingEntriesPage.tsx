@@ -9,7 +9,7 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { usePendingGRPOEntries } from '../api';
-import { GRPOMonthFilter } from '../components';
+import { GRPOMonthFilter, POPrintButton } from '../components';
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string) => {
@@ -196,9 +196,9 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
                   <tbody>
                     {pendingEntries.map((entry) => {
                       const suppliers = entry.suppliers ?? [];
-                      const poNumbers = suppliers.flatMap((s) =>
-                        s.po_receipts.map((r) => r.po_number),
-                      );
+                      // The receipts themselves, not just their numbers: each
+                      // chip prints its own order straight from SAP.
+                      const poReceipts = suppliers.flatMap((s) => s.po_receipts);
                       return (
                         <tr
                           key={entry.vehicle_entry_id}
@@ -227,15 +227,16 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
                             )}
                           </td>
                           <td className="p-3 text-sm text-muted-foreground">
-                            {poNumbers.length > 0 ? (
+                            {poReceipts.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {poNumbers.map((po) => (
-                                  <span
-                                    key={po}
-                                    className="inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono bg-muted/40"
-                                  >
-                                    {po}
-                                  </span>
+                                {poReceipts.map((r) => (
+                                  <POPrintButton
+                                    key={r.po_receipt_id}
+                                    receipt={{ id: r.po_receipt_id, po_number: r.po_number }}
+                                    label={r.po_number}
+                                    size="sm"
+                                    className="h-6 px-1.5 font-mono text-xs bg-muted/40"
+                                  />
                                 ))}
                               </div>
                             ) : (

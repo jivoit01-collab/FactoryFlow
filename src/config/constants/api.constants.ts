@@ -424,6 +424,9 @@ export const API_ENDPOINTS = {
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
     // SAP's own Goods Receipt Note, as data, for one posted GRPO
     PRINT: (postingId: number) => `/grpo/${postingId}/print/`,
+    // SAP's own Purchase Order, as data, for one PO on a gate entry. Keyed on
+    // the PO receipt, so it prints before a GRPO is posted as well as after.
+    PO_PRINT: (poReceiptId: number) => `/grpo/po-receipt/${poReceiptId}/print/`,
     SERVICE_PENDING: '/grpo/service/pending/',
     SERVICE_OPTIONS: '/grpo/service/options/',
     SERVICE_PREVIEW: (dispatchPlanId: number) => `/grpo/service/preview/${dispatchPlanId}/`,

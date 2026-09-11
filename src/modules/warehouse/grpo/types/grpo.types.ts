@@ -351,6 +351,14 @@ export interface GRPOHistoryLine {
 }
 
 // History entry (GET /history/ and GET /{posting_id}/)
+/** One PO receipt inside a merged GRPO (``MergedPOReceiptSerializer``). */
+export interface MergedPOReceipt {
+  id: number;
+  po_number: string;
+  supplier_code: string;
+  supplier_name: string;
+}
+
 export interface GRPOHistoryEntry {
   id: number;
   vehicle_entry: number;
@@ -373,7 +381,8 @@ export interface GRPOHistoryEntry {
   // Merged GRPO fields
   is_merged?: boolean;
   po_numbers?: string[];
-  merged_po_receipts?: number[];
+  /** The PO receipts behind a merged GRPO, as SAP's own print needs them. */
+  merged_po_receipts?: MergedPOReceipt[];
   /** Saved posting request, present on DRAFT/FAILED postings for re-posting. */
   request_payload?: GRPODraftPayload | null;
 }
@@ -843,6 +852,114 @@ export interface GRPOPrintTotals {
   /** Only when SAP rounded the document. */
   round_off: GRPOPrintTotalRow | null;
   grand_total: string;
+}
+
+/** One item row of the purchase order sheet. */
+export interface POPrintLine {
+  sno: number;
+  item_code: string;
+  description: string;
+  /** SAP's "Details" column — the line's own remark, usually empty. */
+  details: string;
+  hsn_code: string;
+  /** Money and quantities arrive as strings so JSON floats cannot round them. */
+  quantity: string;
+  /** Carried but not printed in the Qty column, as SAP's layout has it. */
+  uom: string;
+  rate: string;
+  discount_percent: string;
+  net_rate: string;
+  taxable_value: string;
+}
+
+/** One row of the GST summary strip, per HSN code and rate. */
+export interface POPrintHSNRow {
+  hsn_code: string;
+  taxable_value: string;
+  tax_rate: string;
+  total_tax: string;
+}
+
+/** One row of the money column: a tax component, a charge, or a round-off. */
+export interface POPrintTotalRow {
+  label: string;
+  amount: string;
+}
+
+export interface POPrintTotals {
+  total_qty: string;
+  /** The line sum, under the sheet's own "Amount before freight & Disc" label. */
+  amount_before_freight: string;
+  discount: string;
+  taxes: POPrintTotalRow[];
+  /** Only when the order carries charges; SAP suppresses a zero row. */
+  expenses: POPrintTotalRow | null;
+  /** Only when SAP rounded the document. */
+  round_off: POPrintTotalRow | null;
+  grand_total: string;
+}
+
+export interface POPrintPayload {
+  po_receipt_id: number;
+  /** Which SAP company the order was raised in, for the per-company banner. */
+  company_code: string;
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  /** SAP's "Ship Date" — the document's due date, not a payment date. */
+  ship_date: string | null;
+  /** Always null: SAP's layout prints the label with no field behind it. */
+  payment_due_date: string | null;
+  branch_id: number | null;
+  /** SAP's branch name, printed as "Unit". */
+  unit: string;
+  currency: string;
+  supplier_ref_no: string;
+  payment_terms: string;
+  shipping_terms: string;
+  transportation_mode: string;
+  vehicle_no: string;
+  /** Always empty: another label with no field behind it. */
+  packing_slip_no: string;
+  remarks: string;
+  /** On a purchase order this is the vendor's state, not ours. */
+  place_of_supply: string;
+  approval: {
+    is_approved: boolean;
+    /** The document's own approver, off the SAP approval chain. */
+    approver: string;
+  };
+  /** The receiving location: the masthead and the "Ship To" block. */
+  company: {
+    location_name: string;
+    address: string;
+    gst_no: string;
+    pan_no: string;
+    fssai_no: string;
+    state_name: string;
+    state_code: string;
+    /** Both empty by construction — the labels print, the values never do. */
+    contact_person: string;
+    contact_no: string;
+  };
+  /** The "Bill From" block: the vendor's ship-from address and bank. */
+  vendor: {
+    code: string;
+    name: string;
+    address: string;
+    gst_no: string;
+    state_name: string;
+    state_code: string;
+    fssai_no: string;
+    bank_account: string;
+    bank_ifsc: string;
+    contact_person: string;
+    contact_no: string;
+    email: string;
+  };
+  lines: POPrintLine[];
+  totals: POPrintTotals;
+  hsn_summary: POPrintHSNRow[];
 }
 
 export interface GRPOPrintPayload {

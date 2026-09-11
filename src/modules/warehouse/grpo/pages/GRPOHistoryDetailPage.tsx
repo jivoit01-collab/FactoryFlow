@@ -11,6 +11,7 @@ import { useGRPODetail } from '../api';
 import {
   AttachmentsSection,
   GRPOPrintButton,
+  POPrintButton,
   QCReportButton,
   useQCReportPrint,
 } from '../components';
@@ -47,6 +48,16 @@ export default function GRPOHistoryDetailPage() {
   const isPermissionError = apiError?.status === 403;
 
   const statusConfig = posting ? GRPO_STATUS_CONFIG[posting.status] : null;
+
+  // Every PO this posting covers. A merged GRPO carries them on
+  // `merged_po_receipts`; an unmerged one has the single FK, and the server
+  // sends that one through the same field, so this is a fallback for older
+  // payloads rather than the common case.
+  const poReceipts = posting
+    ? (posting.merged_po_receipts?.length
+        ? posting.merged_po_receipts
+        : [{ id: posting.po_receipt, po_number: posting.po_number }])
+    : [];
 
   return (
     <div className="space-y-6">
@@ -118,6 +129,17 @@ export default function GRPOHistoryDetailPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Posting Information</h3>
                 <div className="flex items-center gap-2">
+                  {/* SAP's own purchase order, one per PO — a merged GRPO
+                      covers several, and each has its own sheet. */}
+                  {poReceipts.map((receipt) => (
+                    <POPrintButton
+                      key={receipt.id}
+                      receipt={receipt}
+                      label={poReceipts.length > 1 ? `PO ${receipt.po_number}` : 'Print PO'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    />
+                  ))}
                   {/* SAP's own Goods Receipt Note, for a posting SAP accepted. */}
                   <GRPOPrintButton posting={posting} size="sm" className="h-7 px-2 text-xs" />
                   {statusConfig && (

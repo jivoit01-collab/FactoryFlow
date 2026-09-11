@@ -110,6 +110,7 @@ describe('grpoApi', () => {
       'getExpenseCodes',
       'getHistory',
       'getInspectionReport',
+      'getPOPrint',
       'getPendingEntries',
       'getPlanBiltyAttachment',
       'getPreview',
