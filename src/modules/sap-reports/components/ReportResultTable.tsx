@@ -1,11 +1,13 @@
-import { ArrowDown, ArrowUp, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, Copy, Search } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { Badge, Button, Input } from '@/shared/components/ui';
+import { Badge, Button, Checkbox, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 import { cn, formatNumber } from '@/shared/utils';
 
 import type { SapReportCell, SapReportColumn } from '../api';
+import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
 
 const PAGE_SIZE = 100;
 
@@ -14,6 +16,23 @@ interface Props {
   rows: SapReportCell[][];
   wasTruncated: boolean;
   rowLimit: number;
+}
+
+/** A row kept beside its place in the original result, which is what selection is keyed on. */
+interface IndexedRow {
+  row: SapReportCell[];
+  index: number;
+}
+
+/** Ticked rows, the result they belong to, and where a shift-click measures from. */
+interface Selection {
+  rows: SapReportCell[][];
+  ids: ReadonlySet<number>;
+  anchor: number | null;
+}
+
+function emptySelection(rows: SapReportCell[][]): Selection {
+  return { rows, ids: new Set(), anchor: null };
 }
 
 /**
@@ -28,14 +47,23 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const search = useDebounce(searchInput, 250);
   const [sort, setSort] = useState<{ index: number; direction: 'asc' | 'desc' } | null>(null);
   const [page, setPage] = useState(0);
+  // The selection is held against the rows it was made on, so a fresh run —
+  // which hands down a new array — drops last run's ticks without an effect.
+  const [selection, setSelection] = useState<Selection>(() => emptySelection(rows));
+  const { ids: selected, anchor } = selection.rows === rows ? selection : emptySelection(rows);
+  // Shift-click picks a block. The checkbox reports only its new state, so the
+  // modifier is caught on the way down and read back on the change.
+  const shiftHeld = useRef(false);
+
+  const indexed = useMemo<IndexedRow[]>(() => rows.map((row, index) => ({ row, index })), [rows]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return rows;
+    if (!search.trim()) return indexed;
     const needle = search.trim().toLowerCase();
-    return rows.filter((row) =>
+    return indexed.filter(({ row }) =>
       row.some((cell) => cell !== null && String(cell).toLowerCase().includes(needle)),
     );
-  }, [rows, search]);
+  }, [indexed, search]);
 
   const docNumIndex = useMemo(
     () => columns.findIndex((column) => column.key.toLowerCase() === 'docnum'),
@@ -45,7 +73,7 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const uniqueDocNums = useMemo(() => {
     if (docNumIndex === -1) return null;
     const values = new Set<string>();
-    for (const row of filtered) {
+    for (const { row } of filtered) {
       const cell = row[docNumIndex];
       if (cell !== null && cell !== undefined && cell !== '') values.add(String(cell));
     }
@@ -57,7 +85,7 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
     const isNumeric = columns[sort.index]?.type === 'number';
     const factor = sort.direction === 'asc' ? 1 : -1;
     return [...filtered].sort((left, right) =>
-      factor * compareCells(left[sort.index], right[sort.index], isNumeric),
+      factor * compareCells(left.row[sort.index], right.row[sort.index], isNumeric),
     );
   }, [filtered, sort, columns]);
 
@@ -66,12 +94,64 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const currentPage = Math.min(page, pageCount - 1);
   const visible = sorted.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
 
+  const allShownSelected = sorted.length > 0 && sorted.every(({ index }) => selected.has(index));
+
   function toggleSort(index: number) {
     setPage(0);
     setSort((current) => {
       if (current?.index !== index) return { index, direction: 'asc' };
       return current.direction === 'asc' ? { index, direction: 'desc' } : null;
     });
+  }
+
+  /** Tick or untick one row — or, on a shift-click, everything back to the last one. */
+  function toggleRow(positionInSorted: number, checked: boolean) {
+    const from = shiftHeld.current ? (anchor ?? positionInSorted) : positionInSorted;
+    shiftHeld.current = false;
+
+    const start = Math.min(from, positionInSorted);
+    const end = Math.max(from, positionInSorted);
+    const next = new Set(selected);
+    for (let position = start; position <= end; position += 1) {
+      const entry = sorted[position];
+      if (!entry) continue;
+      if (checked) next.add(entry.index);
+      else next.delete(entry.index);
+    }
+    setSelection({ rows, ids: next, anchor: positionInSorted });
+  }
+
+  /** The header tick covers what the search is showing, not the whole result. */
+  function toggleAllShown(checked: boolean) {
+    const next = new Set(selected);
+    for (const { index } of sorted) {
+      if (checked) next.add(index);
+      else next.delete(index);
+    }
+    setSelection({ rows, ids: next, anchor: null });
+  }
+
+  async function handleCopy() {
+    // Nothing ticked means "what I am looking at" — the rows the search left,
+    // in the order the sort put them.
+    const chosen = selected.size ? sorted.filter(({ index }) => selected.has(index)) : sorted;
+    if (!chosen.length) return;
+
+    const copied = await copyToClipboard(
+      buildClipboardText(
+        chosen.map(({ row }) => row),
+        columns,
+      ),
+    );
+    if (!copied) {
+      toast.error(
+        'The browser would not let us reach the clipboard. Use the Excel export instead.',
+      );
+      return;
+    }
+    toast.success(
+      `${chosen.length.toLocaleString()} ${chosen.length === 1 ? 'row' : 'rows'} copied — paste into your sheet.`,
+    );
   }
 
   if (!rows.length) {
@@ -91,26 +171,39 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
               ? `${rows.length.toLocaleString()} rows`
               : `${sorted.length.toLocaleString()} of ${rows.length.toLocaleString()} rows`}
           </span>
-          {uniqueDocNums !== null && (
-            <span>· {uniqueDocNums.toLocaleString()} unique DocNums</span>
-          )}
+          {uniqueDocNums !== null && <span>· {uniqueDocNums.toLocaleString()} unique DocNums</span>}
+          {selected.size > 0 && <span>· {selected.size.toLocaleString()} selected</span>}
           {wasTruncated && (
             <Badge variant="outline" className="border-amber-500 text-amber-600">
               Cut off at {rowLimit.toLocaleString()} rows — narrow the filters
             </Badge>
           )}
         </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search these rows…"
-            value={searchInput}
-            onChange={(event) => {
-              setSearchInput(event.target.value);
-              setPage(0);
-            }}
-            className="w-[240px] pl-8"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopy}
+            disabled={!sorted.length}
+            title="Copies the rows only, tab-separated, ready to paste into a sheet"
+          >
+            <Copy className="mr-1.5 h-4 w-4" />
+            {selected.size
+              ? `Copy ${selected.size.toLocaleString()} selected`
+              : `Copy ${sorted.length.toLocaleString()} rows`}
+          </Button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search these rows…"
+              value={searchInput}
+              onChange={(event) => {
+                setSearchInput(event.target.value);
+                setPage(0);
+              }}
+              className="w-[240px] pl-8"
+            />
+          </div>
         </div>
       </div>
 
@@ -118,6 +211,13 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-muted">
             <tr>
+              <th className="w-9 px-3 py-2">
+                <Checkbox
+                  checked={allShownSelected}
+                  onCheckedChange={toggleAllShown}
+                  aria-label="Select every row shown"
+                />
+              </th>
               {columns.map((column, index) => (
                 <th
                   key={column.key}
@@ -144,21 +244,40 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
             </tr>
           </thead>
           <tbody>
-            {visible.map((row, rowIndex) => (
-              <tr key={currentPage * PAGE_SIZE + rowIndex} className="border-t hover:bg-muted/40">
-                {columns.map((column, index) => (
+            {visible.map(({ row, index: rowIndex }, offset) => {
+              const positionInSorted = currentPage * PAGE_SIZE + offset;
+              const isSelected = selected.has(rowIndex);
+              return (
+                <tr
+                  key={rowIndex}
+                  className={cn('border-t hover:bg-muted/40', isSelected && 'bg-primary/5')}
+                >
                   <td
-                    key={column.key}
-                    className={cn(
-                      'whitespace-nowrap px-3 py-1.5',
-                      column.type === 'number' && 'text-right tabular-nums',
-                    )}
+                    className="px-3 py-1.5 align-middle"
+                    onMouseDown={(event) => {
+                      shiftHeld.current = event.shiftKey;
+                    }}
                   >
-                    {renderCell(row[index], column)}
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => toggleRow(positionInSorted, checked)}
+                      aria-label={`Select row ${positionInSorted + 1}`}
+                    />
                   </td>
-                ))}
-              </tr>
-            ))}
+                  {columns.map((column, index) => (
+                    <td
+                      key={column.key}
+                      className={cn(
+                        'whitespace-nowrap px-3 py-1.5',
+                        column.type === 'number' && 'text-right tabular-nums',
+                      )}
+                    >
+                      {renderCell(row[index], column)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
