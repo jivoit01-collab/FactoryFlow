@@ -9,6 +9,8 @@ import type {
   CustomerCredit,
   LineDefaults,
   OpenSOLine,
+  SapCashSaleHistory,
+  SapCashSaleQuery,
   WarehouseStockItem,
 } from '../types';
 
@@ -79,6 +81,19 @@ export const arInvoiceApi = {
 
   async listInvoices(): Promise<ARInvoicePosting[]> {
     const response = await apiClient.get<ARInvoicePosting[]>(API_ENDPOINTS.AR_INVOICE.INVOICES);
+    return response.data;
+  },
+
+  /**
+   * The cash sales SAP holds for this company — ours and the ones the counter
+   * raised in SAP directly. Read live, so the response carries the window it
+   * was actually read over.
+   */
+  async listSapCashSales(params: SapCashSaleQuery): Promise<SapCashSaleHistory> {
+    const response = await apiClient.get<SapCashSaleHistory>(
+      API_ENDPOINTS.AR_INVOICE.SAP_INVOICES,
+      { params },
+    );
     return response.data;
   },
 

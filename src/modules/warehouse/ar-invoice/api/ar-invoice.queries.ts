@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { CreateARInvoiceRequest } from '../types';
+import type { CreateARInvoiceRequest, SapCashSaleQuery } from '../types';
 import { arInvoiceApi } from './ar-invoice.api';
 
 export const AR_INVOICE_QUERY_KEYS = {
@@ -13,6 +13,14 @@ export const AR_INVOICE_QUERY_KEYS = {
   items: (warehouse: string, search: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'items', warehouse, search] as const,
   invoices: () => [...AR_INVOICE_QUERY_KEYS.all, 'invoices'] as const,
+  sapCashSales: (query: SapCashSaleQuery) =>
+    [
+      ...AR_INVOICE_QUERY_KEYS.all,
+      'sap-cash-sales',
+      query.date_from ?? '',
+      query.date_to ?? '',
+      query.search ?? '',
+    ] as const,
   print: (id: number) => [...AR_INVOICE_QUERY_KEYS.all, 'print', id] as const,
 };
 
@@ -65,6 +73,21 @@ export function useArInvoices() {
   return useQuery({
     queryKey: AR_INVOICE_QUERY_KEYS.invoices(),
     queryFn: () => arInvoiceApi.listInvoices(),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * The SAP-side cash-sale book, fetched only while the History toggle shows it.
+ *
+ * Every call is a HANA read of a document SAP can still amend, so it is kept
+ * briefly fresh rather than cached across the session.
+ */
+export function useSapCashSales(query: SapCashSaleQuery, enabled: boolean) {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.sapCashSales(query),
+    queryFn: () => arInvoiceApi.listSapCashSales(query),
+    enabled,
     staleTime: 30 * 1000,
   });
 }

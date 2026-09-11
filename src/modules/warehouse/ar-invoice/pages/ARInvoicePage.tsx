@@ -13,6 +13,7 @@ import {
   Checkbox,
   Input,
   Label,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
@@ -32,6 +33,7 @@ import { ARInvoiceStatusBadge } from '../components/ARInvoiceStatusBadge';
 import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
+import { SapCashSaleList } from '../components/SapCashSaleList';
 import type { ARInvoicePosting, OpenSOLine } from '../types';
 
 const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
@@ -322,7 +324,31 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+/**
+ * History — two books, one screen.
+ *
+ * This app's own records by default; behind the toggle, the cash sales as SAP
+ * holds them, which also covers the ones the counter raised in SAP directly and
+ * this app therefore has no record of.
+ */
 function HistoryTab({ canAct }: { canAct: boolean }) {
+  const [showSap, setShowSap] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-end gap-2">
+        <Switch id="ar-history-source" checked={showSap} onChange={setShowSap} />
+        <label htmlFor="ar-history-source" className="cursor-pointer text-sm">
+          Show SAP cash sales
+        </label>
+      </div>
+      {showSap ? <SapCashSaleList /> : <AppHistoryList canAct={canAct} />}
+    </div>
+  );
+}
+
+/** The invoices this app raised, with their SAP approval state. */
+function AppHistoryList({ canAct }: { canAct: boolean }) {
   const { data, isLoading, isError } = useArInvoices();
   const [selected, setSelected] = useState<ARInvoicePosting | null>(null);
 
@@ -347,7 +373,10 @@ function HistoryTab({ canAct }: { canAct: boolean }) {
     return (
       <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
         <ReceiptText className="h-8 w-8" />
-        <p className="text-sm">No A/R invoices raised yet.</p>
+        <p className="max-w-md text-sm">
+          No A/R invoices raised from this app yet. Turn on &quot;Show SAP cash sales&quot; to
+          see the cash sales raised in SAP directly.
+        </p>
       </div>
     );
   }

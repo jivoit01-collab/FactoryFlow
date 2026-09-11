@@ -672,6 +672,8 @@ export const API_ENDPOINTS = {
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',
     INVOICES: '/ar-invoices/invoices/',
+    // The cash sales as SAP holds them — including those raised in SAP directly.
+    SAP_INVOICES: '/ar-invoices/sap-invoices/',
     INVOICE_DETAIL: (id: number) => `/ar-invoices/invoices/${id}/`,
     INVOICE_POST: (id: number) => `/ar-invoices/invoices/${id}/post/`,
     INVOICE_REFRESH: (id: number) => `/ar-invoices/invoices/${id}/refresh/`,

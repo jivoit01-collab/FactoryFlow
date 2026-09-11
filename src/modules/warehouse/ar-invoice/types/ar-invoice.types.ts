@@ -263,3 +263,68 @@ export interface ARInvoicePrintPayload {
     gross_weight: string;
   };
 }
+
+/** One line of a cash-sale invoice as SAP holds it (INV1). */
+export interface SapCashSaleLine {
+  line_num: number;
+  item_code: string;
+  description: string;
+  quantity: number;
+  price: number;
+  line_total: number;
+  tax_code: string;
+  warehouse_code: string;
+  uom: string;
+  cost_center: string;
+}
+
+/**
+ * One posted cash-sale invoice, read live from SAP.
+ *
+ * The counter raises cash sales in SAP directly as well as through this app, so
+ * History reads SAP's own book back. `app_posting_id` is set only on the rows
+ * this app raised (matched on DocEntry) — everything else came straight from
+ * SAP, keyed by whoever `sap_user` names.
+ */
+export interface SapCashSaleInvoice {
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  doc_due_date: string | null;
+  tax_date: string | null;
+  created_date: string | null;
+  customer_code: string;
+  customer_name: string;
+  customer_ref: string;
+  comments: string;
+  doc_total: number;
+  tax_total: number;
+  paid_to_date: number;
+  /** 'O' open, 'C' closed — open until a receipt is applied, not "unpaid". */
+  doc_status: string;
+  is_cancelled: boolean;
+  branch_id: number | null;
+  branch_name: string;
+  /** The SAP user who keyed it in, blank for invoices posted by this app. */
+  sap_user: string;
+  draft_entry: number | null;
+  lines: SapCashSaleLine[];
+  app_posting_id: number | null;
+}
+
+/** The SAP cash-sale history, with the window it was actually read over. */
+export interface SapCashSaleHistory {
+  date_from: string;
+  date_to: string;
+  count: number;
+  /** The window holds more invoices than the cap returned. */
+  truncated: boolean;
+  invoices: SapCashSaleInvoice[];
+}
+
+export interface SapCashSaleQuery {
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  limit?: number;
+}
