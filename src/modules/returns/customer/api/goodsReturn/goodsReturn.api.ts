@@ -2,16 +2,18 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 /**
- * An item this customer has actually been invoiced.
+ * A finished good that can go on a return line.
  *
- * The picker offers their purchase history rather than the item master: an item
- * they were never billed for has no tax code, and SAP refuses a return line
- * without one, so anything outside this list would fail at posting.
+ * The whole FG range, independent of the customer — goods come back for reasons
+ * that have nothing to do with who was billed for them. The last-billed fields
+ * are filled in only where this customer was actually invoiced for the item,
+ * and are context rather than a constraint.
  */
 export interface ReturnableItem {
   item_code: string;
   item_name: string;
   uom: string;
+  /** The customer's last tax code for this item; blank if they never bought it. */
   tax_code: string;
   last_price: number;
   last_invoice_num: string;

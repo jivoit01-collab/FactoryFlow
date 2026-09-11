@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_NON_MOVING_AGE } from '../../constants';
@@ -95,17 +95,38 @@ describe('NonMovingFilters warehouse preset', () => {
   });
 });
 
-describe('the idle-age default', () => {
-  it('opens on 45 days, pressed', () => {
+describe('the idle-age dropdown', () => {
+  it('opens on 45 days', () => {
     renderFilters([]);
 
     expect(DEFAULT_NON_MOVING_AGE).toBe(45);
-    expect(screen.getByRole('button', { name: '45 Days' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    );
-    // "All Stock" is the way back to the full status split, not the default.
-    expect(screen.getByRole('button', { name: 'All Stock' }).getAttribute('aria-pressed')).toBe(
-      'false',
+    expect(screen.getByLabelText('Idle At Least')).toHaveProperty('value', '45');
+  });
+
+  it('offers every age, with All Stock as the way back to the full split', () => {
+    renderFilters([]);
+
+    const options = [...screen.getByLabelText<HTMLSelectElement>('Idle At Least').options];
+
+    expect(options.map((option) => option.textContent)).toEqual([
+      'All Stock',
+      '15 Days',
+      '30 Days',
+      '45 Days',
+      '90 Days',
+      '180 Days',
+      '365 Days',
+    ]);
+  });
+
+  it('reports the chosen age to the parent', async () => {
+    const { onFiltersChange } = renderFilters([]);
+    const select = screen.getByLabelText<HTMLSelectElement>('Idle At Least');
+
+    fireEvent.change(select, { target: { value: '180' } });
+
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ age: 180 })),
     );
   });
 });

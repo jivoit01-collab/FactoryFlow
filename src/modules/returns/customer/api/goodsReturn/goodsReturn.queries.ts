@@ -43,9 +43,9 @@ export function useGoodsReturnPrint() {
 }
 
 /**
- * Items this return's customer has been invoiced. Only the customer's own
- * history is offered — anything else has no tax code and SAP would refuse the
- * return line at posting.
+ * The finished goods a return line can carry — the whole range, not scoped to
+ * what this customer was invoiced. Rows they have been billed for sort first
+ * and carry their last price and tax code.
  */
 export function useReturnableItems(id: number | null, search = '') {
   return useQuery({
