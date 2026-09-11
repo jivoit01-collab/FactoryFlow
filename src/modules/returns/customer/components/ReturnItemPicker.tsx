@@ -5,17 +5,16 @@ import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import { type ReturnableItem, useReturnableItems } from '../api/goodsReturn';
 
 /**
- * Picks an item from the company's finished goods.
+ * Picks an item from what this customer has actually been invoiced.
  *
- * The whole FG range, not this customer's purchase history: goods come back for
- * reasons that have nothing to do with who was billed for them — a replacement
- * sent on a letter pad, stock moved between distributors, a debit note against a
- * shipment invoiced to somebody else. The tax code the posted return needs is
- * resolved at posting, falling back to this customer's most recent code, so an
- * item they were never billed for still posts.
+ * Their purchase history rather than the item master, for a reason beyond
+ * convenience: an item they were never billed for has no tax code, and SAP
+ * refuses a return line without one (error 160009). Anything outside this list
+ * would be accepted here and then rejected at posting, so the list is the
+ * guard.
  *
- * Rows this customer *has* been billed for come first and say when — context,
- * not a filter. Selecting a row carries back the unit of measure.
+ * Selecting a row also carries back the unit of measure and the tax code the
+ * original sale used, which is what the posted return has to reverse.
  *
  * Search is split: `SearchableSelect` debounces at only 100ms, too eager for a
  * SAP query, so one character filters the cached list and two or more go to the
@@ -47,7 +46,7 @@ export function ReturnItemPicker({
       inputId={inputId}
       value={value}
       defaultDisplayText={value}
-      placeholder="Search a finished good by code or name…"
+      placeholder="Search an item this customer bought…"
       getItemKey={(item) => item.item_code}
       getItemLabel={(item) => item.item_code}
       filterFn={(item, term) => {
@@ -66,20 +65,16 @@ export function ReturnItemPicker({
             <span className="shrink-0 text-xs text-muted-foreground">{item.tax_code}</span>
           </div>
           <div className="truncate text-xs text-muted-foreground">{item.item_name}</div>
-          {/* Only for items this customer was actually billed for — the rest
-              are perfectly returnable, they just have no history to show. */}
-          {item.last_billed && (
-            <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-              last billed {item.last_billed}
-              {item.last_invoice_num && <> on invoice {item.last_invoice_num}</>}
-            </div>
-          )}
+          <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+            last billed {item.last_billed ?? '—'}
+            {item.last_invoice_num && <> on invoice {item.last_invoice_num}</>}
+          </div>
         </div>
       )}
-      loadingText="Searching finished goods…"
-      emptyText="No finished goods found in SAP"
-      notFoundText="No finished good matches that"
-      errorText="Could not load finished goods from SAP"
+      loadingText="Searching this customer's items…"
+      emptyText="This customer has no billed items in SAP"
+      notFoundText="Nothing this customer bought matches that"
+      errorText="Could not load the customer's items from SAP"
       onItemSelect={onSelect}
       onClear={() => onSelect(null)}
     />

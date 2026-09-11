@@ -175,15 +175,16 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
       </div>
 
       {/* A debit-note / letter-pad return booked before the SAP customer code
-          became mandatory. Items can still be filled in — they do not depend on
-          the customer — but the A/R Return posts against the code, so receiving
-          it would fail. Better said here than at the warehouse. */}
+          became mandatory. The picker reads this customer's invoice history, so
+          with no code it can only come back empty — which reads as "they bought
+          nothing" instead of "nobody said who they are". Say which it is, and
+          where to fix it. */}
       {!isInvoiceBasis && !detail.customer_code && (
         <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
             <p className="text-sm">
-              This return has no SAP customer code. Items can be filled in, but the return cannot
-              be posted to SAP until the customer is set on the previous step.
+              This return has no SAP customer code, so there is no purchase history to pick items
+              from. Set the customer on the previous step.
             </p>
             <Button
               size="sm"
