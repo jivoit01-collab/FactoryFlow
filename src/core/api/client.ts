@@ -104,32 +104,86 @@ async function performTokenRefresh(): Promise<string> {
 }
 
 /**
+ * Walk a DRF error payload and collect every message under a dotted path.
+ *
+ * DRF nests as deeply as the serializer does: a `many=True` child serializer
+ * answers with a list of per-row objects (`{"lines": [{"approved_qty": [msg]}]}`),
+ * which a flat one-level read skips entirely — leaving the user with nothing but
+ * axios' "Request failed with status code 400".
+ */
+function collectFieldErrors(
+  value: unknown,
+  path: string,
+  into: Record<string, string[]>,
+): void {
+  if (value == null) return;
+
+  if (typeof value === 'string') {
+    (into[path] ??= []).push(value);
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    // A list of plain strings is this field's own messages; a list of objects is
+    // one entry per row, so keep the index to say WHICH row failed.
+    if (value.every((item) => typeof item === 'string')) {
+      if (value.length > 0) (into[path] ??= []).push(...(value as string[]));
+      return;
+    }
+    value.forEach((item, index) => collectFieldErrors(item, `${path}[${index}]`, into));
+    return;
+  }
+
+  if (typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([key, child]) => {
+      collectFieldErrors(child, path ? `${path}.${key}` : key, into);
+    });
+  }
+}
+
+/**
  * Extract field-level errors from API response data.
- * Handles both nested {"errors": {...}} and flat {"field": ["error"]} formats.
+ * Handles nested {"errors": {...}}, flat {"field": ["error"]}, and the deeper
+ * shapes DRF produces for nested/`many=True` serializers.
  */
 function extractFieldErrors(
   responseData: Record<string, unknown> | undefined,
 ): Record<string, string[]> | undefined {
   if (!responseData) return undefined;
 
+  const fieldErrors: Record<string, string[]> = {};
+
   if (responseData.errors && typeof responseData.errors === 'object') {
-    return responseData.errors as Record<string, string[]>;
+    collectFieldErrors(responseData.errors, '', fieldErrors);
+    return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
   }
 
-  const fieldErrors: Record<string, string[]> = {};
   Object.entries(responseData).forEach(([key, value]) => {
     if (key !== 'detail' && key !== 'message' && key !== 'errors' && key !== 'success') {
-      if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
-        fieldErrors[key] = value as string[];
-      }
+      collectFieldErrors(value, key, fieldErrors);
     }
   });
   return Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined;
 }
 
+/** "lines[0].approved_qty" -> "lines #1 approved qty" — readable to a warehouse user. */
+function humanizeFieldPath(field: string): string {
+  return field
+    .split('.')
+    .filter((segment) => segment !== 'non_field_errors')
+    .map((segment) =>
+      segment.replaceAll('_', ' ').replace(/\[(\d+)\]/g, (_m, i) => ` #${Number(i) + 1}`),
+    )
+    .join(' ')
+    .trim();
+}
+
 function formatFieldErrors(errors: Record<string, string[]>): string {
   return Object.entries(errors)
-    .map(([field, messages]) => `${field.replaceAll('_', ' ')}: ${messages.join(', ')}`)
+    .map(([field, messages]) => {
+      const label = humanizeFieldPath(field);
+      return label ? `${label}: ${messages.join(', ')}` : messages.join(', ');
+    })
     .join(' | ');
 }
 

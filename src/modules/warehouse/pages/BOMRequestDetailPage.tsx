@@ -34,6 +34,18 @@ import type { BOMLineApproval, BOMRequestLine } from '../types';
 // Line Row Component
 // ============================================================================
 
+// Approved qty is stored with 3 decimals, but live SAP stock comes back with more
+// (e.g. 6197.0849). Floor rather than round so a prefilled "approve everything in
+// stock" can never land above the stock it was derived from.
+const QTY_DECIMALS = 3;
+
+function toStorableQty(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const factor = 10 ** QTY_DECIMALS;
+  // toFixed first: 1.005 * 1000 is 1004.999..., which would floor away a thousandth.
+  return Math.floor(Number((value * factor).toFixed(6))) / factor;
+}
+
 function LineRow({
   line,
   editable,
@@ -47,8 +59,8 @@ function LineRow({
 }) {
   const stock = line.available_stock ?? 0;
   const required = parseFloat(line.required_qty);
-  const maxApprovalQty = Math.max(stock, 0);
-  const defaultApprovalQty = Math.min(required, maxApprovalQty);
+  const maxApprovalQty = toStorableQty(Math.max(stock, 0));
+  const defaultApprovalQty = toStorableQty(Math.min(required, maxApprovalQty));
   const canApproveLine = maxApprovalQty > 0;
   const stockColor =
     stock >= required ? 'text-green-600' : stock > 0 ? 'text-amber-600' : 'text-red-600';
@@ -72,14 +84,16 @@ function LineRow({
               type="number"
               min={0}
               max={maxApprovalQty}
-              step="any"
+              step="0.001"
               className="w-24 h-8 text-sm"
               value={approval.approved_qty}
               disabled={!canApproveLine || approval.status === 'REJECTED'}
               onChange={(e) =>
                 onApprovalChange({
                   ...approval,
-                  approved_qty: Math.min(parseFloat(e.target.value) || 0, maxApprovalQty),
+                  approved_qty: toStorableQty(
+                    Math.min(parseFloat(e.target.value) || 0, maxApprovalQty),
+                  ),
                 })
               }
             />
@@ -95,7 +109,7 @@ function LineRow({
                 onClick={() => onApprovalChange({
                   ...approval,
                   approved_qty: approval.approved_qty > 0
-                    ? Math.min(approval.approved_qty, maxApprovalQty)
+                    ? toStorableQty(Math.min(approval.approved_qty, maxApprovalQty))
                     : defaultApprovalQty,
                   status: 'APPROVED',
                 })}
@@ -167,7 +181,7 @@ export default function BOMRequestDetailPage() {
     if (approvals[line.id]) return approvals[line.id];
     const stock = Math.max(line.available_stock ?? 0, 0);
     const required = parseFloat(line.required_qty);
-    const approvedQty = Math.min(required, stock);
+    const approvedQty = toStorableQty(Math.min(required, stock));
     return {
       line_id: line.id,
       approved_qty: approvedQty,
@@ -193,7 +207,12 @@ export default function BOMRequestDetailPage() {
     try {
       const result = await approveMut.mutateAsync({
         requestId: detail.id,
-        data: { lines: pendingApprovalLines },
+        data: {
+          lines: pendingApprovalLines.map((line) => ({
+            ...line,
+            approved_qty: toStorableQty(line.approved_qty),
+          })),
+        },
       });
       toast.success(
         result.status === 'PARTIALLY_APPROVED'
