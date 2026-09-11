@@ -681,6 +681,9 @@ const SCAN_ROW_CLASSES: Record<ScanTone, string> = {
 // the scan page and backend gate — not on a possibly-underived box count.
 function getItemScanTone(row?: ItemScanRow): ScanTone {
   if (!row || row.expectedQuantity <= 0) return row && row.scanCount > 0 ? 'partial' : 'unknown';
+  // Packaging material carries no box label: painting it red says goods are missing when
+  // nothing was ever expected to be scanned.
+  if (!row.requiresScan) return 'unknown';
   if (row.isComplete) return 'complete';
   return row.scanCount > 0 ? 'partial' : 'none';
 }

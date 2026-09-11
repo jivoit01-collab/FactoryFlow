@@ -106,6 +106,7 @@ import {
   type BillScanSummary,
   formatScannedBoxQuantities,
   groupItemsByItemCode,
+  hasUnscannedGoods,
   normalizeItemCode,
   summarizeItems,
 } from './salesDispatchScanSummary';
@@ -336,11 +337,10 @@ export default function SalesDispatchBarcodeScanPage() {
   // Each bill's lines are grouped by item code, so one row per product already means one
   // entry per (bill, item_code) — matching the backend's per-(bill, item_code) check
   // (has_unscanned_bill_lines): a line short of its invoiced quantity flags the load.
-  const hasUnscannedBillLine = gatingBillGroups.some((bill) =>
-    bill.summary.items.some(
-      (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
-    ),
-  );
+  // Scan-exempt rows are skipped: packaging material has no box label to scan, so counting
+  // it here is what kept a fully loaded truck reading "partial" and locked the step behind
+  // an approval nobody should have had to raise (bill 626090325, four carton lines).
+  const hasUnscannedBillLine = gatingBillGroups.some((bill) => hasUnscannedGoods(bill.summary));
   const hasTrustworthyScanQuantities = scans.some(
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
@@ -559,10 +559,12 @@ export default function SalesDispatchBarcodeScanPage() {
               group.documentId === target.documentId && group.dockingId === target.dockingId,
           )
         : undefined;
-      if (targetBill && targetBill.status === 'Complete') {
+      if (targetBill && (targetBill.status === 'Complete' || targetBill.status === 'Exempt')) {
         setError('');
         toast.warning(
-          `Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`,
+          targetBill.status === 'Exempt'
+            ? `Bill ${formatValue(targetBill.sapDocNum)} is packaging material only — it has no boxes to scan.`
+            : `Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`,
         );
         setManualBarcode('');
         return;
@@ -1367,8 +1369,10 @@ function BillScanCard({
 }) {
   const canScan = !isReadOnly && canEdit;
   // Every invoiced line on this bill is fully scanned — lock further scanning so no
-  // over-scan can be attempted (the enqueue guard blocks the hardware scanner too).
+  // over-scan can be attempted (the enqueue guard blocks the hardware scanner too). A
+  // packaging-material bill is closed for the opposite reason: it has no label to scan.
   const isComplete = bill.status === 'Complete';
+  const isExempt = bill.status === 'Exempt';
   const inputId = `box-barcode-${bill.key}`;
 
   return (
@@ -1387,11 +1391,15 @@ function BillScanCard({
       subtitle={`${bill.items.length} item${bill.items.length === 1 ? '' : 's'}`}
       badges={
         <>
-          <Badge variant="outline">
-            {bill.scannedBoxes}
-            {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
-            {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
-          </Badge>
+          {/* A bill with nothing to scan has no box count worth showing — "0 boxes" next
+              to an exempt badge reads as a shortfall. */}
+          {isExempt ? null : (
+            <Badge variant="outline">
+              {bill.scannedBoxes}
+              {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+              {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+            </Badge>
+          )}
           {/* The loose half of the bill's printed "Box + Loose" pair. Without it, a bill
               invoicing 116 boxes + 4 PCS loose read "116/116 boxes" the moment a part box
               filled a box slot — count complete, goods short. */}
@@ -1405,16 +1413,28 @@ function BillScanCard({
             status={
               bill.status === 'Complete'
                 ? 'complete'
-                : bill.status === 'Partial'
-                  ? 'partial'
-                  : 'open'
+                : bill.status === 'Exempt'
+                  ? 'exempt'
+                  : bill.status === 'Partial'
+                    ? 'partial'
+                    : 'open'
             }
-            label={bill.status}
+            label={isExempt ? 'Scan not required' : bill.status}
           />
         </>
       }
     >
       <BillItemsTable summary={bill.summary} />
+
+      {canScan && isExempt ? (
+        <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span>
+            This bill is packaging material only — no box labels are printed for it, so
+            there is nothing to scan.
+          </span>
+        </div>
+      ) : null}
 
       {canScan && isComplete ? (
         <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
@@ -1429,7 +1449,7 @@ function BillScanCard({
         </div>
       ) : null}
 
-      {canScan && !isComplete ? (
+      {canScan && !isComplete && !isExempt ? (
         <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
           <div className="space-y-3">
             {/* The camera viewport only takes space while the camera is running;
@@ -2111,7 +2131,9 @@ interface BillGroup {
   scannedLooseBoxes: number;
   scannedLoose: number;
   summary: BillScanSummary;
-  status: 'Open' | 'Partial' | 'Complete';
+  /** False for a bill with no scannable line at all — packaging material only. */
+  requiresScan: boolean;
+  status: 'Open' | 'Partial' | 'Complete' | 'Exempt';
 }
 
 // Group the load's scans under the bill (SAP document) each belongs to, so the
@@ -2195,15 +2217,28 @@ function makeBillGroup(args: {
   // bill of oil plus cartons is finished when its oil is loaded — waiting on the PM row is
   // what left bill 626090324 "Partial" with the whole load on the truck.
   const scanLines = summary.items.filter((item) => item.requiresScan);
-  const allComplete = scanLines.length > 0 && scanLines.every((item) => item.isComplete);
-  // Any label scanned makes the bill Partial — including a bill of unboxed goods, whose
-  // every scan lands under scannedLoose and would otherwise leave it reading "Open".
-  const status: BillGroup['status'] = allComplete
-    ? 'Complete'
-    : args.scans.length > 0
-      ? 'Partial'
-      : 'Open';
-  return { ...args, scannedBoxes, scannedLooseBoxes, scannedLoose, summary, status };
+  const requiresScan = scanLines.length > 0;
+  const allComplete = requiresScan && scanLines.every((item) => item.isComplete);
+  // A bill of packaging material only (bill 626090325: four carton lines) can never be
+  // scanned, so "Open" would be a state it can never leave. It is exempt, like a PM row.
+  // Otherwise: any label scanned makes the bill Partial — including a bill of unboxed
+  // goods, whose every scan lands under scannedLoose and would otherwise read "Open".
+  const status: BillGroup['status'] = !requiresScan
+    ? 'Exempt'
+    : allComplete
+      ? 'Complete'
+      : args.scans.length > 0
+        ? 'Partial'
+        : 'Open';
+  return {
+    ...args,
+    scannedBoxes,
+    scannedLooseBoxes,
+    scannedLoose,
+    summary,
+    requiresScan,
+    status,
+  };
 }
 
 function getDocumentItems(

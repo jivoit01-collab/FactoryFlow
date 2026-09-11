@@ -16,6 +16,8 @@ import {
   formatScannedBoxQuantities,
   getScanTargetPacking,
   groupItemsByItemCode,
+  hasScannableLines,
+  hasUnscannedGoods,
   mergeScanProgress,
   summarizeItems,
   summarizeScanProgress,
@@ -639,5 +641,34 @@ describe('packaging material is never part of the scan target', () => {
   it('still counts a real shortfall on the bill carrying the PM line', () => {
     const summary = summarizeItems([oil, cartons], scans(3, { item_code: 'FG0000042' }));
     expect(summary.items[0].isComplete).toBe(false); // 48 of 60 pieces
+    expect(hasUnscannedGoods(summary)).toBe(true);
+  });
+
+  it('owes nothing once the scannable lines are covered', () => {
+    const summary = summarizeItems(
+      [oil, cartons],
+      [
+        ...scans(3, { item_code: 'FG0000042', quantity: '16' }),
+        scan({ item_code: 'FG0000042', quantity: '12' }),
+      ],
+    );
+    // The load-wide lock reads this: counting the 8 carton pieces here is what held a
+    // fully loaded truck behind a partial-dispatch approval.
+    expect(hasUnscannedGoods(summary)).toBe(false);
+  });
+
+  it('treats a PM-only bill as having nothing to scan', () => {
+    // Bill 626090325 -- four carton lines, no scan possible. It can never leave "Open",
+    // so the bill is exempt rather than unfinished.
+    const pmOnly = summarizeItems(
+      [
+        cartons,
+        item({ id: 3, item_code: 'PM0000825', quantity: '5', sal_factor2: '1', line_num: 1 }),
+      ],
+      [],
+    );
+    expect(hasScannableLines(pmOnly)).toBe(false);
+    expect(hasUnscannedGoods(pmOnly)).toBe(false);
+    expect(hasScannableLines(summarizeItems([oil, cartons], []))).toBe(true);
   });
 });

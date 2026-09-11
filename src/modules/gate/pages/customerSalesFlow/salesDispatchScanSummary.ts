@@ -192,6 +192,24 @@ export function summarizeItems(
 }
 
 
+/**
+ * True when the bill still owes goods a scanner can account for.
+ *
+ * Reads the scannable rows only: packaging material has no box label, so leaving it out is
+ * the difference between "the truck is loaded" and a load-wide lock. Judged on invoiced vs
+ * scanned QUANTITY, the same signal as the backend's `has_unscanned_bill_lines`.
+ */
+export function hasUnscannedGoods(summary: BillScanSummary): boolean {
+  return summary.items.some(
+    (row) => row.requiresScan && row.expectedQuantity > 0 && row.scannedQuantity < row.expectedQuantity,
+  );
+}
+
+/** True when the bill carries at least one line that can be scanned at all. */
+export function hasScannableLines(summary: BillScanSummary): boolean {
+  return summary.items.some((row) => row.requiresScan);
+}
+
 export interface ScanProgressTotals {
   /** Physical labels scanned — loose-covering and unplanned boxes included. */
   scanCount: number;
