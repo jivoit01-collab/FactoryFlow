@@ -278,17 +278,6 @@ function describe(event: IssueEvent) {
           </>
         ),
       };
-    case 'AREA_CHANGED':
-      return {
-        icon: MoreHorizontal,
-        tone: 'text-muted-foreground',
-        text: (
-          <>
-            {actor} moved this to{' '}
-            <strong className="font-medium">{String(detail.current || 'no area')}</strong>
-          </>
-        ),
-      };
     case 'MARKED_DUPLICATE':
       return {
         icon: Copy,

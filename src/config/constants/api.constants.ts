@@ -1553,8 +1553,6 @@ export const API_ENDPOINTS = {
     UPLOADS: '/issues/uploads/',
     LABELS: '/issues/labels/',
     LABEL_DETAIL: (labelId: number) => `/issues/labels/${labelId}/`,
-    AREAS: '/issues/areas/',
-    AREA_DETAIL: (areaId: number) => `/issues/areas/${areaId}/`,
   },
 } as const;
 

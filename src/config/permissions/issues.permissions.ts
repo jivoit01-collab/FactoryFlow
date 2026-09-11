@@ -18,7 +18,7 @@ export const ISSUE_PERMISSIONS = {
   CREATE: 'issues.can_create_issues',
   /** Label, assign, close, reopen, pin and delete anyone's issue */
   TRIAGE: 'issues.can_triage_issues',
-  /** Maintain the label and area masters */
+  /** Maintain the labels, and the support number every user sees */
   MANAGE_SETTINGS: 'issues.can_manage_issue_settings',
 } as const;
 
@@ -38,7 +38,7 @@ export const ISSUE_CREATE_ACCESS: readonly string[] = [
   ISSUE_PERMISSIONS.TRIAGE,
 ];
 
-/** The label / area settings screen. */
+/** The issue tracker's settings screen. */
 export const ISSUE_SETTINGS_ACCESS: readonly string[] = [
   ISSUE_PERMISSIONS.MANAGE_SETTINGS,
 ];

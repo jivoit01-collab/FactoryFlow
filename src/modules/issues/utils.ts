@@ -55,8 +55,8 @@ export function exactTime(value?: string | null): string {
  * Black or white text for a label chip, whichever stays readable on its colour.
  *
  * Labels are user-coloured, so nothing can be assumed about contrast: a white
- * "wont fix" and a dark red "blocker" both have to be legible. Uses the
- * standard sRGB luminance so the switch happens where the eye expects.
+ * "wontfix" and a dark red "bug" both have to be legible. Uses the standard
+ * sRGB luminance so the switch happens where the eye expects.
  */
 export function labelTextColor(hex: string): string {
   const parsed = parseHex(hex);

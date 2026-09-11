@@ -10,8 +10,9 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { SUPPORT_CONTACT_QUERY_KEY } from '@/config/constants';
+
 import type {
-  IssueArea,
   IssueCreatePayload,
   IssueLabel,
   IssueListFilters,
@@ -29,7 +30,6 @@ export const ISSUE_KEYS = {
   detail: (number: number) => ['issues', 'detail', number] as const,
   timeline: (number: number) => ['issues', 'timeline', number] as const,
   labels: () => ['issues', 'labels'] as const,
-  areas: () => ['issues', 'areas'] as const,
 };
 
 /** Refresh everything one issue's change could have altered. */
@@ -46,7 +46,7 @@ export function useIssueMeta() {
   return useQuery({
     queryKey: ISSUE_KEYS.meta(),
     queryFn: () => issuesApi.getMeta(),
-    // The label / area / people lists barely move within a session.
+    // The label and people lists barely move within a session.
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -156,16 +156,26 @@ export function useIssueLabels() {
   return useQuery({ queryKey: ISSUE_KEYS.labels(), queryFn: () => issuesApi.getLabels() });
 }
 
-export function useIssueAreas() {
-  return useQuery({ queryKey: ISSUE_KEYS.areas(), queryFn: () => issuesApi.getAreas() });
-}
-
 function invalidateMasters(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.labels() });
-  queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.areas() });
   queryClient.invalidateQueries({ queryKey: ISSUE_KEYS.meta() });
   // A renamed or removed label shows on every row that carries it.
   queryClient.invalidateQueries({ queryKey: ['issues', 'list'] });
+}
+
+/**
+ * Change the support number, then refresh every screen showing it — the
+ * header menu and the login line read the same query key, so one
+ * invalidation moves all of them.
+ */
+export function useSaveSupportContact() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (phone: string) => issuesApi.saveSupportContact(phone),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SUPPORT_CONTACT_QUERY_KEY });
+    },
+  });
 }
 
 export function useSaveLabel() {
@@ -181,26 +191,6 @@ export function useDeleteLabel() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (labelId: number) => issuesApi.deleteLabel(labelId),
-    onSuccess: () => invalidateMasters(queryClient),
-  });
-}
-
-export function useSaveArea() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      ...payload
-    }: Partial<IssueArea> & { id?: number; owner_ids?: number[] }) =>
-      id ? issuesApi.updateArea(id, payload) : issuesApi.createArea(payload),
-    onSuccess: () => invalidateMasters(queryClient),
-  });
-}
-
-export function useDeleteArea() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (areaId: number) => issuesApi.deleteArea(areaId),
     onSuccess: () => invalidateMasters(queryClient),
   });
 }

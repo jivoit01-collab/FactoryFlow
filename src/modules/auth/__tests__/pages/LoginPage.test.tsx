@@ -11,8 +11,6 @@ vi.mock('react-router-dom', () => ({
 
 vi.mock('@/config/constants', () => ({
   APP_NAME: 'Jivo Wellness',
-  SUPPORT_CONTACT: { phone: '+91 9218179324', phoneE164: '+919218179324' },
-  SUPPORT_TEL_HREF: 'tel:+919218179324',
   VALIDATION_LIMITS: { email: { max: 255 }, password: { min: 8, max: 128 } },
   VALIDATION_MESSAGES: {
     required: (f: string) => `${f} is required`,
@@ -60,6 +58,13 @@ vi.mock('@/shared/components/ui', () => ({
   Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
   Input: (props: any) => <input {...props} />,
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
+}));
+
+// The number is configuration now, fetched through this hook.
+vi.mock('@/shared/hooks', () => ({
+  useSupportContact: () => ({ phone: '+91 9218179324', telHref: 'tel:+919218179324' }),
+  // LoginForm reaches for this one from the same barrel.
+  useScrollToError: vi.fn(),
 }));
 
 vi.mock('lucide-react', () => ({

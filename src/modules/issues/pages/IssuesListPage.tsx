@@ -133,7 +133,7 @@ export default function IssuesListPage() {
         <div className="flex flex-wrap gap-2">
           {canTriage && (
             <Button variant="outline" size="sm" asChild>
-              <Link to="/issues/labels">Labels &amp; areas</Link>
+              <Link to="/issues/labels">Settings</Link>
             </Button>
           )}
           {canCreate && (
@@ -182,7 +182,7 @@ export default function IssuesListPage() {
             Ignored: <code className="font-mono">{unknown.join(' ')}</code>. Try{' '}
             <code className="font-mono">is:</code>, <code className="font-mono">label:</code>,{' '}
             <code className="font-mono">assignee:</code>, <code className="font-mono">author:</code>,{' '}
-            <code className="font-mono">area:</code>, <code className="font-mono">priority:</code>,{' '}
+            <code className="font-mono">priority:</code>,{' '}
             <code className="font-mono">no:</code> or <code className="font-mono">sort:</code>.
           </span>
         </div>
@@ -384,7 +384,6 @@ function IssueRow({
               : `closed ${timeAgo(issue.closed_at)}`}
           </span>
           {issue.author && <> by {issue.author.name}</>}
-          {issue.area_name && <> · {issue.area_name}</>}
         </p>
       </div>
 

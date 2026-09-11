@@ -42,7 +42,6 @@ export function IssueFilterBar({
   const activeLabel = readQualifier(query, 'label');
   const activeAssignee = readQualifier(query, 'assignee');
   const activeAuthor = readQualifier(query, 'author');
-  const activeArea = readQualifier(query, 'area');
   const activePriority = readQualifier(query, 'priority');
 
   function set(key: string, value: string | null) {
@@ -60,12 +59,6 @@ export function IssueFilterBar({
           swatch: label.color,
         }))}
         onPick={(value) => set('label', value)}
-      />
-      <FilterMenu
-        title="Area"
-        active={activeArea}
-        options={(meta?.areas ?? []).map((area) => ({ value: area.code, label: area.name }))}
-        onPick={(value) => set('area', value)}
       />
       <FilterMenu
         title="Assignee"
