@@ -11,6 +11,8 @@ vi.mock('react-router-dom', () => ({
 
 vi.mock('@/config/constants', () => ({
   APP_NAME: 'Jivo Wellness',
+  SUPPORT_CONTACT: { phone: '+91 9218179324', phoneE164: '+919218179324' },
+  SUPPORT_TEL_HREF: 'tel:+919218179324',
   VALIDATION_LIMITS: { email: { max: 255 }, password: { min: 8, max: 128 } },
   VALIDATION_MESSAGES: {
     required: (f: string) => `${f} is required`,
@@ -63,6 +65,7 @@ vi.mock('@/shared/components/ui', () => ({
 vi.mock('lucide-react', () => ({
   Eye: () => <span data-testid="eye-icon" />,
   EyeOff: () => <span data-testid="eye-off-icon" />,
+  Headset: () => <span data-testid="headset-icon" />,
 }));
 
 import LoginPage from '../../pages/LoginPage';
@@ -75,6 +78,12 @@ describe('LoginPage', () => {
   it('renders the app name', () => {
     render(<LoginPage />);
     expect(screen.getByText('Jivo Wellness')).toBeInTheDocument();
+  });
+
+  it('shows the support number as a dialable link', () => {
+    render(<LoginPage />);
+    const link = screen.getByRole('link', { name: '+91 9218179324' });
+    expect(link).toHaveAttribute('href', 'tel:+919218179324');
   });
 
   it('renders the description text', () => {

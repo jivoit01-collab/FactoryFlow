@@ -1,7 +1,16 @@
-import { ChevronRight,LogOut, Settings, Shield, SlidersHorizontal, User } from 'lucide-react';
+import {
+  ChevronRight,
+  Headset,
+  LogOut,
+  Settings,
+  Shield,
+  SlidersHorizontal,
+  User,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { SUPPORT_CONTACT, SUPPORT_TEL_HREF } from '@/config/constants';
 import { useAuth } from '@/core/auth';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
@@ -101,6 +110,28 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           ))}
+        </div>
+
+        <Separator />
+
+        {/* Customer support. A phone taps to dial; a desktop at least shows
+            the number without the user having to ask anyone for it. */}
+        <div className="p-1">
+          <a
+            href={SUPPORT_TEL_HREF}
+            onClick={() => setOpen(false)}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors',
+              'hover:bg-accent hover:text-accent-foreground',
+              'text-left',
+            )}
+          >
+            <Headset className="h-4 w-4 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-muted-foreground">Customer support</p>
+              <p className="text-xs text-muted-foreground">{SUPPORT_CONTACT.phone}</p>
+            </div>
+          </a>
         </div>
 
         <Separator />

@@ -1,7 +1,8 @@
+import { Headset } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { APP_NAME } from '@/config/constants';
+import { APP_NAME, SUPPORT_CONTACT, SUPPORT_TEL_HREF } from '@/config/constants';
 import { ROUTES } from '@/config/routes.config';
 import type { ApiError } from '@/core/api/types';
 import { loginSuccess } from '@/core/auth';
@@ -74,6 +75,18 @@ export default function LoginPage() {
           </div>
         )}
         <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
+
+        {/* Someone who cannot sign in cannot reach the support menu inside
+            the app, so the number has to be on this screen too. */}
+        <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Headset className="h-4 w-4" />
+          <span>
+            Trouble signing in? Call support at{' '}
+            <a href={SUPPORT_TEL_HREF} className="font-medium text-foreground hover:underline">
+              {SUPPORT_CONTACT.phone}
+            </a>
+          </span>
+        </p>
       </CardContent>
     </Card>
   );

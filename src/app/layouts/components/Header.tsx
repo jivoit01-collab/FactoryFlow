@@ -20,6 +20,9 @@ import {
 } from '@/shared/components/ui';
 import { useTheme } from '@/shared/contexts';
 
+import { HEADER_TOUR_TARGETS } from './headerTour';
+import { SupportMenu } from './SupportMenu';
+
 interface HeaderProps {
   onMenuClick: () => void;
   sidebarWidth: number;
@@ -93,6 +96,7 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
             variant="ghost"
             size="icon"
             title="Report an issue with this page"
+            data-tour={HEADER_TOUR_TARGETS.reportIssue}
             onClick={() =>
               navigate(`/issues/new?from=${encodeURIComponent(location.pathname)}`)
             }
@@ -100,6 +104,9 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
             <Bug className="h-5 w-5" />
           </Button>
         )}
+
+        {/* Customer support number, reachable from every screen. */}
+        <SupportMenu />
 
         {/* Notification bell */}
         <NotificationBell />
