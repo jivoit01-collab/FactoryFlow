@@ -43,6 +43,7 @@ import {
   useSaveGRPODraft,
 } from '../api';
 import {
+  BatchNumbersInput,
   ExtraChargesSection,
   QCReportButton,
   QCStatusBadge,
@@ -50,7 +51,14 @@ import {
   WarehouseSelect,
 } from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS, PM_WAREHOUSE_CODE } from '../constants';
-import type { ExtraCharge, GRPOAttachment, PostGRPOResponse, PreviewPOReceipt } from '../types';
+import type {
+  ExtraCharge,
+  GRPOAttachment,
+  GRPOBatchInput,
+  PostGRPOResponse,
+  PreviewPOReceipt,
+} from '../types';
+import { validateBatches } from '../utils';
 
 // Per-item form state
 interface ItemFormState {
@@ -59,7 +67,22 @@ interface ItemFormState {
   tax_code?: string;
   gl_account?: string;
   variety?: string;
+  // Lots received on this line. Only ever filled for batch-managed items —
+  // SAP rejects the whole receipt (-4014) without them, and rejects a batch
+  // block on an item it does not manage by batch.
+  batches: GRPOBatchInput[];
 }
+
+// A batch-managed line starts with one row for the whole quantity, defaulted to
+// the supplier lot QC already recorded, so the usual case is a glance and a post.
+const seedBatches = (item: {
+  is_batch_managed?: boolean;
+  suggested_batch_number?: string;
+  received_qty: number;
+}): GRPOBatchInput[] =>
+  item.is_batch_managed
+    ? [{ batch_number: item.suggested_batch_number ?? '', quantity: item.received_qty }]
+    : [];
 
 // Merged form state (shared across all selected POs)
 interface MergedFormState {
@@ -316,6 +339,7 @@ export default function GRPOPreviewPage() {
             tax_code: item.tax_code || undefined,
             gl_account: item.gl_account || undefined,
             variety: item.variety || undefined,
+            batches: seedBatches(item),
           };
         });
       });
@@ -358,6 +382,7 @@ export default function GRPOPreviewPage() {
         tax_code: it.tax_code || undefined,
         gl_account: it.gl_account || undefined,
         variety: it.variety || undefined,
+        batches: it.batches ?? [],
       };
     });
 
@@ -432,12 +457,19 @@ export default function GRPOPreviewPage() {
     const qty = value === '' ? 0 : parseFloat(value);
     setMergedForm((prev) => {
       if (!prev) return prev;
-      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0 };
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
+      const acceptedQty = isNaN(qty) ? 0 : qty;
+      // With a single lot there is nothing to apportion, so it simply follows
+      // the accepted quantity. Splits are left alone — the operator typed them.
+      const batches =
+        currentItem.batches?.length === 1
+          ? [{ ...currentItem.batches[0], quantity: acceptedQty }]
+          : (currentItem.batches ?? []);
       return {
         ...prev,
         items: {
           ...prev.items,
-          [poItemReceiptId]: { ...currentItem, accepted_qty: isNaN(qty) ? 0 : qty },
+          [poItemReceiptId]: { ...currentItem, accepted_qty: acceptedQty, batches },
         },
       };
     });
@@ -458,7 +490,7 @@ export default function GRPOPreviewPage() {
   ) => {
     setMergedForm((prev) => {
       if (!prev) return prev;
-      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0 };
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
       return {
         ...prev,
         items: {
@@ -467,6 +499,25 @@ export default function GRPOPreviewPage() {
         },
       };
     });
+  };
+
+  const updateItemBatches = (poItemReceiptId: number, batches: GRPOBatchInput[]) => {
+    setMergedForm((prev) => {
+      if (!prev) return prev;
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
+      return {
+        ...prev,
+        items: { ...prev.items, [poItemReceiptId]: { ...currentItem, batches } },
+      };
+    });
+    const errorKey = `batch_${poItemReceiptId}`;
+    if (apiErrors[errorKey]) {
+      setApiErrors((prev) => {
+        const next = { ...prev };
+        delete next[errorKey];
+        return next;
+      });
+    }
   };
 
   const updateFormField = useCallback(
@@ -534,6 +585,9 @@ export default function GRPOPreviewPage() {
     const items = selectedPOs.flatMap((po) =>
       po.items.map((item) => {
         const itemForm = mergedForm.items[item.po_item_receipt_id];
+        const batches = (itemForm?.batches ?? []).filter((batch) =>
+          batch.batch_number.trim(),
+        );
         return {
           po_item_receipt_id: item.po_item_receipt_id,
           accepted_qty: itemForm?.accepted_qty ?? item.received_qty,
@@ -541,6 +595,7 @@ export default function GRPOPreviewPage() {
           tax_code: itemForm?.tax_code || undefined,
           gl_account: itemForm?.gl_account || undefined,
           variety: itemForm?.variety || undefined,
+          batches: batches.length > 0 ? batches : undefined,
         };
       }),
     );
@@ -579,6 +634,13 @@ export default function GRPOPreviewPage() {
         const accepted = itemForm?.accepted_qty ?? item.received_qty;
         if (accepted < 0) {
           errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative';
+        }
+        // Only at post time: a half-filled batch must not block saving a draft.
+        // A batch-managed line with nothing to receive posts no line at all.
+        if (!forPost || !item.is_batch_managed || accepted <= 0) return;
+        const batchError = validateBatches(itemForm?.batches ?? [], accepted);
+        if (batchError) {
+          errors[`batch_${item.po_item_receipt_id}`] = batchError;
         }
       });
     });
@@ -1105,10 +1167,12 @@ export default function GRPOPreviewPage() {
                   {po.items.map((item) => {
                     const itemForm = mergedForm.items[item.po_item_receipt_id] || {
                       accepted_qty: item.received_qty,
+                      batches: seedBatches(item),
                     };
                     const acceptedQty = itemForm.accepted_qty;
                     const rejectedQty = Math.max(0, item.received_qty - acceptedQty);
                     const errorKey = `item_${item.po_item_receipt_id}`;
+                    const batchErrorKey = `batch_${item.po_item_receipt_id}`;
 
                     return (
                       <div
@@ -1231,6 +1295,20 @@ export default function GRPOPreviewPage() {
                             />
                           </div>
                         </div>
+
+                        {/* SAP will not receive a batch-managed item without
+                            its lot — collected here rather than dying on -4014. */}
+                        {item.is_batch_managed && (
+                          <BatchNumbersInput
+                            batches={itemForm.batches ?? []}
+                            acceptedQty={acceptedQty}
+                            uom={item.uom}
+                            error={apiErrors[batchErrorKey]}
+                            onChange={(batches) =>
+                              updateItemBatches(item.po_item_receipt_id, batches)
+                            }
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -1624,15 +1702,24 @@ export default function GRPOPreviewPage() {
                     {po.items.map((item) => {
                       const itemForm = mergedForm.items[item.po_item_receipt_id];
                       const accepted = itemForm?.accepted_qty ?? item.received_qty;
+                      const batchNumbers = (itemForm?.batches ?? [])
+                        .map((batch) => batch.batch_number.trim())
+                        .filter(Boolean);
                       return (
-                        <div
-                          key={item.po_item_receipt_id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span className="text-muted-foreground">{item.item_name}</span>
-                          <span className="font-medium">
-                            {accepted} {item.uom}
-                          </span>
+                        <div key={item.po_item_receipt_id} className="text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">{item.item_name}</span>
+                            <span className="font-medium">
+                              {accepted} {item.uom}
+                            </span>
+                          </div>
+                          {/* The batch is written into SAP's stock ledger and
+                              cannot be corrected afterwards — show it here. */}
+                          {batchNumbers.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Batch: {batchNumbers.join(', ')}
+                            </p>
+                          )}
                         </div>
                       );
                     })}

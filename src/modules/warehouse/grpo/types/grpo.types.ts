@@ -211,6 +211,11 @@ export interface PreviewItem {
   gl_account: string | null;
   variety: string | null;
   sap_line_num: number | null;
+  // SAP refuses a receipt line for a batch-managed item unless the payload
+  // names the batch (-4014), so these lines must collect one before posting.
+  is_batch_managed: boolean;
+  // The supplier's lot as QC recorded it, offered as the default.
+  suggested_batch_number: string;
 }
 
 // Freight/other charge already agreed on the PO (SAP POR3 + OEXD), offered to
@@ -263,6 +268,16 @@ export interface PreviewPOReceipt {
   vendor_ref: string;
 }
 
+// One batch (lot) received on a GRPO line. A receipt CREATES the batch in SAP,
+// so the number is typed (confirmed off the QC inspection), not allocated.
+export interface GRPOBatchInput {
+  batch_number: string;
+  quantity: number;
+  manufacturing_date?: string;
+  expiry_date?: string;
+  notes?: string;
+}
+
 // Post request item
 export interface PostGRPOItemRequest {
   po_item_receipt_id: number;
@@ -271,6 +286,8 @@ export interface PostGRPOItemRequest {
   tax_code?: string;
   gl_account?: string;
   variety?: string;
+  // Required for batch-managed items; the batches must add up to accepted_qty.
+  batches?: GRPOBatchInput[];
 }
 
 // Post request (POST /post/)
@@ -324,6 +341,9 @@ export interface GRPOHistoryLine {
   quantity_posted: string;
   base_entry: number | null;
   base_line: number | null;
+  // Lots posted on this line, as sent to SAP. Empty for items SAP does not
+  // manage by batch.
+  batches?: { BatchNumber: string; Quantity: string; BaseLineNumber?: number }[];
   // QC traceability — used to reprint the QC inspection report from history
   arrival_slip_id: number | null;
   inspection_id: number | null;

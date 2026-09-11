@@ -1,4 +1,5 @@
 export { AttachmentsSection } from './AttachmentsSection';
+export { BatchNumbersInput } from './BatchNumbersInput';
 export { ExtraChargesSection } from './ExtraChargesSection';
 export {
   GRPO_NOTE_PRINT_STYLE,

@@ -10,6 +10,7 @@ export type {
   ExpenseCodeOption,
   ExtraCharge,
   GRPOAttachment,
+  GRPOBatchInput,
   GRPODashboardSummary,
   GRPOHistoryEntry,
   GRPOHistoryLine,

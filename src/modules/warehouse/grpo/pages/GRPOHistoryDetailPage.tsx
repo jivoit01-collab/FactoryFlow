@@ -192,6 +192,12 @@ export default function GRPOHistoryDetailPage() {
                         <p className="text-sm font-medium">
                           {line.item_code} - {line.item_name}
                         </p>
+                        {/* The lot this receipt created in SAP's stock ledger. */}
+                        {line.batches && line.batches.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Batch: {line.batches.map((batch) => batch.BatchNumber).join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className="text-sm font-semibold">{line.quantity_posted}</span>
