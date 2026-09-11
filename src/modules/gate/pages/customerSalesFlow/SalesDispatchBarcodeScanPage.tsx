@@ -1547,7 +1547,13 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
     itemCode: formatValue(item.itemCode),
     itemName: formatValue(item.itemName),
     itemNote: `Line ${item.lineNum + 1}`,
-    status: item.isComplete ? 'complete' : item.scanCount > 0 ? 'partial' : 'open',
+    status: !item.requiresScan
+      ? 'exempt'
+      : item.isComplete
+        ? 'complete'
+        : item.scanCount > 0
+          ? 'partial'
+          : 'open',
     cells: [
       {
         align: 'right',
@@ -1565,18 +1571,21 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
       },
       {
         align: 'right',
-        primary:
-          item.expectedBoxes > 0 ? (
-            formatNumber(item.expectedBoxes)
-          ) : item.isLoose ? (
-            // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
-            // bill prints "0 Box / N PCS": there is no box target to scan against,
-            // so the row is judged on quantity. Saying "Loose" beats a bare dash,
-            // which reads as missing data.
-            <span className="text-xs font-medium text-muted-foreground">Loose</span>
-          ) : (
-            '-'
-          ),
+        primary: !item.requiresScan ? (
+          // Packaging material: cartons, caps and labels carry no box barcode, so there
+          // is nothing here for the operator to count against.
+          <span className="text-xs font-medium text-muted-foreground">Not scanned</span>
+        ) : item.expectedBoxes > 0 ? (
+          formatNumber(item.expectedBoxes)
+        ) : item.isLoose ? (
+          // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
+          // bill prints "0 Box / N PCS": there is no box target to scan against,
+          // so the row is judged on quantity. Saying "Loose" beats a bare dash,
+          // which reads as missing data.
+          <span className="text-xs font-medium text-muted-foreground">Loose</span>
+        ) : (
+          '-'
+        ),
         // SAP prints this line as boxes PLUS a remainder (1,860 PCS of a 16-PCS
         // item = 116 boxes + 4 loose). The remainder arrives in a part box, so the
         // operator must know it is expected.
@@ -1586,32 +1595,40 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
             : undefined,
       },
       {
-        primary: `${item.fullBoxCount} box${item.fullBoxCount === 1 ? '' : 'es'}`,
-        lines: [
-          // A short box covers the line's loose remainder, not a box slot: called
-          // out so "boxes scanned" can never quietly stand in for missing pieces.
-          item.looseBoxCount > 0 ? (
-            <span className="font-medium text-amber-700">
-              + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
-              {item.looseBoxCount === 1 ? '' : 'es'})
-            </span>
-          ) : null,
-          item.scannedQuantity > 0
-            ? item.isBoxCounted
-              ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
-              : formatQuantity(item.scannedQuantity, item.uom)
-            : '-',
-          // What each box carried. Cartons of a loose item are whatever the packers
-          // packed (362 + 138 against a 500-pc line), so the count alone doesn't
-          // tell the operator whether the goods are covered.
-          item.scanCount > 1 ? (
-            <span className="tabular-nums text-muted-foreground/80">
-              {item.isBoxCounted ? 'holding ' : ''}
-              {formatScannedBoxQuantities(item.scannedBoxQuantities)}
-              {item.isBoxCounted ? ' pcs' : ''}
-            </span>
-          ) : null,
-        ],
+        primary: item.requiresScan ? (
+          `${item.fullBoxCount} box${item.fullBoxCount === 1 ? '' : 'es'}`
+        ) : (
+          // Nothing was scanned here and nothing was owed: saying "0 boxes" would read as
+          // a shortfall on a line that has no barcode to scan in the first place.
+          <span className="text-xs font-medium text-muted-foreground">Scan not required</span>
+        ),
+        lines: item.requiresScan
+          ? [
+              // A short box covers the line's loose remainder, not a box slot: called
+              // out so "boxes scanned" can never quietly stand in for missing pieces.
+              item.looseBoxCount > 0 ? (
+                <span className="font-medium text-amber-700">
+                  + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
+                  {item.looseBoxCount === 1 ? '' : 'es'})
+                </span>
+              ) : null,
+              item.scannedQuantity > 0
+                ? item.isBoxCounted
+                  ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
+                  : formatQuantity(item.scannedQuantity, item.uom)
+                : '-',
+              // What each box carried. Cartons of a loose item are whatever the packers
+              // packed (362 + 138 against a 500-pc line), so the count alone doesn't
+              // tell the operator whether the goods are covered.
+              item.scanCount > 1 ? (
+                <span className="tabular-nums text-muted-foreground/80">
+                  {item.isBoxCounted ? 'holding ' : ''}
+                  {formatScannedBoxQuantities(item.scannedBoxQuantities)}
+                  {item.isBoxCounted ? ' pcs' : ''}
+                </span>
+              ) : null,
+            ]
+          : undefined,
         progress: item.progressPercent !== null ? { percent: item.progressPercent } : null,
       },
     ],
@@ -2174,7 +2191,11 @@ function makeBillGroup(args: {
   // Anything not matched to a line (a box outside this bill's item list) has no pack size
   // to be short of, so it stays a box — the table flags it separately.
   const scannedBoxes = Math.max(0, args.scans.length - scannedLooseBoxes);
-  const allComplete = summary.items.length > 0 && summary.items.every((item) => item.isComplete);
+  // Judged on the scannable lines only: packaging material carries no box label, so a
+  // bill of oil plus cartons is finished when its oil is loaded — waiting on the PM row is
+  // what left bill 626090324 "Partial" with the whole load on the truck.
+  const scanLines = summary.items.filter((item) => item.requiresScan);
+  const allComplete = scanLines.length > 0 && scanLines.every((item) => item.isComplete);
   // Any label scanned makes the bill Partial — including a bill of unboxed goods, whose
   // every scan lands under scannedLoose and would otherwise leave it reading "Open".
   const status: BillGroup['status'] = allComplete

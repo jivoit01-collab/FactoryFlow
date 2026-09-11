@@ -26,6 +26,25 @@ export interface LinePacking {
   piecesPerBox: number | null;
 }
 
+/**
+ * True when an item code identifies packaging material (a `PM` prefix).
+ *
+ * PM lines — cartons, caps, labels — are not barcode-tracked: no box label is ever
+ * printed for them, so nothing can be scanned against the line. They ride out on the bill
+ * but are no part of the scan target, which is why bill 626090324 (60 PCS of a 16-PCS
+ * olive oil + 8 PCS of PM0000003) read "3/3 boxes · 12/20 PCS loose · Partial" with every
+ * scannable box already loaded. Mirrors the backend's `box_packing.is_pm_item_code` and
+ * the rule the BST screens already use (`bstBoxCounts.isPmItemCode`).
+ */
+export function isPmItemCode(itemCode?: string | null): boolean {
+  return !!itemCode && itemCode.trim().toUpperCase().startsWith('PM');
+}
+
+/** True when a line is goods the scanner is expected to cover. */
+export function requiresScanning(item?: SalesDispatchItem | null): boolean {
+  return !isPmItemCode(item?.item_code);
+}
+
 export function getPiecesPerBox(item?: SalesDispatchItem | null): number | null {
   const factor = parsePositiveNumber(item?.sal_factor2);
   if (factor > 1) return factor;
@@ -115,7 +134,7 @@ export function getExpectedDispatchBoxes(entry?: SalesDispatchGateOut | null) {
   );
   if (documentTotal > 0) return documentTotal;
 
-  return sumPositiveValues(getExpectedItems(entry).map((item) => getExpectedItemBoxes(item)));
+  return getExpectedItemsBoxes(getExpectedItems(entry));
 }
 
 /** Loose pieces on the whole load — the goods the box count deliberately excludes. */
@@ -130,7 +149,7 @@ export function getExpectedDispatchLoose(entry?: SalesDispatchGateOut | null) {
   );
   if (documentTotal > 0) return documentTotal;
 
-  return sumPositiveValues(getExpectedItems(entry).map((item) => getExpectedItemLoose(item)));
+  return getExpectedItemsLoose(getExpectedItems(entry));
 }
 
 export function getExpectedDocumentBoxes(document?: SalesDispatchGateOutDocument | null) {
@@ -139,7 +158,7 @@ export function getExpectedDocumentBoxes(document?: SalesDispatchGateOutDocument
   const documentTotal = parsePositiveNumber(document.total_boxes);
   if (documentTotal > 0) return documentTotal;
 
-  return sumPositiveValues((document.items || []).map((item) => getExpectedItemBoxes(item)));
+  return getExpectedItemsBoxes(document.items || []);
 }
 
 export function getExpectedDocumentLoose(document?: SalesDispatchGateOutDocument | null) {
@@ -148,7 +167,7 @@ export function getExpectedDocumentLoose(document?: SalesDispatchGateOutDocument
   const documentTotal = parsePositiveNumber(document.total_loose);
   if (documentTotal > 0) return documentTotal;
 
-  return sumPositiveValues((document.items || []).map((item) => getExpectedItemLoose(item)));
+  return getExpectedItemsLoose(document.items || []);
 }
 
 /**
@@ -175,13 +194,14 @@ export function isLooseItem(item?: SalesDispatchItem | null) {
 
 // Sum the expected boxes over an explicit list of lines. Used when the lines have been
 // pre-processed (e.g. grouped by item code) so the total is derived from the same rows the
-// UI shows, rather than re-reading the document's raw lines.
+// UI shows, rather than re-reading the document's raw lines. Packaging material is left out
+// of both totals — it carries no box label, so it is nothing the scanner can cover.
 export function getExpectedItemsBoxes(items: SalesDispatchItem[]) {
-  return sumPositiveValues(items.map((item) => getExpectedItemBoxes(item)));
+  return sumPositiveValues(items.filter(requiresScanning).map((item) => getExpectedItemBoxes(item)));
 }
 
 export function getExpectedItemsLoose(items: SalesDispatchItem[]) {
-  return sumPositiveValues(items.map((item) => getExpectedItemLoose(item)));
+  return sumPositiveValues(items.filter(requiresScanning).map((item) => getExpectedItemLoose(item)));
 }
 
 export function parsePositiveNumber(value?: string | number | null) {
