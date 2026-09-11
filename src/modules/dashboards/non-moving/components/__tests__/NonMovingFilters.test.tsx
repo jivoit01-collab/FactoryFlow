@@ -1,13 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_NON_MOVING_AGE } from '../../constants';
 import type { NonMovingFilters as NonMovingFiltersType } from '../../types';
 import { NonMovingFilters } from '../NonMovingFilters';
 
 const OIL_WAREHOUSES = ['BH-BS', 'BH-FG', 'BH-NM', 'BH-PC', 'BH-PM', 'GP-NM'];
 
 const baseFilters: NonMovingFiltersType = {
-  age: 0,
+  age: DEFAULT_NON_MOVING_AGE,
   item_group: 105,
   status: ['slow-moving', 'non-moving'],
 };
@@ -91,5 +92,20 @@ describe('NonMovingFilters warehouse preset', () => {
     );
 
     expect(onFiltersChange.mock.calls.length).toBe(callsAfterPreset);
+  });
+});
+
+describe('the idle-age default', () => {
+  it('opens on 45 days, pressed', () => {
+    renderFilters([]);
+
+    expect(DEFAULT_NON_MOVING_AGE).toBe(45);
+    expect(screen.getByRole('button', { name: '45 Days' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    // "All Stock" is the way back to the full status split, not the default.
+    expect(screen.getByRole('button', { name: 'All Stock' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
   });
 });

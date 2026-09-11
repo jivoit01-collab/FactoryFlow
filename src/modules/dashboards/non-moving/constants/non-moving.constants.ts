@@ -21,13 +21,15 @@ export const NON_MOVING_STATUS_FILTER_OPTIONS = [
 ] as const;
 
 /**
- * The report is fetched with no minimum idle age so the status split on the
- * meta cards is real; the dashboard then hides the recently moved rows, which
- * are one card click away. HANA computes the movement age either way — `age`
- * only trims the rows it hands back — so asking for all of them costs the same
- * query, just a longer answer.
+ * The page opens on stock untouched for more than 45 days — the threshold the
+ * factory treats as non-moving, and what this board is opened to look at.
+ *
+ * It is a hard cut, not a highlight: `age` trims the rows SAP hands back, so at
+ * this default the Recently Moved and Slow Moving meta cards read zero, because
+ * no row under 45 days is in the answer to count. Both are one click on
+ * `All Stock` away, which fetches every age and restores the full split.
  */
-export const DEFAULT_NON_MOVING_AGE = 0;
+export const DEFAULT_NON_MOVING_AGE = 45;
 export const DEFAULT_NON_MOVING_STATUS_FILTER: MovementStatus[] = ['slow-moving', 'non-moving'];
 export const NON_MOVING_ALL_STATUSES: MovementStatus[] = ['recent', 'slow-moving', 'non-moving'];
 
