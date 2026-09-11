@@ -615,8 +615,6 @@ function StartRunPage() {
         <MaterialReadinessPanel
           rows={readinessRows}
           summary={planCheck?.materials.summary}
-          warehouses={planCheck?.materials.warehouses}
-          warehouseScope={planCheck?.materials.warehouse_scope}
           unusable={planCheck?.materials.unusable}
           resourceLines={planCheck?.materials.resource_lines}
           isChecking={checking}

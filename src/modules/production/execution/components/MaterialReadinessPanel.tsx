@@ -36,10 +36,6 @@ export interface ReadinessRow {
 interface MaterialReadinessPanelProps {
   rows: ReadinessRow[];
   summary?: PlanCheckMaterialSummary;
-  warehouses?: string[];
-  /** Per-material-type warehouse scope, so the header can be specific rather
-   *  than listing every warehouse and leaving the operator to guess. */
-  warehouseScope?: Partial<Record<'RAW' | 'PACKAGING' | 'OTHER', string[]>>;
   unusable?: { item_code: string; item_name: string; reason: string }[];
   resourceLines?: { item_code: string; item_name: string }[];
   /** True while the plan-check request is in flight — the numbers are stale. */
@@ -128,8 +124,6 @@ function StatusPill({ status }: { status: MaterialReadinessStatus }) {
 export function MaterialReadinessPanel({
   rows,
   summary,
-  warehouses,
-  warehouseScope,
   unusable = [],
   resourceLines = [],
   isChecking,
@@ -140,18 +134,6 @@ export function MaterialReadinessPanel({
   renderRequiredInput,
 }: MaterialReadinessPanelProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  // RM and PM are read from different warehouses, so "checked against" has to
-  // be stated per kind of material — pooling all five reads as though oil could
-  // be drawn from a carton store.
-  const scopeParts = (
-    [
-      { key: 'RAW', label: 'RM' },
-      { key: 'PACKAGING', label: 'PM' },
-    ] as const
-  )
-    .map(({ key, label }) => ({ label, codes: warehouseScope?.[key] ?? [] }))
-    .filter((part) => part.codes.length > 0);
 
   const toggle = (code: string) =>
     setExpanded((prev) => {
@@ -167,15 +149,7 @@ export function MaterialReadinessPanel({
   const okCount = summary?.ok_lines ?? 0;
 
   return (
-    <Card
-      className={
-        shortCount > 0
-          ? 'border-red-300 dark:border-red-900'
-          : contestedCount > 0
-            ? 'border-amber-300 dark:border-amber-900'
-            : undefined
-      }
-    >
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <PackageSearch className="h-4 w-4 text-muted-foreground" />
@@ -196,17 +170,6 @@ export function MaterialReadinessPanel({
             </Badge>
           )}
         </CardTitle>
-        {(scopeParts.length > 0 || (warehouses?.length ?? 0) > 0) && (
-          <p className="text-xs text-muted-foreground">
-            RM from the Raw Material register the warehouse keeps
-            {scopeParts.length > 0
-              ? ` · PM in ${(warehouseScope?.PACKAGING ?? []).join(', ')}`
-              : warehouses?.length
-                ? ` · PM in ${warehouses.join(', ')}`
-                : ''}
-            . Scrap and rejected stock (BH-WST) is never counted.
-          </p>
-        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -235,76 +198,29 @@ export function MaterialReadinessPanel({
           </div>
         )}
 
+        {/* How the components fell out, as one line rather than four tiles, and
+            as a legend for the colours in the Status column beside it. States
+            that did not occur are left out entirely — a row of zeroes is four
+            things to read and nothing to know. There is no banner under it:
+            that a component is short is said once, in the box above the buttons
+            that asks for a reason, and again per row in the table below. */}
         {summary && summary.total_lines > 0 && !stockError && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {[
-              { label: 'Ready', value: okCount, tone: 'text-emerald-700 dark:text-emerald-400' },
-              {
-                label: 'Committed elsewhere',
-                value: tightCount,
-                tone: 'text-sky-700 dark:text-sky-400',
-              },
-              {
-                label: 'Claimed by another plan',
-                value: contestedCount,
-                tone: 'text-amber-700 dark:text-amber-400',
-              },
-              { label: 'Short', value: shortCount, tone: 'text-red-700 dark:text-red-400' },
-            ].map((tile) => (
-              <div key={tile.label} className="rounded-md border bg-background px-3 py-2">
-                <p className={`text-xl font-semibold ${tile.tone}`}>{tile.value}</p>
-                <p className="text-xs text-muted-foreground">{tile.label}</p>
-              </div>
-            ))}
+              { label: 'ready', value: okCount, dot: 'bg-emerald-500' },
+              { label: 'committed elsewhere', value: tightCount, dot: 'bg-sky-500' },
+              { label: 'claimed by another plan', value: contestedCount, dot: 'bg-amber-500' },
+              { label: 'short', value: shortCount, dot: 'bg-red-500' },
+            ]
+              .filter((count) => count.value > 0)
+              .map((count) => (
+                <span key={count.label} className="flex items-center gap-1.5">
+                  <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${count.dot}`} />
+                  <span className="font-semibold text-foreground">{count.value}</span>
+                  {count.label}
+                </span>
+              ))}
           </div>
-        )}
-
-        {shortCount > 0 && (
-          <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm dark:border-red-900 dark:bg-red-950/40">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-red-600" />
-            <div>
-              <p className="font-medium">
-                {shortCount} component{shortCount > 1 ? 's are' : ' is'} short in the warehouse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                The line cannot run the full quantity on what is in stock today. Either cut the
-                quantity, get the material in, or give a reason below and plan it anyway.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {shortCount === 0 && contestedCount > 0 && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/40">
-            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
-            <div>
-              <p className="font-medium">
-                Enough stock for this plan alone, but another plan wants the same material
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Both plans cannot draw their full quantity. Expand the row to see which runs are
-                competing.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {summary && summary.total_lines > 0 && !stockError && (
-          <p className="text-xs text-muted-foreground">
-            {summary.approval_lines === 0 ? (
-              <>
-                Nothing goes to the warehouse — there is no raw material on this bill and all
-                packing material is already at BH-PC.
-              </>
-            ) : (
-              <>
-                {summary.approval_lines} line{summary.approval_lines > 1 ? 's' : ''} will be sent
-                to the warehouse, as two separate requests: raw material always goes in full and
-                is settled against the register, packing material only for what has to be fetched
-                from a godown other than BH-PC.
-              </>
-            )}
-          </p>
         )}
 
         {rows.length > 0 && (
@@ -397,7 +313,9 @@ export function MaterialReadinessPanel({
                                   not on the RM register
                                 </span>
                               ) : (
-                                <>register{check.register_as_of ? ` · ${check.register_as_of}` : ''}</>
+                                <>
+                                  register{check.register_as_of ? ` · ${check.register_as_of}` : ''}
+                                </>
                               )}
                             </p>
                           )}
@@ -506,7 +424,8 @@ export function MaterialReadinessPanel({
                                       <span className="font-mono">
                                         {check.searched_warehouses.join(', ')}
                                       </span>{' '}
-                                      ({MATERIAL_TYPE_LABEL[check.material_type] ??
+                                      (
+                                      {MATERIAL_TYPE_LABEL[check.material_type] ??
                                         check.material_type}
                                       ).
                                     </p>

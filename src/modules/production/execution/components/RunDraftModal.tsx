@@ -343,7 +343,6 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
 
   const conflicts = planCheck?.conflicts ?? [];
   const shortLines = planCheck?.materials.summary?.short_lines ?? 0;
-  const contestedLines = planCheck?.materials.summary?.contested_lines ?? 0;
   const needsRemark = !!planCheck?.blocking.has_shortage || !!planCheck?.blocking.has_contention;
   const hasConflicts = !!planCheck?.blocking.has_conflicts;
   const remarkGiven = remark.trim().length > 0;
@@ -355,19 +354,12 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
   const [ackSignature, setAckSignature] = useState<string | null>(null);
   const acknowledged = ackSignature === conflictSignature;
 
-  // What the check found, as a count first and the sentences behind a toggle.
+  // The clash sentences, behind a toggle. Nothing here counts the shortages or
+  // the contested lines: the panel this box sits under has just counted both,
+  // and a box that repeats them is read as a second, worse finding. A clash is
+  // the one thing the panel knows nothing about — it is about the line and the
+  // hour, not the material — so it is the one thing said here.
   const [findingsOpen, setFindingsOpen] = useState(false);
-  const findingsSummary = [
-    shortLines > 0 ? `${shortLines} component${shortLines > 1 ? 's' : ''} short` : null,
-    contestedLines > 0 ? `${contestedLines} claimed by another plan` : null,
-    conflicts.length > 0
-      ? `${conflicts.length} clash${conflicts.length > 1 ? 'es' : ''} with other plans`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  // Only the clash sentences need hiding — which components are short is
-  // already spelled out, per line, in the BOM table underneath.
   const findingDetails = conflicts.map((c) => c.message);
 
   // ------------------------------------------------------ what is revealed
@@ -383,7 +375,11 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
   // follows straight on from the line.
   const showProductStep =
     showConfigStep && (lineConfigs.length === 0 || !!config || draftKeepsItsProduct);
-  const showBom = showProductStep && !!itemCode && qtyValid;
+  // The second column: the readiness panel and, under it, the box that asks
+  // for a reason. It outlives the panel at both ends — a clash on the line can
+  // be found before a configuration has been picked, and then the findings box
+  // is the only thing in the column.
+  const showSidePane = showProductStep || needsRemark || hasConflicts;
 
   // -------------------------------------------------------------- saving
   const saving = createRun.isPending || updateRun.isPending;
@@ -392,24 +388,42 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
     incomplete || (needsRemark && !remarkGiven) || (hasConflicts && !acknowledged) || saving;
 
   // Why the Save button is off. Ordered as the form asks its questions, so the
-  // message always points at the first thing still outstanding.
-  const blockedReason = saving
-    ? ''
+  // message always points at the first thing still outstanding — and carries
+  // the id of the field that answers it. On a wide screen the questions and the
+  // BOM scroll separately, so "above" is no longer a place: a supervisor deep
+  // in a forty-line BOM needs the sentence to take them to the box, not to
+  // describe where it once was.
+  const blocker: { message: string; focus?: string } | null = saving
+    ? null
     : !lineId
-      ? 'Pick a line.'
+      ? { message: 'Pick a line.' }
       : !showProductStep
-        ? 'Pick a configuration.'
+        ? { message: 'Pick a configuration.' }
         : !itemCode
-          ? 'Choose the finished good.'
+          ? { message: 'Choose the finished good.', focus: 'run-draft-sku' }
           : !qtyValid
-            ? 'Enter a quantity.'
+            ? { message: 'Enter a quantity.', focus: 'run-draft-qty' }
             : !date
-              ? 'Give the run a date.'
+              ? { message: 'Give the run a date.', focus: 'run-draft-date' }
               : needsRemark && !remarkGiven
-                ? 'Give a reason for planning against the shortfall above.'
+                ? {
+                    message: 'Give a reason for planning against the shortfall',
+                    focus: 'run-draft-remark',
+                  }
                 : hasConflicts && !acknowledged
-                  ? 'Confirm you have reviewed the clashes above.'
-                  : '';
+                  ? {
+                      message: 'Confirm you have reviewed the clashes',
+                      focus: 'run-draft-ack',
+                    }
+                  : null;
+
+  /** Scroll the field that is holding Save back into its pane, and focus it. */
+  function jumpTo(id: string) {
+    const field = document.getElementById(id);
+    if (!field) return;
+    field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    field.focus({ preventScroll: true });
+  }
 
   function pickLine(id: number) {
     if (lineId === id) return;
@@ -488,12 +502,28 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
           </div>
         </DialogHeader>
 
-        <DialogBody className="space-y-6">
-          {/* The questions, each one revealing the next. Capped in width even
-              though the dialog is not: a search box and three small fields
-              stretched across a 1600px row are harder to read, not easier —
-              the width is there for the BOM table below. */}
-          <div className="max-w-4xl space-y-6">
+        {/* Two columns once there is a product to check: the questions on the
+            left, what the warehouse says about them on the right. The check is
+            the reason this dialog is wide, and a full-width form with the panel
+            pushed below the fold gets the worst of it — half the dialog blank,
+            and the consequence of the quantity you are typing out of sight. */}
+        <DialogBody
+          className={cn(
+            'space-y-6',
+            showSidePane &&
+              'xl:grid xl:grid-cols-[minmax(0,5fr)_minmax(0,8fr)] xl:gap-6 xl:space-y-0 xl:overflow-hidden',
+          )}
+        >
+          {/* The questions, each one revealing the next. Capped in width while
+              they have the dialog to themselves: a search box and three small
+              fields stretched across a 1600px row are harder to read, not
+              easier. */}
+          <div
+            className={cn(
+              'space-y-6',
+              showSidePane ? 'xl:min-h-0 xl:overflow-y-auto xl:pr-2' : 'max-w-4xl',
+            )}
+          >
             {/* 1 — Line */}
             <Step index={1} title="Line" accent="sky" done={!!lineId}>
               <div className="flex flex-wrap gap-2">
@@ -514,13 +544,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
 
             {/* 2 — Configuration */}
             {showConfigStep && (
-              <Step
-                index={2}
-                title="Configuration"
-                accent="violet"
-                hint={config ? configSubtitle(config) : undefined}
-                done={!!config}
-              >
+              <Step index={2} title="Configuration" accent="violet" done={!!config}>
                 {lineConfigs.length > 0 ? (
                   <div className="space-y-2">
                     <div className="grid gap-2 sm:grid-cols-2">
@@ -665,120 +689,160 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
             )}
           </div>
 
-          {/* Findings — only when the check has something to say */}
-          {(needsRemark || hasConflicts) && (
-            <div className="space-y-2.5 rounded-md border border-amber-300 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/20">
-              {/* A count and a toggle, not a wall of text. Nine sentences about
-                  runs left open since April are true but not read; what has to
-                  be read is that something is short, and what has to be done is
-                  the reason box below. The detail stays one click away. */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
-                <span className="font-medium">{findingsSummary}</span>
-                {findingDetails.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setFindingsOpen((open) => !open)}
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-800 underline-offset-2 hover:underline dark:text-amber-300"
-                  >
-                    {findingsOpen ? 'Hide' : `Show ${findingDetails.length}`} detail
-                    {findingDetails.length > 1 ? 's' : ''}
-                    <ChevronDown
-                      className={cn(
-                        'h-3.5 w-3.5 transition-transform',
-                        findingsOpen && 'rotate-180',
-                      )}
+          {/* The BOM beside the answers that produce it, and what the check
+              made of it underneath. The panel is rendered from the moment the
+              product question is asked rather than waiting for a quantity, so
+              the column does not appear and disappear as the form fills — with
+              no SKU yet it says so itself. */}
+          {showSidePane && (
+            <div className="space-y-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
+              {showProductStep && (
+                <MaterialReadinessPanel
+                  rows={readinessRows}
+                  summary={planCheck?.materials.summary}
+                  unusable={planCheck?.materials.unusable}
+                  resourceLines={planCheck?.materials.resource_lines}
+                  isChecking={checking}
+                  stockError={
+                    planCheck && !planCheck.materials.available
+                      ? planCheck.materials.error
+                      : checkError
+                        ? 'The readiness check could not be reached.'
+                        : undefined
+                  }
+                  bomLoading={loadingBOM}
+                  hasSku={!!itemCode}
+                  requiredQtyEntered={qtyValid}
+                  renderRequiredInput={(index) => (
+                    <Input
+                      className="h-8 w-28"
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={materials[index]?.opening_qty ?? ''}
+                      onChange={(e) =>
+                        setQtyOverrides((current) => ({
+                          ...current,
+                          [materials[index].material_code]: e.target.value,
+                        }))
+                      }
                     />
-                  </button>
-                )}
-              </div>
-
-              {findingsOpen && (
-                <ul className="space-y-1 border-l-2 border-amber-300 pl-3 text-xs text-muted-foreground dark:border-amber-900">
-                  {findingDetails.map((message) => (
-                    <li key={message}>{message}</li>
-                  ))}
-                </ul>
+                  )}
+                />
               )}
 
-              {needsRemark && (
-                <div>
-                  <Label htmlFor="run-draft-remark">
-                    Reason <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id="run-draft-remark"
-                    rows={2}
-                    className="min-h-0"
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    placeholder="e.g. GRN for 40,000 caps arriving 05:00, confirmed with stores"
-                  />
-                </div>
-              )}
+              {/* Findings — only when the check has something to say, and under
+                  the panel that found them: the shortfall is read off that
+                  table, so the box asking you to justify it belongs at the end
+                  of it rather than in the other column. It carries its warning
+                  on a thin edge rather than a full amber wash — what is asked
+                  for here is a sentence of typing, not alarm. */}
+              {(needsRemark || hasConflicts) && (
+                <div className="space-y-3 rounded-md border border-l-[3px] border-l-amber-400 bg-muted/20 px-3 py-2.5 dark:border-l-amber-500">
+                  {/* Two asks, each with only what the panel above does not
+                      already say. The shortfall has been counted, coloured and
+                      spelled out per line up there; what is left is to type why
+                      it is being planned anyway. */}
+                  {needsRemark && (
+                    <div>
+                      <Label htmlFor="run-draft-remark">
+                        Reason <span className="text-destructive">*</span>
+                      </Label>
+                      <p className="mb-1 text-xs text-muted-foreground">
+                        {shortLines > 0
+                          ? 'Cut the quantity, get the material in, or say here why the line should run anyway.'
+                          : 'Say here why this plan should take material another plan is already claiming.'}
+                      </p>
+                      <Textarea
+                        id="run-draft-remark"
+                        rows={2}
+                        className="min-h-0"
+                        value={remark}
+                        onChange={(e) => setRemark(e.target.value)}
+                        placeholder="e.g. GRN for 40,000 caps arriving 05:00, confirmed with stores"
+                      />
+                    </div>
+                  )}
 
-              {hasConflicts && (
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="run-draft-ack"
-                    checked={acknowledged}
-                    onCheckedChange={(checked) =>
-                      setAckSignature(checked === true ? conflictSignature : null)
-                    }
-                  />
-                  <Label htmlFor="run-draft-ack" className="cursor-pointer text-sm font-normal">
-                    I have reviewed the clash{conflicts.length > 1 ? 'es' : ''} and want to go
-                    ahead.
-                  </Label>
+                  {/* A clash is about the line and the hour, not the material,
+                      so it appears nowhere else and is counted here. */}
+                  {hasConflicts && (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                        <span className="font-medium">
+                          {conflicts.length} clash{conflicts.length > 1 ? 'es' : ''} with other
+                          plans
+                        </span>
+                        {findingDetails.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setFindingsOpen((open) => !open)}
+                            className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-800 underline-offset-2 hover:underline dark:text-amber-300"
+                          >
+                            {findingsOpen ? 'Hide' : 'Show'} details
+                            <ChevronDown
+                              className={cn(
+                                'h-3.5 w-3.5 transition-transform',
+                                findingsOpen && 'rotate-180',
+                              )}
+                            />
+                          </button>
+                        )}
+                      </div>
+
+                      {findingsOpen && (
+                        <ul className="space-y-1 border-l-2 border-border pl-3 text-xs text-muted-foreground">
+                          {findingDetails.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="run-draft-ack"
+                          checked={acknowledged}
+                          onCheckedChange={(checked) =>
+                            setAckSignature(checked === true ? conflictSignature : null)
+                          }
+                        />
+                        <Label
+                          htmlFor="run-draft-ack"
+                          className="cursor-pointer text-sm font-normal"
+                        >
+                          I have reviewed the clash{conflicts.length > 1 ? 'es' : ''} and want to go
+                          ahead.
+                        </Label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-
-          {/* The BOM in full, below the answers that produced it, once there is
-              a quantity to scale it by */}
-          {showBom && (
-            <MaterialReadinessPanel
-              rows={readinessRows}
-              summary={planCheck?.materials.summary}
-              warehouses={planCheck?.materials.warehouses}
-              warehouseScope={planCheck?.materials.warehouse_scope}
-              unusable={planCheck?.materials.unusable}
-              resourceLines={planCheck?.materials.resource_lines}
-              isChecking={checking}
-              stockError={
-                planCheck && !planCheck.materials.available
-                  ? planCheck.materials.error
-                  : checkError
-                    ? 'The readiness check could not be reached.'
-                    : undefined
-              }
-              bomLoading={loadingBOM}
-              hasSku={!!itemCode}
-              requiredQtyEntered={qtyValid}
-              renderRequiredInput={(index) => (
-                <Input
-                  className="h-8 w-28"
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={materials[index]?.opening_qty ?? ''}
-                  onChange={(e) =>
-                    setQtyOverrides((current) => ({
-                      ...current,
-                      [materials[index].material_code]: e.target.value,
-                    }))
-                  }
-                />
-              )}
-            />
-          )}
         </DialogBody>
 
-        <DialogFooter className="items-center gap-2 pt-2 sm:justify-between">
+        {/* Ends, not `justify-between`: the message on the left is not always
+            there, and a footer that spreads its children would walk the buttons
+            across to where it used to be the moment it goes away — Save moving
+            out from under the cursor as you tick the box that enables it. */}
+        <DialogFooter className="items-center gap-2 pt-2">
           {/* A disabled Save with no explanation is the worst of both worlds —
-              say which answer is still missing, in the order they are asked. */}
-          <p className="text-sm text-amber-700 dark:text-amber-400 sm:mr-auto">{blockedReason}</p>
+              say which answer is still missing, in the order they are asked,
+              and make it the way there. */}
+          {blocker &&
+            (blocker.focus ? (
+              <button
+                type="button"
+                onClick={() => jumpTo(blocker.focus!)}
+                className="text-left text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:mr-auto"
+              >
+                {blocker.message} →
+              </button>
+            ) : (
+              <p className="text-sm text-muted-foreground sm:mr-auto">{blocker.message}</p>
+            ))}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
