@@ -8,7 +8,7 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button } from '@/shared/components/ui';
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
-import { findDefaultMaterialGroup } from '../../utils/itemGroupDefaults';
+import { findDefaultMaterialGroup, isRmOrPmGroup } from '../../utils/itemGroupDefaults';
 import { useItemGroups, useNonMovingReport } from '../api';
 import { NonMovingFilters, NonMovingMetaCards, NonMovingTable } from '../components';
 import {
@@ -25,6 +25,7 @@ import { type MovementStatus } from '../utils/movementStatus';
 import { buildNonMovingWorkbook } from '../utils/nonMovingExport';
 import { groupNonMovingRowsBySku } from '../utils/nonMovingGrouping';
 import {
+  defaultWarehouseSelection,
   filterNonMovingItems,
   filterRowsByStatus,
   pageOf,
@@ -60,10 +61,21 @@ export default function NonMovingDashboardPage() {
 
   const materialTypesResolved = Boolean(itemGroupsQuery.data) || itemGroupsQuery.isError;
 
-  const defaultItemGroupCode = useMemo(() => {
-    const groups = itemGroupsQuery.data?.data ?? [];
-    return findDefaultMaterialGroup(groups, (group) => group.item_group_name)?.item_group_code ?? 0;
-  }, [itemGroupsQuery.data]);
+  /**
+   * The board covers raw and packing material only, so the Material Type
+   * dropdown offers those two and nothing else. Finished goods, consumables,
+   * fixed assets and trading items are all real SAP groups this page is not
+   * about, and offering them invited a reading of the numbers it cannot give.
+   */
+  const materialTypes = useMemo(
+    () => (itemGroupsQuery.data?.data ?? []).filter((g) => isRmOrPmGroup(g.item_group_name)),
+    [itemGroupsQuery.data],
+  );
+
+  const defaultItemGroupCode = useMemo(
+    () => findDefaultMaterialGroup(materialTypes, (group) => group.item_group_name)?.item_group_code ?? 0,
+    [materialTypes],
+  );
 
   const effectiveFilters = useMemo<NonMovingFiltersType>(
     () => ({
@@ -74,10 +86,25 @@ export default function NonMovingDashboardPage() {
   );
 
   const reportQuery = useNonMovingReport(effectiveFilters, materialTypesResolved);
-  const items = useMemo(() => reportQuery.data?.data ?? [], [reportQuery.data]);
+
+  // "All" on this page means all RM and PM — the report answers for every group
+  // when no group code is sent, so the rest is dropped here rather than shown.
+  const items = useMemo(
+    () => (reportQuery.data?.data ?? []).filter((item) => isRmOrPmGroup(item.item_group_name)),
+    [reportQuery.data],
+  );
 
   const warehouses = useMemo(() => warehouseOptions(items), [items]);
   const subGroups = useMemo(() => subGroupOptions(items), [items]);
+
+  /**
+   * The stores the page opens on. Derived from the report rather than taken
+   * from the constant blind, so a company holding none of the four (Mart) opens
+   * on everything instead of on an empty table. Its identity only changes when
+   * the report's warehouse list does, which is what makes the filter bar able
+   * to apply it once and then leave the user's own selection alone.
+   */
+  const warehousePreset = useMemo(() => defaultWarehouseSelection(warehouses), [warehouses]);
 
   // Everything but the status filter — the meta cards need the full split.
   const scopedItems = useMemo(
@@ -163,7 +190,7 @@ export default function NonMovingDashboardPage() {
       selectedWarehouses: effectiveFilters.warehouse,
     });
     const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `non_moving_${stamp}.xlsx`);
+    XLSX.writeFile(workbook, `non_moving_rm_pm_${stamp}.xlsx`);
     toast.success('Export downloaded');
   }, [effectiveFilters.warehouse, scopedItems, sortedRows]);
 
@@ -172,8 +199,8 @@ export default function NonMovingDashboardPage() {
   return (
     <div className="space-y-6 p-6">
       <DashboardHeader
-        title="Non-Moving"
-        description="Inventory by movement age — spot the stock that has stopped moving, and what it is worth"
+        title="Non-Moving RM & PM"
+        description="Raw and packing material by movement age — spot the stock that has stopped moving, and what it is worth"
       >
         <Button
           type="button"
@@ -190,9 +217,10 @@ export default function NonMovingDashboardPage() {
         onFiltersChange={handleFiltersChange}
         isFetching={itemGroupsQuery.isFetching || reportQuery.isFetching}
         defaultValues={effectiveFilters}
-        itemGroups={itemGroupsQuery.data?.data ?? []}
+        itemGroups={materialTypes}
         isLoadingGroups={itemGroupsQuery.isLoading}
         warehouses={warehouses}
+        warehousePreset={warehousePreset}
         subGroups={subGroups}
         externalResetSignal={filterResetSignal}
       />

@@ -26,6 +26,16 @@ export type NonMovingSortCol =
 // Non-Moving Item
 // ============================================================================
 
+/**
+ * Which rule aged the row.
+ *
+ * `production` is packing material: only an issue to a production order, or a
+ * receipt from one, resets its clock. Being carried from one godown to another
+ * does not. `any` is every other item group — days since that warehouse last
+ * saw a movement of any kind.
+ */
+export type MovementBasis = 'production' | 'any';
+
 export interface NonMovingItem {
   branch: string;
   item_code: string;
@@ -39,6 +49,11 @@ export interface NonMovingItem {
   last_movement_date: string | null;
   days_since_last_movement: number;
   consumption_ratio: number;
+  /** Older backends omit it; absent reads as `any`. */
+  movement_basis?: MovementBasis;
+  /** The warehouse's own last movement, transfers included. */
+  last_warehouse_movement_date?: string | null;
+  days_since_warehouse_movement?: number;
 }
 
 /**

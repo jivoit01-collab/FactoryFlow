@@ -179,7 +179,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
       element: <NonMovingDashboardPage />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
-      breadcrumb: { label: 'Non-Moving' },
+      breadcrumb: { label: 'Non-Moving RM & PM' },
     },
     {
       path: '/dashboards/sales-planning-requirement',
@@ -346,7 +346,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         },
         {
           path: '/dashboards/non-moving',
-          title: 'Non-Moving',
+          title: 'Non-Moving RM & PM',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
         },
         {

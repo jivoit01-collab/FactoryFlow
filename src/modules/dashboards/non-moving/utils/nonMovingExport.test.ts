@@ -110,3 +110,28 @@ describe('buildNonMovingWorkbook', () => {
     expect(workbook.SheetNames).toEqual([SUMMARY_SHEET_NAME]);
   });
 });
+
+describe('the packing-material aging basis', () => {
+  it('says which clock produced Days Idle, on both kinds of sheet', () => {
+    const packaging = makeItem({
+      item_code: 'PM1',
+      warehouse: 'BH-BS',
+      movement_basis: 'production',
+      last_warehouse_movement_date: '2026-09-06 00:00:00',
+      days_since_warehouse_movement: 5,
+    });
+    const other = makeItem({ item_code: 'RM1', warehouse: 'BH-PM' });
+
+    const workbook = buildNonMovingWorkbook({
+      rows: groupNonMovingRowsBySku([packaging, other]),
+      items: [packaging, other],
+    });
+
+    const summary = sheetRows(workbook, SUMMARY_SHEET_NAME);
+    expect(summary.find((row) => row['Item Code'] === 'PM1')?.['Aged On']).toBe('Production');
+    expect(summary.find((row) => row['Item Code'] === 'RM1')?.['Aged On']).toBe('Any movement');
+
+    // The godown move the age ignores is still in the workbook.
+    expect(sheetRows(workbook, 'BH-BS')[0]?.['Last Godown Movement']).toBe('2026-09-06 00:00:00');
+  });
+});

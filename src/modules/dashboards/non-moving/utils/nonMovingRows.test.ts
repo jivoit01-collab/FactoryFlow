@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { NonMovingItem } from '../types';
 import { groupNonMovingRowsBySku } from './nonMovingGrouping';
 import {
+  defaultWarehouseSelection,
   filterNonMovingItems,
   filterRowsByStatus,
   pageOf,
@@ -139,5 +140,26 @@ describe('paging', () => {
     expect(pageOf(rows, 2, 5)).toEqual([5, 6, 7, 8, 9]);
     expect(totalPagesOf(12, 5)).toBe(3);
     expect(totalPagesOf(0, 5)).toBe(1);
+  });
+});
+
+describe('defaultWarehouseSelection', () => {
+  it('opens on the packaging and non-moving stores, in constant order', () => {
+    const available = ['BH-BS', 'BH-FG', 'BH-NM', 'BH-PC', 'BH-PM', 'GP-NM', 'GP-PM'];
+
+    expect(defaultWarehouseSelection(available)).toEqual(['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']);
+  });
+
+  it('keeps only the ones this company actually has', () => {
+    expect(defaultWarehouseSelection(['BH-PM', 'BH-PC'])).toEqual(['BH-PM']);
+  });
+
+  it('selects nothing when the company holds none of them', () => {
+    // JIVO_MART: presetting blind would open the dashboard on an empty table.
+    expect(defaultWarehouseSelection(['WH-01', 'WH-02'])).toEqual([]);
+  });
+
+  it('selects nothing before the report has answered', () => {
+    expect(defaultWarehouseSelection([])).toEqual([]);
   });
 });

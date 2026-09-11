@@ -20,8 +20,12 @@ import {
 } from '../constants';
 import type { ItemGroup, NonMovingFilters as NonMovingFiltersType } from '../types';
 import type { MovementStatus } from '../utils/movementStatus';
+import { defaultWarehouseSelection } from '../utils/nonMovingRows';
 
 const TEXT_DEBOUNCE_MS = 500;
+
+/** Stable identity, so an omitted preset cannot re-fire the effect below. */
+const EMPTY_PRESET: string[] = [];
 
 function normalizeSearch(value?: string): string | undefined {
   const search = value?.trim();
@@ -35,6 +39,8 @@ interface NonMovingFiltersProps {
   itemGroups: ItemGroup[];
   isLoadingGroups?: boolean;
   warehouses?: string[];
+  /** Warehouses to select once, when the report first says which exist. */
+  warehousePreset?: string[];
   subGroups?: string[];
   externalResetSignal?: number;
 }
@@ -93,6 +99,7 @@ export function NonMovingFilters({
   itemGroups,
   isLoadingGroups,
   warehouses = [],
+  warehousePreset = EMPTY_PRESET,
   subGroups = [],
   externalResetSignal = 0,
 }: NonMovingFiltersProps) {
@@ -116,6 +123,7 @@ export function NonMovingFilters({
     setValue('item_group', String(defaultValues.item_group));
   }, [defaultValues.item_group, setValue]);
 
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -138,13 +146,29 @@ export function NonMovingFilters({
     };
   }, [watch, onFiltersChange]);
 
+  /**
+   * Select the stores the page opens on, once the report has said which of
+   * them this company has. Keyed on the preset's identity, which only changes
+   * with the report's warehouse list — so this is a starting point the user can
+   * clear, not a selection that grows back under them on the next keystroke.
+   *
+   * Declared AFTER the `watch` subscription above on purpose: effects run in
+   * declaration order, so a preset applied before the subscription exists would
+   * fill the chips in without ever reaching the table.
+   */
+  useEffect(() => {
+    if (warehousePreset.length === 0) return;
+    setValue('warehouse', [...warehousePreset]);
+  }, [warehousePreset, setValue]);
+
   function handleReset() {
     const defaultGroup =
       findDefaultMaterialGroup(itemGroups, (group) => group.item_group_name)?.item_group_code ?? 0;
     const resetValues: FiltersForm = {
       age: String(DEFAULT_NON_MOVING_AGE),
       item_group: String(defaultGroup),
-      warehouse: [],
+      // Reset goes back to how the page opens, not to an empty filter bar.
+      warehouse: defaultWarehouseSelection(warehouses),
       status: [...DEFAULT_NON_MOVING_STATUS_FILTER],
       sub_group: [],
       search: '',
@@ -190,7 +214,7 @@ export function NonMovingFilters({
             <SelectOption value="0">Loading…</SelectOption>
           ) : (
             <>
-              <SelectOption value="0">All</SelectOption>
+              <SelectOption value="0">All (RM &amp; PM)</SelectOption>
               {itemGroups.map((g) => (
                 <SelectOption key={g.item_group_code} value={String(g.item_group_code)}>
                   {g.item_group_name}

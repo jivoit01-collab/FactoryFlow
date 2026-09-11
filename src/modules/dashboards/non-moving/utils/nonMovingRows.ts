@@ -1,3 +1,4 @@
+import { DEFAULT_NON_MOVING_WAREHOUSES } from '../constants';
 import type { NonMovingFilters, NonMovingItem, NonMovingRow, NonMovingSortCol } from '../types';
 import { getMovementStatus, type MovementStatus } from './movementStatus';
 
@@ -107,6 +108,16 @@ export function statusTotals(rows: NonMovingRow[]): NonMovingStatusTotals {
 /** The warehouse codes present in the report, for the warehouse filter. */
 export function warehouseOptions(items: NonMovingItem[]): string[] {
   return [...new Set(items.map((item) => item.warehouse).filter(Boolean))].sort();
+}
+
+/**
+ * The warehouses the page opens preselected, narrowed to the ones the report
+ * came back with. A company holding none of them gets an empty list, which the
+ * caller reads as "no warehouse filter" rather than "show nothing".
+ */
+export function defaultWarehouseSelection(available: string[]): string[] {
+  const present = new Set(available);
+  return DEFAULT_NON_MOVING_WAREHOUSES.filter((code) => present.has(code));
 }
 
 export function subGroupOptions(items: NonMovingItem[]): string[] {

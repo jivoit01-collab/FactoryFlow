@@ -5,6 +5,11 @@ import { NonMovingStatusBadge } from '@/modules/dashboards/non-moving/components
 import type { NonMovingItem, WarehouseGroup } from '@/modules/dashboards/non-moving/types';
 import { getMovementStatus } from '@/modules/dashboards/non-moving/utils/movementStatus';
 import {
+  isProductionAged,
+  PRODUCTION_AGE_HINT,
+  wasRestacked,
+} from '@/modules/dashboards/non-moving/utils/movementStatus';
+import {
   Badge,
   Button,
   Dialog,
@@ -27,6 +32,14 @@ export interface NonMovingDetailDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/**
+ * Packing material is aged on production, so "last moved" would be the wrong
+ * word for the date next to it.
+ */
+function verb(item: NonMovingItem): string {
+  return isProductionAged(item) ? 'last consumed' : 'last moved';
+}
+
 function ItemRow({ item }: { item: NonMovingItem }) {
   const days = item.days_since_last_movement;
 
@@ -47,12 +60,17 @@ function ItemRow({ item }: { item: NonMovingItem }) {
           >
             {formatCount(days)} days
           </span>
-          <span className="truncate text-muted-foreground">
+          <span className="truncate text-muted-foreground" title={verb(item)}>
             {item.last_movement_date
-              ? `· last moved ${formatDay(item.last_movement_date)}`
+              ? `· ${verb(item)} ${formatDay(item.last_movement_date)}`
               : '· never moved'}
           </span>
         </p>
+        {wasRestacked(item) && (
+          <p className="mt-0.5 text-xs italic text-muted-foreground/80" title={PRODUCTION_AGE_HINT}>
+            moved between godowns {formatCount(item.days_since_warehouse_movement ?? 0)} days ago
+          </p>
+        )}
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-semibold tabular-nums">{formatCompactCurrency(item.value)}</p>

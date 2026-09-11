@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 
 import type { NonMovingItem, NonMovingRow } from '../types';
-import { getMovementStatus, type MovementStatus } from './movementStatus';
+import { getMovementStatus, isProductionAged, type MovementStatus } from './movementStatus';
 
 const STATUS_LABELS: Record<MovementStatus, string> = {
   recent: 'Recently Moved',
@@ -22,6 +22,15 @@ function statusOf(days: number): string {
   return STATUS_LABELS[getMovementStatus(days)];
 }
 
+/**
+ * What the Days Idle column counted from. Packing material is aged on
+ * production alone, so a sheet read away from the dashboard still says which
+ * clock produced the number next to it.
+ */
+function agedOn(item: { movement_basis?: string }): string {
+  return isProductionAged(item) ? 'Production' : 'Any movement';
+}
+
 function summaryRow(row: NonMovingRow): ExportRow {
   return {
     'Item Code': row.item_code,
@@ -33,6 +42,8 @@ function summaryRow(row: NonMovingRow): ExportRow {
     Value: row.value,
     'Days Idle': row.days_since_last_movement,
     'Last Movement': row.last_movement_date ?? '',
+    'Aged On': agedOn(row),
+    'Last Godown Movement': row.last_warehouse_movement_date ?? '',
     'Consumption %': row.consumption_ratio,
     Status: statusOf(row.days_since_last_movement),
   };
@@ -47,6 +58,8 @@ function warehouseRow(item: NonMovingItem): ExportRow {
     Value: item.value,
     'Days Idle': item.days_since_last_movement,
     'Last Movement': item.last_movement_date ?? '',
+    'Aged On': agedOn(item),
+    'Last Godown Movement': item.last_warehouse_movement_date ?? '',
     'Consumption %': item.consumption_ratio,
     Status: statusOf(item.days_since_last_movement),
   };

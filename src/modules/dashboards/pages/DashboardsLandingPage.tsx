@@ -58,8 +58,8 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
   },
   {
-    title: 'Non-Moving',
-    description: 'Identify dead stock and slow-moving inventory by age and item group',
+    title: 'Non-Moving RM & PM',
+    description: 'Identify dead raw and packing material by movement age, warehouse and value',
     icon: <PackageX className="h-5 w-5" />,
     route: '/dashboards/non-moving',
     color: 'text-amber-600',

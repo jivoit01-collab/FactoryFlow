@@ -44,6 +44,9 @@ export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] 
       existing.item.days_since_last_movement = item.days_since_last_movement;
       existing.item.last_movement_date = item.last_movement_date;
       existing.item.consumption_ratio = item.consumption_ratio;
+      existing.item.movement_basis = item.movement_basis;
+      existing.item.last_warehouse_movement_date = item.last_warehouse_movement_date;
+      existing.item.days_since_warehouse_movement = item.days_since_warehouse_movement;
     }
   }
 
@@ -102,6 +105,9 @@ export function buildNonMovingWarehouseGroups(
       existing.days_since_last_movement = item.days_since_last_movement;
       existing.last_movement_date = item.last_movement_date;
       existing.consumption_ratio = item.consumption_ratio;
+      existing.movement_basis = item.movement_basis;
+      existing.last_warehouse_movement_date = item.last_warehouse_movement_date;
+      existing.days_since_warehouse_movement = item.days_since_warehouse_movement;
     }
   }
 

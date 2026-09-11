@@ -44,6 +44,18 @@ export const NON_MOVING_PAGE_SIZE = 50;
  */
 export const FACTORY_WAREHOUSE_PREFIXES = ['BH', 'GP'] as const;
 
+/**
+ * The stores the dashboard opens on: the two packaging stores that feed the
+ * floor and the two non-moving godowns stock is parked in. Everything else --
+ * the consumption store, wastage, finished-goods and the depots -- is one
+ * click away in the filter, but is not what this page is opened to look at.
+ *
+ * Applied against the warehouses the report actually returned, never blind:
+ * JIVO_MART has none of these four codes, and presetting them there would open
+ * the dashboard on an empty table that reads as a broken page.
+ */
+export const DEFAULT_NON_MOVING_WAREHOUSES = ['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM'] as const;
+
 // ============================================================================
 // Query Config
 // ============================================================================

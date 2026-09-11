@@ -5,7 +5,11 @@ import { Card, CardContent } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import type { NonMovingItem, NonMovingRow, NonMovingSortCol } from '../types';
-import { rowAgeClasses } from '../utils/movementStatus';
+import {
+  PRODUCTION_AGE_HINT,
+  rowAgeClasses,
+  wasRestacked,
+} from '../utils/movementStatus';
 import { NonMovingItemDetailPanel } from './NonMovingItemDetailPanel';
 import { NonMovingStatusBadge } from './NonMovingStatusBadge';
 
@@ -143,7 +147,10 @@ export function NonMovingTable({
                 {sortableHeader('quantity', 'Quantity', 'right')}
                 {sortableHeader('value', 'Value', 'right')}
                 {sortableHeader('days_since_last_movement', 'Days Idle', 'right')}
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <th
+                  className="px-4 py-3 text-left font-medium text-muted-foreground"
+                  title={PRODUCTION_AGE_HINT}
+                >
                   Last Movement
                 </th>
                 {sortableHeader('consumption_ratio', 'Consumption', 'right')}
@@ -235,6 +242,15 @@ export function NonMovingTable({
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {row.last_movement_date ?? '-'}
+                        {wasRestacked(row) && (
+                          <span
+                            className="block text-[11px] italic text-muted-foreground/80"
+                            title={PRODUCTION_AGE_HINT}
+                          >
+                            godown move {row.days_since_warehouse_movement?.toLocaleString('en-IN')}
+                            d ago
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {row.consumption_ratio.toFixed(2)}%

@@ -3,7 +3,11 @@ import { Info } from 'lucide-react';
 import { cn } from '@/shared/utils';
 
 import type { NonMovingItem } from '../types';
-import { rowAgeClasses } from '../utils/movementStatus';
+import {
+  PRODUCTION_AGE_HINT,
+  rowAgeClasses,
+  wasRestacked,
+} from '../utils/movementStatus';
 import { NonMovingStatusBadge } from './NonMovingStatusBadge';
 
 interface NonMovingItemDetailPanelProps {
@@ -71,7 +75,14 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
               <td className="py-2 pr-3 text-right tabular-nums">
                 {item.days_since_last_movement.toLocaleString('en-IN')}
               </td>
-              <td className="py-2 pr-3 text-muted-foreground">{item.last_movement_date ?? '-'}</td>
+              <td className="py-2 pr-3 text-muted-foreground">
+                {item.last_movement_date ?? '-'}
+                {wasRestacked(item) && (
+                  <span className="block text-[11px] italic" title={PRODUCTION_AGE_HINT}>
+                    godown move {item.days_since_warehouse_movement?.toLocaleString('en-IN')}d ago
+                  </span>
+                )}
+              </td>
               <td className="py-2 pr-3 text-right tabular-nums">
                 {item.consumption_ratio.toFixed(2)}%
               </td>
