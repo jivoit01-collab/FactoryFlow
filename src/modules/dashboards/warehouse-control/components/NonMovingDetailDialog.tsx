@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 
 import { NonMovingStatusBadge } from '@/modules/dashboards/non-moving/components';
 import type { NonMovingItem, WarehouseGroup } from '@/modules/dashboards/non-moving/types';
-import { getMovementStatus } from '@/modules/dashboards/non-moving/utils/movementStatus';
 import {
+  getMovementStatus,
   isProductionAged,
   PRODUCTION_AGE_HINT,
   wasRestacked,

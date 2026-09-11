@@ -49,6 +49,28 @@ describe('NonMovingFilters warehouse preset', () => {
     expect(warehouseCalls(onFiltersChange).every((value) => value === undefined)).toBe(true);
   });
 
+  it('survives a refetch: a new array of the same stores is not re-applied', async () => {
+    // The parent rebuilds the preset from the report rows, so every click on
+    // the day buttons hands over a fresh array saying the same thing. Treating
+    // that as a new preset would undo the user's own warehouse choice.
+    const { onFiltersChange, view } = renderFilters(['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']);
+
+    await waitFor(() => expect(onFiltersChange).toHaveBeenCalled());
+    const callsAfterPreset = onFiltersChange.mock.calls.length;
+
+    view.rerender(
+      <NonMovingFilters
+        onFiltersChange={onFiltersChange}
+        defaultValues={baseFilters}
+        itemGroups={[{ item_group_code: 105, item_group_name: 'PACKAGING MATERIAL' }]}
+        warehouses={[...OIL_WAREHOUSES]}
+        warehousePreset={['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']}
+      />,
+    );
+
+    expect(onFiltersChange.mock.calls.length).toBe(callsAfterPreset);
+  });
+
   it('applies the preset once, not on every later render', async () => {
     const preset = ['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM'];
     const { onFiltersChange, view } = renderFilters(preset);

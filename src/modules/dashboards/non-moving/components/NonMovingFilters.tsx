@@ -123,7 +123,6 @@ export function NonMovingFilters({
     setValue('item_group', String(defaultValues.item_group));
   }, [defaultValues.item_group, setValue]);
 
-
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -148,18 +147,25 @@ export function NonMovingFilters({
 
   /**
    * Select the stores the page opens on, once the report has said which of
-   * them this company has. Keyed on the preset's identity, which only changes
-   * with the report's warehouse list — so this is a starting point the user can
-   * clear, not a selection that grows back under them on the next keystroke.
+   * them this company has.
+   *
+   * Keyed on the preset's CONTENT, not on the array it arrives in. The parent
+   * derives it from the report rows, so every refetch — every click on the day
+   * buttons or on Material Type — hands over a fresh array saying the same
+   * thing. Depending on that identity re-applied the four stores each time and
+   * undid the user's own warehouse choice mid-session. This is the opening
+   * selection, applied once per distinct set, and clearable.
    *
    * Declared AFTER the `watch` subscription above on purpose: effects run in
    * declaration order, so a preset applied before the subscription exists would
    * fill the chips in without ever reaching the table.
    */
+  const warehousePresetKey = warehousePreset.join('|');
+
   useEffect(() => {
-    if (warehousePreset.length === 0) return;
-    setValue('warehouse', [...warehousePreset]);
-  }, [warehousePreset, setValue]);
+    if (!warehousePresetKey) return;
+    setValue('warehouse', warehousePresetKey.split('|'));
+  }, [warehousePresetKey, setValue]);
 
   function handleReset() {
     const defaultGroup =
