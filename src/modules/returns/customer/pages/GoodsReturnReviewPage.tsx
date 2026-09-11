@@ -7,7 +7,7 @@ import { StepHeader } from '@/modules/gate/components';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGoodsReturn, useSubmitGoodsReturn } from '../api';
-import { BASIS_LABELS, formatDate, invoiceNumbersByRef } from '../utils';
+import { BASIS_LABELS, formatDate, invoiceNumbersByRef, REF_NO_LABELS } from '../utils';
 
 export default function GoodsReturnReviewPage() {
   const navigate = useNavigate();
@@ -53,6 +53,9 @@ export default function GoodsReturnReviewPage() {
 
           <dl className="grid gap-3 sm:grid-cols-2 text-sm">
             <Field label="Customer" value={detail.customer_name || detail.customer_code || '-'} />
+            {detail.basis !== 'INVOICE' && (
+              <Field label={REF_NO_LABELS[detail.basis]} value={detail.customer_ref_no || '-'} />
+            )}
             <Field label="Vehicle" value={detail.vehicle_no || '-'} />
             <Field label="Driver" value={detail.driver_name || '-'} />
             <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />

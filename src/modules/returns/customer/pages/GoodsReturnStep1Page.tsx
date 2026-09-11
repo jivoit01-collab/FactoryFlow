@@ -26,7 +26,8 @@ import {
   useCreateGoodsReturn,
   useInvoiceSearch,
 } from '../api';
-import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS } from '../utils';
+import { ReturnCustomerPicker } from '../components/ReturnCustomerPicker';
+import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS, REF_NO_LABELS } from '../utils';
 
 interface AddedInvoice {
   doc_num: string;
@@ -58,6 +59,7 @@ export default function GoodsReturnStep1Page() {
   const [addedInvoices, setAddedInvoices] = useState<AddedInvoice[]>([]);
   const [customerCode, setCustomerCode] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerRefNo, setCustomerRefNo] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [remarks, setRemarks] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(false);
@@ -73,6 +75,7 @@ export default function GoodsReturnStep1Page() {
     setInvoiceNumber('');
     setCustomerCode('');
     setCustomerName('');
+    setCustomerRefNo('');
   }
 
   async function handleSearchInvoice() {
@@ -130,8 +133,10 @@ export default function GoodsReturnStep1Page() {
       setError('Add at least one invoice.');
       return;
     }
-    if (!isInvoiceBasis && !customerName.trim()) {
-      setError('Enter the customer name.');
+    if (!isInvoiceBasis && !customerCode.trim()) {
+      // The code, not the name: step 2 offers only what this customer was
+      // invoiced, and the A/R Return posts against the code.
+      setError('Pick the returning customer from SAP.');
       return;
     }
     if (files.length === 0) {
@@ -148,6 +153,7 @@ export default function GoodsReturnStep1Page() {
         invoice_numbers: isInvoiceBasis ? addedInvoices.map((inv) => inv.doc_num) : undefined,
         customer_code: isInvoiceBasis ? undefined : customerCode.trim(),
         customer_name: isInvoiceBasis ? undefined : customerName.trim(),
+        customer_ref_no: isInvoiceBasis ? undefined : customerRefNo.trim(),
         remarks: remarks.trim(),
         requires_approval: requiresApproval,
       });
@@ -348,23 +354,32 @@ export default function GoodsReturnStep1Page() {
         <Card>
           <CardContent className="space-y-4 p-6">
             <SectionTitle icon={<ReceiptText className="h-4 w-4" />} title="Customer" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Customer Name *</Label>
-                <Input
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="Customer name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Customer Code</Label>
-                <Input
-                  value={customerCode}
-                  onChange={(event) => setCustomerCode(event.target.value)}
-                  placeholder="SAP business-partner code (optional)"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Customer *</Label>
+              <ReturnCustomerPicker
+                value={customerCode ? `${customerName} (${customerCode})` : ''}
+                onChange={(customer) => {
+                  setCustomerCode(customer?.customer_code ?? '');
+                  setCustomerName(customer?.customer_name ?? '');
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Picked from SAP, not typed: the next step offers only what this customer has
+                actually been invoiced, and the return posts against their business-partner code.
+              </p>
+            </div>
+
+            {/* Their number for the document, not ours. Optional — plenty of
+                letter pads carry no number, and the truck is already on the
+                road. Searchable afterwards, because it is what the customer
+                quotes on the phone. */}
+            <div className="space-y-2">
+              <Label>{REF_NO_LABELS[basis]}</Label>
+              <Input
+                value={customerRefNo}
+                onChange={(event) => setCustomerRefNo(event.target.value)}
+                placeholder={`${REF_NO_LABELS[basis]} (optional)`}
+              />
             </div>
           </CardContent>
         </Card>

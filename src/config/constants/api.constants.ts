@@ -595,6 +595,7 @@ export const API_ENDPOINTS = {
     APPROVE: (id: number) => `/goods-return/${id}/approve/`,
     REJECT: (id: number) => `/goods-return/${id}/reject/`,
     WAREHOUSES: '/goods-return/warehouses/',
+    CUSTOMERS: '/goods-return/customers/',
     GATE_EXPECTED: '/goods-return/gate/expected/',
     GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,

@@ -64,6 +64,8 @@ export default function GoodsReturnListPage() {
         entry.entry_no,
         entry.customer_name,
         entry.customer_code,
+        // What the customer quotes on the phone: "my debit note 4471".
+        entry.customer_ref_no,
         entry.vehicle_no,
         ...entry.invoice_doc_nums,
       ]

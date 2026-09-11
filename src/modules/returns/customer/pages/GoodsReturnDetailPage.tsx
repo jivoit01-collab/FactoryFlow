@@ -20,6 +20,7 @@ import {
   formatDate,
   formatDateTime,
   invoiceNumbersByRef,
+  REF_NO_LABELS,
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
 } from '../utils';
@@ -89,6 +90,9 @@ export default function GoodsReturnDetailPage() {
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3 text-sm">
           <Field label="Customer" value={detail.customer_name || detail.customer_code || '-'} />
+          {detail.basis !== 'INVOICE' && (
+            <Field label={REF_NO_LABELS[detail.basis]} value={detail.customer_ref_no || '-'} />
+          )}
           <Field label="Company" value={detail.company_name} />
           <Field label="Vehicle" value={detail.vehicle_no || '-'} />
           <Field label="Driver" value={detail.driver_name || '-'} />

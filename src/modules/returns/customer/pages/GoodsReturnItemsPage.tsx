@@ -174,6 +174,29 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
         </span>
       </div>
 
+      {/* A debit-note / letter-pad return booked before the SAP customer code
+          became mandatory. The picker reads this customer's invoice history, so
+          with no code it can only come back empty — which reads as "they bought
+          nothing" instead of "nobody said who they are". Say which it is, and
+          where to fix it. */}
+      {!isInvoiceBasis && !detail.customer_code && (
+        <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <p className="text-sm">
+              This return has no SAP customer code, so there is no purchase history to pick items
+              from. Set the customer on the previous step.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/returns/customer/edit/${id}/details`)}
+            >
+              Set Customer
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="space-y-4 p-6">
           <div className="flex items-center justify-between">

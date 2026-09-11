@@ -12,6 +12,17 @@ export const BASIS_LABELS: Record<GoodsReturnBasis, string> = {
   LETTER_PAD: 'Against Letter Pad',
 };
 
+/** What to call the customer's own reference number, per basis.
+ *
+ *  An invoice-basis return already carries the bill numbers, so its label is
+ *  never shown — it is here only to keep the record total.
+ */
+export const REF_NO_LABELS: Record<GoodsReturnBasis, string> = {
+  INVOICE: 'Reference Number',
+  DEBIT_NOTE: 'Debit Note Number',
+  LETTER_PAD: 'Letter Pad Number',
+};
+
 export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
   DRAFT: 'Draft',
   AWAITING_ARRIVAL: 'Awaiting Arrival',

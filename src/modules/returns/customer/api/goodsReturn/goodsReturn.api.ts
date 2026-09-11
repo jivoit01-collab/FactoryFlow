@@ -42,6 +42,8 @@ export interface GoodsReturnListItem {
   status: GoodsReturnStatus;
   customer_code: string;
   customer_name: string;
+  /** The customer's own debit-note / letter-pad number, if they gave one. */
+  customer_ref_no: string;
   vehicle_no: string;
   driver_name: string;
   company_code: string;
@@ -132,6 +134,8 @@ export interface GoodsReturnDetail {
   status: GoodsReturnStatus;
   customer_code: string;
   customer_name: string;
+  /** The customer's own debit-note / letter-pad number, if they gave one. */
+  customer_ref_no: string;
   vehicle: number | null;
   vehicle_no: string;
   driver: number | null;
@@ -205,6 +209,19 @@ export interface ReturnWarehouse {
   warehouse_name: string;
 }
 
+/**
+ * A SAP customer for the header picker on a debit-note / letter-pad return.
+ *
+ * An invoice-basis return reads its customer off the invoice; these two have to
+ * be told. The code, not the name, is what everything downstream runs on — the
+ * returning-items picker reads this customer's invoice history and the posted
+ * A/R Return carries it as CardCode — so it is picked from SAP, not typed.
+ */
+export interface ReturnCustomer {
+  customer_code: string;
+  customer_name: string;
+}
+
 export interface CreateGoodsReturnPayload {
   basis: GoodsReturnBasis;
   /** Required: saving this page puts the return in the gate's arrival queue, and
@@ -215,6 +232,8 @@ export interface CreateGoodsReturnPayload {
   invoice_numbers?: string[];
   customer_code?: string;
   customer_name?: string;
+  /** Optional: many letter pads carry no number at all. */
+  customer_ref_no?: string;
   remarks?: string;
   requires_approval?: boolean;
 }
@@ -302,7 +321,12 @@ export const goodsReturnApi = {
 
   async updateHeader(
     id: number,
-    payload: { customer_code?: string; customer_name?: string; remarks?: string },
+    payload: {
+      customer_code?: string;
+      customer_name?: string;
+      customer_ref_no?: string;
+      remarks?: string;
+    },
   ): Promise<GoodsReturnDetail> {
     const response = await apiClient.patch<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.BY_ID(id),
@@ -416,6 +440,14 @@ export const goodsReturnApi = {
       API_ENDPOINTS.GOODS_RETURN.PRINT(id),
       { params: docEntry ? { doc_entry: docEntry } : undefined },
     );
+    return response.data;
+  },
+
+  /** SAP customers for the header picker (debit-note / letter-pad returns). */
+  async searchCustomers(search?: string): Promise<ReturnCustomer[]> {
+    const response = await apiClient.get<ReturnCustomer[]>(API_ENDPOINTS.GOODS_RETURN.CUSTOMERS, {
+      params: search ? { search } : undefined,
+    });
     return response.data;
   },
 
