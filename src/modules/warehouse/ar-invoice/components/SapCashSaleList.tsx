@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, getErrorMessage } from '@/shared/utils';
 
 import { useSapCashSales } from '../api/ar-invoice.queries';
 import type { SapCashSaleInvoice } from '../types';
+import { SapCashSalePrintButton } from './ARInvoicePrintButton';
 
 /**
  * The window the list opens on, mirroring the backend's own default
@@ -37,43 +38,50 @@ function InvoiceRow({ invoice }: { invoice: SapCashSaleInvoice }) {
   return (
     <Card className={invoice.is_cancelled ? 'opacity-60' : undefined}>
       <CardContent className="p-4">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-3 text-left"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-        >
-          <div className="min-w-0">
-            <p className="truncate font-medium">
-              {invoice.doc_num ?? invoice.doc_entry}
-              <span className="ml-2 font-normal text-muted-foreground">
-                {invoice.customer_name || invoice.customer_code}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+          >
+            <div className="min-w-0">
+              <p className="truncate font-medium">
+                {invoice.doc_num ?? invoice.doc_entry}
+                <span className="ml-2 font-normal text-muted-foreground">
+                  {invoice.customer_name || invoice.customer_code}
+                </span>
+              </p>
+              <p className="truncate text-sm text-muted-foreground">
+                {invoice.doc_date ? formatDate(invoice.doc_date) : '-'}
+                {invoice.comments ? ` · ${invoice.comments}` : ''}
+                {invoice.customer_ref ? ` · Ref ${invoice.customer_ref}` : ''}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="text-sm font-semibold tabular-nums">
+                {formatCurrency(invoice.doc_total)}
               </span>
-            </p>
-            <p className="truncate text-sm text-muted-foreground">
-              {invoice.doc_date ? formatDate(invoice.doc_date) : '-'}
-              {invoice.comments ? ` · ${invoice.comments}` : ''}
-              {invoice.customer_ref ? ` · Ref ${invoice.customer_ref}` : ''}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-sm font-semibold tabular-nums">
-              {formatCurrency(invoice.doc_total)}
-            </span>
-            {invoice.is_cancelled ? <Badge variant="destructive">Cancelled</Badge> : null}
-            {/* Which book the bill came from — the whole point of the SAP view. */}
-            {invoice.app_posting_id ? (
-              <Badge variant="secondary">Raised here</Badge>
-            ) : (
-              <Badge variant="outline">{invoice.sap_user || 'SAP'}</Badge>
-            )}
-            {open ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-        </button>
+              {invoice.is_cancelled ? <Badge variant="destructive">Cancelled</Badge> : null}
+              {/* Which book the bill came from — the whole point of the SAP view. */}
+              {invoice.app_posting_id ? (
+                <Badge variant="secondary">Raised here</Badge>
+              ) : (
+                <Badge variant="outline">{invoice.sap_user || 'SAP'}</Badge>
+              )}
+              {open ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+          </button>
+          {/* Reprint the bill itself — SAP's own TAX INVOICE, for the counter's
+              invoices as much as ours. A cancelled one is left out: that layout
+              carries nothing to say the bill was voided, so a reprint of it
+              reads as live. */}
+          {invoice.is_cancelled ? null : <SapCashSalePrintButton invoice={invoice} />}
+        </div>
 
         {open ? (
           <div className="mt-3 space-y-3 border-t pt-3">

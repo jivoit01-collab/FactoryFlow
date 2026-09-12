@@ -1,5 +1,5 @@
 export { ARInvoiceDetailSheet } from './ARInvoiceDetailSheet';
-export { ARInvoicePrintButton } from './ARInvoicePrintButton';
+export { ARInvoicePrintButton, SapCashSalePrintButton } from './ARInvoicePrintButton';
 export { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
 export {
   AR_INVOICE_PRINT_STYLE,

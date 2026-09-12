@@ -129,6 +129,19 @@ export const arInvoiceApi = {
     return response.data;
   },
 
+  /**
+   * The same TAX INVOICE for a cash sale off SAP's own book, by DocEntry.
+   *
+   * Most of that book was raised in SAP directly and has no record here to
+   * print from, which is why this is keyed by SAP's id rather than ours.
+   */
+  async getSapCashSalePrint(docEntry: number): Promise<ARInvoicePrintPayload> {
+    const response = await apiClient.get<ARInvoicePrintPayload>(
+      API_ENDPOINTS.AR_INVOICE.SAP_INVOICE_PRINT(docEntry),
+    );
+    return response.data;
+  },
+
   /** Abandon a PENDING/FAILED record and release its SO lines. */
   async cancelInvoice(id: number): Promise<ARInvoicePosting> {
     const response = await apiClient.post<ARInvoicePosting>(

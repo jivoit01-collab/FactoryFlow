@@ -22,6 +22,8 @@ export const AR_INVOICE_QUERY_KEYS = {
       query.search ?? '',
     ] as const,
   print: (id: number) => [...AR_INVOICE_QUERY_KEYS.all, 'print', id] as const,
+  sapPrint: (docEntry: number) =>
+    [...AR_INVOICE_QUERY_KEYS.all, 'sap-print', docEntry] as const,
 };
 
 export function useWarehouseItems(warehouse: string, search: string, enabled: boolean) {
@@ -104,6 +106,23 @@ export function useArInvoicePrint(id: number | null) {
     queryKey: AR_INVOICE_QUERY_KEYS.print(id ?? 0),
     queryFn: () => arInvoiceApi.getPrint(id as number),
     enabled: id != null,
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+/**
+ * SAP's TAX INVOICE for a cash sale, by DocEntry.
+ *
+ * Uncached for the same reason as its sibling above, and more so: these are
+ * documents this app never owned, so SAP is the only thing that knows what the
+ * bill currently says.
+ */
+export function useSapCashSalePrint(docEntry: number | null) {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.sapPrint(docEntry ?? 0),
+    queryFn: () => arInvoiceApi.getSapCashSalePrint(docEntry as number),
+    enabled: docEntry != null,
     staleTime: 0,
     gcTime: 0,
   });

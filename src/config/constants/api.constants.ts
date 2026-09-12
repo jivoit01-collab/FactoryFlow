@@ -680,6 +680,9 @@ export const API_ENDPOINTS = {
     INVOICE_POST_DRAFT: (id: number) => `/ar-invoices/invoices/${id}/post-draft/`,
     INVOICE_CANCEL: (id: number) => `/ar-invoices/invoices/${id}/cancel/`,
     INVOICE_PRINT: (id: number) => `/ar-invoices/invoices/${id}/print/`,
+    // The counter's own bills have no record here, so they print by SAP's DocEntry.
+    SAP_INVOICE_PRINT: (docEntry: number) =>
+      `/ar-invoices/sap-invoices/${docEntry}/print/`,
   },
   // Daily Tasks — each user's job sheet for one day, derived from every other module
   DAILY_TASKS: {

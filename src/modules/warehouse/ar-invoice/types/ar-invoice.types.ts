@@ -207,7 +207,8 @@ export interface ARInvoicePrintParty {
 }
 
 export interface ARInvoicePrintPayload {
-  posting_id: number;
+  /** This app's record — null for a cash sale the counter raised in SAP itself. */
+  posting_id: number | null;
   doc_entry: number;
   doc_num: number | null;
   doc_date: string | null;

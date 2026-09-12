@@ -5,8 +5,13 @@ import type { SapCashSaleHistory, SapCashSaleInvoice } from '../../types';
 import { SapCashSaleList } from '../SapCashSaleList';
 
 const useSapCashSales = vi.hoisted(() => vi.fn());
+// The per-row print button asks SAP for the bill; nothing is fetched until it
+// is clicked, so an idle result is all these renders need.
+const useSapCashSalePrint = vi.hoisted(() =>
+  vi.fn(() => ({ data: undefined, isFetching: false, error: null })),
+);
 
-vi.mock('../../api/ar-invoice.queries', () => ({ useSapCashSales }));
+vi.mock('../../api/ar-invoice.queries', () => ({ useSapCashSales, useSapCashSalePrint }));
 
 function invoice(over: Partial<SapCashSaleInvoice> = {}): SapCashSaleInvoice {
   return {
@@ -106,6 +111,26 @@ describe('SapCashSaleList', () => {
   it('flags a cancelled cash sale rather than hiding it', () => {
     state({ data: history({ invoices: [invoice({ is_cancelled: true })] }) });
     expect(renderToStaticMarkup(<SapCashSaleList />)).toContain('Cancelled');
+  });
+
+  it('offers the bill for reprint, whichever side raised it', () => {
+    state({
+      data: history({
+        invoices: [
+          invoice({ doc_entry: 80075, app_posting_id: 12 }),
+          invoice({ doc_entry: 79996, doc_num: 626090296, app_posting_id: null }),
+        ],
+      }),
+    });
+    const html = renderToStaticMarkup(<SapCashSaleList />);
+    expect(html.match(/Print</g)).toHaveLength(2);
+  });
+
+  it('does not offer to reprint a cancelled bill', () => {
+    // The TAX INVOICE layout says nothing about a void, so the reprint of one
+    // reads as a live bill.
+    state({ data: history({ invoices: [invoice({ is_cancelled: true })] }) });
+    expect(renderToStaticMarkup(<SapCashSaleList />)).not.toContain('Print<');
   });
 
   it('warns when the window holds more than was returned', () => {
