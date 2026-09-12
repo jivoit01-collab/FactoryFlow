@@ -134,6 +134,7 @@ export default function BSTGateOutListPage() {
                     <th className="p-3 font-medium">Vehicle</th>
                     <th className="p-3 font-medium">Driver</th>
                     <th className="p-3 text-right font-medium">Boxes</th>
+                    <th className="p-3 font-medium">Loaded At</th>
                     <th className="p-3 font-medium">Status</th>
                     <th className="p-3 font-medium">Gate Out</th>
                   </tr>
@@ -177,6 +178,10 @@ function TransferRow({
       <td className="whitespace-nowrap p-3">{t.vehicle_number || '—'}</td>
       <td className="whitespace-nowrap p-3">{t.driver_name || '—'}</td>
       <td className="whitespace-nowrap p-3 text-right">{t.scanned_box_count}</td>
+      {/* When the dispatch team finished loading — the queue waits in this order. */}
+      <td className="whitespace-nowrap p-3">
+        {t.loaded_at ? formatBstDateTime(t.loaded_at) : '—'}
+      </td>
       <td className="whitespace-nowrap p-3">
         <BSTStatusBadge status={t.status} />
       </td>

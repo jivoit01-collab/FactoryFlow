@@ -1147,6 +1147,7 @@ export const API_ENDPOINTS = {
     // Hand-typed quantity for a scan-exempt (PM) line, which has no box scans
     BST_MANUAL_ENTRIES: (transferId: number) => `/warehouse/bst/${transferId}/manual-entries/`,
     BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
+    BST_LOADED_AT: (transferId: number) => `/warehouse/bst/${transferId}/loaded-at/`,
     BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
     // Partial-transfer approval (seal a short scan with admin sign-off)
     BST_PARTIAL_TRANSFER_REQUEST: (transferId: number) =>

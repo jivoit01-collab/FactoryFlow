@@ -104,6 +104,7 @@ function TransferTable({
             <th className="py-2 px-3">Route</th>
             <th className="py-2 px-3">SAP Doc</th>
             <th className="py-2 px-3 text-right">Boxes</th>
+            <th className="py-2 px-3">Loaded</th>
             <th className="py-2 px-3">Dispatched</th>
             <th className="py-2 px-3">Received</th>
             <th className="py-2 px-3">Status</th>
@@ -138,6 +139,7 @@ function TransferTable({
                 )}
               </td>
               <td className="py-2 px-3 text-right">{t.scanned_box_count}</td>
+              <td className="py-2 px-3">{formatBstDateTime(t.loaded_at)}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.dispatched_at)}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.received_at)}</td>
               <td className="py-2 px-3">

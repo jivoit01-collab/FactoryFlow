@@ -166,6 +166,10 @@ export interface BSTTransferListItem {
   /** Number of SAP documents combined into this entry. */
   doc_count: number;
   scan_approved_at: string | null;
+  /** When loading finished — the dispatch team's work on this BST is done here
+   *  and the gate's begins. Stamped when the transfer is sealed, correctable
+   *  afterwards by a supervisor. */
+  loaded_at: string | null;
   dispatched_at: string | null;
   received_at: string | null;
   created_at: string;
@@ -250,6 +254,10 @@ export interface BSTTransferDetail extends BSTTransferListItem {
   gated_in_at: string | null;
   created_by_name: string;
   scan_approved_by_name: string;
+  /** Who sealed the load, and — when the stamp was corrected — who moved it. */
+  loaded_by_name: string;
+  loaded_at_edited_by_name: string;
+  loaded_at_edited_at: string | null;
   dispatched_by_name: string;
   received_by_name: string;
   accepted_count: number;

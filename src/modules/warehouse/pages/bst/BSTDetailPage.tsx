@@ -18,6 +18,7 @@ import {
 import { BSTBillTable } from './BSTBillTable';
 import { BSTDocList } from './BSTDocList';
 import { formatBstDateTime, isLiveBst } from './bstFormat';
+import { BSTLoadedAtCard } from './BSTLoadedAtCard';
 import {
   BSTScannedBoxesSheet,
   BSTScanProgressPill,
@@ -113,6 +114,18 @@ export default function BSTDetailPage() {
     // the gate marks the transfer out.
     ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
     ['Created by', `${t.created_by_name} · ${formatBstDateTime(t.created_at)}`],
+    // Only a transfer that leaves on a vehicle has a loading handover; an
+    // internal lift-move between warehouses has no dispatch team and no gate.
+    ...(t.requires_gate
+      ? ([
+          [
+            'Loaded at',
+            t.loaded_at
+              ? `${t.loaded_by_name ? `${t.loaded_by_name} · ` : ''}${formatBstDateTime(t.loaded_at)}`
+              : '—',
+          ],
+        ] as Array<[string, string]>)
+      : []),
     [
       'Dispatched',
       t.dispatched_at ? `${t.dispatched_by_name} · ${formatBstDateTime(t.dispatched_at)}` : '—',
@@ -161,6 +174,8 @@ export default function BSTDetailPage() {
           ))}
         </CardContent>
       </Card>
+
+      <BSTLoadedAtCard transfer={t} />
 
       <BSTVehicleDriverCard transfer={t} />
 

@@ -53,6 +53,8 @@ export default function BSTGateOutReviewPage() {
     ['SAP Doc', t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],
+    // Where the warehouse's work ends and the gate's begins.
+    ['Loaded at', formatBstDateTime(t.loaded_at)],
     // Vehicle + driver sit in their own card below: the gate is usually the one
     // that spots a swapped truck, and it can still be corrected until mark-out.
     ['Scanned boxes', String(t.box_scans.length)],
@@ -100,6 +102,12 @@ export default function BSTGateOutReviewPage() {
             </span>
           ) : (
             <span className="text-amber-800">Not yet approved by the warehouse.</span>
+          )}
+          {t.loaded_at && (
+            <p className="mt-2 text-muted-foreground">
+              Loading finished {formatBstDateTime(t.loaded_at)} — the vehicle has been the
+              gate&rsquo;s from then on.
+            </p>
           )}
         </CardContent>
       </Card>

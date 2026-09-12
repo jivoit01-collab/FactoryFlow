@@ -18,3 +18,15 @@ export function formatBstDateTime(value: string | null): string {
     minute: '2-digit',
   })}`;
 }
+
+/**
+ * An ISO timestamp as an `<input type="datetime-local">` value — the local wall
+ * clock the operator reads off their watch, minutes only.
+ */
+export function toBstDateTimeInput(value: string | null): string {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}

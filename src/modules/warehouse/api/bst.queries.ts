@@ -166,6 +166,19 @@ export function useApproveBST() {
   });
 }
 
+export function useSetBSTLoadedAt() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transferId, loadedAt }: { transferId: number; loadedAt: string }) =>
+      bstApi.setLoadedAt(transferId, loadedAt),
+    onSuccess: (res, { transferId }) => {
+      qc.setQueryData(BST_QUERY_KEYS.detail(transferId), res);
+      // The stamp is a column on the dashboards and the gate-out queue too.
+      qc.invalidateQueries({ queryKey: BST_QUERY_KEYS.all });
+    },
+  });
+}
+
 export function useCancelBST() {
   const qc = useQueryClient();
   return useMutation({

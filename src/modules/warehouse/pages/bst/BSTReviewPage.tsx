@@ -296,6 +296,15 @@ export default function BSTReviewPage() {
               )}
             </div>
           )}
+          {/* Approving closes the dispatch team's side of a vehicle load, so say
+              what time that puts on the record before they press it. An internal
+              lift-move has no such handover, so it gets no note. */}
+          {t.requires_gate && (
+            <p className="text-xs text-muted-foreground">
+              This stamps the loaded time — now — and hands the vehicle to the gate. A
+              supervisor can correct the time afterwards from the transfer page.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>
               <ScanLine className="h-4 w-4 mr-1" /> Back to scanning
