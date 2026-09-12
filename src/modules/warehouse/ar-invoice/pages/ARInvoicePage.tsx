@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, FileText, ReceiptText, RefreshCw, Upload, X } from 'lucide-react';
+import { Copy, Download, FileText, ReceiptText, RefreshCw, Upload, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -20,7 +20,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@/shared/components/ui';
-import { formatCurrency, getErrorMessage } from '@/shared/utils';
+import { buildTsv, copyToClipboard, formatCurrency, getErrorMessage } from '@/shared/utils';
 
 import {
   AR_INVOICE_QUERY_KEYS,
@@ -29,13 +29,14 @@ import {
   useOpenSoLines,
 } from '../api/ar-invoice.queries';
 import { ARInvoiceDetailSheet } from '../components/ARInvoiceDetailSheet';
-import { ARInvoiceStatusBadge } from '../components/ARInvoiceStatusBadge';
-import { ARPaymentCell, ARPaymentFilter } from '../components/ARPaymentControls';
+import { ARInvoiceHistoryTable } from '../components/ARInvoiceHistoryTable';
+import { ARPaymentFilter } from '../components/ARPaymentControls';
 import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
 import { SapCashSaleList } from '../components/SapCashSaleList';
 import type { ARInvoicePosting, OpenSOLine, PaymentBucket } from '../types';
+import { exportArInvoices, toClipboardRows } from '../utils/arInvoiceExport';
 import { countPaymentBuckets, paymentBucket } from '../utils/payment';
 
 const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
@@ -390,76 +391,46 @@ function AppHistoryList({ canAct }: { canAct: boolean }) {
     );
   }
 
+  const copyRows = async () => {
+    // Rows only, no heading line: they are meant to land inside a sheet the
+    // user has already built, under their own headings.
+    const copied = await copyToClipboard(buildTsv(toClipboardRows(rows)));
+    if (!copied) {
+      toast.error('The browser would not let us reach the clipboard. Use the Excel export instead.');
+      return;
+    }
+    toast.success(`${rows.length} row${rows.length === 1 ? '' : 's'} copied — paste into your sheet.`);
+  };
+
   return (
     <>
-      <div className="flex items-center justify-between gap-2 pb-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
         <ARPaymentFilter value={paymentFilter} onChange={setPaymentFilter} counts={counts} />
-        <span className="text-xs text-muted-foreground">
-          {rows.length} of {all.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {rows.length} of {all.length}
+          </span>
+          {/* Both act on the rows in view — whatever the payment filter left. */}
+          <Button variant="outline" size="sm" onClick={copyRows} disabled={rows.length === 0}>
+            <Copy className="mr-2 h-4 w-4" /> Copy table
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportArInvoices(rows)}
+            disabled={rows.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
       {rows.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           No invoices in this payment state.
         </p>
-      ) : null}
-      <div className="space-y-2">
-        {rows.map((posting) => (
-          <Card
-            key={posting.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => setSelected(posting)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                setSelected(posting);
-              }
-            }}
-            className="cursor-pointer transition-colors hover:bg-muted/50"
-          >
-            <CardContent className="flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <p className="truncate font-medium">
-                  {posting.customer_name || posting.customer_code}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {posting.customer_ref ? `Ref ${posting.customer_ref} · ` : ''}
-                  {posting.sap_doc_num ? `SAP ${posting.sap_doc_num}` : ''}
-                  {posting.sap_draft_entry && !posting.sap_doc_num
-                    ? `draft ${posting.sap_draft_entry}`
-                    : ''}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="text-sm font-semibold tabular-nums">
-                  {posting.sap_doc_total
-                    ? formatCurrency(Number(posting.sap_doc_total))
-                    : posting.selected_total
-                      ? formatCurrency(Number(posting.selected_total))
-                      : '-'}
-                </span>
-                <ARInvoiceStatusBadge status={posting.status} />
-                {/* Money in, as against document state — a POSTED bill is not
-                    a paid one, which is the whole point of tracking it. */}
-                <ARPaymentCell
-                  docEntry={posting.sap_doc_entry}
-                  docNum={posting.sap_doc_num}
-                  docTotal={posting.sap_doc_total ? Number(posting.sap_doc_total) : null}
-                  customerName={posting.customer_name || posting.customer_code}
-                  payment={posting.payment}
-                  disabledReason={
-                    posting.sap_doc_entry
-                      ? undefined
-                      : 'Not posted to SAP yet — there is no bill to collect against.'
-                  }
-                />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      ) : (
+        <ARInvoiceHistoryTable rows={rows} onSelect={setSelected} />
+      )}
 
       <ARInvoiceDetailSheet
         posting={current}

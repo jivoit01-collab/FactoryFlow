@@ -1,4 +1,5 @@
 export { ARInvoiceDetailSheet } from './ARInvoiceDetailSheet';
+export { ARInvoiceHistoryTable } from './ARInvoiceHistoryTable';
 export { ARInvoicePrintButton, SapCashSalePrintButton } from './ARInvoicePrintButton';
 export { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
 export {
