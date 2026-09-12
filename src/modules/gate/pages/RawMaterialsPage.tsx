@@ -11,6 +11,7 @@ import {
 } from '@/modules/gate/api';
 import { EmptyVehicleOutButton, GateStatusBadge } from '@/modules/gate/components';
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -19,10 +20,12 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  NativeSelect,
+  SelectOption,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import type { VehicleEntry } from '../api/vehicle/vehicleEntry.api';
+import type { MaterialTypeCode, VehicleEntry } from '../api/vehicle/vehicleEntry.api';
 import {
   useDeleteRawMaterialEntry,
   useVehicleEntries,
@@ -39,10 +42,29 @@ const DELETABLE_STATUSES = new Set<string>([
   ENTRY_STATUS.IN_PROGRESS,
 ]);
 
+// The RM/PM split comes from the backend (PO item-code prefixes); the page only
+// picks how each answer looks and which rows a filter keeps.
+const MATERIAL_BADGE_VARIANTS: Record<MaterialTypeCode, 'default' | 'secondary' | 'outline'> = {
+  RM: 'default',
+  PM: 'secondary',
+  BOTH: 'outline',
+  OTHER: 'outline',
+};
+
+const MATERIAL_FILTERS = [
+  { value: 'ALL', label: 'All Materials' },
+  { value: 'RM', label: 'RM only' },
+  { value: 'PM', label: 'PM only' },
+  { value: 'BOTH', label: 'RM + PM' },
+] as const;
+
+type MaterialFilter = (typeof MATERIAL_FILTERS)[number]['value'];
+
 export default function RawMaterialsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [materialFilter, setMaterialFilter] = useState<MaterialFilter>('ALL');
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
 
   // Get status filter from URL
@@ -93,9 +115,14 @@ export default function RawMaterialsPage() {
     }
   };
 
-  // Filter entries based on search query only (date filtering is done by API)
+  // Filter entries by search query and material type (date filtering is done by API)
   const filteredData = useMemo(() => {
     let filtered = entries;
+
+    // Apply material-type filter
+    if (materialFilter !== 'ALL') {
+      filtered = filtered.filter((entry) => entry.material_type?.code === materialFilter);
+    }
 
     // Apply search filter
     if (search.trim()) {
@@ -112,7 +139,7 @@ export default function RawMaterialsPage() {
     }
 
     return filtered;
-  }, [entries, search]);
+  }, [entries, materialFilter, search]);
 
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
@@ -155,6 +182,20 @@ export default function RawMaterialsPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="w-full sm:w-auto">
+          <NativeSelect
+            className="sm:w-44"
+            value={materialFilter}
+            onChange={(event) => setMaterialFilter(event.target.value as MaterialFilter)}
+            aria-label="Filter by material type"
+          >
+            {MATERIAL_FILTERS.map((option) => (
+              <SelectOption key={option.value} value={option.value}>
+                {option.label}
+              </SelectOption>
+            ))}
+          </NativeSelect>
         </div>
         <div className="w-full sm:w-auto">
           <DateRangePicker
@@ -201,12 +242,13 @@ export default function RawMaterialsPage() {
       ) : (
         <div className="rounded-md border overflow-hidden">
           <div className="overflow-x-auto max-w-full">
-            <table className="w-full min-w-[1080px]">
+            <table className="w-full min-w-[1180px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 text-left text-sm font-medium">Entry No.</th>
                   <th className="p-3 text-left text-sm font-medium">Vehicle</th>
                   <th className="p-3 text-left text-sm font-medium">Supplier(s)</th>
+                  <th className="p-3 text-left text-sm font-medium">Material</th>
                   <th className="p-3 text-left text-sm font-medium">Driver</th>
                   <th className="p-3 text-left text-sm font-medium">Entry Time</th>
                   <th className="p-3 text-left text-sm font-medium">Status</th>
@@ -245,6 +287,15 @@ export default function RawMaterialsPage() {
                             ),
                           )}
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-sm whitespace-nowrap">
+                      {entry.material_type ? (
+                        <Badge variant={MATERIAL_BADGE_VARIANTS[entry.material_type.code]}>
+                          {entry.material_type.label}
+                        </Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}

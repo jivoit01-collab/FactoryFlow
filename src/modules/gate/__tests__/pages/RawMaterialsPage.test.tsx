@@ -37,4 +37,16 @@ describe('RawMaterialsPage', () => {
     expect(content).toContain('entry.qc_final_status');
     expect(content).toContain('entry.qc_final_status.display');
   });
+
+  it('shows the RM/PM material type the backend derived, never its own guess', () => {
+    expect(content).toContain('entry.material_type.label');
+    expect(content).not.toContain('po_item_code');
+  });
+
+  it('offers an RM / PM / both filter over the material type', () => {
+    expect(content).toContain("{ value: 'RM', label: 'RM only' }");
+    expect(content).toContain("{ value: 'PM', label: 'PM only' }");
+    expect(content).toContain("{ value: 'BOTH', label: 'RM + PM' }");
+    expect(content).toContain('entry.material_type?.code === materialFilter');
+  });
 });
