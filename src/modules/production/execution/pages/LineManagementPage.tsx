@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { usePermission } from '@/core/auth';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { SearchableSelect } from '@/shared/components/SearchableSelect';
+import { EXECUTION_PERMISSIONS } from '@/config/permissions';
 import {
   Button,
   Card,
@@ -55,6 +57,9 @@ const EMPTY_LINE_SETTINGS = {
 };
 
 function LineManagementPage() {
+  // Configuration edits are superuser-only; everyone else reads the page.
+  const { hasPermission } = usePermission();
+  const canEdit = hasPermission(EXECUTION_PERMISSIONS.MANAGE_LINE_CONFIG);
   const { data: lines = [] } = useLines(true);
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const { data: configs = [], isLoading } = useLineConfigs(selectedLineId ?? undefined);
@@ -211,7 +216,11 @@ function LineManagementPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Line Management"
-        description="Create multiple configuration presets per line — users pick one when starting a run"
+        description={
+          canEdit
+            ? 'Create multiple configuration presets per line — users pick one when starting a run'
+            : 'Configuration presets per line — users pick one when starting a run. Read-only.'
+        }
       />
 
       {/* Line Selector */}
@@ -234,7 +243,7 @@ function LineManagementPage() {
                 ))}
               </SelectContent>
             </Select>
-            {selectedLineId && (
+            {selectedLineId && canEdit && (
               <>
                 <Button onClick={() => openDialog()}>
                   <Plus className="h-4 w-4 mr-2" /> Add Configuration
@@ -245,6 +254,9 @@ function LineManagementPage() {
                   </Button>
                 )}
               </>
+            )}
+            {selectedLineId && !canEdit && (
+              <span className="text-sm text-muted-foreground">View only</span>
             )}
           </div>
           {selectedLine && (
@@ -296,10 +308,12 @@ function LineManagementPage() {
               <div className="py-12 text-center text-muted-foreground">
                 <Settings2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
                 <p>No configurations yet for this line.</p>
-                <p className="text-sm mt-1">
-                  Add multiple presets (e.g., different SKUs, shifts, or speed settings). Users can
-                  pick one when starting a production run.
-                </p>
+                {canEdit && (
+                  <p className="text-sm mt-1">
+                    Add multiple presets (e.g., different SKUs, shifts, or speed settings). Users can
+                    pick one when starting a production run.
+                  </p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -313,7 +327,7 @@ function LineManagementPage() {
                       <th className="text-right p-3 font-medium">Other Manpower</th>
                       <th className="text-left p-3 font-medium">Supervisor</th>
                       <th className="text-left p-3 font-medium">Operators</th>
-                      <th className="text-center p-3 font-medium">Actions</th>
+                      {canEdit && <th className="text-center p-3 font-medium">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -331,34 +345,36 @@ function LineManagementPage() {
                         <td className="p-3 text-right">{cfg.other_manpower_count}</td>
                         <td className="p-3">{cfg.supervisor || '-'}</td>
                         <td className="p-3 max-w-[150px] truncate">{cfg.operators || '-'}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex justify-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Edit"
-                              onClick={() => openDialog(cfg)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Duplicate"
-                              onClick={() => duplicateConfig(cfg)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              title="Delete"
-                              onClick={() => handleDelete(cfg.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
+                        {canEdit && (
+                          <td className="p-3 text-center">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                title="Edit"
+                                onClick={() => openDialog(cfg)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                title="Duplicate"
+                                onClick={() => duplicateConfig(cfg)}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                title="Delete"
+                                onClick={() => handleDelete(cfg.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -370,7 +386,7 @@ function LineManagementPage() {
       ) : (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            Select a production line above to view and manage its configurations.
+            Select a production line above to view its configurations.
           </CardContent>
         </Card>
       )}

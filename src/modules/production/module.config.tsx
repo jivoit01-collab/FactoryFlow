@@ -66,6 +66,7 @@ const PRODUCTION_DASHBOARD_PERMISSIONS = [
   EXECUTION_PERMISSIONS.VIEW_WASTE,
   EXECUTION_PERMISSIONS.VIEW_REPORTS,
   EXECUTION_PERMISSIONS.MANAGE_LINES,
+  EXECUTION_PERMISSIONS.VIEW_LINE_CONFIG,
   BLOWING_PERMISSIONS.VIEW_RUN,
 ] as const;
 
@@ -265,7 +266,13 @@ export const productionModuleConfig: ModuleConfig = {
       path: '/production/execution/line-management',
       element: <LineManagementPage />,
       layout: 'main',
-      permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+      // Read-only holders reach the page too; the write actions inside it are
+      // gated separately on MANAGE_LINE_CONFIG.
+      permissions: [
+        EXECUTION_PERMISSIONS.MANAGE_LINES,
+        EXECUTION_PERMISSIONS.VIEW_LINE_CONFIG,
+        EXECUTION_PERMISSIONS.MANAGE_LINE_CONFIG,
+      ],
     },
     // ---- Blowing (preform -> bottle) ----
     {
@@ -361,7 +368,11 @@ export const productionModuleConfig: ModuleConfig = {
         {
           path: '/production/execution/line-management',
           title: 'Line Management',
-          permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+          permissions: [
+            EXECUTION_PERMISSIONS.MANAGE_LINES,
+            EXECUTION_PERMISSIONS.VIEW_LINE_CONFIG,
+            EXECUTION_PERMISSIONS.MANAGE_LINE_CONFIG,
+          ],
         },
       ],
     },
