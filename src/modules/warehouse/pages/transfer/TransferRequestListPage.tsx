@@ -12,11 +12,13 @@ import {
   usePendingTransferRequests,
   useSapAwaitingTransfers,
   useSapTransferApprovals,
+  useSapTransferDrafts,
   useTransferRequests,
 } from '../../api';
 import type { TransferRequestListItem } from '../../types';
 import { SapAwaitingTransferTable } from './SapAwaitingTransferTable';
 import { SapTransferApprovalTable } from './SapTransferApprovalTable';
+import { SapUnpostedDraftTable } from './SapUnpostedDraftTable';
 import { ApprovalBadge, PostingBadge, Route, RouteBadge } from './TransferBadges';
 import { shortDate } from './transferFormat';
 
@@ -40,6 +42,10 @@ export default function TransferRequestListPage() {
   // Approved requests that still owe stock. Another HANA read, so it waits
   // for the tab too.
   const awaiting = useSapAwaitingTransfers(tab === 'awaiting');
+  // The other half of "approved, but the stock has not moved": a transfer
+  // raised in the SAP client is approved as a DRAFT, and stays one until
+  // somebody adds it. Same tab, because to a warehouse it is the same wait.
+  const drafts = useSapTransferDrafts(tab === 'awaiting');
 
   const active = tab === 'pending' ? pending : tab === 'in-transit' ? inTransit : all;
   const rows: TransferRequestListItem[] = active.data ?? [];
@@ -81,7 +87,10 @@ export default function TransferRequestListPage() {
       key: 'awaiting',
       label: 'Awaiting transfer',
       icon: PackageCheck,
-      count: awaiting.data?.length,
+      count:
+        awaiting.data || drafts.data
+          ? (awaiting.data?.length ?? 0) + (drafts.data?.length ?? 0)
+          : undefined,
       show: true,
     },
   ];
@@ -130,11 +139,20 @@ export default function TransferRequestListPage() {
       </div>
 
       {tab === 'awaiting' ? (
-        <SapAwaitingTransferTable
-          rows={awaiting.data ?? []}
-          isLoading={awaiting.isLoading}
-          isError={awaiting.isError}
-        />
+        <div className="space-y-6">
+          {/* Drafts first: they are the older backlog and the stock behind
+              them has been frozen the longest. */}
+          <SapUnpostedDraftTable
+            rows={drafts.data ?? []}
+            isLoading={drafts.isLoading}
+            isError={drafts.isError}
+          />
+          <SapAwaitingTransferTable
+            rows={awaiting.data ?? []}
+            isLoading={awaiting.isLoading}
+            isError={awaiting.isError}
+          />
+        </div>
       ) : tab === 'sap' ? (
         <SapTransferApprovalTable
           rows={sapApprovals.data ?? []}

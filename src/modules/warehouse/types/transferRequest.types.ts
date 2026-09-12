@@ -325,6 +325,72 @@ export interface SapAwaitingTransfer {
   lines: SapAwaitingTransferLine[];
 }
 
+// ---------------------------------------------------------------------------
+// SAP transfer DRAFTS that are approved but were never added
+// ---------------------------------------------------------------------------
+// A transfer keyed in the SAP client on an approval-covered route is saved as
+// a draft, not a document. Approving it moves nothing either — somebody still
+// has to press Add. Until then the stock has not moved and no OWTR exists, so
+// these appear in no other queue here.
+
+export interface SapTransferDraftLine {
+  /** DRF1.LineNum. */
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  /** Decimal strings — a float round-trip is how a tank ends up 0.001 out. */
+  quantity: string;
+  from_warehouse: string;
+  to_warehouse: string;
+  /** What the SOURCE warehouse holds today; these drafts sit for months. */
+  source_stock: string | null;
+  /** The source no longer holds the quantity, so SAP will refuse the add. */
+  short: boolean;
+  batch_managed: boolean;
+  batches_allocated: number;
+  /** Batch-managed with no allocation on the draft — fix it in SAP first. */
+  batches_missing: boolean;
+}
+
+export interface SapTransferDraft {
+  /** ODRF.DocEntry — the id the add is keyed on. */
+  draft_entry: number;
+  /** Provisional on a draft, but SAP keeps it on the add. */
+  doc_num: number | null;
+  doc_date: string | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  comments: string | null;
+  journal_memo: string | null;
+  branch_id: number | null;
+  /** The SAP user who keyed the draft. */
+  created_by: string | null;
+  age_days: number;
+  /** ODRF.WddStatus — always 'Y' in this list. */
+  approval_status: string;
+  can_post: boolean;
+  /** Why not, in words, when can_post is false. */
+  blocked_reason: string | null;
+  /** What SAP would refuse: stock gone, batch allocation missing. */
+  warnings: string[];
+  lines: SapTransferDraftLine[];
+}
+
+export interface SapTransferDraftPostResult {
+  draft_entry: number;
+  /** The OWTR SAP created. */
+  doc_entry: number | null;
+  doc_num: number | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  lines_moved: number;
+  /** SAP committed it but answered too late; the document was read back. */
+  confirmed_by_readback: boolean;
+  posted_at: string;
+  audit_id: number | null;
+}
+
 export interface SapTransferPostResult {
   /** The inventory transfer SAP created. */
   doc_entry: number | null;

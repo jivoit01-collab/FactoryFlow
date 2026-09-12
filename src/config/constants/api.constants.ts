@@ -1276,6 +1276,12 @@ export const API_ENDPOINTS = {
     SAP_TRANSFER_AWAITING: '/warehouse/sap-transfer-requests/awaiting/',
     SAP_TRANSFER_POST: (docEntry: number) =>
       `/warehouse/sap-transfer-requests/${docEntry}/post/`,
+
+    // An approved transfer DRAFT moves nothing either: in the SAP client
+    // somebody still has to press Add on it. These are that button.
+    SAP_TRANSFER_DRAFTS: '/warehouse/sap-transfer-drafts/',
+    SAP_TRANSFER_DRAFT_POST: (draftEntry: number) =>
+      `/warehouse/sap-transfer-drafts/${draftEntry}/post/`,
   },
 
   // Which SAP B1 account each app user is, per company. Approval decisions

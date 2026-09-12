@@ -12,6 +12,7 @@ import type {
 } from '../types';
 import {
   sapTransferApprovalApi,
+  sapTransferDraftApi,
   sapTransferPostApi,
   transferRequestApi,
   type TransferRequestListParams,
@@ -270,6 +271,40 @@ export function usePostSapTransfer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_AWAITING_QUERY_KEYS.all });
       // Stock has actually moved, so every stock-derived view is stale.
+      queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
+      queryClient.invalidateQueries({ queryKey: ['warehouse', 'sap-transfer-approvals'] });
+    },
+  });
+}
+
+// ============================================================================
+// SAP transfer drafts that are approved but never added
+// ============================================================================
+
+export const SAP_TRANSFER_DRAFT_QUERY_KEYS = {
+  all: ['warehouse', 'sap-transfer-drafts'] as const,
+  list: () => [...SAP_TRANSFER_DRAFT_QUERY_KEYS.all, 'list'] as const,
+};
+
+/** Pass `enabled: false` for a tab that must not fetch until opened. */
+export function useSapTransferDrafts(enabled = true) {
+  return useQuery({
+    queryKey: SAP_TRANSFER_DRAFT_QUERY_KEYS.list(),
+    queryFn: () => sapTransferDraftApi.list(),
+    enabled,
+  });
+}
+
+export function useAddSapTransferDraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (draftEntry: number) => sapTransferDraftApi.post(draftEntry),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_DRAFT_QUERY_KEYS.all });
+      // Stock has actually moved, so every stock-derived view is stale — and
+      // the draft leaves SAP's approval queue as it becomes a document.
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_AWAITING_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
       queryClient.invalidateQueries({ queryKey: ['warehouse', 'sap-transfer-approvals'] });

@@ -7,6 +7,8 @@ import type {
   SapApprovalStatus,
   SapAwaitingTransfer,
   SapTransferApproval,
+  SapTransferDraft,
+  SapTransferDraftPostResult,
   SapTransferPostResult,
   TransferAllocationPreview,
   TransferApprovePayload,
@@ -225,6 +227,29 @@ export const sapTransferPostApi = {
     const res = await apiClient.post<SapTransferPostResult>(EP.SAP_TRANSFER_POST(docEntry), {
       quantities,
     });
+    return res.data;
+  },
+};
+
+/**
+ * Inventory-transfer DRAFTS that SAP approved but nobody added.
+ *
+ * The step after the approval queue for a transfer raised in the SAP client:
+ * approving clears the approval, and the stock still does not move until the
+ * draft is added. Separate from the two above because there is nothing to
+ * choose — the draft is posted exactly as SAP holds it.
+ */
+export const sapTransferDraftApi = {
+  async list(): Promise<SapTransferDraft[]> {
+    const res = await apiClient.get<SapTransferDraft[]>(EP.SAP_TRANSFER_DRAFTS);
+    return res.data;
+  },
+
+  /** Add one draft. No body: quantities and batches were settled in SAP. */
+  async post(draftEntry: number): Promise<SapTransferDraftPostResult> {
+    const res = await apiClient.post<SapTransferDraftPostResult>(
+      EP.SAP_TRANSFER_DRAFT_POST(draftEntry),
+    );
     return res.data;
   },
 };
