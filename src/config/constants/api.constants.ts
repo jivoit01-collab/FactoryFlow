@@ -742,11 +742,6 @@ export const API_ENDPOINTS = {
     // covers the bill in both History books, ours and the counter's.
     PAYMENT: (docEntry: number) => `/ar-invoices/payments/${docEntry}/`,
   },
-  // Daily Tasks — each user's job sheet for one day, derived from every other module
-  DAILY_TASKS: {
-    MY_TODAY: '/activity-center/me/today/',
-    TEAM_TODAY: '/activity-center/users/today/',
-  },
   // AI Assistant
   AI: {
     ASSISTANT_CHAT: '/ai/assistant/chat/',
