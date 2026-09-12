@@ -15,7 +15,7 @@ import {
   useSapTransferDrafts,
   useTransferRequests,
 } from '../../api';
-import type { TransferRequestListItem } from '../../types';
+import type { SapApprovalStatus, TransferRequestListItem } from '../../types';
 import { SapAwaitingTransferTable } from './SapAwaitingTransferTable';
 import { SapTransferApprovalTable } from './SapTransferApprovalTable';
 import { SapUnpostedDraftTable } from './SapUnpostedDraftTable';
@@ -24,10 +24,21 @@ import { shortDate } from './transferFormat';
 
 type Tab = 'all' | 'pending' | 'in-transit' | 'sap' | 'awaiting';
 
+/** The SAP approval queue, then what happened to everything that left it. */
+const SAP_VIEWS: { key: SapApprovalStatus; label: string }[] = [
+  { key: 'PENDING', label: 'Waiting' },
+  { key: 'APPROVED', label: 'Approved' },
+  { key: 'REJECTED', label: 'Rejected' },
+];
+
 export default function TransferRequestListPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
   const [tab, setTab] = useState<Tab>('all');
+  // Which SAP queue the `sap` tab shows: the live one, or the history. Kept
+  // beside the tab because "what did I approve, and what became of it" is the
+  // same question as "what is waiting", one step later.
+  const [sapView, setSapView] = useState<SapApprovalStatus>('PENDING');
 
   const canApprove = hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST);
   const canCreate = hasPermission(WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST);
@@ -38,7 +49,11 @@ export default function TransferRequestListPage() {
   const inTransit = useInTransitTransferRequests();
   // SAP's own queue on transfer drafts. Every HANA read costs a round trip, so
   // only fetch it once the operator opens the tab.
-  const sapApprovals = useSapTransferApprovals('PENDING', tab === 'sap');
+  const sapApprovals = useSapTransferApprovals(sapView, tab === 'sap');
+  // The tab badge counts the backlog, not whatever view is open — history has
+  // no backlog. Only fetched for the pending view; on a history view the cached
+  // pending result keeps the badge honest without a second HANA round trip.
+  const sapPending = useSapTransferApprovals('PENDING', tab === 'sap' && sapView === 'PENDING');
   // Approved requests that still owe stock. Another HANA read, so it waits
   // for the tab too.
   const awaiting = useSapAwaitingTransfers(tab === 'awaiting');
@@ -78,7 +93,7 @@ export default function TransferRequestListPage() {
       key: 'sap',
       label: 'SAP approvals',
       icon: ShieldCheck,
-      count: sapApprovals.data?.length,
+      count: sapPending.data?.length,
       show: true,
     },
     {
@@ -154,11 +169,30 @@ export default function TransferRequestListPage() {
           />
         </div>
       ) : tab === 'sap' ? (
-        <SapTransferApprovalTable
-          rows={sapApprovals.data ?? []}
-          isLoading={sapApprovals.isLoading}
-          isError={sapApprovals.isError}
-        />
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {SAP_VIEWS.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => setSapView(v.key)}
+                className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  sapView === v.key
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+          <SapTransferApprovalTable
+            rows={sapApprovals.data ?? []}
+            isLoading={sapApprovals.isLoading}
+            isError={sapApprovals.isError}
+            view={sapView}
+          />
+        </div>
       ) : (
         <>
           {tab === 'in-transit' && rows.length > 0 && (

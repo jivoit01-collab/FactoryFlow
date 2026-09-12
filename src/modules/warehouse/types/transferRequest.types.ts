@@ -253,7 +253,21 @@ export interface SapTransferApproval {
   obj_type: string;
   doc_type_label: string;
   draft_entry: number;
+  /**
+   * The DRAFT's number — provisional. Open drafts share it (one Oil number
+   * sits on seven at once) and the add takes whatever the series is on then,
+   * so it is frequently not the number the document keeps and frequently
+   * already belongs to some other posted document. Never offer it as
+   * something to search for; `posted_doc_num` is the real one.
+   */
   doc_num: number | null;
+  /** The document the draft was added as, resolved through the draft entry. */
+  posted_doc_entry: number | null;
+  /**
+   * The number SAP actually gave it. For a transfer REQUEST this is what the
+   * Awaiting transfer tab lists it under; null while nothing has been added.
+   */
+  posted_doc_num: number | null;
   from_warehouse: string;
   to_warehouse: string;
   doc_date: string | null;
@@ -264,6 +278,10 @@ export interface SapTransferApproval {
   /** The single SAP user this request is waiting on. */
   approver_code: string | null;
   approver_name: string | null;
+  /** Who signed the decision in SAP, and when — null while still pending. */
+  decided_by: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
   /** Whether we hold that user's SAP password. */
   credentials_configured: boolean;
   /** The caller's own mapped SAP account IS this request's authorizer. */
@@ -312,6 +330,12 @@ export interface SapAwaitingTransfer {
   /** OWTQ.DocEntry. */
   doc_entry: number;
   doc_num: number | null;
+  /**
+   * The approval draft this request was added from (`OWTQ.draftKey`), when it
+   * went through SAP's approval procedure. The dependable way to match a row
+   * here to a row in the SAP approvals tab — the draft's own DocNum is not.
+   */
+  draft_entry: number | null;
   doc_date: string | null;
   from_warehouse: string;
   to_warehouse: string;
@@ -356,7 +380,11 @@ export interface SapTransferDraftLine {
 export interface SapTransferDraft {
   /** ODRF.DocEntry — the id the add is keyed on. */
   draft_entry: number;
-  /** Provisional on a draft, but SAP keeps it on the add. */
+  /**
+   * Provisional, and usually NOT what the add ends up with — open drafts all
+   * carry the series' next number, and the add takes whatever is next then.
+   * The real number is read back from SAP after adding.
+   */
   doc_num: number | null;
   doc_date: string | null;
   from_warehouse: string;

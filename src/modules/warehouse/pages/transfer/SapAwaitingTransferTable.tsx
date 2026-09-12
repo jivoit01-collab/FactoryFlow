@@ -12,7 +12,7 @@
  * exactly how a tank ends up 0.001 out.
  */
 
-import { AlertTriangle, Info, PackageCheck, Truck } from 'lucide-react';
+import { AlertTriangle, Info, PackageCheck, Search, Truck } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
@@ -84,6 +84,7 @@ function RequestRow({ row }: { row: SapAwaitingTransfer }) {
               <div className="text-xs text-muted-foreground">
                 raised {shortDate(row.doc_date)} · {row.age_days} day
                 {row.age_days === 1 ? '' : 's'} open
+                {row.draft_entry ? ` · from draft ${row.draft_entry}` : ''}
               </div>
             </div>
             <Route from={row.from_warehouse} to={row.to_warehouse} />
@@ -185,6 +186,24 @@ function RequestRow({ row }: { row: SapAwaitingTransfer }) {
   );
 }
 
+/**
+ * Matches a row on anything an operator is likely to arrive holding: the SAP
+ * document number the approvals history handed them, the draft entry behind it,
+ * a warehouse code, or an item.
+ */
+function matches(row: SapAwaitingTransfer, needle: string): boolean {
+  const hay = [
+    row.doc_num,
+    row.doc_entry,
+    row.draft_entry,
+    row.from_warehouse,
+    row.to_warehouse,
+    row.comments,
+    ...row.lines.flatMap((l) => [l.item_code, l.item_name]),
+  ];
+  return hay.some((v) => v != null && String(v).toLowerCase().includes(needle));
+}
+
 export function SapAwaitingTransferTable({
   rows,
   isLoading,
@@ -194,6 +213,12 @@ export function SapAwaitingTransferTable({
   isLoading: boolean;
   isError: boolean;
 }) {
+  const [search, setSearch] = useState('');
+  const needle = search.trim().toLowerCase();
+  const shown = useMemo(
+    () => (needle ? rows.filter((row) => matches(row, needle)) : rows),
+    [needle, rows],
+  );
   const postable = rows.filter((r) => r.can_post).length;
 
   return (
@@ -213,6 +238,24 @@ export function SapAwaitingTransferTable({
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search approved transfer requests"
+            placeholder="SAP no., draft, warehouse or item"
+            className="h-9 w-72 pl-8"
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {needle
+            ? `${shown.length} of ${rows.length} match`
+            : 'Paste the SAP number from an approved row in SAP approvals.'}
+        </span>
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -226,6 +269,13 @@ export function SapAwaitingTransferTable({
               <PackageCheck className="h-4 w-4" />
               Every approved transfer request has been fully transferred.
             </p>
+          ) : shown.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">
+              Nothing here matches “{search.trim()}”. If you took that number off a{' '}
+              <span className="font-medium">pending</span> row in SAP approvals, it is the
+              draft&apos;s provisional number and belongs to no request yet — the row has to be
+              approved and added first.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -238,7 +288,7 @@ export function SapAwaitingTransferTable({
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {shown.map((row) => (
                     <Fragment key={row.doc_entry}>
                       <RequestRow row={row} />
                     </Fragment>

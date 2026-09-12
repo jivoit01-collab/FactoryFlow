@@ -182,10 +182,16 @@ export const transferRequestApi = {
  * straight in the SAP client.
  */
 export const sapTransferApprovalApi = {
-  /** `status: 'ALL'` drops the filter; default is PENDING. */
+  /**
+   * `status: 'ALL'` drops the filter; default is PENDING.
+   *
+   * The history views ask for more rows than the live queue: pending is a
+   * backlog that should stay short, while approved/rejected is a log people
+   * scroll back through. The server clamps at 500 either way.
+   */
   async list(status: SapApprovalStatus | 'ALL' = 'PENDING'): Promise<SapTransferApproval[]> {
     const res = await apiClient.get<SapTransferApproval[]>(EP.SAP_TRANSFER_APPROVALS, {
-      params: { status },
+      params: { status, limit: status === 'PENDING' ? 100 : 300 },
     });
     return res.data;
   },
