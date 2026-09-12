@@ -2,12 +2,14 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  ARInvoicePayment,
   ARInvoicePosting,
   ARInvoicePrintPayload,
   CreateARInvoiceRequest,
   Customer,
   CustomerCredit,
   LineDefaults,
+  MarkARPaymentRequest,
   OpenSOLine,
   SapCashSaleHistory,
   SapCashSaleQuery,
@@ -140,6 +142,29 @@ export const arInvoiceApi = {
       API_ENDPOINTS.AR_INVOICE.SAP_INVOICE_PRINT(docEntry),
     );
     return response.data;
+  },
+
+  /**
+   * Record whether a bill has been paid.
+   *
+   * Keyed by SAP's DocEntry, not this app's id: the same mark covers the bill
+   * in both History books, and most of the cash-sale book was raised in SAP
+   * directly and has no record here to hang a mark off.
+   */
+  async markPayment(
+    docEntry: number,
+    data: MarkARPaymentRequest,
+  ): Promise<ARInvoicePayment> {
+    const response = await apiClient.put<ARInvoicePayment>(
+      API_ENDPOINTS.AR_INVOICE.PAYMENT(docEntry),
+      data,
+    );
+    return response.data;
+  },
+
+  /** Drop the mark back to untracked — for one made against the wrong bill. */
+  async clearPayment(docEntry: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.AR_INVOICE.PAYMENT(docEntry));
   },
 
   /** Abandon a PENDING/FAILED record and release its SO lines. */

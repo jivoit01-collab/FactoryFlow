@@ -11,8 +11,10 @@ import {
 import { formatCurrency, formatDate, getErrorMessage } from '@/shared/utils';
 
 import { useSapCashSales } from '../api/ar-invoice.queries';
-import type { SapCashSaleInvoice } from '../types';
+import type { PaymentBucket, SapCashSaleInvoice } from '../types';
+import { countPaymentBuckets, paymentBucket } from '../utils/payment';
 import { SapCashSalePrintButton } from './ARInvoicePrintButton';
+import { ARPaymentCell, ARPaymentFilter } from './ARPaymentControls';
 
 /**
  * The window the list opens on, mirroring the backend's own default
@@ -63,6 +65,16 @@ function InvoiceRow({ invoice }: { invoice: SapCashSaleInvoice }) {
                 {formatCurrency(invoice.doc_total)}
               </span>
               {invoice.is_cancelled ? <Badge variant="destructive">Cancelled</Badge> : null}
+              {/* A cancelled bill collects nothing, so it carries no mark. */}
+              {invoice.is_cancelled ? null : (
+                <ARPaymentCell
+                  docEntry={invoice.doc_entry}
+                  docNum={invoice.doc_num}
+                  docTotal={invoice.doc_total}
+                  customerName={invoice.customer_name || invoice.customer_code}
+                  payment={invoice.payment}
+                />
+              )}
               {/* Which book the bill came from — the whole point of the SAP view. */}
               {invoice.app_posting_id ? (
                 <Badge variant="secondary">Raised here</Badge>
@@ -95,9 +107,29 @@ function InvoiceRow({ invoice }: { invoice: SapCashSaleInvoice }) {
                 {formatCurrency(invoice.tax_total)}
               </p>
               <p>
-                <span className="text-muted-foreground">Received against it: </span>
+                <span className="text-muted-foreground">Applied in SAP: </span>
                 {formatCurrency(invoice.paid_to_date)}
               </p>
+              {invoice.payment ? (
+                <p className="sm:col-span-3">
+                  <span className="text-muted-foreground">Payment: </span>
+                  {invoice.payment.status_display}
+                  {invoice.payment.received_on
+                    ? ` on ${formatDate(invoice.payment.received_on)}`
+                    : ''}
+                  {invoice.payment.amount ? ` · ${formatCurrency(Number(invoice.payment.amount))}` : ''}
+                  {invoice.payment.mode_display ? ` · ${invoice.payment.mode_display}` : ''}
+                  {invoice.payment.reference ? ` · ref ${invoice.payment.reference}` : ''}
+                  {invoice.payment.marked_by_name
+                    ? ` · marked by ${invoice.payment.marked_by_name}`
+                    : ''}
+                  {invoice.payment.remarks ? (
+                    <span className="block text-xs text-muted-foreground">
+                      {invoice.payment.remarks}
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
             </div>
             <div className="overflow-x-auto rounded-md border">
               <table className="w-full text-sm">
@@ -178,6 +210,14 @@ export function SapCashSaleList() {
   // A backwards window is refused by the API; don't ask it.
   const validWindow = !dateFrom || !dateTo || dateFrom <= dateTo;
   const { data, isLoading, isError, error } = useSapCashSales(query, validWindow);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentBucket | 'ALL'>('ALL');
+
+  const invoices = useMemo(() => data?.invoices ?? [], [data]);
+  const counts = useMemo(() => countPaymentBuckets(invoices), [invoices]);
+  const shown =
+    paymentFilter === 'ALL'
+      ? invoices
+      : invoices.filter((invoice) => paymentBucket(invoice.payment) === paymentFilter);
 
   return (
     <div className="space-y-3">
@@ -240,8 +280,17 @@ export function SapCashSaleList() {
             {formatDate(data.date_from)} to {formatDate(data.date_to)}
             {data.truncated ? ' · only the newest are shown — narrow the dates' : ''}
           </p>
+          {/* Filtered over the rows on screen, not in SAP: this list is a capped
+              window, so a server-side count of "unpaid" would read as the whole
+              book when it is only the newest page of it. */}
+          <ARPaymentFilter value={paymentFilter} onChange={setPaymentFilter} counts={counts} />
+          {shown.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              No cash sales in this payment state within the window shown.
+            </p>
+          ) : null}
           <div className="space-y-2">
-            {data.invoices.map((invoice) => (
+            {shown.map((invoice) => (
               <InvoiceRow key={invoice.doc_entry} invoice={invoice} />
             ))}
           </div>

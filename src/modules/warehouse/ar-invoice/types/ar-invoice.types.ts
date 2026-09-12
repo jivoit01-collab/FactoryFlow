@@ -101,6 +101,56 @@ export interface ARInvoiceAttachment {
   file_url: string | null;
 }
 
+/**
+ * Whether an invoice has actually been paid, as this app records it.
+ *
+ * Deliberately the app's own book rather than SAP's: SAP calls an invoice
+ * "closed" only once accounts apply an incoming payment against it, which for a
+ * counter cash sale can be days after the cash was taken.
+ */
+export type ARPaymentStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED';
+
+export type ARPaymentMode = 'CASH' | 'UPI' | 'BANK' | 'CHEQUE' | 'CARD' | 'OTHER';
+
+/**
+ * What the History screens colour and filter on.
+ *
+ * Coarser than the status: an untracked bill and one explicitly marked
+ * PENDING both land in UNPAID, because a bill nobody has looked at is not a
+ * paid one.
+ */
+export type PaymentBucket = 'UNPAID' | 'PARTIAL' | 'RECEIVED';
+
+/** One invoice's payment mark. Absent (`null`) means untracked. */
+export interface ARInvoicePayment {
+  id: number;
+  /** SAP's DocEntry — the key both History books share. */
+  sap_doc_entry: number;
+  sap_doc_num: number | null;
+  /** This app's record, when it raised the bill; null for the counter's. */
+  ar_invoice: number | null;
+  status: ARPaymentStatus;
+  status_display: string;
+  received_on: string | null;
+  amount: string | null;
+  mode: ARPaymentMode | '';
+  mode_display: string;
+  reference: string;
+  remarks: string;
+  marked_by_name: string | null;
+  updated_at: string;
+}
+
+/** Body of the mark-payment call. */
+export interface MarkARPaymentRequest {
+  status: ARPaymentStatus;
+  received_on?: string | null;
+  amount?: string | null;
+  mode?: ARPaymentMode | '';
+  reference?: string;
+  remarks?: string;
+}
+
 export interface ARInvoicePosting {
   id: number;
   customer_code: string;
@@ -127,6 +177,8 @@ export interface ARInvoicePosting {
   posted_by_name: string | null;
   lines: ARInvoiceLine[];
   attachments: ARInvoiceAttachment[];
+  /** The payment mark, or null while the bill is untracked. */
+  payment: ARInvoicePayment | null;
 }
 
 /** An item held in one warehouse — the direct-sale item picker's rows. */
@@ -311,6 +363,11 @@ export interface SapCashSaleInvoice {
   draft_entry: number | null;
   lines: SapCashSaleLine[];
   app_posting_id: number | null;
+  /**
+   * This app's payment mark for the bill, which SAP knows nothing about. Joined
+   * on DocEntry — the counter's invoices have no other key here.
+   */
+  payment: ARInvoicePayment | null;
 }
 
 /** The SAP cash-sale history, with the window it was actually read over. */

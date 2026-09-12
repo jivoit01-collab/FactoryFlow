@@ -30,11 +30,13 @@ import {
 } from '../api/ar-invoice.queries';
 import { ARInvoiceDetailSheet } from '../components/ARInvoiceDetailSheet';
 import { ARInvoiceStatusBadge } from '../components/ARInvoiceStatusBadge';
+import { ARPaymentCell, ARPaymentFilter } from '../components/ARPaymentControls';
 import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
 import { SapCashSaleList } from '../components/SapCashSaleList';
-import type { ARInvoicePosting, OpenSOLine } from '../types';
+import type { ARInvoicePosting, OpenSOLine, PaymentBucket } from '../types';
+import { countPaymentBuckets, paymentBucket } from '../utils/payment';
 
 const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
 
@@ -351,6 +353,7 @@ function HistoryTab({ canAct }: { canAct: boolean }) {
 function AppHistoryList({ canAct }: { canAct: boolean }) {
   const { data, isLoading, isError } = useArInvoices();
   const [selected, setSelected] = useState<ARInvoicePosting | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentBucket | 'ALL'>('ALL');
 
   // Keep the sheet showing the fresh record after an action refetches the list.
   const current = useMemo(
@@ -368,8 +371,14 @@ function AppHistoryList({ canAct }: { canAct: boolean }) {
       </p>
     );
   }
-  const rows = data ?? [];
-  if (rows.length === 0) {
+  const all = data ?? [];
+  const counts = countPaymentBuckets(all);
+  const rows =
+    paymentFilter === 'ALL'
+      ? all
+      : all.filter((posting) => paymentBucket(posting.payment) === paymentFilter);
+
+  if (all.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
         <ReceiptText className="h-8 w-8" />
@@ -383,6 +392,17 @@ function AppHistoryList({ canAct }: { canAct: boolean }) {
 
   return (
     <>
+      <div className="flex items-center justify-between gap-2 pb-1">
+        <ARPaymentFilter value={paymentFilter} onChange={setPaymentFilter} counts={counts} />
+        <span className="text-xs text-muted-foreground">
+          {rows.length} of {all.length}
+        </span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          No invoices in this payment state.
+        </p>
+      ) : null}
       <div className="space-y-2">
         {rows.map((posting) => (
           <Card
@@ -420,6 +440,20 @@ function AppHistoryList({ canAct }: { canAct: boolean }) {
                       : '-'}
                 </span>
                 <ARInvoiceStatusBadge status={posting.status} />
+                {/* Money in, as against document state — a POSTED bill is not
+                    a paid one, which is the whole point of tracking it. */}
+                <ARPaymentCell
+                  docEntry={posting.sap_doc_entry}
+                  docNum={posting.sap_doc_num}
+                  docTotal={posting.sap_doc_total ? Number(posting.sap_doc_total) : null}
+                  customerName={posting.customer_name || posting.customer_code}
+                  payment={posting.payment}
+                  disabledReason={
+                    posting.sap_doc_entry
+                      ? undefined
+                      : 'Not posted to SAP yet — there is no bill to collect against.'
+                  }
+                />
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </CardContent>

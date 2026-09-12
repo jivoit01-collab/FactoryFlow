@@ -683,6 +683,9 @@ export const API_ENDPOINTS = {
     // The counter's own bills have no record here, so they print by SAP's DocEntry.
     SAP_INVOICE_PRINT: (docEntry: number) =>
       `/ar-invoices/sap-invoices/${docEntry}/print/`,
+    // Payment received — keyed by SAP's DocEntry for the same reason: one mark
+    // covers the bill in both History books, ours and the counter's.
+    PAYMENT: (docEntry: number) => `/ar-invoices/payments/${docEntry}/`,
   },
   // Daily Tasks — each user's job sheet for one day, derived from every other module
   DAILY_TASKS: {

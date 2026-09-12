@@ -1,7 +1,11 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SapCashSaleHistory, SapCashSaleInvoice } from '../../types';
+import type {
+  ARInvoicePayment,
+  SapCashSaleHistory,
+  SapCashSaleInvoice,
+} from '../../types';
 import { SapCashSaleList } from '../SapCashSaleList';
 
 const useSapCashSales = vi.hoisted(() => vi.fn());
@@ -11,7 +15,42 @@ const useSapCashSalePrint = vi.hoisted(() =>
   vi.fn(() => ({ data: undefined, isFetching: false, error: null })),
 );
 
-vi.mock('../../api/ar-invoice.queries', () => ({ useSapCashSales, useSapCashSalePrint }));
+const useMarkArPayment = vi.hoisted(() => vi.fn(() => ({ isPending: false })));
+const useClearArPayment = vi.hoisted(() => vi.fn(() => ({ isPending: false })));
+
+vi.mock('../../api/ar-invoice.queries', () => ({
+  useSapCashSales,
+  useSapCashSalePrint,
+  useMarkArPayment,
+  useClearArPayment,
+}));
+
+// The payment control asks whether this user may mark receipts; the hook reads
+// redux, which a static-markup render has no store for.
+const hasPermission = vi.hoisted(() => vi.fn(() => true));
+vi.mock('@/core/auth/hooks/usePermission', () => ({
+  usePermission: () => ({ hasPermission }),
+}));
+
+function payment(over: Partial<ARInvoicePayment> = {}): ARInvoicePayment {
+  return {
+    id: 1,
+    sap_doc_entry: 80075,
+    sap_doc_num: 626090322,
+    ar_invoice: null,
+    status: 'RECEIVED',
+    status_display: 'Payment received',
+    received_on: '2026-09-11',
+    amount: '850.00',
+    mode: 'UPI',
+    mode_display: 'UPI',
+    reference: 'UTR-77120',
+    remarks: '',
+    marked_by_name: 'Counter',
+    updated_at: '2026-09-11T10:00:00Z',
+    ...over,
+  };
+}
 
 function invoice(over: Partial<SapCashSaleInvoice> = {}): SapCashSaleInvoice {
   return {
@@ -49,6 +88,7 @@ function invoice(over: Partial<SapCashSaleInvoice> = {}): SapCashSaleInvoice {
       },
     ],
     app_posting_id: null,
+    payment: null,
     ...over,
   };
 }
@@ -78,6 +118,7 @@ function state(over: Partial<{ data: SapCashSaleHistory; isLoading: boolean; isE
 describe('SapCashSaleList', () => {
   beforeEach(() => {
     useSapCashSales.mockReset();
+    hasPermission.mockReturnValue(true);
   });
 
   it('lists the cash sales SAP holds, with the window they were read over', () => {
@@ -136,6 +177,63 @@ describe('SapCashSaleList', () => {
   it('warns when the window holds more than was returned', () => {
     state({ data: history({ truncated: true }) });
     expect(renderToStaticMarkup(<SapCashSaleList />)).toContain('narrow the dates');
+  });
+
+  it('shows whether each bill has been paid', () => {
+    state({
+      data: history({
+        invoices: [
+          invoice({ doc_entry: 80075, payment: payment() }),
+          invoice({ doc_entry: 79996, doc_num: 626090296, payment: null }),
+        ],
+      }),
+    });
+    const html = renderToStaticMarkup(<SapCashSaleList />);
+    expect(html).toContain('Paid');
+    // An unmarked bill says so rather than going blank — blank reads as
+    // "nothing to worry about", the opposite of an unchecked invoice.
+    expect(html).toContain('Not tracked');
+  });
+
+  it('counts the window by payment state', () => {
+    state({
+      data: history({
+        invoices: [
+          invoice({ doc_entry: 80075, payment: payment() }),
+          invoice({ doc_entry: 79996, doc_num: 626090296, payment: null }),
+          invoice({
+            doc_entry: 79900,
+            doc_num: 626090200,
+            payment: payment({ status: 'PARTIAL', status_display: 'Partly received' }),
+          }),
+        ],
+      }),
+    });
+    const html = renderToStaticMarkup(<SapCashSaleList />);
+    expect(html).toContain('Part paid');
+    expect(html).toContain('Unpaid');
+  });
+
+  it('carries the receipt details on the pill without opening the row', () => {
+    state({ data: history({ invoices: [invoice({ payment: payment() })] }) });
+    const html = renderToStaticMarkup(<SapCashSaleList />);
+    // Date, mode, reference and who marked it, on hover — the row itself stays
+    // collapsed, and chasing a payment should not need it expanded.
+    expect(html).toContain('UTR-77120');
+    expect(html).toContain('marked by Counter');
+  });
+
+  it('offers no payment mark on a cancelled bill', () => {
+    state({ data: history({ invoices: [invoice({ is_cancelled: true })] }) });
+    expect(renderToStaticMarkup(<SapCashSaleList />)).not.toContain('Not tracked');
+  });
+
+  it('shows the payment state but no control without the permission', () => {
+    hasPermission.mockReturnValue(false);
+    state({ data: history({ invoices: [invoice({ payment: payment() })] }) });
+    const html = renderToStaticMarkup(<SapCashSaleList />);
+    expect(html).toContain('Paid');
+    expect(html).not.toContain('Record whether this bill was paid');
   });
 
   it('names the window it found nothing in', () => {

@@ -1,6 +1,9 @@
-import { FileText, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
+import { BadgeIndianRupee, FileText, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
   Button,
   Separator,
@@ -10,12 +13,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/shared/components/ui';
-import { formatCurrency, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
+import { formatCurrency, formatDate, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import { useArInvoiceAction } from '../api/ar-invoice.queries';
 import type { ARInvoicePosting } from '../types';
 import { ARInvoicePrintButton } from './ARInvoicePrintButton';
 import { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
+import { ARPaymentBadge, ARPaymentDialog } from './ARPaymentControls';
 
 function amount(value?: string | null) {
   if (value == null || value === '') return '-';
@@ -49,6 +53,9 @@ export function ARInvoiceDetailSheet({
   onOpenChange: (open: boolean) => void;
   canAct: boolean;
 }) {
+  const { hasPermission } = usePermission();
+  const canMarkPayment = hasPermission(AR_INVOICE_PERMISSIONS.MARK_PAYMENT);
+  const [payOpen, setPayOpen] = useState(false);
   const postAction = useArInvoiceAction('post');
   const refreshAction = useArInvoiceAction('refresh');
   const postDraftAction = useArInvoiceAction('postDraft');
@@ -117,6 +124,74 @@ export function ARInvoiceDetailSheet({
               <div className="flex">
                 <ARInvoicePrintButton posting={posting} />
               </div>
+            ) : null}
+
+            {/* Whether the money came in — this app's own book, not SAP's.
+                Only once there is a bill: nothing collects against a draft. */}
+            {posting.sap_doc_entry ? (
+              <div className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Payment
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {posting.payment ? (
+                        <>
+                          {posting.payment.status_display}
+                          {posting.payment.received_on
+                            ? ` on ${formatDate(posting.payment.received_on)}`
+                            : ''}
+                          {posting.payment.amount
+                            ? ` · ${amount(posting.payment.amount)}`
+                            : ''}
+                          {posting.payment.mode_display
+                            ? ` · ${posting.payment.mode_display}`
+                            : ''}
+                          {posting.payment.reference
+                            ? ` · ref ${posting.payment.reference}`
+                            : ''}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Nobody has recorded whether this bill was paid.
+                        </span>
+                      )}
+                    </p>
+                    {posting.payment?.remarks ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {posting.payment.remarks}
+                      </p>
+                    ) : null}
+                    {posting.payment?.marked_by_name ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Marked by {posting.payment.marked_by_name}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <ARPaymentBadge payment={posting.payment} />
+                    {canMarkPayment ? (
+                      <Button variant="outline" size="sm" onClick={() => setPayOpen(true)}>
+                        <BadgeIndianRupee className="mr-1 h-4 w-4" />
+                        {posting.payment ? 'Update' : 'Mark'}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {posting.sap_doc_entry ? (
+              <ARPaymentDialog
+                open={payOpen}
+                onOpenChange={setPayOpen}
+                docEntry={posting.sap_doc_entry}
+                docNum={posting.sap_doc_num}
+                docTotal={posting.sap_doc_total ? Number(posting.sap_doc_total) : null}
+                customerName={posting.customer_name || posting.customer_code}
+                payment={posting.payment}
+              />
             ) : null}
 
             {posting.error_message ? (

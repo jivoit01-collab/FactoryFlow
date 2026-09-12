@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { CreateARInvoiceRequest, SapCashSaleQuery } from '../types';
+import type {
+  CreateARInvoiceRequest,
+  MarkARPaymentRequest,
+  SapCashSaleQuery,
+} from '../types';
 import { arInvoiceApi } from './ar-invoice.api';
 
 export const AR_INVOICE_QUERY_KEYS = {
@@ -153,6 +157,34 @@ export function useArInvoiceAction(action: 'post' | 'refresh' | 'postDraft' | 'c
   }[action];
   return useMutation({
     mutationFn: (id: number) => fn(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.all });
+    },
+  });
+}
+
+/**
+ * Mark (or correct) whether a bill has been paid.
+ *
+ * Invalidates the whole module: the same mark shows on the app's History and on
+ * the SAP cash-sale list, and the two are separate queries.
+ */
+export function useMarkArPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ docEntry, data }: { docEntry: number; data: MarkARPaymentRequest }) =>
+      arInvoiceApi.markPayment(docEntry, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.all });
+    },
+  });
+}
+
+/** Drop a mark back to untracked. */
+export function useClearArPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (docEntry: number) => arInvoiceApi.clearPayment(docEntry),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.all });
     },

@@ -12,6 +12,12 @@ export const AR_INVOICE_PERMISSIONS = {
   VIEW: 'ar_invoice.view_ar_invoice_posting',
   /** Create A/R invoices and post them (and their approved drafts) to SAP */
   CREATE: 'ar_invoice.create_ar_invoice_posting',
+  /**
+   * Record whether a bill's money has come in. Held apart from CREATE so
+   * accounts can mark receipts without also gaining the power to raise
+   * invoices.
+   */
+  MARK_PAYMENT: 'ar_invoice.mark_ar_invoice_payment',
 } as const;
 
 /** Module prefix used by the permission system */
