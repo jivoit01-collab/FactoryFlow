@@ -10,7 +10,8 @@ import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
-import { useCreatePallet, useDeleteEmptyPallet, usePalletsPage } from '../api';
+import { useDeleteEmptyPallet, usePalletsPage } from '../api';
+import CreateEmptyPalletDialog from '../components/CreateEmptyPalletDialog';
 import ScanSearchButton from '../components/ScanSearchButton';
 import type { PalletStatus } from '../types';
 import { toastBarcodeError } from '../utils/errors';
@@ -42,16 +43,12 @@ export default function PalletListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const createPalletMutation = useCreatePallet();
   const deleteEmptyPalletMutation = useDeleteEmptyPallet();
   const {
     data: whList,
     isError: warehouseLoadFailed,
     isLoading: loadingWarehouses,
   } = useWMSWarehouses();
-  const [form, setForm] = useState({
-    warehouse: '',
-  });
 
   useEffect(() => {
     setPage(1);
@@ -64,29 +61,6 @@ export default function PalletListPage() {
     page_size: pageSize,
   });
   const pallets = palletPage?.results ?? [];
-
-  const updateForm = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
-
-  const handleCreateEmptyPallet = async () => {
-    const warehouse = form.warehouse.trim();
-
-    if (!warehouse) {
-      toast.error('Warehouse name is required.');
-      return;
-    }
-
-    try {
-      const pallet = await createPalletMutation.mutateAsync({
-        box_ids: [],
-        warehouse,
-      });
-      toast.success(`Created pallet ${pallet.pallet_id}`);
-      navigate(`/barcode/pallets/${pallet.id}`);
-    } catch (err: unknown) {
-      toastBarcodeError(err, 'Unable to create pallet. Please check the warehouse.');
-    }
-  };
 
   const handleDeleteEmptyPallet = async (palletId: number, palletCode: string) => {
     const confirmed = await confirmDialog({
@@ -109,43 +83,23 @@ export default function PalletListPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <DashboardHeader title="Pallets" description="All pallets with barcode tracking" />
-        <Button size="sm" onClick={() => setShowCreate((prev) => !prev)}>
+        <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1" /> New Pallet
         </Button>
       </div>
 
-      {showCreate && (
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="max-w-sm">
-              <label className="text-xs font-medium text-muted-foreground">Warehouse</label>
-              <select
-                className="mt-1 w-full rounded border px-3 py-2 text-sm"
-                value={form.warehouse}
-                onChange={(e) => updateForm('warehouse', e.target.value)}
-                disabled={loadingWarehouses}
-              >
-                <option value="">
-                  {loadingWarehouses ? 'Loading warehouses...' : 'Select warehouse'}
-                </option>
-                {whList?.warehouses.map((warehouse) => (
-                  <option key={warehouse.code} value={warehouse.code}>
-                    {warehouse.name ? `${warehouse.code} - ${warehouse.name}` : warehouse.code}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {warehouseLoadFailed && (
-              <p className="text-sm text-destructive">
-                Could not load warehouses from SAP HANA. Please refresh and try again.
-              </p>
-            )}
-            <Button onClick={handleCreateEmptyPallet} disabled={createPalletMutation.isPending}>
-              {createPalletMutation.isPending ? 'Creating...' : 'Create Empty Pallet'}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      <CreateEmptyPalletDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        warehouses={whList?.warehouses ?? []}
+        warehousesLoading={loadingWarehouses}
+        warehousesError={warehouseLoadFailed}
+        onCreated={(pallets) => {
+          // A single pallet is almost always about to be worked on, so open it.
+          // A batch stays on the list, which the mutation has already refreshed.
+          if (pallets.length === 1) navigate(`/barcode/pallets/${pallets[0].id}`);
+        }}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
