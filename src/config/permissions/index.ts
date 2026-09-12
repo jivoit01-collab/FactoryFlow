@@ -49,6 +49,14 @@ export {
   type GoodsReturnPermission,
 } from './goods-return.permissions';
 
+// Dismantle Module (SAP disassembly of returned / stocked finished goods)
+export {
+  DISMANTLE_ACCESS,
+  DISMANTLE_MODULE_PREFIX,
+  DISMANTLE_PERMISSIONS,
+  type DismantlePermission,
+} from './dismantle.permissions';
+
 // SAP Identity (which SAP B1 account each app user is, per company)
 export {
   SAP_IDENTITY_MODULE_PREFIX,

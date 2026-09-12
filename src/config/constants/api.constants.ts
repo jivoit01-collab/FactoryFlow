@@ -647,6 +647,22 @@ export const API_ENDPOINTS = {
     GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
+  // Dismantling — one SAP disassembly order plus the two documents that
+  // complete it. `POST` writes all three and cannot be undone from the app.
+  DISMANTLE: {
+    LIST: '/dismantle/',
+    CREATE: '/dismantle/',
+    BULK_CREATE: '/dismantle/bulk/',
+    BY_ID: (id: number) => `/dismantle/${id}/`,
+    COMPONENTS: (id: number) => `/dismantle/${id}/components/`,
+    REBUILD_COMPONENTS: (id: number) => `/dismantle/${id}/components/rebuild/`,
+    PREVIEW: (id: number) => `/dismantle/${id}/preview/`,
+    POST: (id: number) => `/dismantle/${id}/post/`,
+    RETURNED_LINES: '/dismantle/returned-lines/',
+    STOCK: '/dismantle/stock/',
+    BATCHES: '/dismantle/batches/',
+    WAREHOUSES: '/dismantle/warehouses/',
+  },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
     BILLS: '/dispatch-plans/bills/',

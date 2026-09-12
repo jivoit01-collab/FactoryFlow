@@ -10,17 +10,24 @@
  * Submodules:
  *  - `customer/` — customer returns of finished goods, posting a standalone SAP
  *    A/R Return into a `-GR` warehouse. Built.
+ *  - `dismantle/` — disposition of that returned stock: taking a finished good
+ *    apart into its components as a SAP disassembly order. Built. It also
+ *    dismantles plain warehouse stock, which is how returns keyed straight into
+ *    SAP (and so unknown to `customer/`) are covered.
  *
  * Room it was created for: vendor returns (SAP object 21, for QC-rejected raw
- * material that currently has no way back to the supplier), disposition of
- * returned stock, and the credit-note tail. None of those exist yet — add them
- * as siblings of `customer/`, and extend `modulePrefix` below so the group keeps
- * showing for whoever can see any of them.
+ * material that currently has no way back to the supplier) and the credit-note
+ * tail. Neither exists yet — add them as siblings of `customer/`, and extend
+ * `modulePrefix` below so the group keeps showing for whoever can see any of
+ * them.
  */
 import { Undo2 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 import {
+  DISMANTLE_ACCESS,
+  DISMANTLE_MODULE_PREFIX,
+  DISMANTLE_PERMISSIONS,
   GOODS_RETURN_ACCESS,
   GOODS_RETURN_MODULE_PREFIX,
   GOODS_RETURN_PERMISSIONS,
@@ -39,6 +46,10 @@ const GoodsReturnItemsPage = lazy(() => import('./customer/pages/GoodsReturnItem
 const GoodsReturnVehiclePage = lazy(() => import('./customer/pages/GoodsReturnVehiclePage'));
 const GoodsReturnReviewPage = lazy(() => import('./customer/pages/GoodsReturnReviewPage'));
 const GoodsReturnDetailPage = lazy(() => import('./customer/pages/GoodsReturnDetailPage'));
+
+const DismantleListPage = lazy(() => import('./dismantle/pages/DismantleListPage'));
+const DismantleNewPage = lazy(() => import('./dismantle/pages/DismantleNewPage'));
+const DismantleDetailPage = lazy(() => import('./dismantle/pages/DismantleDetailPage'));
 
 export const returnsModuleConfig: ModuleConfig = {
   name: 'returns',
@@ -101,6 +112,27 @@ export const returnsModuleConfig: ModuleConfig = {
       permissions: GOODS_RETURN_ACCESS,
       breadcrumb: { label: 'Return' },
     },
+    {
+      path: '/returns/disassembly',
+      element: <DismantleListPage />,
+      layout: 'main',
+      permissions: DISMANTLE_ACCESS,
+      breadcrumb: { label: 'Disassembly' },
+    },
+    {
+      path: '/returns/disassembly/new',
+      element: <DismantleNewPage />,
+      layout: 'main',
+      permissions: [DISMANTLE_PERMISSIONS.CREATE],
+      breadcrumb: { label: 'New Disassembly' },
+    },
+    {
+      path: '/returns/disassembly/:entryId',
+      element: <DismantleDetailPage />,
+      layout: 'main',
+      permissions: DISMANTLE_ACCESS,
+      breadcrumb: { label: 'Disassembly' },
+    },
     // Pre-move paths. Cheap to keep, and they cover bookmarks plus any link
     // outside this module that still points at the old location.
     {
@@ -125,7 +157,7 @@ export const returnsModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       // Add each new submodule's prefix here as it lands, so the group stays
       // visible to anyone who can see any one of them.
-      modulePrefix: GOODS_RETURN_MODULE_PREFIX,
+      modulePrefix: [GOODS_RETURN_MODULE_PREFIX, DISMANTLE_MODULE_PREFIX],
       children: [
         {
           // No `permissions` here on purpose: the sidebar's child filter reads
@@ -134,6 +166,15 @@ export const returnsModuleConfig: ModuleConfig = {
           path: '/returns/customer',
           title: 'Customer Returns',
           showInSidebar: true,
+        },
+        {
+          // This one DOES carry permissions: a returns clerk is not necessarily
+          // someone who takes stock apart, and the parent's prefix list now lets
+          // either group through.
+          path: '/returns/disassembly',
+          title: 'Disassembly',
+          showInSidebar: true,
+          permissions: DISMANTLE_ACCESS,
         },
       ],
     },
