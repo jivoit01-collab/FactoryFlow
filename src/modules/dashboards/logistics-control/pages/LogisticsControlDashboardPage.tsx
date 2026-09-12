@@ -1,13 +1,15 @@
 import '../styles/ops-board.css';
 
 import { format } from 'date-fns';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { usePermission } from '@/core/auth';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import { useWarehouseSettings } from '../api';
 import {
+  BoardDrill,
+  type DrillKey,
   OpsBand,
   OpsBars,
   OpsGroup,
@@ -25,7 +27,7 @@ import {
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
 } from '../constants';
-import { useLogisticsControlBoard } from '../hooks';
+import { useFullBleed, useLogisticsControlBoard } from '../hooks';
 
 /** Whole number, Indian grouping. */
 function whole(value: number): string {
@@ -90,6 +92,18 @@ export function LogisticsControlDashboardPage() {
   // drops away and the `--u` clamp gets the real viewport to scale against.
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
+
+  // The board is one viewport wide by design; the shell's centred column is not.
+  useFullBleed(boardRef);
+
+  /**
+   * The tile whose rows are open, if any.
+   *
+   * One at a time by construction — the panel covers the board, so a second
+   * would have nothing to open over.
+   */
+  const [drill, setDrill] = useState<DrillKey | null>(null);
+  const open = (key: DrillKey) => () => setDrill(key);
 
   // The two facts SAP does not hold, typed in on the settings screen.
   const settings = useWarehouseSettings(LOGISTICS_CONTROL_WAREHOUSE, canSeeWarehouse);
@@ -238,12 +252,12 @@ export function LogisticsControlDashboardPage() {
             domain="warehouse"
             title="Warehouse"
             scope={LOGISTICS_CONTROL_WAREHOUSE}
-            columns="1.1fr 1.1fr .95fr .95fr"
             people={canSeeWorkforce ? board.workforce.warehouse : undefined}
             unavailable={canSeeWarehouse ? undefined : 'No access to warehouse stock.'}
           >
             <OpsGroup
               name="Stock on hand"
+              onOpen={open('stock')}
               tag={
                 fillPct !== null
                   ? { label: `${decimal(fillPct, 0)}% full`, tone: 'neut' }
@@ -298,6 +312,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Non-moving stock"
+              onOpen={open('non-moving')}
               tag={
                 // Share of the warehouse this stock is sitting on. Against the
                 // rated capacity where one is set — that is the space it
@@ -349,6 +364,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Pending dispatch"
+              onOpen={open('pending')}
               tag={{ label: `${whole(pending.invoices)} invoices`, tone: 'neut' }}
               value={decimal(pending.tonnes)}
               unit="tonnes"
@@ -379,6 +395,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Allocated stock"
+              onOpen={open('allocated')}
               tag={
                 allocated.movements > 0
                   ? { label: `${whole(allocated.movements)} consignments`, tone: 'neut' }
@@ -417,12 +434,12 @@ export function LogisticsControlDashboardPage() {
                 ? board.dispatch.companies.join(' | ')
                 : 'Oil | Mart'
             }
-            columns="1fr 1.1fr 1.05fr .95fr"
             people={canSeeWorkforce ? board.workforce.dispatch : undefined}
             unavailable={canSeeDispatch ? undefined : 'No access to dispatch plans.'}
           >
             <OpsGroup
               name="Dispatched today"
+              onOpen={open('dispatched-today')}
               /* Yesterday, not a target: the day plan is already the bar
                  underneath, and a tile carrying the same comparison twice
                  wastes the one pill it has. Green for up and amber for down —
@@ -489,6 +506,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Month to date"
+              onOpen={open('dispatched-month')}
               tag={
                 targetPct === null
                   ? { label: 'no target set', tone: 'nil' }
@@ -523,6 +541,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Planned against booked"
+              onOpen={open('planned')}
               tag={
                 pending.plannedBills === 0
                   ? { label: 'nothing planned', tone: 'ok' }
@@ -568,6 +587,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Sent without barcodes"
+              onOpen={open('unscanned')}
               tag={
                 unscanned.approvals === 0
                   ? { label: 'none this month', tone: 'ok' }
@@ -608,12 +628,12 @@ export function LogisticsControlDashboardPage() {
           <OpsBand
             domain="transport"
             title="Transportation"
-            columns="1fr 1.15fr .95fr 1.1fr"
             people={canSeeWorkforce ? board.workforce.transport : undefined}
             unavailable={canSeeFreight ? undefined : 'No access to dispatch linking.'}
           >
             <OpsGroup
               name="Owned vehicles"
+              onOpen={open('fleet')}
               tag={
                 !fleet.configured && fleet.owned === null
                   ? { label: 'not set', tone: 'nil' }
@@ -623,8 +643,23 @@ export function LogisticsControlDashboardPage() {
                       ? { label: `${whole(fleet.outOfService)} out of service`, tone: 'bad' }
                       : { label: `${whole(onDuty)} on duty`, tone: 'neut' }
               }
-              value={fleet.owned === null ? undefined : whole(fleet.owned)}
-              unit="vehicles"
+              /*
+               * Working over owned — "3/4" — rather than the fleet size alone.
+               *
+               * The size is a fact nobody has to look up; what the tile is read
+               * for is how much of the fleet is earning today. Only meaningful
+               * once the registrations are entered: without them the duty
+               * states are unknown, and "0/4" would report an idle fleet when
+               * the truth is an unconfigured one.
+               */
+              value={
+                fleet.owned === null
+                  ? undefined
+                  : fleet.configured
+                    ? `${whole(onDuty)}/${whole(fleet.owned)}`
+                    : whole(fleet.owned)
+              }
+              unit={fleet.configured ? 'in use' : 'vehicles'}
               // Ownership is not a field on the vehicle master, so the fleet is
               // the registration list from board settings.
               missing={
@@ -674,6 +709,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Transport account"
+              onOpen={open('freight-vendors')}
               /* The oldest unpaid freight invoice, which is the fact that
                  decides whether this tile needs acting on today. Amber past a
                  month, red past a quarter — condition colours, earned. */
@@ -721,6 +757,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Cost per litre"
+              onOpen={open('cost-litre')}
               /* Coverage, not a condition. The freight half is divided over
                  only the litres whose bilty carries an amount, so the pill says
                  how much of the month the rate speaks for — under half and it
@@ -777,6 +814,7 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Stock in transit"
+              onOpen={open('transit')}
               tag={
                 transit.bands === null
                   ? { label: 'no data', tone: 'nil' }
@@ -844,6 +882,11 @@ export function LogisticsControlDashboardPage() {
           </OpsBand>
         </main>
       </div>
+
+      {/* The rows behind whichever tile was clicked. Rendered here rather than
+          inside the tile so only one can ever be open, and so the panel is a
+          sibling of the board rather than a child of a clipped card. */}
+      {drill && <BoardDrill which={drill} board={board} onClose={() => setDrill(null)} />}
     </div>
   );
 }

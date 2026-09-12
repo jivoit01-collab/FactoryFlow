@@ -37,8 +37,19 @@ export interface OpsBandProps {
   title: string;
   /** The quieter half of the rail label — a warehouse code, a company pair. */
   scope?: string;
-  /** Relative widths of the tiles, e.g. `1.1fr 1.1fr .95fr .95fr`. */
-  columns: string;
+  /**
+   * Relative widths of the tiles. Defaults to four equal columns.
+   *
+   * Equal by default because the bands are read DOWN as well as across: the
+   * rail and the people strip are fixed widths, so identical tile columns make
+   * the second tile of every band start on the same vertical line. Weighted
+   * templates gave each band its own rhythm and the board lost that grid.
+   *
+   * Pass one only where a band genuinely needs it — and note the units must be
+   * `minmax(0, …)` rather than bare `fr` if the tile holds anything that will
+   * not wrap, or its content widens the column and the row stops being even.
+   */
+  columns?: string;
   children: ReactNode;
   people?: WorkforceStrip;
   /** Replaces the tiles when the reader may not see this band. */
@@ -55,11 +66,21 @@ export interface OpsBandProps {
  * palette — which is what lets a reader bind a bar to its section from across a
  * room.
  */
+/**
+ * Four equal tiles.
+ *
+ * `minmax(0, 1fr)` rather than `1fr`: a bare `fr` is a MINIMUM of `auto`, so a
+ * tile holding something that cannot wrap — a matrix of figures, a long vendor
+ * name — pushes its own column wider and takes the width off its neighbours.
+ * The zero floor makes the columns equal whatever is inside them.
+ */
+const EQUAL_COLUMNS = 'repeat(4, minmax(0, 1fr))';
+
 export function OpsBand({
   domain,
   title,
   scope,
-  columns,
+  columns = EQUAL_COLUMNS,
   children,
   people,
   unavailable,

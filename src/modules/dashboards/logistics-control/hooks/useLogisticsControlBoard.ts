@@ -325,6 +325,14 @@ export function useLogisticsControlBoard() {
     const all = weighItems(rows, stockRows);
 
     return {
+      /**
+       * The idle items themselves, for the drill-down.
+       *
+       * The same filtered set the figures are computed from, so the panel and
+       * the tile cannot disagree — recomputing them separately at the render
+       * site is exactly how a drill-down starts contradicting its own tile.
+       */
+      rows,
       items: rows.length,
       recent: recent.length,
       ageing: ageing.length,
@@ -399,6 +407,8 @@ export function useLogisticsControlBoard() {
     const booked = all.filter((bill) => bill.plan?.vehicle_id != null);
 
     return {
+      /** The outstanding bills themselves, for the drill-down. */
+      rows: all,
       byCompany,
       invoices: all.length,
       tonnes: tonnesOf(all),
@@ -835,6 +845,8 @@ export function useLogisticsControlBoard() {
     hasPermission,
     warehouse: {
       stockTonnage,
+      /** Every stock row behind the tonnage, for the drill-down. */
+      stockRows: occupancy.data?.data ?? [],
       nonMoving: nonMovingBands,
       // Reshaped for the shared CapacityMeter, which takes slot counts rather
       // than a percentage so it can draw used, unusable and free separately.
@@ -852,6 +864,8 @@ export function useLogisticsControlBoard() {
           (row.reviewed_at ?? row.requested_at ?? '').slice(0, 7) === monthStart.slice(0, 7),
         );
         return {
+          /** The approvals themselves, for the drill-down. */
+          rows,
           approvals: rows.length,
           expectedBoxes: rows.reduce((sum, row) => sum + (row.expected_boxes ?? 0), 0),
           scannedBoxes: rows.reduce((sum, row) => sum + (row.scanned_boxes ?? 0), 0),
@@ -864,6 +878,8 @@ export function useLogisticsControlBoard() {
         };
       })(),
       allocated: {
+        /** The consignments themselves, for the drill-down. */
+        rows: floorToWarehouse.data?.movements ?? [],
         pieces: floorToWarehouse.data?.summary?.to_godown_pieces ?? 0,
         litres: Number(floorToWarehouse.data?.summary?.to_godown_litres ?? 0),
         movements: floorToWarehouse.data?.summary?.movements ?? 0,
@@ -890,22 +906,57 @@ export function useLogisticsControlBoard() {
        * with visible empty days is the honest shape — and on a board about pace,
        * the days nothing moved are the point.
        */
+      /**
+       * Every day of the month so far, zero-filled.
+       *
+       * Zero-filled on purpose: a day nothing moved is a gap in the row rather
+       * than a day that closes up, so the bars and the day-wise list both read
+       * as a calendar instead of a list of the days that happened to work.
+       *
+       * Trucks and bills are carried alongside the tonnage because the feed
+       * already reports them per day, and the drill-down asks "how much, on how
+       * many trucks" of every row. `bills` is optional on the wire — an older
+       * backend omits it, and absent has to read as unknown rather than zero.
+       */
       trend: (() => {
         const byDate = new Map(
           (dispatchMonth.data?.trend ?? []).map((row) => [
             row.date.slice(0, 10),
-            (row.dispatched_weight ?? 0) / 1000,
+            {
+              tonnes: (row.dispatched_weight ?? 0) / 1000,
+              trucks: row.trucks ?? 0,
+              bills: row.bills ?? null,
+              litres: row.dispatched_litres ?? 0,
+              boxes: row.dispatched_boxes ?? 0,
+            },
           ]),
         );
 
-        const days: { date: string; tonnes: number }[] = [];
+        const days: {
+          date: string;
+          tonnes: number;
+          trucks: number;
+          bills: number | null;
+          litres: number;
+          boxes: number;
+        }[] = [];
         const cursor = new Date(`${monthStart}T00:00:00`);
         const end = new Date(`${today}T00:00:00`);
         while (cursor <= end) {
           const month = String(cursor.getMonth() + 1).padStart(2, '0');
           const day = String(cursor.getDate()).padStart(2, '0');
           const key = `${cursor.getFullYear()}-${month}-${day}`;
-          days.push({ date: key, tonnes: byDate.get(key) ?? 0 });
+          const found = byDate.get(key);
+          days.push({
+            date: key,
+            tonnes: found?.tonnes ?? 0,
+            trucks: found?.trucks ?? 0,
+            // A day with no row moved nothing, so nothing is the right count —
+            // distinct from a day whose row omitted the field.
+            bills: found ? found.bills : 0,
+            litres: found?.litres ?? 0,
+            boxes: found?.boxes ?? 0,
+          });
           cursor.setDate(cursor.getDate() + 1);
         }
         return days;
@@ -940,6 +991,8 @@ export function useLogisticsControlBoard() {
     transit: {
       bands: transit.data?.bands ?? null,
       totals: transit.data?.totals ?? { loads: 0, tonnes: 0 },
+      /** The unreceived invoices themselves, for the drill-down. */
+      loads: transit.data?.loads ?? [],
       unweighedLines: transit.data?.unweighed_lines ?? 0,
       weightsAvailable: transit.data?.weights_available ?? true,
       loading: transit.isLoading,

@@ -155,4 +155,13 @@ export interface DispatchBillFilters {
   order?: 'newest' | 'oldest';
   /** Drop rows with no value AND no quantity — the abandoned plan stubs. */
   filled?: boolean;
+  /**
+   * Scope the rows to named companies.
+   *
+   * Omitted means every company the CALLER belongs to, which is right for this
+   * board's own page and wrong for a drill-down opened from a card headed
+   * "Oil + Mart": on a login that also holds Beverages, its bills would appear
+   * under a total that never counted them.
+   */
+  companies?: readonly string[];
 }

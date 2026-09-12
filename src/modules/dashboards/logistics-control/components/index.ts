@@ -1,5 +1,7 @@
+export * from './BoardDrill';
 export * from './BoardFigures';
 export * from './OpsBand';
+export * from './OpsDrill';
 export * from './OpsGroup';
 export * from './OpsPeople';
 export * from './OpsTopbar';

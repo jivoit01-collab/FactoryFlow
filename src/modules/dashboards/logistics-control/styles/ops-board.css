@@ -24,6 +24,26 @@
    multiply against each ancestor that sets a font-size, and several do.
    ══════════════════════════════════════════════════════════════ */
 
+/*
+ * The shell's content column, released for a wall board.
+ *
+ * Applied to `MainLayout`'s container by `useFullBleed` while the board is
+ * mounted, and removed when it unmounts. `!important` because the container's
+ * own width cap and padding are utility classes of equal specificity that would
+ * otherwise win on source order.
+ *
+ * A narrow horizontal gutter is kept rather than going edge to edge: the band
+ * cards already carry their own radius and shadow, and a card whose corner is
+ * flush with the window frame reads as clipped rather than as full width.
+ */
+.ops-bleed {
+  max-width: none !important;
+  /* A fixed gutter, not the board's `--u`: this rule lands on the board's
+     ANCESTOR, where `--u` is not in scope and would silently fall back. */
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+}
+
 .ops-board {
   /* The scoped root unit. Identical maths to the design's :root font-size. */
   --u: clamp(7px, min(0.833vw, 1.481vh), 26px);
@@ -456,12 +476,66 @@
   overflow: hidden;
   display: grid;
   grid-template-rows: var(--r-head) var(--r-sub) var(--r-value) 1fr;
-  padding: calc(0.85 * var(--u)) calc(1.05 * var(--u)) calc(1 * var(--u));
+  /* Left padding carries the edge's width on top of its own, so nothing sits
+     under the stripe. */
+  padding: calc(0.85 * var(--u)) calc(1.05 * var(--u)) calc(1 * var(--u))
+    calc(1.05 * var(--u) + 0.3 * var(--u));
   border-radius: calc(0.75 * var(--u));
-  background: #fff;
+  /*
+   * Tinted with the band's own hue, not white.
+   *
+   * A flat white card on a tinted band is the lowest-contrast pairing the
+   * board can produce — at a distance the tiles dissolve into the gradient
+   * behind them and the eye loses where one figure ends and the next begins.
+   * The tint is a shade of the SAME hue the rail and every bar inside already
+   * use, so it adds separation without introducing a colour: still one hue per
+   * band, just one more weight of it.
+   *
+   * Held at white through the top two fifths and deepening to the full tint at
+   * the foot. The name, the subtitle and the figure all sit in that white
+   * zone, so the ink keeps a white ground to read against however strong the
+   * wash below it gets; what the colour lands on is the visualisation, where
+   * it belongs. A tint that started at the top would be fighting the one thing
+   * on the card that has to be read from four metres.
+   */
+  background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--d4) 100%);
   box-shadow:
     0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
-    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14);
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14),
+    /* A hairline in the band's hue rather than a grey one, so the card's edge
+       reads as part of its band instead of as a generic border. */
+      inset 0 0 0 1px var(--tint1);
+}
+
+/*
+ * The coloured left edge.
+ *
+ * The band's hue at full strength, which the card's own wash never reaches —
+ * the wash has to stay behind the figures, so it tops out at the palest step.
+ * That leaves the card's membership of its band stated only in a hairline, and
+ * a hairline is invisible at four metres. This edge says it at a distance, on
+ * a surface no text sits on.
+ *
+ * A pseudo-element rather than `border-left`: a border participates in the box
+ * and would shift the whole four-row grid inward by its own width, moving every
+ * figure off the baseline it shares with its neighbours. This paints over the
+ * card instead, inside the radius the parent already clips to.
+ *
+ * Graded top to bottom like the rail, so the edge and the band's own spine read
+ * as the same device at the same angle.
+ */
+.ops-grp::before,
+.ops-people::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(0.3 * var(--u));
+  background: linear-gradient(180deg, var(--d1) 0%, var(--d2) 55%, var(--d3) 100%);
+  /* Behind the tile's own content, which is painted by grid children with no
+     z-index of their own. */
+  z-index: 0;
 }
 
 .ops-grow {
@@ -600,7 +674,10 @@
   border-radius: 999px;
   display: flex;
   overflow: hidden;
-  background: #e6ebf2;
+  /* The unfilled part is a deeper step of the card's own tint, not a grey. A
+     neutral track on a tinted card reads as a third colour and muddies the one
+     thing the bar exists to show — how much of it is filled. */
+  background: color-mix(in srgb, var(--d4) 62%, #fff);
   gap: calc(0.18 * var(--u));
 }
 .ops-meter i {
@@ -796,7 +873,7 @@
 .ops-prow .b {
   height: calc(1.05 * var(--u));
   border-radius: 999px;
-  background: #e6ebf2;
+  background: color-mix(in srgb, var(--d4) 62%, #fff);
   overflow: hidden;
 }
 .ops-prow .b i {
@@ -876,21 +953,33 @@
 .ops-matrix .ops-a-bad th:first-child {
   color: var(--d1);
 }
+/* The gap between banded rows is the CARD showing through, so it has to be
+   transparent rather than white — a white rule on a tinted card is a stripe. */
 .ops-matrix tbody tr + tr th,
 .ops-matrix tbody tr + tr td {
-  border-top: calc(0.2 * var(--u)) solid #fff;
+  border-top: calc(0.2 * var(--u)) solid transparent;
+  background-clip: padding-box;
 }
 
 /* people */
+/* Same card as a tile, so the band's last column belongs to the band too. */
 .ops-people {
+  /* The positioning context its left edge is painted against. */
+  position: relative;
   border-radius: calc(0.75 * var(--u));
-  background: #fff;
+  overflow: hidden;
+  /* The same wash as a tile — the strip is one of the band's cards and must
+     not read as a different kind of object. */
+  background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--d4) 100%);
   box-shadow:
     0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
-    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14);
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14),
+    inset 0 0 0 1px var(--tint1);
   display: grid;
   grid-template-rows: auto 1fr 1fr auto;
-  padding: calc(0.85 * var(--u)) calc(0.95 * var(--u)) calc(0.95 * var(--u));
+  /* Left padding clears the edge, as on a tile. */
+  padding: calc(0.85 * var(--u)) calc(0.95 * var(--u)) calc(0.95 * var(--u))
+    calc(0.95 * var(--u) + 0.3 * var(--u));
   gap: calc(0.15 * var(--u));
 }
 .ops-pcap {
@@ -961,7 +1050,7 @@
   display: flex;
   gap: calc(0.14 * var(--u));
   overflow: hidden;
-  background: #e6ebf2;
+  background: color-mix(in srgb, var(--d4) 62%, #fff);
 }
 .ops-psplit i {
   display: block;
@@ -1018,6 +1107,14 @@
 @media (prefers-reduced-motion: reduce) {
   .ops-board * {
     animation: none !important;
+    /* Transitions and the tile's hover lift too — the drill-down added real
+       movement, and a preference against motion is not a preference against
+       animation only. */
+    transition: none !important;
+  }
+  .ops-grp[data-drill='1']:hover,
+  .ops-grp[data-drill='1']:focus-visible {
+    transform: none;
   }
 }
 
@@ -1038,4 +1135,281 @@
   font-style: normal;
   font-weight: 500;
   color: var(--ink-3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DRILL-DOWN — the rows behind a tile's figure
+
+   Built in the board's own vocabulary rather than as a dialog that happens to
+   open over it. The four devices the bands use are all here, doing the same
+   jobs: the hue names the domain, a graded spine marks the edge, figures are
+   heavy and tabular, and grey means the part that is not there.
+
+   The one deliberate departure is scale. `--u` tracks the viewport so a wall
+   screen can set a figure at 26px, which is right at four metres and absurd on
+   a table of eighty rows read at arm's length — so the panel carries `--du`,
+   fixed to the reader rather than to the room.
+   ══════════════════════════════════════════════════════════════ */
+
+/* A tile that can be opened says so, but quietly: the board is read from a
+   distance where a hover state is invisible, so this must not cost the resting
+   tile any contrast. */
+.ops-grp[data-drill='1'] {
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.ops-grp[data-drill='1']:hover,
+.ops-grp[data-drill='1']:focus-visible {
+  outline: none;
+  transform: translateY(calc(-0.08 * var(--u)));
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
+    0 calc(0.9 * var(--u)) calc(2 * var(--u)) calc(-0.7 * var(--u)) var(--glow),
+    inset 0 0 0 calc(0.1 * var(--u)) var(--tint1);
+}
+
+.ops-drill {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 3vh, 44px);
+  background: rgba(14, 23, 38, 0.46);
+  backdrop-filter: blur(3px);
+  animation: ops-drill-in 0.14s ease-out;
+}
+
+@keyframes ops-drill-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.ops-drill__panel {
+  /* Fixed to the reader, not the room — see the block comment above. */
+  --du: clamp(11px, 0.62vw, 15px);
+
+  width: min(1240px, 100%);
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  border-radius: calc(1 * var(--du));
+  overflow: hidden;
+  /* The card wash, at panel scale: white where the reading happens, the band's
+     tint at the foot. */
+  background: linear-gradient(180deg, #fff 0%, #fff 55%, var(--d4) 100%);
+  box-shadow:
+    0 calc(2.4 * var(--du)) calc(6 * var(--du)) rgba(14, 23, 38, 0.32),
+    inset 0 0 0 1px var(--tint1);
+  animation: ops-drill-rise 0.16s ease-out;
+}
+
+@keyframes ops-drill-rise {
+  from {
+    transform: translateY(calc(1 * var(--du)));
+    opacity: 0;
+  }
+}
+
+/*
+ * The header, in the band's hue.
+ *
+ * The same gradient the band's rail wears, turned on its side. A reader who
+ * clicked a teal tile gets a teal header: the panel identifies its origin in
+ * the one channel this board reserves for that, rather than making them read
+ * the title to find out what they opened.
+ */
+.ops-drill__head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: calc(1 * var(--du));
+  padding: calc(1.05 * var(--du)) calc(1.3 * var(--du));
+  background: linear-gradient(100deg, var(--d1) 0%, var(--d2) 100%);
+  color: #fff;
+}
+
+.ops-drill__head h2 {
+  font-size: calc(1.5 * var(--du));
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.ops-drill__head p {
+  margin-top: calc(0.24 * var(--du));
+  font-size: calc(1 * var(--du));
+  font-weight: 500;
+  /* The subtitle is context, not substance — receded, but on a coloured ground
+     it cannot recede into grey and must stay a lighter weight of white. */
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.ops-drill__close {
+  display: grid;
+  place-items: center;
+  width: calc(2.3 * var(--du));
+  height: calc(2.3 * var(--du));
+  border: 0;
+  border-radius: calc(0.6 * var(--du));
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  color: #fff;
+  cursor: pointer;
+  font-size: calc(1.15 * var(--du));
+  line-height: 1;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+.ops-drill__close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.06);
+}
+.ops-drill__close:focus-visible {
+  outline: calc(0.16 * var(--du)) solid #fff;
+  outline-offset: calc(0.12 * var(--du));
+}
+
+/*
+ * The tile's own figures, repeated above the rows that make them.
+ *
+ * Built like the board's header totals — a small cap over a heavy figure, with
+ * the band's hue on the left edge — so the panel opens by agreeing with the
+ * tile that opened it, in the same shape that tile used.
+ */
+.ops-drill__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.55 * var(--du));
+  padding: calc(0.9 * var(--du)) calc(1.3 * var(--du));
+  background: color-mix(in srgb, var(--d4) 26%, #fff);
+  border-bottom: 1px solid var(--tint1);
+}
+.ops-drill__stat {
+  padding: calc(0.45 * var(--du)) calc(0.85 * var(--du));
+  border-radius: calc(0.55 * var(--du));
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--tint1);
+  border-left: calc(0.22 * var(--du)) solid var(--d2);
+  min-width: calc(7.5 * var(--du));
+}
+.ops-drill__stat .k {
+  display: block;
+  font-size: calc(0.9 * var(--du));
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ops-drill__stat .v {
+  display: block;
+  margin-top: calc(0.1 * var(--du));
+  font-size: calc(1.45 * var(--du));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--d1);
+}
+
+.ops-drill__body {
+  overflow: auto;
+  min-height: 0;
+  /* The wash belongs to the panel, not to this scrolling box — a gradient that
+     scrolled with the rows would band visibly as they moved. */
+  background: transparent;
+}
+
+.ops-drill table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(1.02 * var(--du));
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Column heads in the band's hue, not in grey.
+ *
+ * Grey uppercase is what a generic table looks like, and this one sits inside a
+ * board where every surface names its domain. Sticky, so a long list keeps its
+ * headings while it scrolls.
+ */
+.ops-drill thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: calc(0.62 * var(--du)) calc(0.9 * var(--du));
+  background: color-mix(in srgb, var(--d4) 82%, #fff);
+  border-bottom: 1px solid var(--tint1);
+  text-align: left;
+  font-size: calc(0.88 * var(--du));
+  font-weight: 700;
+  color: var(--d1);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ops-drill tbody td {
+  padding: calc(0.58 * var(--du)) calc(0.9 * var(--du));
+  border-bottom: 1px solid color-mix(in srgb, var(--tint2) 55%, transparent);
+  color: var(--ink);
+  font-weight: 500;
+  /* Text wraps, figures do not. Targeted by role rather than by column
+     position: the panels do not share a column order, and a rule keyed to
+     "the second column" wraps a description in one table and a tonnage in
+     the next. */
+  white-space: normal;
+}
+
+/* Banded rather than plain, faintly, so the eye can track a row across seven
+   columns without a rule under every line. */
+.ops-drill tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--d4) 16%, transparent);
+}
+
+.ops-drill tbody tr:hover td {
+  background: color-mix(in srgb, var(--d4) 55%, #fff);
+}
+
+/* The first column carries the row's identity, so it is set like one. */
+.ops-drill tbody td:first-child {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Numbers right and heavy, so a column of figures can be compared down its
+   edge — the same tabular treatment every figure on the board gets. */
+.ops-drill .num {
+  text-align: right;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.ops-drill th.num {
+  text-align: right;
+}
+/* Grey is the part that is not there — here as everywhere else on the board. */
+.ops-drill .dim {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+/* An empty or unreadable table says which it is, never a blank panel. */
+.ops-drill__empty {
+  padding: calc(3.4 * var(--du)) calc(1.3 * var(--du));
+  text-align: center;
+  color: var(--ink-3);
+  font-size: calc(1.08 * var(--du));
+  font-weight: 500;
+}
+
+/* Rows are capped for the browser's sake; the cap has to admit itself. */
+.ops-drill__more {
+  padding: calc(0.75 * var(--du)) calc(1.3 * var(--du));
+  border-top: 1px solid var(--tint1);
+  color: var(--ink-3);
+  font-size: calc(0.92 * var(--du));
+  font-weight: 500;
 }

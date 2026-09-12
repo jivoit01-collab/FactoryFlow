@@ -288,9 +288,22 @@ export interface TransitBand {
  * is counted here rather than quietly contributing nothing, so a tonnage over a
  * partly-weighed set reads as the floor it is.
  */
+/** One unreceived dispatch — an invoice out with no goods receipt against it. */
+export interface TransitLoad {
+  /** The sending company's invoice number, which the receipt quotes back. */
+  doc_num: number;
+  doc_date: string;
+  days_out: number;
+  tonnes: number;
+  band: 'fresh' | 'ageing' | 'stale';
+  unweighed_lines: number;
+}
+
 export interface StockInTransit {
   bands: { fresh: TransitBand; ageing: TransitBand; stale: TransitBand };
   totals: { loads: number; tonnes: number };
+  /** The loads themselves, newest first — what the bands are made of. */
+  loads: TransitLoad[];
   unweighed_lines: number;
   /**
    * False when SAP could not be reached.

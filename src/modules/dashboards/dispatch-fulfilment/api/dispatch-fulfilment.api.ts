@@ -38,6 +38,8 @@ export const dispatchFulfilmentApi = {
         offset: filters.offset,
         order: filters.order || undefined,
         filled: filters.filled ? 1 : undefined,
+        // Sent only when a caller names them — see `companies` on the filters.
+        companies: filters.companies?.length ? filters.companies.join(',') : undefined,
       },
     });
     return response.data;

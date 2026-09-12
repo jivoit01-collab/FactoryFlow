@@ -33,6 +33,15 @@ export interface OpsGroupProps {
    * still fetching should not accuse its own feed of being absent.
    */
   loading?: boolean;
+  /**
+   * Open the rows behind this figure.
+   *
+   * Where present the tile becomes a button: every figure here is a roll-up of
+   * something countable, and "which ones" is the question that follows any of
+   * them. Tiles without a row-level source stay inert rather than opening an
+   * empty panel.
+   */
+  onOpen?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -67,6 +76,7 @@ export function OpsGroup({
   viz,
   tallViz = false,
   loading = false,
+  onOpen,
   className,
   style,
 }: OpsGroupProps) {
@@ -76,8 +86,31 @@ export function OpsGroup({
   // rather than a gap in the data.
   const tone: OpsTagTone = isMissing ? 'nil' : (tag?.tone ?? 'neut');
 
+  // A tile with nothing to show must not offer to show it.
+  const openable = Boolean(onOpen) && !isMissing && !loading;
+
   return (
-    <div className={cn('ops-grp', className)} style={style}>
+    <div
+      className={cn('ops-grp', className)}
+      style={style}
+      data-drill={openable ? '1' : undefined}
+      // A div rather than a <button>: the tile contains a table and bars, which
+      // a button may not. `role`/`tabIndex`/keyboard are supplied instead so it
+      // is still reachable without a mouse.
+      role={openable ? 'button' : undefined}
+      tabIndex={openable ? 0 : undefined}
+      onClick={openable ? onOpen : undefined}
+      onKeyDown={
+        openable
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="ops-grow">
         <b className="ops-nm">{name}</b>
         {tag && <span className={cn('ops-tag', TAG_CLASS[tone])}>{tag.label}</span>}
