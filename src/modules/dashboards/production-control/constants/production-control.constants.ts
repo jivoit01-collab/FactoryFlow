@@ -7,7 +7,7 @@
  * `LOOSE_PIECES_PER_PALLET`.
  */
 
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { DASHBOARDS_PERMISSIONS, LABOUR_PERMISSIONS } from '@/config/permissions';
 
 /** The warehouse this board watches. */
 export const CONTROL_WAREHOUSE = 'BH-PF';
@@ -102,6 +102,7 @@ export const PANEL_ACCENT = {
   occupancy: 'indigo',
   stock: 'slate',
   standing: 'amber',
+  labour: 'emerald',
 } as const;
 
 // ============================================================================
@@ -134,11 +135,18 @@ export const PRODUCTION_CONTROL_STANDING_PERMISSIONS: readonly string[] = [
   DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
 ];
 
+/**
+ * Labour reads the gate's own tally, so it is gated on the gate's view right —
+ * the same right the Labour Gate screen itself uses.
+ */
+export const PRODUCTION_CONTROL_LABOUR_PERMISSIONS: readonly string[] = [LABOUR_PERMISSIONS.VIEW];
+
 /** Route/nav gate — holding any one panel's right opens the board. */
 export const PRODUCTION_CONTROL_VIEW_PERMISSIONS: readonly string[] = [
   ...new Set([
     ...PRODUCTION_CONTROL_LINES_PERMISSIONS,
     ...PRODUCTION_CONTROL_FLOOR_PERMISSIONS,
     ...PRODUCTION_CONTROL_STANDING_PERMISSIONS,
+    ...PRODUCTION_CONTROL_LABOUR_PERMISSIONS,
   ]),
 ];

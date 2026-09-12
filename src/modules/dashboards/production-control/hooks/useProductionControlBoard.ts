@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 
 import { useNonMovingReport } from '@/modules/dashboards/non-moving/api';
 import type { NonMovingItem } from '@/modules/dashboards/non-moving/types';
+import { useLabourGateDay } from '@/modules/gate/api/labourGate/labourGate.queries';
 import { EXECUTION_QUERY_KEYS, executionApi } from '@/modules/production/execution/api';
 
 import { useWarehouseOccupancy } from '../api';
@@ -23,12 +24,20 @@ import {
   PRODUCTION_CONTROL_REFRESH_MS,
   STANDING_AGE_DAYS,
 } from '../constants';
-import { buildLineBoard, type LineBoard, type Occupancy, summariseOccupancy } from '../utils';
+import {
+  buildLineBoard,
+  type LabourSummary,
+  type LineBoard,
+  type Occupancy,
+  summariseLabour,
+  summariseOccupancy,
+} from '../utils';
 
 export interface ProductionControlGates {
   canSeeLines: boolean;
   canSeeFloor: boolean;
   canSeeStanding: boolean;
+  canSeeLabour: boolean;
 }
 
 export interface ProductionControlBoard {
@@ -50,6 +59,12 @@ export interface ProductionControlBoard {
   stockFetching: boolean;
   stockError: unknown;
   refetchStock: () => void;
+
+  labour: LabourSummary;
+  labourLoading: boolean;
+  labourFetching: boolean;
+  labourError: unknown;
+  refetchLabour: () => void;
 
   standing: NonMovingItem[];
   standingValue: number;
@@ -94,7 +109,10 @@ export function useProductionControlBoard(gates: ProductionControlGates): Produc
     gates.canSeeStanding,
   );
 
+  const labourDay = useLabourGateDay(date, gates.canSeeLabour);
+
   const lines = useMemo(() => buildLineBoard(runs.data ?? []), [runs.data]);
+  const labour = useMemo(() => summariseLabour(labourDay.data), [labourDay.data]);
 
   const occupancy = useMemo(() => {
     if (!stock.data) return null;
@@ -135,6 +153,12 @@ export function useProductionControlBoard(gates: ProductionControlGates): Produc
     stockFetching: stock.isFetching,
     stockError: stock.error,
     refetchStock: () => void stock.refetch(),
+
+    labour,
+    labourLoading: labourDay.isLoading,
+    labourFetching: labourDay.isFetching,
+    labourError: labourDay.error,
+    refetchLabour: () => void labourDay.refetch(),
 
     standing: standingRows,
     standingValue: standingRows.reduce((sum, row) => sum + row.value, 0),

@@ -12,13 +12,7 @@ export interface PmReqNotesProps {
   unplanned?: PmReqUnplanned;
 }
 
-function Note({
-  tone,
-  children,
-}: {
-  tone: 'warn' | 'info';
-  children: ReactNode;
-}) {
+function Note({ tone, children }: { tone: 'warn' | 'info'; children: ReactNode }) {
   return (
     <p
       className={cn(
@@ -76,8 +70,8 @@ export function PmReqNotes({ meta, coverage, unplanned }: PmReqNotesProps) {
         <Note tone="warn">
           <span className="font-medium">
             {coverage.items_without_bom} planned{' '}
-            {coverage.items_without_bom === 1 ? 'product has' : 'products have'} no bill of
-            material in SAP
+            {coverage.items_without_bom === 1 ? 'product has' : 'products have'} no bill of material
+            in SAP
           </span>{' '}
           — {formatQtyCompact(coverage.items_without_bom_qty)} of{' '}
           {formatQtyCompact(coverage.plan_qty)} planned pieces, so the requirement below covers{' '}
@@ -102,12 +96,11 @@ export function PmReqNotes({ meta, coverage, unplanned }: PmReqNotesProps) {
 
       {hasUnplanned && unplanned && meta && (
         <Note tone="info">
-          {unplanned.item_count} packing-material{' '}
-          {unplanned.item_count === 1 ? 'item' : 'items'} went into{' '}
-          {meta.issue_warehouses.join(', ') || 'the floor'} this period —{' '}
-          {formatQtyCompact(unplanned.qty)} pieces — that this plan&rsquo;s bills of material do
-          not call for. Those are not rows below, because the table answers what the plan needs.
-          It usually means production the plan does not describe, or a recipe that is out of date.
+          {unplanned.item_count} packing-material {unplanned.item_count === 1 ? 'item' : 'items'}{' '}
+          went into {meta.issue_warehouses.join(', ') || 'the floor'} this period —{' '}
+          {formatQtyCompact(unplanned.qty)} pieces — that this plan&rsquo;s bills of material do not
+          call for. Those are not rows below, because the table answers what the plan needs. It
+          usually means production the plan does not describe, or a recipe that is out of date.
         </Note>
       )}
     </div>

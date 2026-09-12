@@ -1,4 +1,4 @@
-import { Boxes, Clock, PackageCheck, ShoppingCart, TriangleAlert } from 'lucide-react';
+import { Boxes, Clock, PackageCheck, PackagePlus, ShoppingCart, TriangleAlert } from 'lucide-react';
 
 import { ACCENTS, KpiStat } from '@/shared/components/dashboard';
 
@@ -103,9 +103,11 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
       {/* A fifth tile only when there is something on it to say. An
           over-issue is a question about the plan rather than about buying,
           and a permanent "0" would train people to stop reading the row. */}
-      {(totals.over_issued_count > 0 || atRisk > totals.short_after_po_count) && (
+      {(totals.over_issued_count > 0 ||
+        totals.over_purchased_count > 0 ||
+        atRisk > totals.short_after_po_count) && (
         <div className="sm:col-span-2 xl:col-span-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {totals.over_issued_count > 0 && (
               <KpiStat
                 icon={Clock}
@@ -126,6 +128,24 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
                 sub="Short, and the order meant to cover it is already past its due date"
                 onClick={() => onFilter('at-risk')}
                 delayMs={300}
+              />
+            )}
+            {/* Money already committed to material the plan does not need.
+                The rupee figure leads the sub-line because that is what makes
+                it worth somebody's afternoon: an over-buy of labels and an
+                over-buy of bottles are the same number of pieces and nothing
+                like the same problem. */}
+            {totals.over_purchased_count > 0 && (
+              <KpiStat
+                icon={PackagePlus}
+                accent={ACCENTS.amber}
+                label="Over-purchased"
+                value={totals.over_purchased_count}
+                sub={`${formatInrCompact(totals.over_purchase_value)} · ${formatQtyCompact(
+                  totals.over_purchase_qty,
+                )} pcs on order beyond what the plan still needs`}
+                onClick={() => onFilter('over-purchased')}
+                delayMs={360}
               />
             )}
           </div>

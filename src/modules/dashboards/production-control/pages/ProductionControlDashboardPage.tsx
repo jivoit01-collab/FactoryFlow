@@ -10,9 +10,10 @@ import { Button } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import { PRODUCTION_CONTROL_QUERY_KEYS } from '../api';
-import { FloorPanel, LinesPanel, StandingPanel } from '../components';
+import { FloorPanel, LabourPanel, LinesPanel, StandingPanel } from '../components';
 import {
   PRODUCTION_CONTROL_FLOOR_PERMISSIONS,
+  PRODUCTION_CONTROL_LABOUR_PERMISSIONS,
   PRODUCTION_CONTROL_LINES_PERMISSIONS,
   PRODUCTION_CONTROL_STANDING_PERMISSIONS,
 } from '../constants';
@@ -36,12 +37,19 @@ export function ProductionControlDashboardPage() {
   const canSeeLines = hasAnyPermission(PRODUCTION_CONTROL_LINES_PERMISSIONS);
   const canSeeFloor = hasAnyPermission(PRODUCTION_CONTROL_FLOOR_PERMISSIONS);
   const canSeeStanding = hasAnyPermission(PRODUCTION_CONTROL_STANDING_PERMISSIONS);
+  const canSeeLabour = hasAnyPermission(PRODUCTION_CONTROL_LABOUR_PERMISSIONS);
 
-  const board = useProductionControlBoard({ canSeeLines, canSeeFloor, canSeeStanding });
+  const board = useProductionControlBoard({
+    canSeeLines,
+    canSeeFloor,
+    canSeeStanding,
+    canSeeLabour,
+  });
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const isFetchingAny = board.linesFetching || board.stockFetching || board.standingFetching;
+  const isFetchingAny =
+    board.linesFetching || board.stockFetching || board.standingFetching || board.labourFetching;
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -86,6 +94,7 @@ export function ProductionControlDashboardPage() {
         {[
           canSeeLines && { id: 'lines', label: 'Lines' },
           canSeeFloor && { id: 'floor', label: 'BH-PF Floor' },
+          canSeeLabour && { id: 'labour', label: 'Labour' },
           canSeeStanding && { id: 'standing', label: 'Standing' },
         ]
           .filter((section): section is { id: string; label: string } => Boolean(section))
@@ -113,6 +122,16 @@ export function ProductionControlDashboardPage() {
             isFetching={board.linesFetching}
             error={board.linesError}
             onRetry={board.refetchLines}
+          />
+        )}
+        {canSeeLabour && (
+          <LabourPanel
+            className="lg:col-span-2"
+            labour={board.labour}
+            loading={board.labourLoading}
+            isFetching={board.labourFetching}
+            error={board.labourError}
+            onRetry={board.refetchLabour}
           />
         )}
         {canSeeFloor && (

@@ -28,6 +28,7 @@ import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
+import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
 interface DashboardsModuleCard {
@@ -40,6 +41,15 @@ interface DashboardsModuleCard {
 }
 
 const dashboardsModules: DashboardsModuleCard[] = [
+  {
+    title: 'Plant Control',
+    description:
+      'The whole plant on one wall screen: bought, stored, made and shifted, in that order',
+    icon: <MonitorPlay className="h-5 w-5" />,
+    route: '/dashboards/plant-board',
+    color: 'text-cyan-600',
+    permissions: PLANT_BOARD_VIEW_PERMISSIONS,
+  },
   {
     title: 'Warehouse Control',
     description:

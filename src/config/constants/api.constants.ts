@@ -428,6 +428,10 @@ export const API_ENDPOINTS = {
     // the PO receipt, so it prints before a GRPO is posted as well as after.
     PO_PRINT: (poReceiptId: number) => `/grpo/po-receipt/${poReceiptId}/print/`,
     SERVICE_PENDING: '/grpo/service/pending/',
+    // The same queue counted rather than listed. SERVICE_PENDING is paginated
+    // and scoped to one month; this one is neither, which is what an age-banded
+    // count needs.
+    SERVICE_PENDING_SUMMARY: '/grpo/service/pending/summary/',
     SERVICE_OPTIONS: '/grpo/service/options/',
     SERVICE_PREVIEW: (dispatchPlanId: number) => `/grpo/service/preview/${dispatchPlanId}/`,
     SERVICE_POST: '/grpo/service/post/',
@@ -501,6 +505,18 @@ export const API_ENDPOINTS = {
     PURCHASE_ORDER_APPROVE: (id: number) => `/planning-purchase/purchase-orders/${id}/approve/`,
     PURCHASE_ORDER_POST: (id: number) => `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
   },
+  // Plant Control Board -- the four-band wall screen. ONE endpoint for the
+  // whole board on purpose: every tile re-runs on each refresh of a screen
+  // that never sleeps, so twenty panel requests a minute is how a wall board
+  // ends up switched off. Scope is always today and the current SAP plan
+  // month, computed server-side; there is nobody at a TV to pick a date.
+  PLANT_BOARD: {
+    BOARD: '/dashboards/plant-board/board/',
+    /** Head count and monthly wage bill — the one thing here an operator writes. */
+    WORKFORCE: '/dashboards/plant-board/workforce/',
+    /** Square feet per 1,000 pieces: the only way to turn stock into floor used. */
+    SPACE: '/dashboards/plant-board/space/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
@@ -515,6 +531,37 @@ export const API_ENDPOINTS = {
      * rather than SAP fact. Feeds the Production Control board.
      */
     OCCUPANCY: '/dashboards/stock/occupancy/',
+    /**
+     * One item's batches in one warehouse, with manufacturing and expiry dates
+     * off the SAP batch master — the drill-down behind a standing-stock row.
+     */
+    ITEM_BATCHES: (itemCode: string) => `/dashboards/stock/${itemCode}/batches/`,
+    /**
+     * The two facts about a warehouse SAP does not hold — its rated tonnage
+     * capacity and the date stock was last physically verified. Typed in by an
+     * operator, stored per company and warehouse. GET creates the row on first
+     * read and answers nulls, so a board renders "not configured" rather than
+     * failing on a warehouse nobody has set up.
+     */
+    WAREHOUSE_SETTINGS: '/dashboards/stock/warehouse-settings/',
+    /**
+     * Company-level operations-board figures nothing derives: the owned vehicle
+     * count, and the per-section employee headcount and salary. Ownership is not
+     * a field on the vehicle master, and the board's section names appear in
+     * neither department master.
+     */
+    BOARD_SETTINGS: '/dashboards/stock/board-settings/',
+    /**
+     * The company's own trucks and what each is doing today, derived from the
+     * configured registration list crossed with today's gate arrivals.
+     */
+    OWNED_VEHICLES: '/dashboards/stock/owned-vehicles/',
+    /**
+     * Stock dispatched from a godown and not yet received, split by how long it
+     * has been out. Read from the branch-transfer register; tonnage comes from
+     * the item master, since the register records pieces and no weight.
+     */
+    STOCK_IN_TRANSIT: '/dashboards/stock/stock-in-transit/',
   },
   // Budget Approvals Dashboard — Factory budget draft approvals read from
   // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
@@ -630,6 +677,14 @@ export const API_ENDPOINTS = {
     BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
 
     OPEN_BILTIES: '/dispatch/open-bilties/',
+    // What the company still owes its hauliers, and what it has paid them,
+    // read live off SAP's A/P invoices and outgoing payments. One company per
+    // call -- SAP gives each its own HANA schema, so a combined figure is two
+    // calls added client-side.
+    TRANSPORTER_ACCOUNT: '/dispatch/transporter-account/',
+    // Freight per litre: the money from SAP's own service GRPOs, the litres
+    // from the posting lines that tie each SAP document back to its bills.
+    FREIGHT_RATE: '/dispatch/freight-rate/',
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
     BILTY_GRPO_PREVIEW: (dispatchPlanId: number) =>
@@ -1535,13 +1590,11 @@ export const API_ENDPOINTS = {
 
     SALARY_APPROVALS: '/employee-hierarchy/salary-approvals/',
     SALARY_REVISIONS: '/employee-hierarchy/salary-revisions/',
-    SALARY_APPROVE: (recordId: number) =>
-      `/employee-hierarchy/salary-records/${recordId}/approve/`,
+    SALARY_APPROVE: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/approve/`,
     SALARY_REJECT: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/reject/`,
 
     DEPARTMENTS: '/employee-hierarchy/departments/',
-    DEPARTMENT_DETAIL: (departmentId: number) =>
-      `/employee-hierarchy/departments/${departmentId}/`,
+    DEPARTMENT_DETAIL: (departmentId: number) => `/employee-hierarchy/departments/${departmentId}/`,
     DESIGNATIONS: '/employee-hierarchy/designations/',
     DESIGNATION_DETAIL: (designationId: number) =>
       `/employee-hierarchy/designations/${designationId}/`,

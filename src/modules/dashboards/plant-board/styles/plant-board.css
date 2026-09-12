@@ -1,0 +1,146 @@
+/* ══════════════════════════════════════════════════════════════
+   PLANT CONTROL BOARD — the operations vocabulary, four bands wide
+
+   This file adds nothing to the design system. It extends the one in
+   `logistics-control/styles/ops-board.css` with the two things a four-band
+   board needs that a three-band board did not: a vertical unit that still fits,
+   and a fourth domain hue. Everything else — the tile grid, the meters, the
+   people strip, the condition scale — is imported unchanged, because two
+   boards inventing their own teal would be two teals.
+
+   THE FOUR COLOUR RULES ARE INHERITED, NOT RESTATED
+   1. Domain hue  = the band.
+   2. Composition = two or three tints of the SAME domain hue.
+   3. Ageing      = fresh-to-oldest, left to right.
+   4. Grey        = the part that isn't there: remainder, reference, idle.
+   Green/amber/red are reserved for condition and are never a domain hue.
+
+   WHY THE UNIT SHRINKS
+   The original unit is `min(0.833vw, 1.481vh)` — 16px on a 1080p wall, sized so
+   three bands and a header fill the height exactly. A fourth band does not fit
+   inside that budget: at 16px each band gets 14.4u, its tile 11.4u of content,
+   and the four fixed rows alone want 8.5u, leaving under 3u for a meter and its
+   legend — which overflows.
+
+   So the vertical coefficient drops to 1.20vh. The board is still exactly one
+   viewport tall and still scales with the display; each band simply gets 18.4u
+   instead, and the visualisation row lands at a comfortable 6.8u. The
+   horizontal coefficient is untouched, so a wide screen still binds on height
+   and the layout does not stretch.
+   ══════════════════════════════════════════════════════════════ */
+
+.plant-board {
+  /* Four bands instead of three. See the note above for the arithmetic. */
+  --u: clamp(6px, min(0.833vw, 1.2vh), 22px);
+}
+
+.plant-board .ops-stack {
+  /* Four bands, and a zero floor on every one of them — see the note on
+     `.ops-stack`. A fourth band makes the budget tighter, which makes a track
+     that can grow past its share the difference between a board that fits the
+     screen and one whose last band is half off the bottom of it. */
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+/* ───────── domain hues ─────────
+   A cool progression across the four stages, in the order material moves:
+   bought, stored, made, shifted. Adjacent bands are one step apart on the
+   spectrum, which is enough to tell them apart while keeping the board one
+   family rather than a paintbox — and the rail label and vertical position
+   disambiguate in any case.
+
+   Deliberately no green: rule 4 reserves it for condition, and a green
+   Production band would make every healthy tag inside it invisible. */
+
+/* Purchase — cyan */
+.ops-b-purchase {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #0e7490;
+  --d2: #06b6d4;
+  --d3: #67e8f9;
+  --d4: #cffafe;
+  --ga: rgba(6, 182, 212, 0.3);
+  --gb: rgba(6, 182, 212, 0.2);
+  --soft: rgba(6, 182, 212, 0.07);
+  --tint1: rgba(6, 182, 212, 0.2);
+  --tint2: rgba(6, 182, 212, 0.09);
+  --glow: rgba(6, 182, 212, 0.26);
+}
+
+/* Store — blue */
+.ops-b-store {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #1e40af;
+  --d2: #3b82f6;
+  --d3: #93c5fd;
+  --d4: #dbeafe;
+  --ga: rgba(59, 130, 246, 0.28);
+  --gb: rgba(59, 130, 246, 0.18);
+  --soft: rgba(59, 130, 246, 0.07);
+  --tint1: rgba(59, 130, 246, 0.2);
+  --tint2: rgba(59, 130, 246, 0.09);
+  --glow: rgba(59, 130, 246, 0.26);
+}
+
+/* Production — indigo */
+.ops-b-production {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #3730a3;
+  --d2: #6366f1;
+  --d3: #a5b4fc;
+  --d4: #e0e7ff;
+  --ga: rgba(99, 102, 241, 0.28);
+  --gb: rgba(99, 102, 241, 0.18);
+  --soft: rgba(99, 102, 241, 0.07);
+  --tint1: rgba(99, 102, 241, 0.2);
+  --tint2: rgba(99, 102, 241, 0.09);
+  --glow: rgba(99, 102, 241, 0.26);
+}
+
+/* Shifting — violet */
+.ops-b-shifting {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #5b21b6;
+  --d2: #8b5cf6;
+  --d3: #c4b5fd;
+  --d4: #ede9fe;
+  --ga: rgba(139, 92, 246, 0.28);
+  --gb: rgba(139, 92, 246, 0.18);
+  --soft: rgba(139, 92, 246, 0.07);
+  --tint1: rgba(139, 92, 246, 0.2);
+  --tint2: rgba(139, 92, 246, 0.09);
+  --glow: rgba(139, 92, 246, 0.26);
+}
+
+/* ───────── the rail, on a band that is a quarter of the screen ─────────
+   Four bands means each rail is about three-quarters the height a three-band
+   rail had, while the Purchase band carries the longest scope on the board —
+   four store codes. At the inherited size that string runs past the band and
+   the name at its head is what gets cut.
+
+   The scope is the secondary half of the label, so the scope is what shrinks.
+   The name stays at full size, and both now fit inside the band. */
+.plant-board .ops-rail p {
+  /* Measured, not guessed: at the inherited 1.02u the Purchase rail wanted
+     216px of a 200px band and the Shifting rail 210px. These two steps bring
+     the longest label on the board to about 195px, which fits with room to
+     spare at every size the board scales through. */
+  font-size: calc(0.95 * var(--u));
+}
+.plant-board .ops-rail p em {
+  font-size: 0.82em;
+  letter-spacing: 0;
+}
+
+/* ───────── the board admitting something ─────────
+   A chip can carry a warning off the response — an assumption the server had to
+   make, a plan that is not the current month. They are written for a person, so
+   they can run long; the ceiling keeps one from pushing the totals off the bar,
+   and the full text stays in the title attribute for whoever walks up. */
+.plant-board .ops-chip {
+  max-width: calc(30 * var(--u));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}

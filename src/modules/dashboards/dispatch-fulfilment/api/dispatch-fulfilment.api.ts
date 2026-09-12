@@ -15,7 +15,14 @@ export const dispatchFulfilmentApi = {
     filters: DispatchFulfilmentFilters,
   ): Promise<DispatchFulfilmentResponse> {
     const response = await apiClient.get<DispatchFulfilmentResponse>(EP.SUMMARY, {
-      params: { from: filters.from, to: filters.to },
+      params: {
+        from: filters.from,
+        to: filters.to,
+        // Omitted means every company the caller belongs to. Send it only when a
+        // board names the companies it adds up, so its total cannot silently
+        // gain a third one for whoever happens to hold all of them.
+        companies: filters.companies?.length ? filters.companies.join(',') : undefined,
+      },
     });
     return response.data;
   },

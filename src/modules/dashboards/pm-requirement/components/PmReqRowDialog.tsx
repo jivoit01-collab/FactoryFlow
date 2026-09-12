@@ -149,8 +149,45 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                 />
               </section>
 
+              {/* The same three numbers read as a buying question rather than
+                  as a coverage question. Only where there is an excess: on a
+                  row that is short, "what was over-bought" is a sum of zero
+                  and printing it would bury the shortage under it. */}
+              {row.over_purchased && (
+                <section>
+                  <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    What was over-purchased
+                  </h4>
+                  <Line
+                    label="Still to buy"
+                    value={formatQty(row.to_buy_qty)}
+                    hint={
+                      row.to_buy_qty > 0
+                        ? 'The rest of the plan, less what the stores already hold'
+                        : 'The stores already cover the rest of the plan, so nothing had to be bought'
+                    }
+                  />
+                  <Line
+                    label="Less on open orders"
+                    value={formatQty(row.open_po_qty)}
+                    hint={`${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}`}
+                  />
+                  <Line
+                    label="Over-purchased"
+                    value={formatQty(row.over_purchase_qty)}
+                    tone="short"
+                    hint={`${formatInr(
+                      row.over_purchase_value,
+                    )} at the last cost SAP holds — on order beyond what this plan needs`}
+                  />
+                </section>
+              )}
+
               {/* The caveats that change what the arithmetic means. */}
-              {(row.po_overdue || row.po_due_after_plan || row.issued_produced_qty > 0) && (
+              {(row.po_overdue ||
+                row.po_due_after_plan ||
+                row.issued_produced_qty > 0 ||
+                row.over_purchased) && (
                 <section className="space-y-2">
                   {row.po_overdue && (
                     <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
@@ -161,8 +198,24 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   )}
                   {row.po_due_after_plan && (
                     <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
-                      Nothing on order is due until after this plan ends, so it does not cover
-                      this month&rsquo;s production even though the quantity is on the way.
+                      Nothing on order is due until after this plan ends, so it does not cover this
+                      month&rsquo;s production even though the quantity is on the way.
+                    </p>
+                  )}
+                  {/* The one reading that would turn this row from a finding
+                      into a non-finding, said where somebody will see it. */}
+                  {row.over_purchased && row.po_due_after_plan && (
+                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                      The excess is on an order that is not due until after this plan ends, so it
+                      may be next month&rsquo;s stock bought early rather than an over-buy. Check it
+                      against next month&rsquo;s plan before treating it as one.
+                    </p>
+                  )}
+                  {row.over_purchased && row.over_issued && (
+                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                      The floor has already drawn more of this than the plan called for, so the plan
+                      needs nothing further and the whole open order counts as excess against it.
+                      That is as likely to be a plan that is out of date as an order that is wrong.
                     </p>
                   )}
                   {row.issued_produced_qty > 0 && (
@@ -172,8 +225,8 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                       {row.issued_transfer_qty > 0
                         ? `, and ${formatQty(row.issued_transfer_qty)} was transferred up`
                         : ''}
-                      . Both count as plan produced, but the in-house part never depleted the
-                      stores — so this is not a component to buy, it is one to make.
+                      . Both count as plan produced, but the in-house part never depleted the stores
+                      — so this is not a component to buy, it is one to make.
                     </p>
                   )}
                 </section>
@@ -241,9 +294,9 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
 
               {meta && !meta.nets_committed && row.req_qty < 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Stock committed to production orders is not subtracted here. On a packing
-                  material that commitment is mostly this plan&rsquo;s own orders, so netting it
-                  would count the same demand twice — once as Planning and once as committed.
+                  Stock committed to production orders is not subtracted here. On a packing material
+                  that commitment is mostly this plan&rsquo;s own orders, so netting it would count
+                  the same demand twice — once as Planning and once as committed.
                 </p>
               )}
             </DialogBody>

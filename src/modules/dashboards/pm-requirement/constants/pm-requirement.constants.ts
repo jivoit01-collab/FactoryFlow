@@ -38,6 +38,29 @@ export const DEFAULT_SORT: PmReqSort = { key: 'short_value', dir: 'desc' };
  */
 export const DEFAULT_FILTER: PmReqFilter = 'short';
 
+/**
+ * Worst first means a different column on a different chip.
+ *
+ * `short_value` is the right answer on four of the five chips and is exactly
+ * the wrong one on Over-purchased: a row cannot be both short after its order
+ * and over-purchased on it, so every row under that chip has a `short_value`
+ * of zero and the table falls back to item-code order. On the live September
+ * plan that put a Rs 71,000 over-buy of 5 litre HDPE bottles behind
+ * fifty-six alphabetically luckier rows.
+ *
+ * Switching chips therefore resets the sort. Each chip is a different
+ * question and "worst" means something different in each; the buyer can still
+ * read any of them down any column afterwards.
+ */
+export const DEFAULT_SORT_FOR_FILTER: Record<PmReqFilter, PmReqSort> = {
+  all: DEFAULT_SORT,
+  short: DEFAULT_SORT,
+  'at-risk': DEFAULT_SORT,
+  surplus: DEFAULT_SORT,
+  'over-issued': DEFAULT_SORT,
+  'over-purchased': { key: 'over_purchase_value', dir: 'desc' },
+};
+
 export const PM_REQ_FILTERS: { value: PmReqFilter; label: string; hint: string }[] = [
   { value: 'short', label: 'Still short', hint: 'Short after open orders are netted off' },
   {
@@ -47,7 +70,16 @@ export const PM_REQ_FILTERS: { value: PmReqFilter; label: string; hint: string }
   },
   { value: 'all', label: 'Everything', hint: 'Every component on the plan' },
   { value: 'surplus', label: 'Covered', hint: 'Stock and orders cover what is left of the plan' },
-  { value: 'over-issued', label: 'Over-issued', hint: 'The floor drew more than the plan called for' },
+  {
+    value: 'over-issued',
+    label: 'Over-issued',
+    hint: 'The floor drew more than the plan called for',
+  },
+  {
+    value: 'over-purchased',
+    label: 'Over-purchased',
+    hint: 'More on order than the plan still needs once stock is counted',
+  },
 ];
 
 /**
@@ -97,7 +129,22 @@ export const COLUMN_HELP: Record<string, string> = {
     'Quantity on purchase orders still open, whenever they were raised and wherever they are due.',
   req_after_po_qty:
     'Req plus what is on order. Still negative means the factory is short even after everything already bought arrives.',
+  over_purchase_qty:
+    'What is on order beyond what the plan still needs once stock is counted. 1,000 needed with 800 on hand is 200 to buy, so a 400 order is 200 over. An order due after the plan ends may be next month’s stock rather than a mistake — the row says which.',
 };
+
+/**
+ * What the over-purchase footnote on a row says, in a word.
+ *
+ * An excess on an order that lands after the plan closes is very often next
+ * month's stock bought early rather than a mistake, and the board must not
+ * call the two the same thing. It has the flag, so it says which.
+ */
+export const OVER_PURCHASE_NOTE = {
+  overdue: 'excess on an order already past due',
+  forward: 'excess on an order due after the plan ends — may be next month’s',
+  now: 'excess on an order due inside the plan',
+} as const;
 
 export const STATUS_LABELS: Record<string, string> = {
   short: 'Short',

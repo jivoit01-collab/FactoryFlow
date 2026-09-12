@@ -12,6 +12,11 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+import {
+  LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+  LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
+} from './logistics-control/constants';
+import { PLANT_BOARD_VIEW_PERMISSIONS } from './plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
@@ -65,6 +70,16 @@ const WarehouseControlDashboardPage = lazy(
 const ProductionControlDashboardPage = lazy(
   () => import('./production-control/pages/ProductionControlDashboardPage'),
 );
+const PlantBoardDashboardPage = lazy(
+  () => import('./plant-board/pages/PlantBoardDashboardPage'),
+);
+const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
+const LogisticsControlDashboardPage = lazy(
+  () => import('./logistics-control/pages/LogisticsControlDashboardPage'),
+);
+const LogisticsControlConfigPage = lazy(
+  () => import('./logistics-control/pages/LogisticsControlConfigPage'),
+);
 
 export const dashboardsModuleConfig: ModuleConfig = {
   name: 'dashboards',
@@ -86,6 +101,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // own; they are already listed above, but keeping the spread here means
         // the parent gate follows the board if its rights ever change.
         ...PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+        // Same reasoning for the Plant Control wall board: it mints no right of
+        // its own, and the spread keeps the parent gate following it.
+        ...PLANT_BOARD_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -101,6 +119,28 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       ],
       breadcrumb: { label: 'Command Centre' },
+    },
+    {
+      // Rated capacity and the last physical count, per packaging store. The
+      // same per-warehouse settings the Logistics board writes, so a store
+      // configured on either screen is configured on both. Gated on the
+      // board's own rights rather than a new one: both figures are properties
+      // of the building that the board already shows to anyone who can open it.
+      path: '/dashboards/plant-board/settings',
+      element: <PlantBoardConfigPage />,
+      layout: 'main',
+      permissions: PLANT_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Store Settings' },
+    },
+    {
+      // The whole plant on one wall screen, in the order material moves:
+      // bought, stored, made, shifted. Four bands, one composed read, no
+      // clicks -- see the page for why each of those is deliberate.
+      path: '/dashboards/plant-board',
+      element: <PlantBoardDashboardPage />,
+      layout: 'main',
+      permissions: PLANT_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Plant Control' },
     },
     {
       // Production lines and the finished-goods floor they feed, on one screen:
@@ -122,6 +162,28 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Warehouse Control' },
+    },
+    {
+      // The dispatch office wall: BH-BT's stock, the combined Oil + Mart
+      // dispatch, and the freight bills behind it. Any one card's right opens
+      // it; the page itself states which cards the user may not read rather
+      // than dropping them silently.
+      path: '/dashboards/logistics-control',
+      element: <LogisticsControlDashboardPage />,
+      layout: 'main',
+      permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Logistics Control' },
+    },
+    {
+      // The two warehouse facts SAP does not hold — rated tonnage capacity and
+      // the date stock was last physically verified. Gated on the warehouse
+      // right rather than a new one: both are properties of the building that
+      // the board already displays to anyone who can open it.
+      path: '/dashboards/logistics-control/settings',
+      element: <LogisticsControlConfigPage />,
+      layout: 'main',
+      permissions: LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
+      breadcrumb: { label: 'Board Settings' },
     },
     {
       path: '/dashboards/gate',
@@ -298,11 +360,21 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // are the only reason a WMS operator or a dispatch linker would open the
         // Dashboards menu, so their rights must appear on the parent as well.
         ...WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+        // Logistics Control lives here too. Its rights are all already listed
+        // above, but they are spread explicitly so that narrowing this board's
+        // gate later cannot silently hide the whole Dashboards menu from
+        // whoever it was narrowed to.
+        ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
       // (appended after the shared list so it doesn't disturb existing entries)
       children: [
+        {
+          path: '/dashboards/plant-board',
+          title: 'Plant Control',
+          permissions: PLANT_BOARD_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/production-control',
           title: 'Production Control',
@@ -312,6 +384,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/warehouse-control',
           title: 'Warehouse Control',
           permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/logistics-control',
+          title: 'Logistics Control',
+          permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/overview',

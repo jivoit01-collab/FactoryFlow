@@ -1,0 +1,1041 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap');
+
+/* ══════════════════════════════════════════════════════════════
+   OPERATIONS BOARD
+
+   COLOUR SYSTEM — four rules, no exceptions
+   1. Domain hue  = the band. Warehouse teal · Dispatch blue · Transport violet.
+                    Icons, primary bars and neutral badges all use it.
+   2. Composition = two or three tints of the SAME domain hue.
+   3. Ageing      = green → amber → red, always fresh-to-oldest, left to right.
+   4. Grey        = the part that isn't there: remainder, reference, idle.
+   Green/amber/red are reserved for condition and are never a domain hue.
+
+   SCALING — why every length is a calc()
+   The board is one viewport with nothing below the fold, so its type has to
+   scale with the screen rather than sit at a fixed size. The original design did
+   that with `:root{font-size:clamp(...)}` and plain `rem`, which is not open to
+   us: `rem` resolves against the document root, and changing that would resize
+   the entire product around this one page.
+
+   So the unit is scoped instead. `--u` is the board's own root size, and every
+   length is `calc(N * var(--u))` where the design said `Nrem`. Verbose, but it
+   is the only form that scales the board without compounding: `em` would
+   multiply against each ancestor that sets a font-size, and several do.
+   ══════════════════════════════════════════════════════════════ */
+
+.ops-board {
+  /* The scoped root unit. Identical maths to the design's :root font-size. */
+  --u: clamp(7px, min(0.833vw, 1.481vh), 26px);
+
+  --ink: #0e1726;
+  --ink-2: #586675;
+  --ink-3: #93a0ae;
+  --hair: #eaeef3;
+
+  /* shared internal grid */
+  --r-head: calc(2.35 * var(--u));
+  --r-sub: calc(1.55 * var(--u));
+  --r-value: calc(4.6 * var(--u));
+
+  /* condition scale */
+  --ok1: #047857;
+  --ok2: #34d399;
+  --wa1: #d97706;
+  --wa2: #fbbf24;
+  --ba1: #be123c;
+  --ba2: #fb7185;
+  --mu1: #94a3b8;
+  --mu2: #cbd5e1;
+
+  height: 100%;
+  min-height: 0;
+  color: var(--ink);
+  font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(calc(58 * var(--u)) calc(32 * var(--u)) at 0% -6%, rgba(6, 182, 212, 0.14), transparent 60%),
+    radial-gradient(calc(56 * var(--u)) calc(32 * var(--u)) at 100% 4%, rgba(139, 92, 246, 0.13), transparent 58%),
+    radial-gradient(calc(62 * var(--u)) calc(38 * var(--u)) at 84% 108%, rgba(59, 130, 246, 0.14), transparent 60%),
+    #f4f6fa;
+}
+
+.ops-board *,
+.ops-board *::before,
+.ops-board *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Fullscreen — the board as it was actually designed.
+ *
+ * In the app it sits inside the shell and takes whatever height is left; the
+ * `--u` clamp reads the real viewport either way, so in the shell the type is
+ * very slightly generous for the space. Fullscreen is where the maths is exact,
+ * which is the mode the office screen runs in.
+ *
+ * `:fullscreen` needs its own background: the element is promoted out of the
+ * page and the browser paints black behind anything transparent.
+ */
+.ops-board:fullscreen,
+.ops-board:-webkit-full-screen {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.ops-board__inner {
+  height: 100%;
+  padding: calc(0.95 * var(--u)) calc(1.1 * var(--u)) calc(1.1 * var(--u));
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: calc(0.8 * var(--u));
+}
+
+/* ───────── header ───────── */
+.ops-topbar {
+  display: grid;
+  /* pill · title · chips · totals · clock · settings · fullscreen */
+  grid-template-columns: auto auto 1fr auto auto auto auto;
+  align-items: center;
+  gap: calc(1 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(1 * var(--u));
+  border-radius: calc(0.9 * var(--u));
+  background: #fff;
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.1 * var(--u)) rgba(14, 23, 38, 0.04),
+    0 calc(0.5 * var(--u)) calc(1.3 * var(--u)) calc(-0.6 * var(--u)) rgba(14, 23, 38, 0.13),
+    inset 0 0 0 1px rgba(14, 23, 38, 0.05);
+}
+
+.ops-pill-live {
+  display: flex;
+  align-items: center;
+  gap: calc(0.38 * var(--u));
+  padding: calc(0.28 * var(--u)) calc(0.62 * var(--u));
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.32);
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+  color: var(--ok1);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ops-pill-live i {
+  width: calc(0.4 * var(--u));
+  height: calc(0.4 * var(--u));
+  border-radius: 50%;
+  background: #10b981;
+  animation: ops-beat 2.4s ease-in-out infinite;
+}
+/* Stale rather than live — the feed is refreshing or has stopped answering. */
+.ops-pill-live[data-state='busy'] {
+  background: rgba(245, 158, 11, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.34);
+  color: #b45309;
+}
+.ops-pill-live[data-state='busy'] i {
+  background: #f59e0b;
+}
+
+@keyframes ops-beat {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+.ops-title b {
+  display: block;
+  font-size: calc(1.55 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+.ops-title span {
+  display: block;
+  font-size: calc(0.98 * var(--u));
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/*
+ * The header is ONE line of title over one line of scope, always.
+ *
+ * Its row is `auto`, so every line it gains is a line the bands lose — and the
+ * scope carries a plan name typed by a person ("OIL Monthly Production
+ * Planning for the Sep Month 2026"), which wrapped to three lines and pushed
+ * the bottom band off the screen. It is a caption, not a figure: it truncates,
+ * the same way the warning chips beside it already do, and the whole string
+ * stays in the title attribute for whoever walks up to the screen.
+ */
+.ops-title {
+  min-width: 0;
+}
+.ops-title b,
+.ops-title span {
+  max-width: calc(24 * var(--u));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-chips {
+  display: flex;
+  gap: calc(0.45 * var(--u));
+  justify-self: start;
+  margin-left: calc(0.3 * var(--u));
+}
+.ops-chip {
+  display: flex;
+  align-items: center;
+  gap: calc(0.35 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.62 * var(--u));
+  border-radius: calc(0.55 * var(--u));
+  background: #f6f8fb;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  font-size: calc(0.95 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.ops-chip em {
+  font-style: normal;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.ops-totals {
+  display: flex;
+  gap: calc(0.5 * var(--u));
+}
+.ops-tot {
+  padding: calc(0.4 * var(--u)) calc(0.75 * var(--u));
+  border-radius: calc(0.65 * var(--u));
+  min-width: calc(7.2 * var(--u));
+  background: #f6f8fb;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  border-left: calc(0.2 * var(--u)) solid var(--ink);
+}
+.ops-tot .cap {
+  font-size: calc(0.95 * var(--u));
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ops-tot .n {
+  font-size: calc(1.38 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+.ops-tot .s {
+  font-size: calc(0.95 * var(--u));
+  color: var(--ink-2);
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* A figure with no source is a rule, not a zero. */
+.ops-nil {
+  color: var(--ink-3);
+}
+
+.ops-clock {
+  text-align: right;
+  line-height: 1;
+}
+.ops-clock .t {
+  font-size: calc(1.9 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+.ops-clock .d {
+  font-size: calc(0.95 * var(--u));
+  color: var(--ink-2);
+  margin-top: calc(0.22 * var(--u));
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/*
+ * The board's only controls — settings and fullscreen.
+ *
+ * Everything else here is read, never touched, so these are the only elements
+ * offering a pointer cursor, which is what identifies them as controls at all on
+ * a screen made of numbers. Shared by a `<button>` and a `<Link>`, hence the
+ * explicit `text-decoration`.
+ */
+.ops-fs {
+  display: grid;
+  text-decoration: none;
+  place-items: center;
+  width: calc(2.3 * var(--u));
+  height: calc(2.3 * var(--u));
+  border: 0;
+  border-radius: calc(0.55 * var(--u));
+  background: #f6f8fb;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.ops-fs:hover {
+  background: #eef2f7;
+  color: var(--ink);
+}
+.ops-fs:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--hair), 0 0 0 calc(0.18 * var(--u)) rgba(59, 130, 246, 0.45);
+}
+.ops-fs svg {
+  width: calc(1.15 * var(--u));
+  height: calc(1.15 * var(--u));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ───────── bands ───────── */
+/*
+ * `minmax(0, 1fr)`, NEVER a bare `1fr`.
+ *
+ * This is the whole reason the board can promise one viewport with nothing
+ * below the fold. A bare `1fr` track is `minmax(auto, 1fr)`, so its floor is
+ * its own content: one band whose tiles want a few pixels more than their
+ * share does not get clipped, it GROWS — and takes the stack past the bottom
+ * of the screen, carrying the last band off the display with it. The symptom
+ * reads as a band overlapping the edge; the cause is a track that refused to
+ * be as short as it was asked to be.
+ *
+ * With a zero floor every band is exactly a quarter of the space whatever is
+ * inside it, the stack is always the height of its parent, and a tile with too
+ * much in it is clipped by its own card instead of pushing the board around.
+ */
+.ops-stack {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: calc(0.8 * var(--u));
+  min-height: 0;
+}
+
+.ops-band {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(2.5 * var(--u)) 1fr calc(12.4 * var(--u));
+  gap: calc(0.6 * var(--u));
+  padding: calc(0.6 * var(--u));
+  border-radius: calc(1 * var(--u));
+  min-height: 0;
+  /* The band is the boundary. Nothing inside it reaches the band below. */
+  overflow: hidden;
+  background: linear-gradient(100deg, var(--ga) 0%, var(--gm) 38%, var(--gm) 62%, var(--gb) 100%);
+  box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.05);
+}
+
+/* domain hues */
+.ops-b-warehouse {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #0e7490;
+  --d2: #06b6d4;
+  --d3: #67e8f9;
+  --d4: #cffafe;
+  --ga: rgba(6, 182, 212, 0.3);
+  --gb: rgba(6, 182, 212, 0.2);
+  --soft: rgba(6, 182, 212, 0.07);
+  --tint1: rgba(6, 182, 212, 0.2);
+  --tint2: rgba(6, 182, 212, 0.09);
+  --glow: rgba(6, 182, 212, 0.26);
+}
+.ops-b-dispatch {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #1e40af;
+  --d2: #3b82f6;
+  --d3: #93c5fd;
+  --d4: #dbeafe;
+  --ga: rgba(59, 130, 246, 0.28);
+  --gb: rgba(59, 130, 246, 0.18);
+  --soft: rgba(59, 130, 246, 0.07);
+  --tint1: rgba(59, 130, 246, 0.2);
+  --tint2: rgba(59, 130, 246, 0.09);
+  --glow: rgba(59, 130, 246, 0.26);
+}
+.ops-b-transport {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #5b21b6;
+  --d2: #8b5cf6;
+  --d3: #c4b5fd;
+  --d4: #ede9fe;
+  --ga: rgba(139, 92, 246, 0.28);
+  --gb: rgba(139, 92, 246, 0.18);
+  --soft: rgba(139, 92, 246, 0.07);
+  --tint1: rgba(139, 92, 246, 0.2);
+  --tint2: rgba(139, 92, 246, 0.09);
+  --glow: rgba(139, 92, 246, 0.26);
+}
+
+.ops-rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(0.7 * var(--u));
+  background: linear-gradient(180deg, var(--d1), color-mix(in srgb, var(--d1) 78%, #000));
+  /*
+   * The rail is the one thing in a band that is taller than the band wants.
+   *
+   * Its label is a single unwrappable line running the full height, so a scope
+   * a few characters too long does not wrap — it makes the rail taller than
+   * its own band, which was the last 17px of overflow on this board. Clipped
+   * here rather than on the p: a percentage max-height on a rotated flex item
+   * does not resolve the way it reads, and this does.
+   */
+  overflow: hidden;
+}
+.ops-rail p {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: calc(1.02 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  white-space: nowrap;
+  /*
+   * The band's NAME always survives; a long scope is what gives way.
+   *
+   * The rail is centred, so a label longer than the band was clipped at BOTH
+   * ends — which ate the first word, and the first word is the one that says
+   * which band this is. In vertical writing the inline axis is the vertical
+   * one, so capping the height caps the text's own length: it now runs out at
+   * the tail, after the name, instead of losing its head.
+   */
+  max-height: 100%;
+  overflow: hidden;
+}
+.ops-rail p em {
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.72;
+}
+
+.ops-groups {
+  display: grid;
+  gap: calc(0.6 * var(--u));
+  min-height: 0;
+  /* Same rule as the stack, one level down: the row of tiles is the height the
+     band gives it, and a tall tile is clipped rather than stretching the row. */
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.ops-grp {
+  position: relative;
+  min-width: 0;
+  /*
+   * A tile paints inside its own card and nowhere else.
+   *
+   * The three rows above the visualisation are fixed heights and the band is a
+   * quarter of the viewport, so a tile whose legend runs to one line more than
+   * the budget allows used to spill out of the bottom of the card and land on
+   * top of the band below — two figures over each other, both unreadable. The
+   * clip makes that impossible. It is a guard, not the fix: the rules below
+   * tighten a crowded legend so there is nothing left outside to clip.
+   */
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: var(--r-head) var(--r-sub) var(--r-value) 1fr;
+  padding: calc(0.85 * var(--u)) calc(1.05 * var(--u)) calc(1 * var(--u));
+  border-radius: calc(0.75 * var(--u));
+  background: #fff;
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14);
+}
+
+.ops-grow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(0.6 * var(--u));
+}
+.ops-nm {
+  font-size: calc(1.26 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.024em;
+  line-height: 1.15;
+}
+.ops-sub {
+  align-self: start;
+  font-size: calc(1 * var(--u));
+  color: var(--ink-2);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.ops-tag {
+  font-size: calc(1 * var(--u));
+  font-weight: 700;
+  padding: calc(0.26 * var(--u)) calc(0.58 * var(--u));
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ops-t-neut {
+  background: var(--tint2);
+  color: var(--d1);
+  box-shadow: inset 0 0 0 1px var(--tint1);
+}
+.ops-t-ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: var(--ok1);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.3);
+}
+.ops-t-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.34);
+}
+.ops-t-bad {
+  background: rgba(244, 63, 94, 0.13);
+  color: var(--ba1);
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.3);
+}
+/* No source behind the tile — quieter than any condition colour. */
+.ops-t-nil {
+  background: #f1f4f8;
+  color: var(--ink-3);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+.ops-val {
+  align-self: end;
+  display: flex;
+  align-items: baseline;
+  gap: calc(0.42 * var(--u));
+  padding-bottom: calc(0.32 * var(--u));
+}
+.ops-val b {
+  font-size: calc(3.9 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.042em;
+  line-height: 0.92;
+}
+.ops-val u {
+  text-decoration: none;
+  font-size: calc(1.6 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  letter-spacing: -0.015em;
+}
+/* The dash that stands in for a figure with no feed behind it. */
+.ops-val b.ops-nil {
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+/*
+ * A visualisation is exactly as tall as the row it was given, and centres its
+ * contents INSIDE that box.
+ *
+ * `align-self: center` on the box itself was the bug: it sizes to its content,
+ * so a visualisation that outgrows its budget overflows at both ends — and the
+ * end it reaches first is the top, where it lands on the tile's own name and
+ * figure. Stretching the box and centring within it looks identical while
+ * anything too tall is clipped at the bottom instead, which is a legible
+ * failure rather than two texts printed over each other.
+ */
+.ops-viz {
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  padding-bottom: calc(0.2 * var(--u));
+}
+/*
+ * A tall visualisation starts at the top of its span and grows DOWN.
+ *
+ * Deliberately not `center` like its short sibling: a centred block that
+ * outgrows its span overflows at BOTH ends, and the end it overflows first is
+ * the top — where it lands on the tile's own name and tag. That is the
+ * collision that put "Days old GRPO AP Payment" over "Transport account".
+ * Anchored to the top, anything that does not fit is clipped at the bottom of
+ * the card, which is a legible failure rather than two texts superimposed.
+ */
+/* A tall visualisation takes the figure's row too, and starts at the top of
+   the span rather than centring — a table reads from its first row down. */
+.ops-viz.ops-tall {
+  grid-row: 3 / 5;
+  justify-content: flex-start;
+}
+
+/* ── bars: colour comes from a class, never from inline hex ── */
+/*
+ * A composition bar reads as a single pill, thick enough to carry its own
+ * colour across a room. At the old 1.05u it was a hairline on a wall display:
+ * the tint difference between a filled and an unfilled segment is the whole
+ * message, and a thin rule gives it too little area to land. The gap grows with
+ * the height so the segment division stays a division and not a seam.
+ */
+.ops-meter {
+  /* Single-sourced: OpsMeter reads this for the minimum width of a sliver, so
+     a segment too small to see is a round dot rather than a squashed oval. */
+  --meter-h: calc(1.5 * var(--u));
+  height: var(--meter-h);
+  border-radius: 999px;
+  display: flex;
+  overflow: hidden;
+  background: #e6ebf2;
+  gap: calc(0.18 * var(--u));
+}
+.ops-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: ops-grow 1s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+.ops-f-main,
+.ops-f-bad {
+  background: linear-gradient(90deg, var(--d1), var(--d2));
+}
+.ops-f-light,
+.ops-f-warn {
+  background: linear-gradient(90deg, var(--d2), var(--d3));
+}
+.ops-f-mute,
+.ops-f-ok {
+  background: linear-gradient(90deg, var(--d3), var(--d4));
+}
+
+.ops-mkey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(1 * var(--u));
+  margin-top: calc(0.6 * var(--u));
+  font-size: calc(1.08 * var(--u));
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.ops-mkey b {
+  font-weight: 700;
+  color: var(--ink);
+}
+.ops-mkey span {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.32 * var(--u));
+  /* A long label shrinks rather than forcing the row wider than the card. */
+  min-width: 0;
+}
+
+/*
+ * A four-entry legend, tightened so it still lands in two lines.
+ *
+ * Three entries is what the tile budget was drawn for. A fourth — a third
+ * measured block plus the row that names a gap — wraps to a third line, and a
+ * third line does not fit: the card clips it, and before the clip existed it
+ * painted over the band below. Dropping the step and the size slightly is
+ * enough to pull two entries onto each line, which loses no figure and no
+ * word. Sized down only where it is needed, so every other legend on the board
+ * keeps the size it was designed at.
+ */
+.ops-mkey:has(span:nth-child(4)) {
+  gap: calc(0.62 * var(--u));
+  font-size: calc(0.95 * var(--u));
+}
+.ops-mkey span::before {
+  content: '';
+  width: calc(0.55 * var(--u));
+  height: calc(0.55 * var(--u));
+  border-radius: 999px;
+  flex: none;
+}
+.ops-k-main::before,
+.ops-k-bad::before {
+  background: var(--d1);
+}
+.ops-k-light::before,
+.ops-k-warn::before {
+  background: var(--d2);
+}
+.ops-k-mute::before,
+.ops-k-ok::before {
+  background: var(--d3);
+}
+
+@keyframes ops-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes ops-growY {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.ops-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(0.55 * var(--u));
+  /* Room above the tallest bar for its label, which is absolutely placed. */
+  height: calc(4.4 * var(--u));
+  padding-top: calc(1.1 * var(--u));
+}
+.ops-bars > div {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+}
+/*
+ * The day's figure, above its own bar.
+ *
+ * Absolute so it never takes height from the column — the bars are a share of
+ * the tallest day, and letting a label push them down would misstate every
+ * one. Light and small on purpose: it annotates the bar, it is not the number
+ * the tile is about.
+ */
+.ops-bval {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: calc(0.15 * var(--u));
+  font-style: normal;
+  font-size: calc(0.82 * var(--u));
+  font-weight: 500;
+  color: var(--ink-3);
+  white-space: nowrap;
+  line-height: 1;
+}
+.ops-bars .ops-now .ops-bval {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+.ops-bars i {
+  display: block;
+  width: 100%;
+  border-radius: calc(0.28 * var(--u)) calc(0.28 * var(--u)) calc(0.12 * var(--u)) calc(0.12 * var(--u));
+  background: var(--d3);
+  transform-origin: bottom center;
+  animation: ops-growY 0.85s cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+.ops-bars .ops-now i {
+  background: linear-gradient(180deg, var(--d2), var(--d1));
+}
+.ops-blab {
+  display: flex;
+  gap: calc(0.5 * var(--u));
+  margin-top: calc(0.42 * var(--u));
+}
+.ops-blab span {
+  flex: 1;
+  text-align: center;
+  font-size: calc(1.05 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.ops-blab .ops-now {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.ops-pair {
+  display: grid;
+  gap: calc(0.8 * var(--u));
+}
+.ops-prow {
+  display: grid;
+  /* `minmax(0, …)` on the label so a long name shrinks and ellipses rather
+     than forcing the bar and its figure off the end of the card. */
+  grid-template-columns: minmax(0, calc(7.5 * var(--u))) 1fr auto;
+  align-items: center;
+  gap: calc(0.6 * var(--u));
+}
+/*
+ * One line, clipped. Vendor names out of SAP run long — "PICK & SHIP LOGISTICS
+ * PRIVATE LIMITED" — and wrapping one made its row two lines tall, which threw
+ * the row below it out of the card. The full name stays on the element's title
+ * for anyone who walks up to the screen.
+ */
+.ops-prow em {
+  font-style: normal;
+  font-size: calc(1.12 * var(--u));
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.ops-prow .b {
+  height: calc(1.05 * var(--u));
+  border-radius: 999px;
+  background: #e6ebf2;
+  overflow: hidden;
+}
+.ops-prow .b i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: ops-grow 1s cubic-bezier(0.2, 0.8, 0.25, 1) 0.15s both;
+}
+.ops-prow strong {
+  font-size: calc(1.5 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.ops-matrix {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+/*
+ * Tight on purpose. Each cell gained a second line when the money went under
+ * the count, which is four extra lines over the table — enough to push the
+ * last age band out of the card. The padding and the figure both came down to
+ * pay for it; the money line is smaller again, so the count still leads.
+ */
+.ops-matrix th,
+.ops-matrix td {
+  text-align: right;
+  padding: calc(0.12 * var(--u)) calc(0.3 * var(--u));
+  font-size: calc(1.05 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.ops-matrix thead th {
+  font-size: calc(0.85 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-bottom: calc(0.12 * var(--u));
+  white-space: nowrap;
+}
+.ops-matrix th:first-child,
+.ops-matrix td:first-child {
+  text-align: left;
+  font-size: calc(0.88 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  padding-left: calc(0.4 * var(--u));
+  white-space: nowrap;
+}
+.ops-matrix tbody th {
+  border-radius: calc(0.4 * var(--u)) 0 0 calc(0.4 * var(--u));
+}
+.ops-matrix tbody td:last-child {
+  border-radius: 0 calc(0.4 * var(--u)) calc(0.4 * var(--u)) 0;
+}
+/* Four steps of one hue, lightest at the top: the ageing scale is a magnitude,
+   so it stays sequential rather than picking up a second colour. */
+.ops-matrix .ops-a-new th,
+.ops-matrix .ops-a-new td {
+  background: color-mix(in srgb, var(--d4) 32%, #fff);
+}
+.ops-matrix .ops-a-ok th,
+.ops-matrix .ops-a-ok td {
+  background: color-mix(in srgb, var(--d4) 70%, #fff);
+}
+.ops-matrix .ops-a-warn th,
+.ops-matrix .ops-a-warn td {
+  background: color-mix(in srgb, var(--d3) 55%, #fff);
+}
+.ops-matrix .ops-a-bad th,
+.ops-matrix .ops-a-bad td {
+  background: color-mix(in srgb, var(--d2) 45%, #fff);
+  color: var(--d1);
+}
+.ops-matrix .ops-a-bad th:first-child {
+  color: var(--d1);
+}
+.ops-matrix tbody tr + tr th,
+.ops-matrix tbody tr + tr td {
+  border-top: calc(0.2 * var(--u)) solid #fff;
+}
+
+/* people */
+.ops-people {
+  border-radius: calc(0.75 * var(--u));
+  background: #fff;
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14);
+  display: grid;
+  grid-template-rows: auto 1fr 1fr auto;
+  padding: calc(0.85 * var(--u)) calc(0.95 * var(--u)) calc(0.95 * var(--u));
+  gap: calc(0.15 * var(--u));
+}
+.ops-pcap {
+  display: flex;
+  align-items: center;
+  gap: calc(0.45 * var(--u));
+  font-size: calc(1 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.ops-pcap b {
+  margin-left: auto;
+  font-size: calc(1.05 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+}
+.ops-pcap svg {
+  width: calc(1.05 * var(--u));
+  height: calc(1.05 * var(--u));
+  stroke: var(--d1);
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ops-prole {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.ops-prole .r {
+  display: flex;
+  align-items: baseline;
+  gap: calc(0.5 * var(--u));
+}
+.ops-prole .k {
+  font-size: calc(1.05 * var(--u));
+  color: var(--ink-2);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.35 * var(--u));
+}
+.ops-prole .k::before {
+  content: '';
+  width: calc(0.46 * var(--u));
+  height: calc(0.46 * var(--u));
+  border-radius: 999px;
+  background: var(--pk);
+}
+.ops-prole .n {
+  margin-left: auto;
+  font-size: calc(1.85 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.ops-prole .s {
+  font-size: calc(1 * var(--u));
+  color: var(--ink-2);
+  font-weight: 500;
+  margin-top: calc(0.15 * var(--u));
+  padding-left: calc(0.8 * var(--u));
+}
+.ops-psplit {
+  height: calc(0.55 * var(--u));
+  border-radius: 999px;
+  display: flex;
+  gap: calc(0.14 * var(--u));
+  overflow: hidden;
+  background: #e6ebf2;
+}
+.ops-psplit i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: ops-grow 1s cubic-bezier(0.2, 0.8, 0.25, 1) 0.2s both;
+}
+
+/*
+ * Two figures side by side, divided.
+ *
+ * For a tile whose answer is genuinely two numbers rather than one split into
+ * parts — tonnes and the invoice count behind them. Not a meter: those numbers
+ * share no scale and adding them would mean nothing.
+ */
+.ops-duo {
+  display: flex;
+  align-items: stretch;
+  gap: calc(0.9 * var(--u));
+}
+.ops-duo > div {
+  flex: 1;
+  min-width: 0;
+}
+.ops-duo > div + div {
+  border-left: 1px solid var(--hair);
+  padding-left: calc(0.9 * var(--u));
+}
+.ops-duo .k {
+  display: block;
+  font-size: calc(1 * var(--u));
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ops-duo .v {
+  display: block;
+  margin-top: calc(0.15 * var(--u));
+  font-size: calc(1.75 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* A note pinned under a group where the figure needs qualifying. */
+.ops-note {
+  font-size: calc(0.95 * var(--u));
+  line-height: 1.3;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-board * {
+    animation: none !important;
+  }
+}
+
+/* Money under a matrix count — subordinate to the figure it qualifies. */
+.ops-matrix .ops-cash {
+  display: block;
+  margin-top: 0;
+  font-size: calc(0.82 * var(--u));
+  line-height: 1.15;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.ops-matrix .ops-cash i {
+  display: block;
+  font-size: calc(0.82 * var(--u));
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-3);
+}

@@ -9,6 +9,12 @@ export interface DispatchFulfilmentFilters {
   from: string;
   /** inclusive end date, YYYY-MM-DD */
   to: string;
+  /**
+   * Narrow the aggregation to these company codes. Intersected server-side with
+   * the caller's own memberships, so it can only remove companies. Omit for
+   * every company the caller belongs to.
+   */
+  companies?: readonly string[];
 }
 
 export interface DispatchedTotals {

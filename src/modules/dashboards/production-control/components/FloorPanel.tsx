@@ -101,6 +101,12 @@ export function FloorPanel({
   // pinning at a full bar that looks merely "full".
   const scale = 130;
   const fillWidth = occupancy ? Math.min((occupancy.percent / scale) * 100, 100) : 0;
+  // Split proportionally to the two halves, so the segments together are the
+  // fill and never overshoot it once the bar is clamped at the scale.
+  const measuredShare =
+    occupancy && occupancy.pallets > 0 ? occupancy.measuredShown / occupancy.pallets : 1;
+  const measuredWidth = fillWidth * measuredShare;
+  const estimatedWidth = fillWidth - measuredWidth;
 
   return (
     <ControlSection
@@ -142,23 +148,50 @@ export function FloorPanel({
                   {occupancy.over && ' · over capacity'}
                 </p>
               </div>
+              {/* Written as a sum, because it is one. Shown as two separate
+                  lines the reader has to add up, "263 measured" beside a total
+                  of 366 invites the question of whether it is being counted
+                  twice — which is exactly what it did. */}
               <p className="text-right text-xs tabular-nums text-muted-foreground">
                 {formatCount(occupancy.boxes)} boxes
-                <br />
-                {formatCount(occupancy.palletsFromBoxes)} plt measured
-                {occupancy.looseSkus > 0 && (
+                {occupancy.looseSkus > 0 ? (
                   <>
                     <br />
-                    {formatCount(occupancy.palletsFromLoose)} plt estimated
+                    <span className="font-medium">
+                      {formatCount(occupancy.measuredShown)} measured
+                    </span>
+                    {' + '}
+                    <span className="font-medium">
+                      {formatCount(occupancy.estimatedShown)} est.
+                    </span>
+                    <br />= {formatCount(occupancy.pallets)} pallets
+                  </>
+                ) : (
+                  <>
+                    <br />
+                    {formatCount(occupancy.pallets)} pallets, all measured
                   </>
                 )}
               </p>
             </div>
 
             <div className="relative mt-3 h-7 w-full overflow-visible rounded-md bg-muted">
+              {/* The fill is drawn in its two parts rather than as one block, so
+                  the split between what was measured and what was estimated is
+                  visible in the bar and not only in the caption. The estimated
+                  segment is the same hue at half strength — a second colour
+                  would read as a different KIND of stock rather than the same
+                  stock counted less certainly. */}
               <div
-                className={cn('absolute inset-y-0 left-0 rounded-md transition-all', tone!.fill)}
-                style={{ width: `${fillWidth}%` }}
+                className={cn('absolute inset-y-0 left-0 rounded-l-md transition-all', tone!.fill)}
+                style={{ width: `${measuredWidth}%` }}
+              />
+              <div
+                className={cn(
+                  'absolute inset-y-0 rounded-r-md opacity-50 transition-all',
+                  tone!.fill,
+                )}
+                style={{ left: `${measuredWidth}%`, width: `${estimatedWidth}%` }}
               />
               {/* The alert line and capacity, drawn where they fall on the scale. */}
               <div

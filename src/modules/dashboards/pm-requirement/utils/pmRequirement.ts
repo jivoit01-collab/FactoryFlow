@@ -1,11 +1,5 @@
 import { PM_REQ_COLUMNS } from '../constants';
-import type {
-  PmReqFilter,
-  PmReqRow,
-  PmReqSort,
-  PmReqSortKey,
-  PmReqStatus,
-} from '../types';
+import type { PmReqFilter, PmReqRow, PmReqSort, PmReqSortKey, PmReqStatus } from '../types';
 
 // ============================================================================
 // Formatting
@@ -130,6 +124,8 @@ export function filterRows(rows: PmReqRow[], filter: PmReqFilter): PmReqRow[] {
       return rows.filter((row) => row.req_after_po_qty >= 0 && !row.over_issued);
     case 'over-issued':
       return rows.filter((row) => row.over_issued);
+    case 'over-purchased':
+      return rows.filter((row) => row.over_purchased);
     case 'all':
     default:
       return rows;
@@ -165,8 +161,7 @@ export function searchRows(rows: PmReqRow[], query: string): PmReqRow[] {
 
     return terms.every(
       (term) =>
-        description.includes(term) ||
-        (term.length >= MIN_CODE_TERM_LENGTH && code.includes(term)),
+        description.includes(term) || (term.length >= MIN_CODE_TERM_LENGTH && code.includes(term)),
     );
   });
 }
@@ -252,9 +247,40 @@ export function visibleTotals(rows: PmReqRow[]) {
     rest_planning_qty: sum((row) => row.rest_planning_qty),
     on_hand_qty: sum((row) => row.on_hand_qty),
     open_po_qty: sum((row) => row.open_po_qty),
+    // The REQ after PO column, added straight down. A NET figure: a surplus
+    // on one component does offset a shortage on another in it, which is why
+    // `short_qty` is carried beside it rather than replaced by it. The two
+    // answer different questions -- "where does the plan land overall" and
+    // "how much has to be bought" -- and the footer shows both.
+    req_after_po_qty: sum((row) => row.req_after_po_qty),
     short_qty: sum((row) => row.short_qty),
     short_value: sum((row) => row.short_value),
+    // How many of the rows on screen the shortfall is spread across, so the
+    // footer can say "X short across Y components" rather than leaving a
+    // lone figure to be read as a sum of the column above it.
+    short_count: rows.filter((row) => row.req_after_po_qty < 0).length,
+    // Summed over the FLAGGED rows only, matching what the backend totals do:
+    // a row over by a thousandth of a carton is not part of an excess anybody
+    // is going to act on, so it must not appear in the figure either.
+    over_purchase_qty: sum((row) => (row.over_purchased ? row.over_purchase_qty : 0)),
+    over_purchase_value: sum((row) => (row.over_purchased ? row.over_purchase_value : 0)),
+    over_purchased_count: rows.filter((row) => row.over_purchased).length,
   };
+}
+
+/**
+ * Which kind of over-purchase a row is.
+ *
+ * An excess on an order that lands after the plan closes is usually next
+ * month's stock bought early; an excess on an order already past due is money
+ * committed to a delivery nobody has chased. Neither is the same as an excess
+ * arriving inside the plan, and the row says which rather than lumping all
+ * three together as "over-purchased".
+ */
+export function overPurchaseKind(row: PmReqRow): 'overdue' | 'forward' | 'now' {
+  if (row.po_due_after_plan) return 'forward';
+  if (row.po_overdue) return 'overdue';
+  return 'now';
 }
 
 // ============================================================================
@@ -282,7 +308,17 @@ function csvCell(value: string | number): string {
  */
 export function toCsv(rows: PmReqRow[]): string {
   const header = PM_REQ_COLUMNS.map((column) => column.csv);
-  const extra = ['Family', 'UoM', 'Status', 'Shortfall', 'Shortfall value', 'PO due'];
+  const extra = [
+    'Family',
+    'UoM',
+    'Status',
+    'Shortfall',
+    'Shortfall value',
+    'To buy',
+    'Over-purchased',
+    'Over-purchased value',
+    'PO due',
+  ];
 
   const lines = [
     [...header, ...extra].map(csvCell).join(','),
@@ -302,6 +338,9 @@ export function toCsv(rows: PmReqRow[]): string {
         rowStatus(row),
         row.short_qty,
         row.short_value,
+        row.to_buy_qty,
+        row.over_purchase_qty,
+        row.over_purchase_value,
         row.po_earliest_due ?? '',
       ]
         .map(csvCell)

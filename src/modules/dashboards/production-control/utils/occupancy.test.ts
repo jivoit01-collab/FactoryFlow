@@ -114,6 +114,30 @@ describe('summariseOccupancy', () => {
     expect(result.rows[0].itemCode).toBe('L5');
   });
 
+  it('shows two halves that always sum to the total, never one more or less', () => {
+    // A board that printed "263 measured" and "103 estimated" beside a total of
+    // 365 would look like it was double-counting. It must always add up.
+    const result = awkwardMixes();
+    for (const occupancy of result) {
+      expect(occupancy.measuredShown + occupancy.estimatedShown).toBe(occupancy.pallets);
+    }
+  });
+
+  it('puts the rounding slack on the estimated half, not the measured one', () => {
+    // 13 boxes = 0.325 plt measured, 1 can = 0.02 plt estimated -> total ceil 1.
+    // Measured rounds to 0, so the whole pallet is attributed to the estimate.
+    const result = summariseOccupancy([boxed(13 * 20, 20), loose(1, 15)]);
+    expect(result.pallets).toBe(1);
+    expect(result.measuredShown).toBe(0);
+    expect(result.estimatedShown).toBe(1);
+  });
+
+  it('never shows more measured pallets than the floor holds in total', () => {
+    const result = summariseOccupancy([boxed(40 * 20, 20)]);
+    expect(result.measuredShown).toBeLessThanOrEqual(result.pallets);
+    expect(result.estimatedShown).toBeGreaterThanOrEqual(0);
+  });
+
   it('defaults to the floor capacity and accepts an override', () => {
     expect(summariseOccupancy([boxed(800, 20)]).capacity).toBe(PALLET_CAPACITY);
     expect(summariseOccupancy([boxed(800, 20)], 250).capacity).toBe(250);
@@ -144,3 +168,17 @@ describe('occupancyNote', () => {
     expect(note).not.toContain('estimate');
   });
 });
+
+/** Awkward mixes of boxed and loose stock, to prove the halves always reconcile. */
+function awkwardMixes() {
+  const mixes: OccupancyInput[][] = [
+    [boxed(800, 20)],
+    [boxed(13 * 20, 20), loose(1, 15)],
+    [boxed(4028, 16), loose(4028, 0.2), loose(1802, 15), loose(5, 200)],
+    [loose(9008, 0.5)],
+    [boxed(36247, 12), boxed(25392, 16), loose(3412, 15), loose(9009, 0.5), loose(5, 200)],
+    [boxed(1, 3), loose(1, 0.2)],
+    [boxed(7, 3), boxed(11, 7), loose(13, 15), loose(17, 200), loose(19, 0.5)],
+  ];
+  return mixes.map((mix) => summariseOccupancy(mix));
+}
