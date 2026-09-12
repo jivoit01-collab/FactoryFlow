@@ -207,12 +207,16 @@ export default function DockingPartialScanApprovalsPage() {
                       <td className="p-3">{request.vehicle_no || '-'}</td>
                       <td className="p-3">
                         <div className="font-medium">{request.customer_name || '-'}</div>
+                        {/* The BILL this approval covers — one request is raised per short
+                            bill, so this is the document whose goods are being released. */}
                         <div className="text-xs text-muted-foreground">
+                          {request.document ? 'Bill ' : ''}
                           {request.sap_doc_num || '-'}
+                          {request.company_name ? ` · ${request.company_name}` : ''}
                         </div>
                       </td>
                       <td className="p-3 whitespace-nowrap font-medium">
-                        {request.scanned_boxes} / {request.expected_boxes || '?'}
+                        {formatShortfall(request)}
                       </td>
                       <td className="p-3">
                         <div className="max-w-[240px] whitespace-pre-wrap break-words">
@@ -348,6 +352,26 @@ interface RequestCardProps {
  * approver actually decides on, so it gets its own line rather than a column
  * that would sit off-screen in the table.
  */
+/**
+ * What the admin is actually being asked to release, in the unit the bill is written in.
+ *
+ * Boxes for goods SAP transacts in cartons; QUANTITY for the ones it ships per piece,
+ * whose box target is legitimately 0 — "0 / 0 boxes" on a bill of 300 unscanned tins is
+ * the kind of figure an approver rubber-stamps.
+ */
+function formatShortfall(request: DockingPartialScanRequest) {
+  const expectedPieces = Number(request.expected_pieces ?? 0);
+  if (request.expected_boxes > 0 || expectedPieces <= 0) {
+    return `${request.scanned_boxes} / ${request.expected_boxes || '?'} boxes`;
+  }
+  const scannedPieces = Number(request.scanned_pieces ?? 0);
+  return `${trimQty(scannedPieces)} / ${trimQty(expectedPieces)} qty`;
+}
+
+function trimQty(value: number) {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(3)));
+}
+
 function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardProps) {
   const isPending = request.status === 'PENDING';
 
@@ -368,6 +392,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
       <div className="mt-2 space-y-0.5 text-sm">
         <div className="break-words font-medium">{request.customer_name || '-'}</div>
         <div className="text-xs text-muted-foreground">
+          {request.document ? 'Bill ' : ''}
           {request.sap_doc_num || '-'} · {request.requested_by_name || '-'} ·{' '}
           {formatTimestamp(request.requested_at)}
         </div>
@@ -375,11 +400,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
 
       <div className="mt-2 rounded-md bg-muted/50 p-2 text-sm">
         <div className="font-medium">
-          Scanned{' '}
-          <span className="tabular-nums">
-            {request.scanned_boxes} / {request.expected_boxes || '?'}
-          </span>{' '}
-          boxes
+          Scanned <span className="tabular-nums">{formatShortfall(request)}</span>
         </div>
         <div className="mt-1 break-words">
           <span className="text-muted-foreground">Reason: </span>

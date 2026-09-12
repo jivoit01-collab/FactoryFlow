@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { SalesDispatchGateOut } from '@/modules/gate/api';
 
-import { resolveScanGate } from '../../pages/customerSalesFlow/salesDispatchFlow.helpers';
+import {
+  resolveScanGate,
+  summarizePartialRequests,
+} from '../../pages/customerSalesFlow/salesDispatchFlow.helpers';
 
 /**
  * One truck, several dockings: the scan step is walked load-wide, but each admin approval
@@ -36,15 +39,27 @@ describe('resolveScanGate', () => {
     expect(gate.satisfied).toBe(false);
   });
 
-  it('holds a partly scanned load while its own request is only pending', () => {
+  it('holds a partly scanned load while its bills are still waiting', () => {
+    // One approved bill is not a cleared truck: the backend only reports
+    // partial_scan_approved once EVERY short bill carries an approval of its own.
     const gate = resolveScanGate({
       boxScanOptional: false,
       scannedCount: 872,
       isPartialScan: true,
-      ownPartialStatus: 'PENDING',
+      ownPartialApproved: false,
     });
     expect(gate.partialApproved).toBe(false);
     expect(gate.satisfied).toBe(false);
+  });
+
+  it('releases the load once its own readiness reports every short bill approved', () => {
+    const gate = resolveScanGate({
+      boxScanOptional: false,
+      scannedCount: 872,
+      isPartialScan: true,
+      ownPartialApproved: true,
+    });
+    expect(gate.satisfied).toBe(true);
   });
 
   it('releases the load on a partial approval filed against a sibling docking', () => {
@@ -52,7 +67,6 @@ describe('resolveScanGate', () => {
       boxScanOptional: false,
       scannedCount: 872,
       isPartialScan: true,
-      ownPartialStatus: null,
       loadDockings: [
         docking({ partial_scan_approved: false }),
         docking({ partial_scan_approved: true }),
@@ -90,5 +104,34 @@ describe('resolveScanGate', () => {
       isPartialScan: false,
     });
     expect(gate.satisfied).toBe(true);
+  });
+});
+
+/**
+ * Approvals are raised one per short BILL, so the scan step has no single status: a truck
+ * can be two-thirds approved, and the operator has to be told which bill is holding it.
+ */
+describe('summarizePartialRequests', () => {
+  const request = (id: number, status: 'PENDING' | 'APPROVED' | 'REJECTED', doc: string) =>
+    ({ id, status, sap_doc_num: doc }) as const;
+
+  it("groups the truck's requests by what the admin did with each bill", () => {
+    const summary = summarizePartialRequests([
+      request(1, 'APPROVED', '626090324'),
+      request(2, 'PENDING', '626090325'),
+      request(3, 'REJECTED', '609260327'),
+    ]);
+    expect(summary.approved).toEqual(['626090324']);
+    expect(summary.pending).toEqual(['626090325']);
+    expect(summary.rejected).toEqual(['609260327']);
+  });
+
+  it('falls back to the request id when a bill carries no document number', () => {
+    const summary = summarizePartialRequests([{ id: 7, status: 'PENDING' }]);
+    expect(summary.pending).toEqual(['#7']);
+  });
+
+  it('reads an empty load as nothing outstanding', () => {
+    expect(summarizePartialRequests([])).toEqual({ pending: [], approved: [], rejected: [] });
   });
 });

@@ -6,14 +6,25 @@ export type DockingPartialScanStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export interface DockingPartialScanRequest {
   id: number;
   sales_dispatch: number;
+  /** The BILL this approval covers; null on legacy load-wide rows. */
+  document: number | null;
   entry_no: string;
   vehicle_no: string;
+  company_code: string;
+  company_name: string;
   customer_name: string;
   sap_doc_num: string;
   document_type: string;
   dispatch_status: string;
   scanned_boxes: number;
   expected_boxes: number;
+  /**
+   * Scanned vs invoiced QUANTITY for the bill. The pair that always means something: a
+   * bill of goods SAP ships per piece has no box target, so its boxes read "0 of 0" while
+   * hundreds of tins are still on the floor.
+   */
+  scanned_pieces: string;
+  expected_pieces: string;
   reason: string;
   status: DockingPartialScanStatus;
   requested_by: number | null;
@@ -61,15 +72,24 @@ export const partialScanApprovalApi = {
     return response.data;
   },
 
-  async byDispatch(entryId: number): Promise<DockingPartialScanRequest | null> {
-    const response = await apiClient.get<DockingPartialScanRequest | null>(
+  /**
+   * Every partial-dispatch request on this docking's TRUCK.
+   *
+   * An approval names one bill and the shortfall is judged load-wide, so the operator
+   * standing on a fully scanned docking still has to see the requests raised for its
+   * neighbour's bills — otherwise the screen says "no request" while three sit in the
+   * admin queue.
+   */
+  async byDispatch(entryId: number): Promise<DockingPartialScanRequest[]> {
+    const response = await apiClient.get<DockingPartialScanRequest[] | null>(
       API_ENDPOINTS.DOCKING_ADMIN.PARTIAL_SCAN_REQUEST_BY_DISPATCH(entryId),
     );
-    return response.data ?? null;
+    return response.data ?? [];
   },
 
-  async create(data: DockingPartialScanCreateRequest): Promise<DockingPartialScanRequest> {
-    const response = await apiClient.post<DockingPartialScanRequest>(
+  /** Raises one request per bill that is short — the response is all of them. */
+  async create(data: DockingPartialScanCreateRequest): Promise<DockingPartialScanRequest[]> {
+    const response = await apiClient.post<DockingPartialScanRequest[]>(
       API_ENDPOINTS.DOCKING_ADMIN.PARTIAL_SCAN_REQUESTS,
       data,
     );

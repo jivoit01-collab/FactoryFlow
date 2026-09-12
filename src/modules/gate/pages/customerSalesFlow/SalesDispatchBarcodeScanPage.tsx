@@ -100,6 +100,7 @@ import {
   formatValue,
   isMultiDockingTruck,
   resolveScanGate,
+  summarizePartialRequests,
 } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
@@ -204,7 +205,7 @@ export default function SalesDispatchBarcodeScanPage() {
     [isArrivalMode, arrivalDockings.dockings, dockingScans],
   );
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
-  const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
+  const { data: partialRequests } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
     data: barcodeScans,
     isFetching: isBarcodeScansLoading,
@@ -231,8 +232,13 @@ export default function SalesDispatchBarcodeScanPage() {
   const isBoxScanOptional = entry?.gatepass_readiness?.box_scan_optional ?? false;
   const skipStatus = skipRequest?.status ?? null;
   const isSkipPending = skipStatus === 'PENDING';
-  const partialStatus = partialRequest?.status ?? null;
-  const isPartialPending = partialStatus === 'PENDING';
+  // One request per short BILL, for the whole truck: two of three bills can be approved
+  // while the third still holds the load, so there is no single status to read.
+  const partialSummary = useMemo(
+    () => summarizePartialRequests(partialRequests ?? []),
+    [partialRequests],
+  );
+  const isPartialPending = partialSummary.pending.length > 0;
   const isSaving = scanBox.isPending || removeScan.isPending || removeScans.isPending;
 
   // Keep the barcode field focused so a connected hardware scanner can fire one box
@@ -372,7 +378,7 @@ export default function SalesDispatchBarcodeScanPage() {
     scannedCount: gatingScanCount,
     isPartialScan,
     ownSkipStatus: skipStatus,
-    ownPartialStatus: partialStatus,
+    ownPartialApproved: entry?.gatepass_readiness?.partial_scan_approved,
     loadDockings: isArrivalMode ? arrivalDockings.dockings : [],
   });
   const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
@@ -383,7 +389,11 @@ export default function SalesDispatchBarcodeScanPage() {
         ? 'Locked — box-scan skip is awaiting admin approval. You can continue once it is approved.'
         : 'Locked — scan at least one box, or request approval to skip scanning (panel above), to continue.'
       : isPartialPending
-        ? 'Locked — partial dispatch is awaiting admin approval. You can continue once it is approved.'
+        ? `Locked — partial dispatch is awaiting admin approval for bill${
+            partialSummary.pending.length === 1 ? '' : 's'
+          } ${partialSummary.pending.join(', ')}. You can continue once ${
+            partialSummary.pending.length === 1 ? 'it is' : 'they are'
+          } approved.`
         : 'Locked — scan all boxes, or request partial dispatch approval (panel above), to continue.';
 
   // Auto-open the only bill (nothing to choose); multi-bill loads stay collapsed.
@@ -674,7 +684,9 @@ export default function SalesDispatchBarcodeScanPage() {
       if (isPartialScan && !isPartialApproved) {
         setError(
           isPartialPending
-            ? 'Partial dispatch is awaiting admin approval. You can continue once it is approved.'
+            ? `Partial dispatch is awaiting admin approval for bill${
+                partialSummary.pending.length === 1 ? '' : 's'
+              } ${partialSummary.pending.join(', ')}.`
             : 'Scan all boxes, or request partial dispatch approval to continue.',
         );
         return;
@@ -710,10 +722,21 @@ export default function SalesDispatchBarcodeScanPage() {
     }
     setPartialError('');
     try {
-      await createPartialRequest.mutateAsync({ sales_dispatch: entry.id, reason: trimmedReason });
+      // One request per short bill — say how many went, so the operator knows to expect
+      // that many approvals rather than watching for a single one.
+      const raised = await createPartialRequest.mutateAsync({
+        sales_dispatch: entry.id,
+        reason: trimmedReason,
+      });
       setIsPartialDialogOpen(false);
       setPartialReason('');
-      toast.success('Partial dispatch request sent for admin approval');
+      toast.success(
+        raised.length === 1
+          ? `Approval requested for bill ${raised[0].sap_doc_num || raised[0].id}`
+          : `Approval requested for ${raised.length} bills: ${raised
+              .map((request) => request.sap_doc_num || `#${request.id}`)
+              .join(', ')}`,
+      );
     } catch (submitError) {
       setPartialError(
         getErrorMessage(submitError, 'Unable to submit the partial dispatch request'),
@@ -781,7 +804,7 @@ export default function SalesDispatchBarcodeScanPage() {
         />
       ) : isPartialScan ? (
         <PartialScanPanel
-          partialRequest={partialRequest}
+          partialRequests={partialRequests ?? []}
           approvedOnLoad={isPartialApproved}
           canRequest={canRequestPartial && !isReadOnly && canEditDocking}
           scanned={gatingFullBoxCount}
@@ -1430,8 +1453,8 @@ function BillScanCard({
         <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0" />
           <span>
-            This bill is packaging material only — no box labels are printed for it, so
-            there is nothing to scan.
+            This bill is packaging material only — no box labels are printed for it, so there is
+            nothing to scan.
           </span>
         </div>
       ) : null}
@@ -1990,7 +2013,7 @@ function ScanSkipPanel({
 }
 
 function PartialScanPanel({
-  partialRequest,
+  partialRequests = [],
   approvedOnLoad,
   canRequest,
   scanned,
@@ -1998,8 +2021,9 @@ function PartialScanPanel({
   isSubmitting,
   onRequest,
 }: {
-  partialRequest?: DockingPartialScanRequest | null;
-  /** An approval raised from another docking on this same truck already cleared the load. */
+  /** Every partial-dispatch request on this truck — one per bill that is short. */
+  partialRequests?: DockingPartialScanRequest[];
+  /** The backend's verdict that every short bill on this truck now carries an approval. */
   approvedOnLoad?: boolean;
   canRequest: boolean;
   scanned: number;
@@ -2007,49 +2031,59 @@ function PartialScanPanel({
   isSubmitting: boolean;
   onRequest: () => void;
 }) {
-  const status = partialRequest?.status ?? null;
+  const summary = summarizePartialRequests(partialRequests);
+  const lastReviewed = partialRequests.find((request) => request.reviewed_by_name);
 
-  if (status === 'APPROVED' || approvedOnLoad) {
+  if (approvedOnLoad) {
     return (
       <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
-          <p className="font-medium">Partial dispatch approved</p>
-          <p className="text-sm">
-            {partialRequest?.reviewed_by_name
-              ? `Approved by ${partialRequest.reviewed_by_name}. `
-              : ''}
-            {status === 'APPROVED'
-              ? 'You can continue to attachments with the boxes scanned so far.'
-              : "Approved for this truck's load on another company's docking. You can continue to attachments with the boxes scanned so far."}
+          <p className="font-medium">
+            Partial dispatch approved
+            {summary.approved.length > 1 ? ` (${summary.approved.length} bills)` : ''}
           </p>
-          {partialRequest?.review_notes ? (
-            <p className="text-sm text-emerald-800">Note: {partialRequest.review_notes}</p>
+          <p className="text-sm">
+            {lastReviewed?.reviewed_by_name ? `Approved by ${lastReviewed.reviewed_by_name}. ` : ''}
+            Every short bill on this truck is approved, so you can continue to attachments with the
+            boxes scanned so far.
+          </p>
+          {summary.approved.length ? (
+            <p className="text-sm text-emerald-800">Bills: {summary.approved.join(', ')}</p>
           ) : null}
         </div>
       </div>
     );
   }
 
-  if (status === 'PENDING') {
+  if (summary.pending.length) {
     return (
       <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
-          <p className="font-medium">Partial dispatch pending approval</p>
-          <p className="text-sm">
-            An admin must approve this request before you can continue with a partial scan. You can
-            still scan the remaining boxes to proceed normally.
+          <p className="font-medium">
+            Partial dispatch pending approval
+            {summary.approved.length
+              ? ` — ${summary.approved.length} of ${
+                  summary.approved.length + summary.pending.length
+                } bills approved`
+              : ''}
           </p>
-          {partialRequest?.reason ? (
-            <p className="text-sm text-amber-800">Reason: {partialRequest.reason}</p>
+          <p className="text-sm">
+            {/* Naming the bill matters: an approval covers ONE bill, and the truck moves only
+                when every short one is through. */}
+            Waiting on bill{summary.pending.length === 1 ? '' : 's'} {summary.pending.join(', ')}.
+            You can still scan the remaining boxes to proceed normally.
+          </p>
+          {partialRequests[0]?.reason ? (
+            <p className="text-sm text-amber-800">Reason: {partialRequests[0].reason}</p>
           ) : null}
         </div>
       </div>
     );
   }
 
-  const wasRejected = status === 'REJECTED';
+  const wasRejected = summary.rejected.length > 0;
 
   if (!wasRejected && !canRequest) {
     return null;
@@ -2072,8 +2106,8 @@ function PartialScanPanel({
                     : 'Some bills on this load still have unscanned items.'
                 } Request admin approval to dispatch this load with a partial scan.`}
           </p>
-          {wasRejected && partialRequest?.review_notes ? (
-            <p className="text-sm text-red-700">Reason: {partialRequest.review_notes}</p>
+          {wasRejected && lastReviewed?.review_notes ? (
+            <p className="text-sm text-red-700">Reason: {lastReviewed.review_notes}</p>
           ) : null}
         </div>
       </div>
