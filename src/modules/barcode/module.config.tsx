@@ -16,6 +16,14 @@ const PalletVerifyRequestDetailPage = lazy(
   () => import('./pages/PalletVerifyRequestDetailPage'),
 );
 
+// Activation -- a printed label is not stock until the godown receives it
+// (warehouse module) or a supervisor approves it here.
+const ActivationApprovalsPage = lazy(() => import('./pages/ActivationApprovalsPage'));
+const ActivationApprovalDetailPage = lazy(
+  () => import('./pages/ActivationApprovalDetailPage'),
+);
+const PendingActivationPage = lazy(() => import('./pages/PendingActivationPage'));
+
 // Phase 2 — Label & Print
 const LabelGeneratePage = lazy(() => import('./pages/LabelGeneratePage'));
 const ReprintPage = lazy(() => import('./pages/ReprintPage'));
@@ -100,6 +108,30 @@ export const barcodeModuleConfig: ModuleConfig = {
       element: <PalletVerifyRequestDetailPage />,
       layout: 'main',
       permissions: [BARCODE_PERMISSIONS.VIEW_PALLET],
+    },
+    {
+      path: '/barcode/activation-approvals',
+      element: <ActivationApprovalsPage />,
+      layout: 'main',
+      permissions: [
+        BARCODE_PERMISSIONS.APPROVE_ACTIVATION,
+        BARCODE_PERMISSIONS.REQUEST_ACTIVATION,
+      ],
+    },
+    {
+      path: '/barcode/activation-approvals/:requestId',
+      element: <ActivationApprovalDetailPage />,
+      layout: 'main',
+      permissions: [
+        BARCODE_PERMISSIONS.APPROVE_ACTIVATION,
+        BARCODE_PERMISSIONS.REQUEST_ACTIVATION,
+      ],
+    },
+    {
+      path: '/barcode/activation/pending',
+      element: <PendingActivationPage />,
+      layout: 'main',
+      permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
     },
     // Phase 2 — Label & Print
     {
@@ -267,6 +299,19 @@ export const barcodeModuleConfig: ModuleConfig = {
           path: '/barcode/scan',
           title: 'Scan',
           permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+        },
+        {
+          path: '/barcode/activation/pending',
+          title: 'Pending Activation',
+          permissions: [BARCODE_PERMISSIONS.VIEW_BOX],
+        },
+        {
+          path: '/barcode/activation-approvals',
+          title: 'Activation Approvals',
+          permissions: [
+            BARCODE_PERMISSIONS.APPROVE_ACTIVATION,
+            BARCODE_PERMISSIONS.REQUEST_ACTIVATION,
+          ],
         },
         {
           path: '/barcode/dispatch',

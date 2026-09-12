@@ -12,6 +12,7 @@ import ScanSearchButton from '../components/ScanSearchButton';
 import type { BoxStatus } from '../types';
 
 const STATUS_COLORS: Record<BoxStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
   INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
@@ -68,6 +69,7 @@ export default function BoxListPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="">All Statuses</option>
+          <option value="PENDING">Pending Activation</option>
           <option value="ACTIVE">Active</option>
           <option value="PARTIAL">Partial</option>
           <option value="INSIDE_VEHICLE">Inside Vehicle</option>

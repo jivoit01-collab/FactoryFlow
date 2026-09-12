@@ -2,7 +2,13 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  ActivationDecisionPayload,
+  ActivationRequest,
+  ActivationRequestCreatePayload,
+  ActivationRequestDetail,
+  ActivationRequestFilters,
   ActivityFilters,
+  BarcodeActivationSettings,
   BarcodeActivityEvent,
   BarcodeTraceability,
   Box,
@@ -67,6 +73,11 @@ import type {
   PalletVerifyRequestListItem,
   PalletVerifyRequestResolvePayload,
   PalletVoidPayload,
+  PendingActivationBoxFilters,
+  PendingActivationFilters,
+  PendingActivationReport,
+  PendingActivationVoidPayload,
+  PendingActivationVoidResult,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -636,6 +647,107 @@ export const barcodeApi = {
       EP.DISPATCH_REPORT_REJECTED_SCANS,
       { params },
     );
+    return res.data;
+  },
+};
+
+// ============================================================================
+// Activation — approval workflow, pending report, settings
+// ============================================================================
+// The receive *scan* is not here: it lives under the warehouse module, because
+// receiving is a warehouse action gated by the manager assignment.
+
+export const activationApi = {
+  async getRequests(filters?: ActivationRequestFilters): Promise<ActivationRequest[]> {
+    const res = await apiClient.get<ActivationRequest[] | { results: ActivationRequest[] }>(
+      EP.ACTIVATION_REQUESTS,
+      { params: filters },
+    );
+    return Array.isArray(res.data) ? res.data : res.data.results;
+  },
+
+  async getRequest(requestId: number): Promise<ActivationRequestDetail> {
+    const res = await apiClient.get<ActivationRequestDetail>(
+      EP.ACTIVATION_REQUEST_DETAIL(requestId),
+    );
+    return res.data;
+  },
+
+  async createRequest(
+    payload: ActivationRequestCreatePayload,
+  ): Promise<ActivationRequestDetail> {
+    const res = await apiClient.post<ActivationRequestDetail>(EP.ACTIVATION_REQUESTS, payload);
+    return res.data;
+  },
+
+  async approveRequest(
+    requestId: number,
+    payload?: ActivationDecisionPayload,
+  ): Promise<ActivationRequestDetail & { activated_count: number }> {
+    const res = await apiClient.post<ActivationRequestDetail & { activated_count: number }>(
+      EP.ACTIVATION_REQUEST_APPROVE(requestId),
+      payload ?? {},
+    );
+    return res.data;
+  },
+
+  async rejectRequest(
+    requestId: number,
+    payload?: ActivationDecisionPayload,
+  ): Promise<ActivationRequestDetail> {
+    const res = await apiClient.post<ActivationRequestDetail>(
+      EP.ACTIVATION_REQUEST_REJECT(requestId),
+      payload ?? {},
+    );
+    return res.data;
+  },
+
+  async cancelRequest(
+    requestId: number,
+    payload?: ActivationDecisionPayload,
+  ): Promise<ActivationRequestDetail> {
+    const res = await apiClient.post<ActivationRequestDetail>(
+      EP.ACTIVATION_REQUEST_CANCEL(requestId),
+      payload ?? {},
+    );
+    return res.data;
+  },
+
+  async getPendingReport(
+    filters?: PendingActivationFilters,
+  ): Promise<PendingActivationReport> {
+    const res = await apiClient.get<PendingActivationReport>(EP.ACTIVATION_PENDING, {
+      params: filters,
+    });
+    return res.data;
+  },
+
+  async getPendingBoxes(filters?: PendingActivationBoxFilters): Promise<Box[]> {
+    const res = await apiClient.get<Box[] | { results: Box[] }>(EP.ACTIVATION_PENDING_BOXES, {
+      params: filters,
+    });
+    return Array.isArray(res.data) ? res.data : res.data.results;
+  },
+
+  async voidPending(
+    payload: PendingActivationVoidPayload,
+  ): Promise<PendingActivationVoidResult> {
+    const res = await apiClient.post<PendingActivationVoidResult>(
+      EP.ACTIVATION_VOID,
+      payload,
+    );
+    return res.data;
+  },
+
+  async getSettings(): Promise<BarcodeActivationSettings> {
+    const res = await apiClient.get<BarcodeActivationSettings>(EP.ACTIVATION_SETTINGS);
+    return res.data;
+  },
+
+  async updateSettings(
+    payload: Partial<Pick<BarcodeActivationSettings, 'is_enabled' | 'enforced_warehouses'>>,
+  ): Promise<BarcodeActivationSettings> {
+    const res = await apiClient.put<BarcodeActivationSettings>(EP.ACTIVATION_SETTINGS, payload);
     return res.data;
   },
 };

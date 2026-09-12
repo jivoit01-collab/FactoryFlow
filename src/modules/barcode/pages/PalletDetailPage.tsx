@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowLeft,
   Boxes,
   ClipboardCheck,
@@ -17,10 +18,12 @@ import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useDeleteEmptyPallet, usePalletDetail, useVoidPallet } from '../api';
+import RequestActivationDialog from '../components/RequestActivationDialog';
 import type { BoxStatus, PalletMovementType, PalletStatus } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
   INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
@@ -33,6 +36,7 @@ const STATUS_COLORS: Record<PalletStatus, string> = {
 };
 
 const BOX_STATUS_COLORS: Record<BoxStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
   INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
@@ -61,6 +65,16 @@ const capacityText = (boxCount: number, maxBoxCount: number) => {
   return `${boxCount}/${maxBoxCount}`;
 };
 
+const describeContents = (boxCount: number, pendingCount: number) => {
+  if (pendingCount > 0 && boxCount === 0) {
+    return `${pendingCount} label(s) awaiting activation`;
+  }
+  if (pendingCount > 0) {
+    return `${boxCount} linked boxes, ${pendingCount} awaiting activation`;
+  }
+  return boxCount === 0 ? 'Empty pallet' : `${boxCount} linked boxes`;
+};
+
 export default function PalletDetailPage() {
   const { palletId } = useParams();
   const navigate = useNavigate();
@@ -68,6 +82,7 @@ export default function PalletDetailPage() {
   const voidMutation = useVoidPallet();
   const deleteEmptyPalletMutation = useDeleteEmptyPallet();
 
+  const [showActivationRequest, setShowActivationRequest] = useState(false);
   const [showVoidPanel, setShowVoidPanel] = useState(false);
   const [voidReason, setVoidReason] = useState('');
   const [voidBoxes, setVoidBoxes] = useState(false);
@@ -132,7 +147,11 @@ export default function PalletDetailPage() {
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   if (!pallet) return <div className="p-8 text-center text-muted-foreground">Pallet not found</div>;
 
-  const isEmpty = pallet.box_count === 0;
+  const pendingCount = pallet.pending_box_count ?? 0;
+  // `box_count` counts active boxes only, so a freshly printed pallet reads as
+  // empty. It holds labels, not stock -- calling that "empty" hides the ten
+  // things sitting on it waiting to be received.
+  const isEmpty = pallet.box_count === 0 && pendingCount === 0;
   // Only surface the amber EMPTY flag when the status doesn't already imply
   // emptiness. Statuses like DISPATCHED/EMPTY/CLEARED/SPLIT/VOID inherently have
   // no active boxes, so showing "EMPTY" alongside them is redundant and — when
@@ -146,9 +165,10 @@ export default function PalletDetailPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={pallet.pallet_id}
-        description={`${pallet.current_warehouse || 'No warehouse'} - ${
-          isEmpty ? 'Empty pallet' : `${pallet.box_count} linked boxes`
-        }`}
+        description={`${pallet.current_warehouse || 'No warehouse'} - ${describeContents(
+          pallet.box_count,
+          pendingCount,
+        )}`}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -165,6 +185,40 @@ export default function PalletDetailPage() {
           </Button>
         )}
       </div>
+
+      {pendingCount > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="flex flex-wrap items-start gap-3 p-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">
+                {pendingCount} label(s) on this pallet are not stock yet.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                They activate when the pallet is scanned in at{' '}
+                {pallet.current_warehouse || 'its godown'} on the warehouse Receive
+                page. Dispatch, BST and transfers will refuse them until then. If they
+                genuinely cannot be scanned, ask for approval instead.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowActivationRequest(true)}
+            >
+              Request activation
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <RequestActivationDialog
+        open={showActivationRequest}
+        onOpenChange={setShowActivationRequest}
+        palletId={pallet.id}
+        palletCode={pallet.pallet_id}
+        boxCount={pendingCount}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
@@ -184,6 +238,9 @@ export default function PalletDetailPage() {
             <p className="text-2xl font-bold">
               {capacityText(pallet.box_count, pallet.max_box_count)}
             </p>
+            {pendingCount > 0 && (
+              <p className="text-xs text-amber-700">+{pendingCount} awaiting activation</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -228,7 +285,13 @@ export default function PalletDetailPage() {
         </CardContent>
       </Card>
 
-      {(pallet.status === 'ACTIVE' || pallet.status === 'CLEARED') && (
+      {/* PENDING belongs here: with activation on, a pallet created for printing
+          starts pending, and without it the print/delete actions vanish from the
+          one screen a freshly created empty pallet lands on. `isEmpty` below is
+          what keeps them off a pallet that already holds labels. */}
+      {(pallet.status === 'ACTIVE' ||
+        pallet.status === 'CLEARED' ||
+        pallet.status === 'PENDING') && (
         <div className="flex flex-wrap gap-2">
           {isEmpty && (
             <Button size="sm" onClick={() => navigate('/barcode/generate')}>

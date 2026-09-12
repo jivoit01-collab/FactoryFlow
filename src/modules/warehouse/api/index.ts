@@ -7,11 +7,21 @@ export type {
   BillSummaryListParams,
   BillSummaryStatus,
 } from './billSummary.api';
+export { billSummaryApi } from './billSummary.api';
 export * from './billSummary.queries';
 export { bstApi } from './bst.api';
 export * from './bst.queries';
 export { printInfoApi } from './printInfo.api';
 export * from './printInfo.queries';
+export type {
+  ReceiveScanActivatedBox,
+  ReceiveScanPayload,
+  ReceiveScanResult,
+  ReceiveScanStatus,
+  ReceiveSession,
+} from './receive.api';
+export { receiveApi } from './receive.api';
+export * from './receive.queries';
 export type {
   CreatePFMovementPayload,
   PFMovement,

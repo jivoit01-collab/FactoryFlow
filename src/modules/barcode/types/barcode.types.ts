@@ -3,6 +3,7 @@
 // ============================================================================
 
 export type PalletStatus =
+  | 'PENDING'
   | 'ACTIVE'
   | 'PARTIAL'
   | 'INSIDE_VEHICLE'
@@ -12,7 +13,14 @@ export type PalletStatus =
   | 'CLEARED'
   | 'SPLIT'
   | 'VOID';
-export type BoxStatus = 'ACTIVE' | 'PARTIAL' | 'INSIDE_VEHICLE' | 'DISPATCHED' | 'DISMANTLED' | 'VOID';
+export type BoxStatus =
+  | 'PENDING'
+  | 'ACTIVE'
+  | 'PARTIAL'
+  | 'INSIDE_VEHICLE'
+  | 'DISPATCHED'
+  | 'DISMANTLED'
+  | 'VOID';
 export type LabelType = 'BOX' | 'PALLET' | 'BIN' | 'WAREHOUSE';
 export type PrintType = 'ORIGINAL' | 'REPRINT';
 export type PalletMovementType =
@@ -131,6 +139,13 @@ export interface Pallet {
   available_boxes: number;
   dispatched_boxes: number;
   max_box_count: number;
+  /**
+   * Labels on this pallet still waiting to be received at a godown.
+   *
+   * Not derivable from `box_count`, which counts only *active* boxes — a pallet
+   * mid-receive shows both numbers and they mean different things.
+   */
+  pending_box_count: number;
   total_qty: string;
   uom: string;
   mfg_date: string;
@@ -1254,4 +1269,133 @@ export interface LookupResponse {
   entity_type: string;
   entity_id: number | null;
   entity_data: Record<string, unknown> | null;
+}
+
+// ============================================================================
+// Activation — printed labels are not stock until proven to exist
+// ============================================================================
+
+/**
+ * How a barcode came to be trusted as real stock.
+ *
+ * `APPROVAL` is the one worth filtering on: it means nothing physical was
+ * scanned, so it answers "what is in this godown that nobody ever received?".
+ */
+export type ActivationSource =
+  | 'GATE_SCAN'
+  | 'APPROVAL'
+  | 'REPACK'
+  | 'NOT_REQUIRED'
+  | 'LEGACY';
+
+export type ActivationRequestStatus = 'OPEN' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface ActivationRequestLine {
+  box_id: number;
+  box_barcode: string;
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  qty: string;
+  warehouse: string;
+  status: BoxStatus;
+  activated: boolean;
+}
+
+export interface ActivationRequest {
+  id: number;
+  status: ActivationRequestStatus;
+  warehouse: string;
+  pallet: number | null;
+  pallet_code: string;
+  reason: string;
+  box_count: number;
+  item_summary: string;
+  requested_by: number | null;
+  requested_by_name: string;
+  requested_at: string;
+  decision_note: string;
+  decided_by: number | null;
+  decided_by_name: string;
+  decided_at: string | null;
+}
+
+export interface ActivationRequestDetail extends ActivationRequest {
+  lines: ActivationRequestLine[];
+}
+
+export interface ActivationRequestFilters {
+  status?: string;
+  warehouse?: string;
+}
+
+export interface ActivationRequestCreatePayload {
+  pallet_id?: number | null;
+  box_ids?: number[];
+  /** Required — an activation with no stated reason is the hole being closed. */
+  reason: string;
+}
+
+export interface ActivationDecisionPayload {
+  note?: string;
+}
+
+/** One print run still waiting to be received. */
+export interface PendingActivationGroup {
+  pallet_id: number | null;
+  pallet_code: string;
+  item_code: string;
+  item_name: string;
+  batch_number: string;
+  warehouse: string;
+  production_line: string;
+  box_count: number;
+  printed_at: string;
+  age_days: number;
+  first_barcode: string;
+  last_barcode: string;
+}
+
+export interface PendingActivationBucket {
+  label: string;
+  box_count: number;
+}
+
+export interface PendingActivationReport {
+  groups: PendingActivationGroup[];
+  buckets: PendingActivationBucket[];
+  total_boxes: number;
+}
+
+export interface PendingActivationFilters {
+  warehouse?: string;
+  search?: string;
+  min_age_days?: number;
+}
+
+export interface PendingActivationBoxFilters extends PendingActivationFilters {
+  pallet_id?: number | null;
+  item_code?: string;
+  batch_number?: string;
+}
+
+export interface PendingActivationVoidPayload {
+  box_ids: number[];
+  reason: string;
+}
+
+export interface PendingActivationVoidResult {
+  voided_count: number;
+  /** Labels the gate activated between the report loading and the void. */
+  skipped_count: number;
+  barcodes: string[];
+}
+
+export interface BarcodeActivationSettings {
+  id: number;
+  is_enabled: boolean;
+  enforced_warehouses: string[];
+  updated_by: number | null;
+  updated_by_name: string;
+  updated_at: string;
 }

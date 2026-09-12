@@ -72,6 +72,12 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_PF_MOVEMENT: 'warehouse.can_view_pf_movement',
   /** Declare what is leaving your floor (godown keeper) */
   RECORD_PF_MOVEMENT: 'warehouse.can_record_pf_movement',
+
+  // Receiving printed barcodes into a godown. A warehouse permission rather than
+  // a barcode one: the person at the gate is warehouse staff, and the real
+  // restriction is the manager assignment checked alongside it.
+  /** Scan printed labels in at a warehouse, activating them as stock */
+  RECEIVE_BARCODES: 'warehouse.can_receive_barcodes',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';

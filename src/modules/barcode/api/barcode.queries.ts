@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  ActivationRequestCreatePayload,
+  ActivationRequestFilters,
   ActivityFilters,
   BoxFilters,
   BoxTransferPayload,
@@ -33,6 +35,9 @@ import type {
   PalletVerifyRequestFilters,
   PalletVerifyRequestResolvePayload,
   PalletVoidPayload,
+  PendingActivationBoxFilters,
+  PendingActivationFilters,
+  PendingActivationVoidPayload,
   PrintHistoryFilters,
   PrintRequestPayload,
   ProductionReleaseOilRow,
@@ -41,7 +46,7 @@ import type {
   VoidedFilters,
   VoidPayload,
 } from '../types';
-import { barcodeApi } from './barcode.api';
+import { activationApi, barcodeApi } from './barcode.api';
 
 interface BarcodeQueryOptions {
   enabled?: boolean;
@@ -860,5 +865,119 @@ export function useDispatchRejectedScanReport(filters?: DispatchReportFilters) {
   return useQuery({
     queryKey: BARCODE_QUERY_KEYS.dispatchRejectedScanReport(filters),
     queryFn: () => barcodeApi.getDispatchRejectedScanReport(filters),
+  });
+}
+
+// ============================================================================
+// Activation Queries
+// ============================================================================
+
+export const ACTIVATION_QUERY_KEYS = {
+  all: ['barcode', 'activation'] as const,
+  requests: (filters?: ActivationRequestFilters) =>
+    [...ACTIVATION_QUERY_KEYS.all, 'requests', filters] as const,
+  request: (id: number) => [...ACTIVATION_QUERY_KEYS.all, 'request', id] as const,
+  pending: (filters?: PendingActivationFilters) =>
+    [...ACTIVATION_QUERY_KEYS.all, 'pending', filters] as const,
+  pendingBoxes: (filters?: PendingActivationBoxFilters) =>
+    [...ACTIVATION_QUERY_KEYS.all, 'pending-boxes', filters] as const,
+  settings: () => [...ACTIVATION_QUERY_KEYS.all, 'settings'] as const,
+};
+
+export function useActivationRequests(filters?: ActivationRequestFilters) {
+  return useQuery({
+    queryKey: ACTIVATION_QUERY_KEYS.requests(filters),
+    queryFn: () => activationApi.getRequests(filters),
+  });
+}
+
+export function useActivationRequest(requestId: number | null) {
+  return useQuery({
+    queryKey: ACTIVATION_QUERY_KEYS.request(requestId!),
+    queryFn: () => activationApi.getRequest(requestId!),
+    enabled: requestId !== null,
+  });
+}
+
+export function useCreateActivationRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ActivationRequestCreatePayload) =>
+      activationApi.createRequest(payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ACTIVATION_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useApproveActivationRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, note }: { requestId: number; note?: string }) =>
+      activationApi.approveRequest(requestId, { note }),
+    onSuccess: () => {
+      // Boxes changed status, so the box/pallet lists are stale too, not just
+      // the request queue.
+      void qc.invalidateQueries({ queryKey: ACTIVATION_QUERY_KEYS.all });
+      void qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useRejectActivationRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, note }: { requestId: number; note?: string }) =>
+      activationApi.rejectRequest(requestId, { note }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ACTIVATION_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useCancelActivationRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, note }: { requestId: number; note?: string }) =>
+      activationApi.cancelRequest(requestId, { note }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ACTIVATION_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function usePendingActivationReport(filters?: PendingActivationFilters) {
+  return useQuery({
+    queryKey: ACTIVATION_QUERY_KEYS.pending(filters),
+    queryFn: () => activationApi.getPendingReport(filters),
+  });
+}
+
+export function usePendingActivationBoxes(
+  filters?: PendingActivationBoxFilters,
+  options?: BarcodeQueryOptions,
+) {
+  return useQuery({
+    queryKey: ACTIVATION_QUERY_KEYS.pendingBoxes(filters),
+    queryFn: () => activationApi.getPendingBoxes(filters),
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useVoidPendingActivation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PendingActivationVoidPayload) => activationApi.voidPending(payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ACTIVATION_QUERY_KEYS.all });
+      void qc.invalidateQueries({ queryKey: BARCODE_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useActivationSettings() {
+  return useQuery({
+    queryKey: ACTIVATION_QUERY_KEYS.settings(),
+    queryFn: () => activationApi.getSettings(),
   });
 }

@@ -36,6 +36,7 @@ import { DEFAULT_THERMAL_PRINTER_NAME, getLabelPrintPageStyle } from '../compone
 import type { PalletLabelData } from '../components/PalletLabel';
 import PalletLabel from '../components/PalletLabel';
 import PrinterProfileControls from '../components/PrinterProfileControls';
+import RequestActivationDialog from '../components/RequestActivationDialog';
 import ScanSearchButton from '../components/ScanSearchButton';
 import { usePrinterProfile } from '../hooks/usePrinterProfile';
 import type { Box, LabelData, OitmItemRow, Pallet } from '../types';
@@ -49,6 +50,7 @@ export default function LabelGeneratePage() {
   const generateMutation = useGenerateBoxes();
   const addBoxesMutation = useAddBoxesToPallet();
   const printBulkMutation = usePrintBulk();
+  const [showActivationRequest, setShowActivationRequest] = useState(false);
   const [palletSearch, setPalletSearch] = useState('');
   const [itemSearch, setItemSearch] = useState('');
   const [scannedPalletSearch, setScannedPalletSearch] = useState('');
@@ -64,7 +66,12 @@ export default function LabelGeneratePage() {
   );
   const emptyPallets = pallets.filter(
     (pallet) =>
-      (pallet.status === 'ACTIVE' || pallet.status === 'CLEARED') && pallet.box_count === 0,
+      (pallet.status === 'ACTIVE' ||
+        pallet.status === 'CLEARED' ||
+        // A pallet created for a warehouse that receives its labels at the
+        // gate starts PENDING -- still an empty, printable pallet.
+        pallet.status === 'PENDING') &&
+      pallet.box_count === 0,
   );
   const {
     data: oitmItems = [],
@@ -262,6 +269,15 @@ export default function LabelGeneratePage() {
     setSelectedPallet(null);
     setGeneratedBoxes([]);
   };
+
+  // Labels are inactive until the godown receives them. This is the escape
+  // hatch for when they cannot be: scanner down, pallet loaded straight onto a
+  // truck, label reprinted after the trolley passed. The same action lives on
+  // the pallet page, because this one is gone as soon as the page reloads.
+  const printedInactive = generatedBoxes.some((box) => box.status === 'PENDING');
+  const pendingPrintedCount = generatedBoxes.filter(
+    (box) => box.status === 'PENDING',
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -618,6 +634,38 @@ export default function LabelGeneratePage() {
                 <Printer className="h-4 w-4 mr-1" /> Print Again
               </Button>
             </div>
+
+            <RequestActivationDialog
+              open={showActivationRequest}
+              onOpenChange={setShowActivationRequest}
+              palletId={selectedPallet?.id ?? null}
+              palletCode={selectedPallet?.pallet_id}
+              boxCount={pendingPrintedCount}
+            />
+
+            {printedInactive && (
+              <div className="mb-3 flex flex-wrap items-start gap-3 rounded border border-amber-200 bg-amber-50 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">
+                    These labels are inactive until the godown receives them.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Paste them on the boxes and have the pallet scanned in at the gate.
+                    If that is not possible, ask for approval instead — it activates them
+                    without a scan and is recorded against your name. You can also do this
+                    later from the pallet's own page.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowActivationRequest(true)}
+                >
+                  Request approval
+                </Button>
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

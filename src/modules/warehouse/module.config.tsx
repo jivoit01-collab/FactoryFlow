@@ -32,6 +32,9 @@ const billSummaryViewPermissions = [
   DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
   DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
 ] as const;
+// Receiving printed barcodes at the godown gate -- what turns a printed label
+// into stock. See barcode/services/activation_service.py for why.
+const BarcodeReceivePage = lazy(() => import('./pages/receive/BarcodeReceivePage'));
 // The raw-material stock register — what each store states it is holding, as
 // distinct from SAP's own on-hand.
 const RawMaterialStockPage = lazy(() => import('./pages/rmStock/RawMaterialStockPage'));
@@ -106,6 +109,12 @@ export const warehouseModuleConfig: ModuleConfig = {
       path: '/warehouse',
       element: <WarehouseDashboardPage />,
       layout: 'main',
+    },
+    {
+      path: '/warehouse/receive',
+      element: <BarcodeReceivePage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.RECEIVE_BARCODES],
     },
     {
       path: '/warehouse/rm-stock',
@@ -246,6 +255,7 @@ export const warehouseModuleConfig: ModuleConfig = {
       // with just "Branch Transfer", and a GRPO-only user with just "Material GRPO".
       // Keep this list in sync with the union of the children's permissions below.
       permissions: [
+        WAREHOUSE_PERMISSIONS.RECEIVE_BARCODES,
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
         WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK,
         WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT,
@@ -272,6 +282,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/dispatch-loading',
           title: 'Dispatch Loading',
           permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+        },
+        {
+          path: '/warehouse/receive',
+          title: 'Receive Barcodes',
+          permissions: [WAREHOUSE_PERMISSIONS.RECEIVE_BARCODES],
         },
         {
           path: '/warehouse/rm-stock',

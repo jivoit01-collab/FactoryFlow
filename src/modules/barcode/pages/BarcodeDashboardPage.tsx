@@ -1,4 +1,4 @@
-import { Boxes, Layers, Package, Radio, ScanBarcode } from 'lucide-react';
+import { Boxes, Clock, Layers, Package, Radio, ScanBarcode } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -15,6 +15,10 @@ export default function BarcodeDashboardPage() {
   const { data: allPalletsPage } = usePalletsPage({ page_size: 1 });
   const { data: activeBoxesPage } = useBoxesPage({ status: 'ACTIVE', page_size: 1 });
   const { data: allBoxesPage } = useBoxesPage({ page_size: 1 });
+  // Printed but never received. Worth its own card: these are labels the app
+  // deliberately does not count as stock, and a number that keeps climbing
+  // means the godown is not scanning what arrives.
+  const { data: pendingBoxesPage } = useBoxesPage({ status: 'PENDING', page_size: 1 });
 
   const { data: activity = [] } = useRecentActivity(15);
 
@@ -47,13 +51,20 @@ export default function BarcodeDashboardPage() {
       color: 'text-amber-600 bg-amber-50',
       path: '/barcode/boxes',
     },
+    {
+      title: 'Pending Activation',
+      value: pendingBoxesPage?.count ?? 0,
+      icon: Clock,
+      color: 'text-amber-700 bg-amber-50',
+      path: '/barcode/activation/pending',
+    },
   ];
 
   return (
     <div className="space-y-6">
       <DashboardHeader title="Barcode" description="Pallet and box tracking, label management" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

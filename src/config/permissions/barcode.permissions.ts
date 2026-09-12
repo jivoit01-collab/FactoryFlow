@@ -20,6 +20,8 @@ export const BARCODE_PERMISSIONS = {
   RETRY_DISPATCH_SAP: 'barcode.can_retry_barcode_dispatch_sap',
   MANAGE_DISPATCH_SETTINGS: 'barcode.can_manage_barcode_dispatch_settings',
   VIEW_DISPATCH_REPORTS: 'barcode.can_view_barcode_dispatch_reports',
+  REQUEST_ACTIVATION: 'barcode.can_request_barcode_activation',
+  APPROVE_ACTIVATION: 'barcode.can_approve_barcode_activation',
   VIEW_INTERCOMPANY_TRANSFER: 'barcode.can_view_intercompany_transfer',
   CREATE_INTERCOMPANY_TRANSFER: 'barcode.can_create_intercompany_transfer',
   SCAN_INTERCOMPANY_TRANSFER: 'barcode.can_scan_intercompany_transfer',

@@ -16,6 +16,7 @@ import type { PalletStatus } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletStatus, string> = {
+  PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
   ACTIVE: 'bg-green-100 text-green-800',
   PARTIAL: 'bg-amber-100 text-amber-800',
   INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
@@ -167,6 +168,7 @@ export default function PalletListPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
         >
           <option value="">All Statuses</option>
+          <option value="PENDING">Pending Activation</option>
           <option value="ACTIVE">Active</option>
           <option value="PARTIAL">Partial</option>
           <option value="INSIDE_VEHICLE">Inside Vehicle</option>
