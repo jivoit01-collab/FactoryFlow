@@ -342,7 +342,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
-        DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW,
         // Gate dashboard lives here too — let gate staff reach the Dashboards menu.
         ...GATE_DASHBOARD_VIEW_PERMISSIONS,
         // Blowing dashboard lives here too — let blowing staff reach the menu.
@@ -354,8 +353,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // able to reach the Dashboards menu.
         DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
         DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
-        // Budget Approvals lives here too.
-        DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS,
         // Warehouse Control lives here too. Its pallet-space and linking panels
         // are the only reason a WMS operator or a dispatch linker would open the
         // Dashboards menu, so their rights must appear on the parent as well.
@@ -367,8 +364,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
-      // Dispatch Tracking dashboard lives here too — let tracking staff reach the menu.
-      // (appended after the shared list so it doesn't disturb existing entries)
       children: [
         {
           path: '/dashboards/plant-board',
@@ -389,17 +384,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/logistics-control',
           title: 'Logistics Control',
           permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
-        },
-        {
-          path: '/dashboards/overview',
-          title: 'Command Centre',
-          permissions: [
-            DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
-            DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
-            DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
-            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
-            DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
-          ],
         },
         {
           path: '/dashboards/gate',
@@ -432,11 +416,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
         },
         {
-          path: '/dashboards/production-movement',
-          title: 'Production Movement',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
-        },
-        {
           path: '/dashboards/packing-material',
           title: 'Packing Material',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
@@ -464,24 +443,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
           ],
         },
         {
-          path: '/dashboards/budget-approvals',
-          title: 'Budget Approvals',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
-        },
-        {
-          path: '/dashboards/dispatch-pipeline',
-          title: 'Dispatch Pipeline',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
-        },
-        {
           path: '/dashboards/dispatch-fulfilment',
           title: 'Dispatch Fulfilment',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
-        },
-        {
-          path: '/dashboards/dispatch-tracking',
-          title: 'Dispatch Tracking',
-          permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
         },
         {
           // Routes for this one are owned by the sap-reports module; only the
