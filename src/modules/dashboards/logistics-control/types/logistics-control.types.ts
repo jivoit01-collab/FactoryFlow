@@ -245,6 +245,16 @@ export type OwnedVehicleState =
 export interface OwnedVehicle {
   vehicle_no: string;
   state: OwnedVehicleState;
+  /**
+   * The document holding this truck — a BST entry number, or the SAP invoice.
+   *
+   * Empty for the states that have no document behind them: a truck at the
+   * plant or off the road is not on a job, and a reference invented for it
+   * would make the column look unreliable everywhere it is blank.
+   */
+  reference?: string;
+  /** Context for the reference — the transfer's route, or the customer. */
+  detail?: string;
 }
 
 /**

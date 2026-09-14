@@ -13,9 +13,9 @@ import {
   Package,
   PackageX,
   Table2,
-  Undo2,
   Target,
   Truck,
+  Undo2,
   Wind,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -27,13 +27,16 @@ import {
   DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
 } from '@/config/permissions';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
-import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../logistics-control/constants';
+import {
+  LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+  logisticsControlScopeForCompany,
+} from '../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
@@ -58,22 +61,21 @@ const dashboardsModules: DashboardsModuleCard[] = [
   },
   {
     title: 'Warehouse Control',
-    description:
-      "Non-moving stock, pallet space, today's bills and vehicle linking on one board",
+    description: "Non-moving stock, pallet space, today's bills and vehicle linking on one board",
     icon: <LayoutDashboard className="h-5 w-5" />,
     route: '/dashboards/warehouse-control',
     color: 'text-indigo-600',
     permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
   },
   {
-    // The beverages plant's own wall board. Its own card because it is its own
-    // page: the nav submenu is the only other way to it, and a board nobody can
-    // find is a board nobody puts on a screen.
-    title: 'Beverages Control',
-    description:
-      "BH-FG's stock, the beverages plant's dispatch, and the freight bills behind it",
-    icon: <CupSoda className="h-5 w-5" />,
-    route: '/dashboards/beverage',
+    // The dispatch office wall. One card, because it is one page: which plant
+    // it reports on follows the company switcher, so the title and blurb below
+    // are rewritten for a beverages viewer rather than a second card being
+    // listed that would send an Oil user to an empty-looking Beverages board.
+    title: 'Logistics Control',
+    description: "BH-BT's stock, the Oil and Mart dispatch, and the freight bills behind it",
+    icon: <Truck className="h-5 w-5" />,
+    route: '/dashboards/logistics-control',
     color: 'text-violet-600',
     permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   },
@@ -150,8 +152,7 @@ const dashboardsModules: DashboardsModuleCard[] = [
   },
   {
     title: 'Customer Returns',
-    description:
-      'How much came back, in what state, which SKUs come back most, and who sent them',
+    description: 'How much came back, in what state, which SKUs come back most, and who sent them',
     icon: <Undo2 className="h-5 w-5" />,
     route: '/dashboards/customer-returns',
     color: 'text-sky-600',
@@ -225,10 +226,31 @@ const dashboardsModules: DashboardsModuleCard[] = [
 export default function DashboardsLandingPage() {
   const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
+  const { currentCompany } = useAuth();
+
+  /**
+   * Logistics Control is one route showing two plants, so its card says which
+   * one this viewer will actually get. Named off the scope rather than a second
+   * company check here: the scope is what the board itself reads, so the card
+   * cannot drift from the page it opens.
+   */
+  const logisticsScope = logisticsControlScopeForCompany(currentCompany?.company_code);
 
   const visibleModules = useMemo(
-    () => dashboardsModules.filter((mod) => hasAnyPermission(mod.permissions)),
-    [hasAnyPermission],
+    () =>
+      dashboardsModules
+        .filter((mod) => hasAnyPermission(mod.permissions))
+        .map((mod) =>
+          mod.route === '/dashboards/logistics-control' && logisticsScope.key === 'beverages'
+            ? {
+                ...mod,
+                description:
+                  "BH-FG's stock, the beverages plant's dispatch, and the freight bills behind it",
+                icon: <CupSoda className="h-5 w-5" />,
+              }
+            : mod,
+        ),
+    [hasAnyPermission, logisticsScope.key],
   );
 
   return (

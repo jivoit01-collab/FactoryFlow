@@ -673,6 +673,20 @@ export function BoardDrill({
           columns={[
             { label: 'Vehicle', cell: (row) => row.vehicle_no },
             { label: 'State', cell: (row) => VEHICLE_STATE_LABELS[row.state] ?? row.state },
+            {
+              // "On a branch transfer" is the answer to a question nobody asks
+              // on its own; the one that follows is "which one". A truck with
+              // no document behind it — at the plant, off the road — shows a
+              // rule rather than a blank, so an empty cell is never mistaken
+              // for a reference that failed to load.
+              label: 'Document',
+              cell: (row) => row.reference || <span className="dim">—</span>,
+            },
+            {
+              label: 'Detail',
+              cell: (row) => row.detail || <span className="dim">—</span>,
+              dim: true,
+            },
           ]}
         />
       );

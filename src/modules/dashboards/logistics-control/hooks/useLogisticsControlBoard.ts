@@ -6,10 +6,7 @@ import { usePFMovements } from '@/modules/warehouse/api/pfMovement.queries';
 import { useDispatchFulfilment } from '../../dispatch-fulfilment/api';
 import { useExpenseBoard } from '../../factory-expense/api';
 import { useWarehouseOccupancy } from '../../production-control/api';
-import {
-  useControlNonMovingReport,
-  useControlWmsCollection,
-} from '../../warehouse-control/api';
+import { useControlNonMovingReport, useControlWmsCollection } from '../../warehouse-control/api';
 import { warehouseControlPlanWindow } from '../../warehouse-control/api';
 import { summarisePalletSpace } from '../../warehouse-control/utils/palletSpace';
 import {
@@ -296,10 +293,7 @@ export function useLogisticsControlBoard(
 
   // Today's duty state per owned truck. Polled with the board — gate arrivals
   // move through the day, unlike the fleet list itself.
-  const ownedVehicles = useOwnedVehicleStatus(
-    LOGISTICS_CONTROL_REFRESH_MS,
-    scope.settingsCompany,
-  );
+  const ownedVehicles = useOwnedVehicleStatus(LOGISTICS_CONTROL_REFRESH_MS, scope.settingsCompany);
 
   // Stock dispatched from a godown and not yet received. Switched off entirely
   // for a scope the endpoint's route table has no leg for -- see `absent`.
@@ -311,10 +305,7 @@ export function useLogisticsControlBoard(
 
   // ============================================================== derivations
 
-  const stockTonnage = useMemo(
-    () => rollUpTonnage(occupancy.data?.data ?? []),
-    [occupancy.data],
-  );
+  const stockTonnage = useMemo(() => rollUpTonnage(occupancy.data?.data ?? []), [occupancy.data]);
 
   /**
    * Non-moving split into the board's two bands.
@@ -387,17 +378,9 @@ export function useLogisticsControlBoard(
     });
 
     return (
-      summary.warehouses.find(
-        (row) => row.code.trim().toUpperCase() === scope.warehouse,
-      ) ?? null
+      summary.warehouses.find((row) => row.code.trim().toUpperCase() === scope.warehouse) ?? null
     );
-  }, [
-    wmsWarehouses.data,
-    wmsLocations.data,
-    wmsPallets.data,
-    wmsPurposes.data,
-    scope.warehouse,
-  ]);
+  }, [wmsWarehouses.data, wmsLocations.data, wmsPallets.data, wmsPurposes.data, scope.warehouse]);
 
   /**
    * Bills with a dispatch date that have not gone out.
@@ -412,9 +395,7 @@ export function useLogisticsControlBoard(
 
     /** Bills dated to go that have not gone. */
     const outstanding = (bills: (typeof groups)[number]['bills']) =>
-      bills.filter(
-        (bill) => bill.plan?.dispatch_date && bill.plan.booking_status !== 'DISPATCHED',
-      );
+      bills.filter((bill) => bill.plan?.dispatch_date && bill.plan.booking_status !== 'DISPATCHED');
 
     const tonnesOf = (bills: (typeof groups)[number]['bills']) =>
       bills.reduce((total, bill) => total + (bill.total_weight ?? 0), 0) / 1000;
@@ -510,8 +491,7 @@ export function useLogisticsControlBoard(
           // not evidence that anything was read.
           grpoQueue.isLoading
             ? 'Reading the queue'
-            : !grpoQueue.data ||
-                grpoQueue.data.unread.length >= scope.dispatchCompanies.length
+            : !grpoQueue.data || grpoQueue.data.unread.length >= scope.dispatchCompanies.length
               ? 'Could not read the receipt queue'
               : undefined,
         ),
@@ -914,8 +894,9 @@ export function useLogisticsControlBoard(
         : null,
       pendingDispatch,
       unscanned: (() => {
-        const rows = (partialScans.data ?? []).filter((row) =>
-          (row.reviewed_at ?? row.requested_at ?? '').slice(0, 7) === monthStart.slice(0, 7),
+        const rows = (partialScans.data ?? []).filter(
+          (row) =>
+            (row.reviewed_at ?? row.requested_at ?? '').slice(0, 7) === monthStart.slice(0, 7),
         );
         return {
           /**
@@ -1037,10 +1018,9 @@ export function useLogisticsControlBoard(
        * is the fallback for a site that never listed its plates.
        */
       configured: ownedVehicles.data?.configured ?? false,
-      owned:
-        ownedVehicles.data?.configured
-          ? ownedVehicles.data.summary.owned
-          : (boardSettings.data?.owned_vehicles ?? null),
+      owned: ownedVehicles.data?.configured
+        ? ownedVehicles.data.summary.owned
+        : (boardSettings.data?.owned_vehicles ?? null),
       onBst: ownedVehicles.data?.summary.on_bst ?? 0,
       onDispatch: ownedVehicles.data?.summary.on_dispatch ?? 0,
       atPlant: ownedVehicles.data?.summary.at_plant ?? 0,

@@ -11,6 +11,7 @@ import {
   LOGISTICS_CONTROL_BEVERAGES_SCOPE,
   LOGISTICS_CONTROL_OIL_SCOPE,
   LOGISTICS_CONTROL_SCOPES,
+  logisticsControlScopeForCompany,
 } from '../logistics-control.scopes';
 
 describe('logistics control scopes', () => {
@@ -38,9 +39,7 @@ describe('logistics control scopes', () => {
     it('reads its typed-in figures as the warehouse company, not the viewer', () => {
       // The bug this replaced: an empty JIVO_MART settings row, created the
       // first time somebody signed into Mart opened an Oil warehouse's board.
-      expect(LOGISTICS_CONTROL_OIL_SCOPE.settingsCompany).toBe(
-        LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
-      );
+      expect(LOGISTICS_CONTROL_OIL_SCOPE.settingsCompany).toBe(LOGISTICS_CONTROL_WAREHOUSE_COMPANY);
     });
   });
 
@@ -50,9 +49,7 @@ describe('logistics control scopes', () => {
       // a warehouse code read through the wrong company answers empty rather
       // than erroring — which on a wall is far harder to notice.
       expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouse).toBe('BH-FG');
-      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouseCompany).toBe(
-        COMPANY_CODES.JIVO_BEVERAGES,
-      );
+      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouseCompany).toBe(COMPANY_CODES.JIVO_BEVERAGES);
     });
 
     it('adds one company and no others', () => {
@@ -89,17 +86,45 @@ describe('logistics control scopes', () => {
     });
   });
 
-  it('gives every scope its own routes', () => {
-    // Two boards on two wall screens: a shared path would mean one of them
-    // could not be opened, and a shared settings path would mean configuring
-    // one silently reconfigured the other.
-    const paths = LOGISTICS_CONTROL_SCOPES.flatMap((scope) => [
-      scope.boardPath,
-      scope.settingsPath,
-    ]);
-    expect(new Set(paths).size).toBe(paths.length);
-
+  it('gives every scope its own key', () => {
     const keys = LOGISTICS_CONTROL_SCOPES.map((scope) => scope.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  describe('the company decides which board a viewer gets', () => {
+    it('sends Beverages to the beverages plant', () => {
+      expect(logisticsControlScopeForCompany(COMPANY_CODES.JIVO_BEVERAGES)).toBe(
+        LOGISTICS_CONTROL_BEVERAGES_SCOPE,
+      );
+    });
+
+    it('sends Oil and Mart to the BH-BT board', () => {
+      // Mart on purpose: Mart's dispatch is one of the two halves that board
+      // adds up, so a Mart user opening it is reading their own shipments.
+      expect(logisticsControlScopeForCompany(COMPANY_CODES.JIVO_OIL)).toBe(
+        LOGISTICS_CONTROL_OIL_SCOPE,
+      );
+      expect(logisticsControlScopeForCompany(COMPANY_CODES.JIVO_MART)).toBe(
+        LOGISTICS_CONTROL_OIL_SCOPE,
+      );
+    });
+
+    it('falls back to the Oil board while no company is known', () => {
+      // What the single board showed before the split, and so the safe answer
+      // in the moment between sign-in and the company loading.
+      expect(logisticsControlScopeForCompany(undefined)).toBe(LOGISTICS_CONTROL_OIL_SCOPE);
+      expect(logisticsControlScopeForCompany(null)).toBe(LOGISTICS_CONTROL_OIL_SCOPE);
+    });
+
+    it('puts both boards on the one route, so the switcher is the only control', () => {
+      // The pair used to hold two addresses. They share one now: a second URL
+      // is a second way to be looking at the wrong plant's tonnage.
+      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.boardPath).toBe(
+        LOGISTICS_CONTROL_OIL_SCOPE.boardPath,
+      );
+      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.settingsPath).toBe(
+        LOGISTICS_CONTROL_OIL_SCOPE.settingsPath,
+      );
+    });
   });
 });

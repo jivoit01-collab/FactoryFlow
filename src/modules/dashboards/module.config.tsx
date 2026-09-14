@@ -27,12 +27,8 @@ const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverv
 const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
 const ProductionDashboardPage = lazy(() => import('./production/pages/ProductionDashboardPage'));
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
-const StockLevelDashboardPage = lazy(
-  () => import('./stock-level/pages/StockLevelDashboardPage'),
-);
-const NonMovingDashboardPage = lazy(
-  () => import('./non-moving/pages/NonMovingDashboardPage'),
-);
+const StockLevelDashboardPage = lazy(() => import('./stock-level/pages/StockLevelDashboardPage'));
+const NonMovingDashboardPage = lazy(() => import('./non-moving/pages/NonMovingDashboardPage'));
 const SalesPlanningRequirementDashboardPage = lazy(
   () => import('./sales-planning-requirement/pages/SalesPlanningRequirementDashboardPage'),
 );
@@ -45,9 +41,7 @@ const PackingMaterialDashboardPage = lazy(
 const PmRequirementDashboardPage = lazy(
   () => import('./pm-requirement/pages/PmRequirementDashboardPage'),
 );
-const DispatchDayDashboardPage = lazy(
-  () => import('./dispatch/pages/DispatchDayDashboardPage'),
-);
+const DispatchDayDashboardPage = lazy(() => import('./dispatch/pages/DispatchDayDashboardPage'));
 const DispatchPipelineDashboardPage = lazy(
   () => import('./dispatch-pipeline/pages/DispatchPipelineDashboardPage'),
 );
@@ -60,9 +54,7 @@ const DispatchTrackingDashboardPage = lazy(
 const BudgetApprovalsDashboardPage = lazy(
   () => import('./budget-approvals/pages/BudgetApprovalsDashboardPage'),
 );
-const FactoryExpenseWallPage = lazy(
-  () => import('./factory-expense/pages/FactoryExpenseWallPage'),
-);
+const FactoryExpenseWallPage = lazy(() => import('./factory-expense/pages/FactoryExpenseWallPage'));
 const FactoryExpenseConfigPage = lazy(
   () => import('./factory-expense/pages/FactoryExpenseConfigPage'),
 );
@@ -78,21 +70,13 @@ const WarehouseControlDashboardPage = lazy(
 const ProductionControlDashboardPage = lazy(
   () => import('./production-control/pages/ProductionControlDashboardPage'),
 );
-const PlantBoardDashboardPage = lazy(
-  () => import('./plant-board/pages/PlantBoardDashboardPage'),
-);
+const PlantBoardDashboardPage = lazy(() => import('./plant-board/pages/PlantBoardDashboardPage'));
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlDashboardPage'),
 );
 const LogisticsControlConfigPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlConfigPage'),
-);
-const BeveragesControlDashboardPage = lazy(
-  () => import('./logistics-control/pages/BeveragesControlDashboardPage'),
-);
-const BeveragesControlConfigPage = lazy(
-  () => import('./logistics-control/pages/BeveragesControlConfigPage'),
 );
 
 export const dashboardsModuleConfig: ModuleConfig = {
@@ -182,6 +166,12 @@ export const dashboardsModuleConfig: ModuleConfig = {
       // dispatch, and the freight bills behind it. Any one card's right opens
       // it; the page itself states which cards the user may not read rather
       // than dropping them silently.
+      //
+      // Signed into Jivo Beverages, this same route is the beverages plant's
+      // wall instead — BH-FG and Beverages alone, three of its sixteen tiles
+      // saying why they have no source. One address, and the company switcher
+      // decides the plant, so a wall screen is a browser left signed into the
+      // company that plant belongs to.
       path: '/dashboards/logistics-control',
       element: <LogisticsControlDashboardPage />,
       layout: 'main',
@@ -192,7 +182,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
       // The two warehouse facts SAP does not hold — rated tonnage capacity and
       // the date stock was last physically verified. Gated on the warehouse
       // right rather than a new one: both are properties of the building that
-      // the board already displays to anyone who can open it.
+      // the board already displays to anyone who can open it. Like the board,
+      // it edits whichever plant the signed-in company owns.
       path: '/dashboards/logistics-control/settings',
       element: <LogisticsControlConfigPage />,
       layout: 'main',
@@ -200,31 +191,24 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Board Settings' },
     },
     {
-      // The same board, read for the beverages plant: BH-FG and Jivo Beverages
-      // alone. Its own route rather than a scope toggle on the logistics board,
-      // because a wall screen has nobody standing at it to click one and both
-      // plants are watched at the same time, on two screens.
+      // The beverages board used to be its own address. It is now the logistics
+      // route read as Jivo Beverages, so these two only forward — wall screens
+      // and browser bookmarks still point here, and a dead link on a screen
+      // nobody is standing at is a blank wall until somebody notices.
       //
-      // Top level rather than nested under the logistics path, even though the
-      // two boards share one implementation. That sharing is a fact about this
-      // codebase, not about the plant -- a nested URL would tell a reader the
-      // beverages wall is part of the oil one, and it is a separate operation
-      // watched by separate people.
+      // Forwarding does not switch company: a browser signed into Oil that
+      // opens this lands on the Oil board. That is the intended answer, and the
+      // visible one — the board names its own plant in its heading.
       path: '/dashboards/beverage',
-      element: <BeveragesControlDashboardPage />,
+      element: <Navigate to="/dashboards/logistics-control" replace />,
       layout: 'main',
       permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
-      breadcrumb: { label: 'Beverages Control' },
     },
     {
-      // BH-FG's rated capacity and last audit, and the Beverages fleet and
-      // section salaries. A separate screen from the logistics board's because
-      // every figure on it is stored per company.
       path: '/dashboards/beverage/settings',
-      element: <BeveragesControlConfigPage />,
+      element: <Navigate to="/dashboards/logistics-control/settings" replace />,
       layout: 'main',
       permissions: LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
-      breadcrumb: { label: 'Board Settings' },
     },
     {
       path: '/dashboards/gate',
@@ -456,20 +440,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
           permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
         },
         {
+          // One entry, both plants: the board reads BH-BT for Oil and Mart and
+          // BH-FG for Jivo Beverages, following the company switcher. The
+          // beverages plant had a second entry here until the company became
+          // the control — two menu rows for one board invited reading a
+          // Beverages tonnage under an Oil heading, and back.
           path: '/dashboards/logistics-control',
           title: 'Logistics Control',
-          permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
-        },
-        {
-          // The same board for the beverages plant. Listed as its own entry
-          // rather than hidden behind a toggle on the one above — two walls,
-          // two teams, and each has to be reachable in one click.
-          //
-          // No new right: it reads the same feeds as the board above, scoped
-          // to a different company, so a viewer who may read one may read the
-          // other. See the parent's note for why that list is spread there.
-          path: '/dashboards/beverage',
-          title: 'Beverages Control',
           permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
         },
         {

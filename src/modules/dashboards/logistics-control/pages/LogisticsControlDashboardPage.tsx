@@ -22,13 +22,12 @@ import {
   LOGISTICS_CONTROL_DISPATCH_PERMISSIONS,
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
-  LOGISTICS_CONTROL_OIL_SCOPE,
   LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS,
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
   type LogisticsControlScope,
 } from '../constants';
-import { useFullBleed, useLogisticsControlBoard } from '../hooks';
+import { useFullBleed, useLogisticsControlBoard, useLogisticsControlScope } from '../hooks';
 
 /** Whole number, Indian grouping. */
 function whole(value: number): string {
@@ -80,17 +79,23 @@ function decimal(value: number, digits = 1): string {
  * fold, and type that scales with the display. See `ops-board.css` for why every
  * length is a `calc()` against a board-local unit rather than a `rem`.
  *
- * One component, two boards. `scope` carries the plant -- which floor, which
+ * One component, two boards. The scope carries the plant -- which floor, which
  * companies, which labour departments, and which tiles have no source on that
  * side of the site. Deliberately not two copies of this file: the whole value of
  * a wall is that somebody learns the grid once, and two pages drift the moment
  * one of them gets a fix the other does not.
+ *
+ * Which of the two a viewer gets follows the company they are signed into, so
+ * this one route is the beverages wall in Jivo Beverages and the BH-BT wall in
+ * Oil or Mart. The `scope` prop overrides that for callers that must pin a
+ * board regardless of the viewer.
  */
 export function LogisticsControlDashboardPage({
-  scope = LOGISTICS_CONTROL_OIL_SCOPE,
+  scope: scopeOverride,
 }: {
   scope?: LogisticsControlScope;
-}) {
+} = {}) {
+  const scope = useLogisticsControlScope(scopeOverride);
   const { hasAnyPermission } = usePermission();
   const canSeeWarehouse = hasAnyPermission(LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS);
   const canSeeDispatch = hasAnyPermission(LOGISTICS_CONTROL_DISPATCH_PERMISSIONS);
@@ -119,11 +124,7 @@ export function LogisticsControlDashboardPage({
   // The two facts SAP does not hold, typed in on the settings screen. Read for
   // the board's own company, not the viewer's: capacity is stored per (company,
   // warehouse) and a wall must show the same rating to everyone in front of it.
-  const settings = useWarehouseSettings(
-    scope.warehouse,
-    canSeeWarehouse,
-    scope.settingsCompany,
-  );
+  const settings = useWarehouseSettings(scope.warehouse, canSeeWarehouse, scope.settingsCompany);
 
   const stock = board.warehouse.stockTonnage;
   const space = board.warehouse.space;
@@ -329,8 +330,8 @@ export function LogisticsControlDashboardPage({
                   />
                 ) : (
                   <p className="ops-note">
-                    No rated capacity set — add one in board settings to show how full
-                    this warehouse is.
+                    No rated capacity set — add one in board settings to show how full this
+                    warehouse is.
                     {/* Where slots are not merely unloaded but will never exist,
                         say so: otherwise this reads as a warehouse somebody has
                         yet to map, and somebody goes looking for the mapping. */}
@@ -384,8 +385,8 @@ export function LogisticsControlDashboardPage({
                   />
                   {nonMoving.unweighed > 0 && (
                     <p className="ops-note">
-                      {whole(nonMoving.unweighed)} of {whole(nonMoving.items)} items have no
-                      case weight in SAP, so this is a floor.
+                      {whole(nonMoving.unweighed)} of {whole(nonMoving.items)} items have no case
+                      weight in SAP, so this is a floor.
                     </p>
                   )}
                 </>
@@ -498,8 +499,8 @@ export function LogisticsControlDashboardPage({
                   <p className="ops-note">Could not read today&apos;s dispatch plan.</p>
                 ) : planPct === null ? (
                   <p className="ops-note">
-                    No bill is booked onto a truck for today, so there is no day plan to
-                    measure against.
+                    No bill is booked onto a truck for today, so there is no day plan to measure
+                    against.
                   </p>
                 ) : (
                   <>
@@ -703,9 +704,7 @@ export function LogisticsControlDashboardPage({
               // Ownership is not a field on the vehicle master, so the fleet is
               // the registration list from board settings.
               missing={
-                fleet.owned === null
-                  ? 'List the owned registrations in board settings'
-                  : undefined
+                fleet.owned === null ? 'List the owned registrations in board settings' : undefined
               }
               viz={
                 fleet.configured ? (
@@ -740,8 +739,8 @@ export function LogisticsControlDashboardPage({
                   </>
                 ) : fleet.owned === null ? undefined : (
                   <p className="ops-note">
-                    Only a count is configured — list the registrations to see which
-                    trucks are working.
+                    Only a count is configured — list the registrations to see which trucks are
+                    working.
                   </p>
                 )
               }
@@ -758,7 +757,12 @@ export function LogisticsControlDashboardPage({
                   ? { label: 'nothing outstanding', tone: 'ok' }
                   : {
                       label: `oldest ${whole(account.oldestDays)} days`,
-                      tone: account.oldestDays >= 90 ? 'bad' : account.oldestDays >= 30 ? 'warn' : 'neut',
+                      tone:
+                        account.oldestDays >= 90
+                          ? 'bad'
+                          : account.oldestDays >= 30
+                            ? 'warn'
+                            : 'neut',
                     }
               }
               /* No subtitle. The matrix under it is four rows of two lines
@@ -869,9 +873,7 @@ export function LogisticsControlDashboardPage({
               }
               sub="Dispatched, no SAP receipt"
               value={
-                transit.absent !== null ||
-                transit.bands === null ||
-                !transit.weightsAvailable
+                transit.absent !== null || transit.bands === null || !transit.weightsAvailable
                   ? undefined
                   : decimal(transit.totals.tonnes)
               }
@@ -926,8 +928,8 @@ export function LogisticsControlDashboardPage({
                     />
                     {transit.unweighedLines > 0 && (
                       <p className="ops-note">
-                        {whole(transit.unweighedLines)} lines have no case weight, so this
-                        is a floor.
+                        {whole(transit.unweighedLines)} lines have no case weight, so this is a
+                        floor.
                       </p>
                     )}
                   </>
@@ -942,12 +944,7 @@ export function LogisticsControlDashboardPage({
           inside the tile so only one can ever be open, and so the panel is a
           sibling of the board rather than a child of a clipped card. */}
       {drill && (
-        <BoardDrill
-          which={drill}
-          board={board}
-          scope={scope}
-          onClose={() => setDrill(null)}
-        />
+        <BoardDrill which={drill} board={board} scope={scope} onClose={() => setDrill(null)} />
       )}
     </div>
   );

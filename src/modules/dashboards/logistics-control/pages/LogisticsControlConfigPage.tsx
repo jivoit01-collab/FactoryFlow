@@ -7,7 +7,8 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useSaveWarehouseSettings, useWarehouseSettings } from '../api';
 import { BoardFigures } from '../components';
-import { LOGISTICS_CONTROL_OIL_SCOPE, type LogisticsControlScope } from '../constants';
+import { type LogisticsControlScope } from '../constants';
+import { useLogisticsControlScope } from '../hooks';
 
 /** Local `YYYY-MM-DD` — never `toISOString()`, which shifts the day in IST. */
 function localToday(): string {
@@ -29,16 +30,17 @@ function localToday(): string {
  * Empty is a valid answer for both, and a meaningful one: it makes the board say
  * the figure is not configured rather than showing a number nobody set.
  *
- * One screen per board, told apart by `scope`. Both the warehouse row and the
- * company-level figures below are stored per company, so the scope decides what
- * is being edited — without it, configuring the Beverages board while signed
- * into Oil would quietly rewrite Oil's capacity and Oil's fleet.
+ * One screen for both boards, told apart by the scope — which follows the
+ * company the viewer is signed into. Both the warehouse row and the company
+ * figures below are stored per company, so the scope decides what is being
+ * edited: it is what stops a Beverages capacity being written against Oil.
  */
 export function LogisticsControlConfigPage({
-  scope = LOGISTICS_CONTROL_OIL_SCOPE,
+  scope: scopeOverride,
 }: {
   scope?: LogisticsControlScope;
-}) {
+} = {}) {
+  const scope = useLogisticsControlScope(scopeOverride);
   const warehouse = scope.warehouse;
   const settings = useWarehouseSettings(warehouse, true, scope.settingsCompany);
   const save = useSaveWarehouseSettings(warehouse, scope.settingsCompany);
@@ -137,9 +139,7 @@ export function LogisticsControlConfigPage({
             <p
               className={cn(
                 'text-xs',
-                capacityInvalid
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-muted-foreground',
+                capacityInvalid ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground',
               )}
             >
               {capacityInvalid

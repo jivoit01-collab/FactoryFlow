@@ -123,12 +123,14 @@ export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
 export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
   key: 'beverages',
   title: 'Beverages operations',
-  // A top-level dashboard route of its own, like every other board on the wall
-  // menu — not a child of the logistics path. The two boards share an
-  // implementation, but that is a fact about this codebase and not about the
-  // plant: nesting the URL would say the beverages wall is part of the oil one.
-  boardPath: '/dashboards/beverage',
-  settingsPath: '/dashboards/beverage/settings',
+  // The same route as the Oil board. Which plant a reader gets is decided by
+  // the company they are signed into, not by the URL — see
+  // `logisticsControlScopeForCompany`. One menu entry, one address, and the
+  // company switcher is the only control: a Beverages wall screen is a browser
+  // signed into Beverages, which is how every other company-scoped screen in
+  // this app already works.
+  boardPath: '/dashboards/logistics-control',
+  settingsPath: '/dashboards/logistics-control/settings',
   warehouse: 'BH-FG',
   warehouseCompany: COMPANY_CODES.JIVO_BEVERAGES,
   settingsCompany: COMPANY_CODES.JIVO_BEVERAGES,
@@ -169,6 +171,26 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
       'No intercompany route is configured for Beverages — this read covers Oil to Mart only.',
   },
 };
+
+/**
+ * The board the signed-in company should see.
+ *
+ * Beverages gets its own plant; everyone else — Oil, Mart, and an unknown or
+ * not-yet-loaded company — gets the Oil board, which is what the single board
+ * showed before this split and so the safe answer while the company is still
+ * resolving.
+ *
+ * Mart deliberately maps to the Oil board rather than to nothing: Mart's
+ * dispatch is one of the two halves that board adds together, so a Mart user
+ * opening it is reading a board their own shipments are inside.
+ */
+export function logisticsControlScopeForCompany(
+  companyCode: string | null | undefined,
+): LogisticsControlScope {
+  return companyCode === COMPANY_CODES.JIVO_BEVERAGES
+    ? LOGISTICS_CONTROL_BEVERAGES_SCOPE
+    : LOGISTICS_CONTROL_OIL_SCOPE;
+}
 
 /** Both boards, for anything that has to enumerate them. */
 export const LOGISTICS_CONTROL_SCOPES: readonly LogisticsControlScope[] = [
