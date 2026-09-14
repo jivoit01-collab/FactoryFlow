@@ -128,6 +128,17 @@ export async function getPendingBillsForCompany(
         // An invoice credited out is not waiting to leave, whichever question
         // the tile is answering. On BH-BT that was 9 of 26.
         exclude_credited: 'true',
+        /*
+         * Bills SAP has already stamped as gone.
+         *
+         * The tile still answers "planned but not gone" off the plan's own
+         * booking status — this does not replace that test, it backstops it.
+         * The status is a Postgres field the app writes and it can fail to flip
+         * at gate-out; SAP's `U_Dipatch_Date` is written when the invoice is
+         * stamped and cannot be contradicted. Measured on BH-BT the drift was
+         * 591 of 617 invoices, which is the whole of why this tile read high.
+         */
+        exclude_sap_dispatched: 'true',
         limit: String(limit),
       },
       headers: { 'Company-Code': companyCode },
