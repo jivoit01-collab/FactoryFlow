@@ -1313,6 +1313,40 @@
   color: var(--d1);
 }
 
+/*
+ * The second cut, between the panel's own totals and the rows.
+ *
+ * Scrolls sideways rather than wrapping to four lines: a warehouse breakdown
+ * is read across, and a strip that reflows every time a warehouse appears
+ * moves the rows under the reader's eye.
+ */
+.ops-drill__cut {
+  padding: 0 calc(1.1 * var(--du)) calc(0.6 * var(--du));
+}
+.ops-drill__cut h3 {
+  font-size: calc(0.82 * var(--du));
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: calc(0.45 * var(--du));
+}
+.ops-drill__cutrow {
+  display: flex;
+  gap: calc(0.5 * var(--du));
+  overflow-x: auto;
+  padding-bottom: calc(0.2 * var(--du));
+}
+.ops-drill__cutrow .ops-drill__stat {
+  flex: 0 0 auto;
+}
+.ops-drill__stat .s {
+  display: block;
+  font-size: calc(0.78 * var(--du));
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
 .ops-drill__body {
   overflow: auto;
   min-height: 0;

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -98,6 +98,32 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
       unweighed_below_benchmark: 3,
       benchmark_basis: 'Stock Benchmark filters',
       stores: ['BH-PM', 'BH-BS', 'BH-PC'],
+      // Two of the fifty-four the tile counts: the panel lists the worst by
+      // value and says how many it is showing.
+      over_purchased_rows: [
+        {
+          item_code: 'PM0000071',
+          item_name: 'SHRINKS 1 LTR 235X310',
+          over_qty: 60_00_000,
+          over_value: 7_74_000,
+          req_after_po_qty: 60_00_000,
+          open_po_qty: 80_00_000,
+          po_due_after_plan: true,
+          po_overdue: false,
+          over_issued: false,
+        },
+        {
+          item_code: 'PM0000053',
+          item_name: 'HDPE BOTTLE 5 LTR',
+          over_qty: 6_000,
+          over_value: 2_73_060,
+          req_after_po_qty: 6_000,
+          open_po_qty: 10_000,
+          po_due_after_plan: false,
+          po_overdue: true,
+          over_issued: false,
+        },
+      ],
       worst: [],
     },
     store: {
@@ -158,7 +184,28 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
         oldest_days: 210,
         recent_count: 100,
         warehouses: ['BH-BS', 'BH-PC', 'BH-PM'],
-        items: [],
+        // The worst of the idle SKUs, which is what the feed carries: the
+        // count above is every one of them, the list is the ones worth naming.
+        items: [
+          {
+            item_code: 'PM0000121',
+            item_name: 'PET BOTTLE 1 LTR 52 GMS POMACE',
+            days: 210,
+            status: 'non-moving' as const,
+            value: 640_000,
+            quantity: 82_000,
+            warehouses: ['BH-PM'],
+          },
+          {
+            item_code: 'PM0000523',
+            item_name: 'LABEL 1 LTR RICE BRAN OIL BACK',
+            days: 38,
+            status: 'slow-moving' as const,
+            value: 96_000,
+            quantity: 240_000,
+            warehouses: ['BH-PM', 'BH-BS'],
+          },
+        ],
         basis: 'Non-Moving dashboard rules',
       },
       pm_vehicles_today: {
@@ -1389,6 +1436,148 @@ describe('PlantBoardDashboardPage', () => {
 
     const card = tile(container, 'Purchased');
     expect(card.querySelector('.ops-val b')?.textContent).toBe('—');
+  });
+
+  /**
+   * Every tile opens the rows behind it.
+   *
+   * The board was drawn for a wall — no clicks, re-reading on a timer — and a
+   * television still behaves exactly as it did. But the same URL is open on
+   * desks, and there the question after every figure is "which ones". What
+   * these pin is that the answer never disagrees with the card that opened it,
+   * and that a tile with nothing behind it does not offer to open.
+   */
+  describe('the rows behind a tile', () => {
+    function openTile(container: HTMLElement, name: string) {
+      fireEvent.click(tile(container, name));
+      return screen.getByRole('dialog');
+    }
+
+    it('makes a tile with data clickable, and keeps it reachable by keyboard', () => {
+      const { container } = renderBoard(board());
+      const card = tile(container, 'Non-moving stock');
+      expect(card.getAttribute('role')).toBe('button');
+      expect(card.getAttribute('tabindex')).toBe('0');
+      expect(card.getAttribute('data-drill')).toBe('1');
+    });
+
+    it('opens the panel on the tile that was clicked, not another', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Non-moving stock');
+      expect(within(panel).getByRole('heading', { level: 2 }).textContent).toBe(
+        'Non-moving stock',
+      );
+    });
+
+    it('opens with the tile own figures above the rows that make them up', () => {
+      // A drill-down that quietly disagrees with the tile that opened it is
+      // worse than no drill-down, so the headline is repeated verbatim.
+      const { container } = renderBoard(board());
+      const headline = tile(container, 'Non-moving stock').querySelector('.ops-val b')
+        ?.textContent;
+      const panel = openTile(container, 'Non-moving stock');
+      expect(panel.textContent).toContain(headline as string);
+    });
+
+    it('lists the rows the figure is made of', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Non-moving stock');
+      const rows = within(panel).getAllByRole('row');
+      // A header row plus the items the feed carries.
+      expect(rows.length).toBeGreaterThan(1);
+    });
+
+    it('lists the over-purchased SKUs, worst by value', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Over purchased');
+
+      // The rows, not a pointer to another screen.
+      expect(panel.textContent).toContain('SHRINKS 1 LTR 235X310');
+      expect(panel.textContent).toContain('HDPE BOTTLE 5 LTR');
+      // Worst by value first: 60 lakh pieces of shrink film and 6,000 bottles
+      // are the same length on a list and nothing like the same money.
+      const names = within(panel)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent ?? '');
+      expect(names[0]).toContain('SHRINKS 1 LTR 235X310');
+    });
+
+    it('says why each SKU is over, which the money does not', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Over purchased');
+      // An order landing after the plan closes is surplus later; an overdue one
+      // is surplus already paid for. Different problems, same rupees.
+      expect(panel.textContent).toContain('lands after the plan');
+      expect(panel.textContent).toContain('order overdue');
+    });
+
+    it('admits when the list is shorter than the count beside it', () => {
+      // A truncated list that does not say so is one a buyer acts on believing
+      // it is complete.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Over purchased');
+      expect(panel.textContent).toContain('The worst 2 by value');
+      expect(panel.textContent).toContain('PM Requirement sheet');
+    });
+
+    it('says where the rows are when this feed carries only a total', () => {
+      // Not a blank table: a reader who clicks and gets nothing stops clicking,
+      // one who is told where to look goes there.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Packing material in');
+      expect(panel.textContent).toContain('Gate-in register');
+      expect(within(panel).queryByRole('table')).toBeNull();
+    });
+
+    it('closes on Escape and on the close button', () => {
+      const { container } = renderBoard(board());
+      openTile(container, 'Wastage');
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog')).toBeNull();
+
+      openTile(container, 'Wastage');
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('opens only one panel at a time', () => {
+      const { container } = renderBoard(board());
+      openTile(container, 'Wastage');
+      // The panel covers the board, so a second would have nothing to open
+      // over; clicking through it must replace rather than stack.
+      expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    });
+
+    it('does not offer to open a tile whose band could not be read', () => {
+      // A band that failed renders its reason, not its tiles — there is
+      // nothing behind the figure to show.
+      const data = board();
+      const { container } = renderBoard({
+        ...data,
+        store: null,
+        meta: { ...data.meta, degraded: ['store'] },
+      });
+      expect(container.querySelector('[data-drill="1"] .ops-nm')).toBeTruthy();
+      expect(
+        [...container.querySelectorAll('[data-drill="1"] .ops-nm')].map(
+          (el) => el.textContent,
+        ),
+      ).not.toContain('Non-moving stock');
+    });
+
+    it('every tile on the board opens something', () => {
+      // The ask was "any KPI card", so this is the one test that would catch a
+      // tile added later and never wired up.
+      const { container } = renderBoard(board());
+      const names = [...container.querySelectorAll('.ops-grp .ops-nm')].map(
+        (el) => el.textContent ?? '',
+      );
+      const openable = [...container.querySelectorAll('[data-drill="1"] .ops-nm')].map(
+        (el) => el.textContent ?? '',
+      );
+      expect(openable.sort()).toEqual(names.sort());
+    });
   });
 
   /**

@@ -36,36 +36,39 @@ export const LOGISTICS_CONTROL_QUERY_KEYS = {
  * screen and types, which is a few times a year, not on the board's refresh
  * cadence.
  */
-export function useWarehouseSettings(warehouse: string, enabled = true) {
+export function useWarehouseSettings(
+  warehouse: string,
+  enabled = true,
+  companyCode?: string,
+) {
   const { currentCompany } = useAuth();
+  // The board's own company where it names one, the viewer's otherwise. Both go
+  // into the key as well as the request, so the two boards never serve each
+  // other BH-FG's capacity from a cache entry keyed only on the warehouse.
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
-    queryKey: LOGISTICS_CONTROL_QUERY_KEYS.warehouseSettings(
-      warehouse,
-      currentCompany?.company_id,
-    ),
-    queryFn: () => logisticsControlApi.getWarehouseSettings(warehouse),
+    queryKey: LOGISTICS_CONTROL_QUERY_KEYS.warehouseSettings(warehouse, scopeKey),
+    queryFn: () => logisticsControlApi.getWarehouseSettings(warehouse, companyCode),
     staleTime: 5 * 60 * 1000,
     enabled: enabled && Boolean(warehouse),
   });
 }
 
-export function useSaveWarehouseSettings(warehouse: string) {
+export function useSaveWarehouseSettings(warehouse: string, companyCode?: string) {
   const queryClient = useQueryClient();
   const { currentCompany } = useAuth();
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useMutation({
     mutationFn: (payload: WarehouseSettingsPayload) =>
-      logisticsControlApi.saveWarehouseSettings(warehouse, payload),
+      logisticsControlApi.saveWarehouseSettings(warehouse, payload, companyCode),
     onSuccess: (saved) => {
       // Seed the cache from the response rather than refetching: the board may
       // be open in another tab on the same screen, and it should show the new
       // capacity the moment it is saved.
       queryClient.setQueryData(
-        LOGISTICS_CONTROL_QUERY_KEYS.warehouseSettings(
-          warehouse,
-          currentCompany?.company_id,
-        ),
+        LOGISTICS_CONTROL_QUERY_KEYS.warehouseSettings(warehouse, scopeKey),
         saved,
       );
     },
@@ -258,29 +261,34 @@ export function useApprovedPartialScans(companyCodes: readonly string[], enabled
 
 const BOARD_SETTINGS_KEY = [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'board-settings'] as const;
 
-/** Owned vehicles and per-section staffing, for the active company. */
-export function useBoardSettings(enabled = true) {
+/**
+ * Owned vehicles and per-section staffing.
+ *
+ * For the board's own company where one is named, and the viewer's otherwise —
+ * a wall screen must show the same fleet and the same salaries to everybody in
+ * front of it, not whichever company the login happens to sit in.
+ */
+export function useBoardSettings(enabled = true, companyCode?: string) {
   const { currentCompany } = useAuth();
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
-    queryKey: [...BOARD_SETTINGS_KEY, currentCompany?.company_id] as const,
-    queryFn: () => boardSettingsApi.get(),
+    queryKey: [...BOARD_SETTINGS_KEY, scopeKey] as const,
+    queryFn: () => boardSettingsApi.get(companyCode),
     staleTime: 5 * 60 * 1000,
     enabled,
   });
 }
 
-export function useSaveBoardSettings() {
+export function useSaveBoardSettings(companyCode?: string) {
   const queryClient = useQueryClient();
   const { currentCompany } = useAuth();
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useMutation({
-    mutationFn: (payload: BoardSettingsPayload) => boardSettingsApi.save(payload),
+    mutationFn: (payload: BoardSettingsPayload) => boardSettingsApi.save(payload, companyCode),
     onSuccess: (saved) => {
-      queryClient.setQueryData(
-        [...BOARD_SETTINGS_KEY, currentCompany?.company_id] as const,
-        saved,
-      );
+      queryClient.setQueryData([...BOARD_SETTINGS_KEY, scopeKey] as const, saved);
     },
   });
 }
@@ -291,36 +299,41 @@ export function useSaveBoardSettings() {
  * Gate arrivals move through the day, so this follows the board's refresh
  * rather than the long stale window the configuration itself uses.
  */
-export function useOwnedVehicleStatus(refetchIntervalMs?: number) {
+export function useOwnedVehicleStatus(refetchIntervalMs?: number, companyCode?: string) {
   const { currentCompany } = useAuth();
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
-    queryKey: [
-      ...LOGISTICS_CONTROL_QUERY_KEYS.all,
-      'owned-vehicles',
-      currentCompany?.company_id,
-    ] as const,
-    queryFn: () => getOwnedVehicleStatus(),
+    queryKey: [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'owned-vehicles', scopeKey] as const,
+    queryFn: () => getOwnedVehicleStatus(companyCode),
     staleTime: refetchIntervalMs ?? 60 * 1000,
     refetchInterval: refetchIntervalMs,
     refetchIntervalInBackground: refetchIntervalMs !== undefined,
   });
 }
 
-/** Stock in transit, polled with the board — transfers close through the day. */
-export function useStockInTransit(refetchIntervalMs?: number) {
+/**
+ * Stock in transit, polled with the board — transfers close through the day.
+ *
+ * `enabled` is how a scope with no intercompany route switches it off: the
+ * endpoint's route table is a backend constant, so a board with no leg in it
+ * would spend a poll to be told nothing, every minute, forever.
+ */
+export function useStockInTransit(
+  refetchIntervalMs?: number,
+  companyCode?: string,
+  enabled = true,
+) {
   const { currentCompany } = useAuth();
+  const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
-    queryKey: [
-      ...LOGISTICS_CONTROL_QUERY_KEYS.all,
-      'stock-in-transit',
-      currentCompany?.company_id,
-    ] as const,
-    queryFn: () => getStockInTransit(),
+    queryKey: [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'stock-in-transit', scopeKey] as const,
+    queryFn: () => getStockInTransit(companyCode),
     staleTime: refetchIntervalMs ?? 60 * 1000,
     refetchInterval: refetchIntervalMs,
     refetchIntervalInBackground: refetchIntervalMs !== undefined,
+    enabled,
   });
 }
 

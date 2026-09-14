@@ -31,7 +31,9 @@ export type GoodsReturnStatus =
   | 'PARTIALLY_POSTED'
   | 'POSTED'
   | 'CANCELLED';
-export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
+/** Mirrors `goods_return.GoodsReturnItemCondition`. `LEAKED` was added after the
+ *  fact, so returns booked before it carry `DAMAGED` with the word in `reason`. */
+export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'LEAKED' | 'EXPIRED' | 'OTHER';
 export type GoodsReturnApprovalStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type GoodsReturnAttachmentType = 'INVOICE_COPY' | 'DEBIT_NOTE' | 'LETTER_PAD' | 'OTHER';
 

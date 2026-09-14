@@ -90,10 +90,16 @@ function Field({
  *
  * Leaving a field empty is a real answer — the board then says the figure is
  * not configured rather than showing a zero nobody set.
+ *
+ * Stored per company, so `companyCode` names which board is being configured
+ * rather than letting the signed-in company decide. Without it, opening the
+ * Beverages board's settings while signed into Oil would edit Oil's fleet and
+ * Oil's salaries — and the two screens look identical, so nobody would notice
+ * until the wrong figures appeared on the wrong wall.
  */
-export function BoardFigures() {
-  const settings = useBoardSettings();
-  const save = useSaveBoardSettings();
+export function BoardFigures({ companyCode }: { companyCode?: string }) {
+  const settings = useBoardSettings(true, companyCode);
+  const save = useSaveBoardSettings(companyCode);
 
   // Only what has been typed, or null while nothing has been. Same shape as the
   // warehouse card above: the fields fall through to the server until somebody

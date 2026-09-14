@@ -40,6 +40,28 @@ export interface PurchaseWorstRow {
   po_overdue: boolean;
 }
 
+/**
+ * One SKU the buyer has more of than the plan needs.
+ *
+ * The same rows the tile's total is summed over — the requirement sheet's own
+ * `over_purchased` flag, never a threshold reapplied here, so the list and the
+ * headline cannot describe different sets.
+ */
+export interface OverPurchasedRow {
+  item_code: string;
+  item_name: string;
+  over_qty: number;
+  over_value: number;
+  /** The sheet's own Req-after-PO column. Positive: that is the surplus. */
+  req_after_po_qty: number;
+  open_po_qty: number;
+  /** Due only after the plan closes — surplus later, not surplus now. */
+  po_due_after_plan: boolean;
+  po_overdue: boolean;
+  /** The floor drew more than the plan asked for: a question about the plan. */
+  over_issued: boolean;
+}
+
 export interface PlantBoardPurchase {
   /** The plan, in pieces. Never tons — no packaging item is a litre item. */
   planning_qty: number;
@@ -116,6 +138,8 @@ export interface PlantBoardPurchase {
   benchmark_basis: string;
   stores: string[];
   worst: PurchaseWorstRow[];
+  /** The rows behind `over_purchase_value`, worst by value first. */
+  over_purchased_rows: OverPurchasedRow[];
 }
 
 export interface NonMovingItem {

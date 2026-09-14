@@ -593,6 +593,10 @@ export const API_ENDPOINTS = {
   // all from FactoryFlow's own registers rather than SAP.
   FACTORY_EXPENSE: {
     BOARD: '/dashboards/factory-expense/board/',
+    // The same spend as a company x bucket grid, feeding the Company Expense
+    // board. Its own endpoint because the matrix has to split electricity and
+    // salary by ownership, which the wall board never does.
+    MATRIX: '/dashboards/factory-expense/matrix/',
     SETTINGS: '/dashboards/factory-expense/settings/',
     // Read-back only. Rates are owned by cost_master and edited in
     // Admin > Cost Master; the board never writes one.
@@ -646,6 +650,8 @@ export const API_ENDPOINTS = {
     GATE_EXPECTED: '/goods-return/gate/expected/',
     GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
+    /** Every figure the Customer Returns dashboard draws, in one payload. */
+    DASHBOARD: '/goods-return/dashboard/',
   },
   // Short Dispatch — the return note for stock a posted bill says went out but
   // which never left the floor. `CREATE` posts the SAP A/R Return as part of the

@@ -23,6 +23,23 @@ import type {
 
 const EP = API_ENDPOINTS.STOCK_DASHBOARD.WAREHOUSE_SETTINGS;
 
+/**
+ * Pin a request to one company, or leave it on the viewer's own.
+ *
+ * Several of this board's feeds take no company parameter — they answer for
+ * whichever company the `Company-Code` header names, which is the signed-in one
+ * by default. That default is wrong for a wall board: the same screen must show
+ * the same capacity, the same fleet and the same salaries to everybody standing
+ * in front of it, whichever company they happen to be signed into. Passing the
+ * scope's company makes the board's answer a property of the board.
+ *
+ * Undefined leaves the header alone rather than sending an empty one, so a
+ * caller that has no scope behaves exactly as it did before.
+ */
+function companyHeader(companyCode?: string) {
+  return companyCode ? { headers: { 'Company-Code': companyCode } } : {};
+}
+
 export const logisticsControlApi = {
   /**
    * The warehouse's rated capacity and last audit date.
@@ -30,10 +47,18 @@ export const logisticsControlApi = {
    * Never 404s: the backend creates the row on first read and answers nulls, so
    * an unconfigured warehouse is a normal state the board renders rather than
    * an error it has to handle.
+   *
+   * Stored per (company, warehouse), so the company matters even though the
+   * warehouse code looks unambiguous: Beverages has its own `BH-PF` and its own
+   * `BH-WST`, and they are different floors from Oil's.
    */
-  async getWarehouseSettings(warehouse: string): Promise<WarehouseSettings> {
+  async getWarehouseSettings(
+    warehouse: string,
+    companyCode?: string,
+  ): Promise<WarehouseSettings> {
     const response = await apiClient.get<WarehouseSettings>(EP, {
       params: { warehouse },
+      ...companyHeader(companyCode),
     });
     return response.data;
   },
@@ -48,9 +73,11 @@ export const logisticsControlApi = {
   async saveWarehouseSettings(
     warehouse: string,
     payload: WarehouseSettingsPayload,
+    companyCode?: string,
   ): Promise<WarehouseSettings> {
     const response = await apiClient.put<WarehouseSettings>(EP, payload, {
       params: { warehouse },
+      ...companyHeader(companyCode),
     });
     return response.data;
   },
@@ -85,6 +112,22 @@ export async function getPendingBillsForCompany(
         date_to: window.date_to,
         by_dispatch_date: 'true',
         selected_only: 'true',
+        /*
+         * Deliberately NOT scoped to a warehouse.
+         *
+         * The obvious move — pin it to the band's own BH-BT — is wrong for this
+         * tile. It answers "planned and not gone", which is a question about
+         * dispatch PLANS, and a plan covers whichever warehouse the bill was
+         * picked from. Worse, the tile reports Oil and Mart side by side and
+         * Mart has no BH-BT at all: its stock sits in DL-EC, GP-FGM and GP-ECM,
+         * so a BH-BT filter would silently empty half the tile.
+         *
+         * A warehouse filter belongs on a tile about what is STANDING in a
+         * warehouse, not on one about what is scheduled to leave.
+         */
+        // An invoice credited out is not waiting to leave, whichever question
+        // the tile is answering. On BH-BT that was 9 of 26.
+        exclude_credited: 'true',
         limit: String(limit),
       },
       headers: { 'Company-Code': companyCode },
@@ -131,34 +174,47 @@ export async function getApprovedPartialScans(
 
 /** Company-level board figures: owned vehicles and per-section staffing. */
 export const boardSettingsApi = {
-  async get(): Promise<BoardSettings> {
+  /** Stored per company, so the board reads its own rather than the viewer's. */
+  async get(companyCode?: string): Promise<BoardSettings> {
     const response = await apiClient.get<BoardSettings>(
       API_ENDPOINTS.STOCK_DASHBOARD.BOARD_SETTINGS,
+      companyHeader(companyCode),
     );
     return response.data;
   },
 
-  async save(payload: BoardSettingsPayload): Promise<BoardSettings> {
+  async save(payload: BoardSettingsPayload, companyCode?: string): Promise<BoardSettings> {
     const response = await apiClient.put<BoardSettings>(
       API_ENDPOINTS.STOCK_DASHBOARD.BOARD_SETTINGS,
       payload,
+      companyHeader(companyCode),
     );
     return response.data;
   },
 };
 
-/** The owned fleet with today's duty state per truck. */
-export async function getOwnedVehicleStatus(): Promise<OwnedVehicleStatus> {
+/**
+ * The owned fleet with today's duty state per truck.
+ *
+ * Company-scoped through the header rather than a parameter, because the fleet
+ * IS the registration list on that company's board settings — there is no
+ * ownership field on the vehicle master to filter on instead.
+ */
+export async function getOwnedVehicleStatus(
+  companyCode?: string,
+): Promise<OwnedVehicleStatus> {
   const response = await apiClient.get<OwnedVehicleStatus>(
     API_ENDPOINTS.STOCK_DASHBOARD.OWNED_VEHICLES,
+    companyHeader(companyCode),
   );
   return response.data;
 }
 
 /** Stock still on the road, by how long it has been out. */
-export async function getStockInTransit(): Promise<StockInTransit> {
+export async function getStockInTransit(companyCode?: string): Promise<StockInTransit> {
   const response = await apiClient.get<StockInTransit>(
     API_ENDPOINTS.STOCK_DASHBOARD.STOCK_IN_TRANSIT,
+    companyHeader(companyCode),
   );
   return response.data;
 }

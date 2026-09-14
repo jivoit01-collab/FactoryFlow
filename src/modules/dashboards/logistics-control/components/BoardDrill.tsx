@@ -2,13 +2,14 @@ import { useDispatchBills } from '../../dispatch-fulfilment/api';
 import type { NonMovingItem } from '../../non-moving/types';
 import type { WarehouseOccupancyItem } from '../../production-control/types';
 import {
-  LOGISTICS_CONTROL_DISPATCH_COMPANIES,
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
-  LOGISTICS_CONTROL_WAREHOUSE,
+  LOGISTICS_CONTROL_OIL_SCOPE,
+  type LogisticsControlScope,
 } from '../constants';
 import type { useLogisticsControlBoard } from '../hooks';
 import { weighItems } from '../utils';
+import { billWarehouse } from '../utils';
 import { OpsDrill } from './OpsDrill';
 
 /** Which tile's rows to show. One per openable tile. */
@@ -41,6 +42,15 @@ const VEHICLE_STATE_LABELS: Record<string, string> = {
 export interface BoardDrillProps {
   which: DrillKey;
   board: Board;
+  /**
+   * The board these rows belong to.
+   *
+   * Passed rather than imported, so a panel opened over the Beverages board
+   * captions itself with BH-FG and reads Beverages bills. Defaulted to Oil for
+   * the same reason the hook is: a caller that names no scope keeps its old
+   * behaviour exactly.
+   */
+  scope?: LogisticsControlScope;
   onClose: () => void;
 }
 
@@ -214,7 +224,12 @@ function idleVarieties(
  * mounted with the panel, so opening a drill-down costs a request and closing
  * it stops the cost; the board's own load is unchanged.
  */
-export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
+export function BoardDrill({
+  which,
+  board,
+  scope = LOGISTICS_CONTROL_OIL_SCOPE,
+  onClose,
+}: BoardDrillProps) {
   switch (which) {
     case 'stock': {
       const stock = board.warehouse.stockTonnage;
@@ -223,7 +238,7 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
       return (
         <OpsDrill
           title="Stock on hand"
-          subtitle={`${LOGISTICS_CONTROL_WAREHOUSE} · finished goods by variety, as SAP holds them`}
+          subtitle={`${scope.warehouse} · finished goods by variety, as SAP holds them`}
           domain="warehouse"
           onClose={onClose}
           stats={[
@@ -268,7 +283,7 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
       return (
         <OpsDrill
           title="Non-moving stock"
-          subtitle={`${LOGISTICS_CONTROL_WAREHOUSE} · idle ${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days, by variety`}
+          subtitle={`${scope.warehouse} · idle ${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days, by variety`}
           domain="warehouse"
           onClose={onClose}
           stats={[
@@ -339,6 +354,7 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
             key: string;
             customer: string;
             date: string | null;
+            warehouse: string;
             bills: number;
             tonnes: number;
             booked: number;
@@ -348,9 +364,22 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
         for (const bill of pending.rows) {
           const customer = (bill.card_name ?? '').trim() || 'Unnamed customer';
           const date = bill.plan?.dispatch_date ?? null;
-          const key = `${customer}|${date ?? ''}`;
+          const warehouse = billWarehouse(bill.warehouses);
+          // Warehouse joins the key, not just the row: a consignment that ships
+          // from two places is two loads, and grouping them would show one.
+          // In practice it almost never splits them further -- 1,306 of 1,308
+          // recent bills draw from a single warehouse.
+          const key = `${customer}|${date ?? ''}|${warehouse}`;
           if (!byKey.has(key)) {
-            byKey.set(key, { key, customer, date, bills: 0, tonnes: 0, booked: 0 });
+            byKey.set(key, {
+              key,
+              customer,
+              date,
+              warehouse,
+              bills: 0,
+              tonnes: 0,
+              booked: 0,
+            });
             order.push(key);
           }
           const group = byKey.get(key)!;
@@ -362,6 +391,36 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
         }
 
         return order.map((key) => byKey.get(key)!);
+      })();
+
+      /*
+       * The same bills, cut by where they ship from.
+       *
+       * A PARTITION, not a tally: every bill lands in exactly one entry, so
+       * these tonnes add back up to the headline. A bill drawing on two
+       * warehouses gets its own compound entry rather than being counted under
+       * each -- counting it twice would make the strip disagree with the figure
+       * above it, which is the one thing a drill-down must never do.
+       *
+       * Ordered heaviest first: on this panel the question is which store the
+       * waiting freight is sitting in.
+       */
+      const byWarehouse = (() => {
+        const totals = new Map<string, { bills: number; tonnes: number }>();
+        for (const row of consignments) {
+          const slot = totals.get(row.warehouse) ?? { bills: 0, tonnes: 0 };
+          slot.bills += row.bills;
+          slot.tonnes += row.tonnes;
+          totals.set(row.warehouse, slot);
+        }
+        return [...totals.entries()]
+          .sort((a, b) => b[1].tonnes - a[1].tonnes)
+          .map(([warehouse, totalsFor]) => ({
+            key: warehouse,
+            label: warehouse,
+            value: `${decimal(totalsFor.tonnes, 2)} t`,
+            sub: `${whole(totalsFor.bills)} ${totalsFor.bills === 1 ? 'bill' : 'bills'}`,
+          }));
       })();
 
       return (
@@ -376,12 +435,18 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
             { label: 'On a truck', value: whole(booked.length) },
             { label: 'Awaiting a truck', value: whole(pending.invoices - booked.length) },
           ]}
+          breakdown={{
+            title: 'Waiting, by warehouse',
+            items: byWarehouse,
+            empty: 'No warehouse is holding anything dated to leave.',
+          }}
           rows={consignments}
           rowKey={(row) => row.key}
           empty="No bill is dated to leave and still waiting."
           loading={pending.loading}
           columns={[
             { label: 'Customer', cell: (row) => row.customer },
+            { label: 'Warehouse', cell: (row) => row.warehouse, dim: true },
             {
               label: 'Dispatch date',
               cell: (row) => (row.date ? shortDate(row.date) : '—'),
@@ -412,7 +477,7 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
       return (
         <OpsDrill
           title="Allocated stock"
-          subtitle={`Declared by the production floor into ${LOGISTICS_CONTROL_WAREHOUSE} today`}
+          subtitle={`Declared by the production floor into ${scope.warehouse} today`}
           domain="warehouse"
           onClose={onClose}
           stats={[
@@ -487,6 +552,7 @@ export function BoardDrill({ which, board, onClose }: BoardDrillProps) {
           to={board.today}
           title="Dispatched today"
           totalTonnes={board.dispatch.today.tonnes}
+          companies={scope.dispatchCompanies}
           onClose={onClose}
         />
       );
@@ -735,12 +801,15 @@ function DispatchedDrill({
   to,
   title,
   totalTonnes,
+  companies,
   onClose,
 }: {
   from: string;
   to: string;
   title: string;
   totalTonnes: number;
+  /** The board's companies — the panel must not answer wider than its tile. */
+  companies: readonly string[];
   onClose: () => void;
 }) {
   const bills = useDispatchBills({
@@ -750,10 +819,43 @@ function DispatchedDrill({
     limit: 200,
     offset: 0,
     order: 'newest',
-    companies: LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    companies,
   });
 
   const rows = bills.data?.results ?? [];
+  const total = bills.data?.count ?? rows.length;
+  // The feed caps a page at 100 rows server-side, whatever this asks for.
+  const truncated = total > rows.length;
+
+  /*
+   * The same bills, cut by where they shipped from.
+   *
+   * A PARTITION: every bill lands in exactly one entry, and a bill that drew on
+   * two warehouses gets its own compound name rather than being counted under
+   * each — the tonnes have to add back to the figure above them.
+   *
+   * Built only from the rows actually on the page. When the feed has truncated,
+   * the strip says so rather than presenting a hundred bills' worth of
+   * warehouses as if it were the window's.
+   */
+  const byWarehouse = (() => {
+    const totals = new Map<string, { bills: number; tonnes: number }>();
+    for (const row of rows) {
+      const warehouse = billWarehouse(row.warehouses);
+      const slot = totals.get(warehouse) ?? { bills: 0, tonnes: 0 };
+      slot.bills += 1;
+      slot.tonnes += (row.dispatched_weight ?? 0) / 1000;
+      totals.set(warehouse, slot);
+    }
+    return [...totals.entries()]
+      .sort((a, b) => b[1].tonnes - a[1].tonnes)
+      .map(([warehouse, totalsFor]) => ({
+        key: warehouse,
+        label: warehouse,
+        value: `${decimal(totalsFor.tonnes, 2)} t`,
+        sub: `${whole(totalsFor.bills)} ${totalsFor.bills === 1 ? 'bill' : 'bills'}`,
+      }));
+  })();
 
   return (
     <OpsDrill
@@ -767,8 +869,15 @@ function DispatchedDrill({
       onClose={onClose}
       stats={[
         { label: 'Tonnes', value: decimal(totalTonnes) },
-        { label: 'Bills', value: whole(bills.data?.count ?? rows.length) },
+        { label: 'Bills', value: whole(total) },
       ]}
+      breakdown={{
+        title: truncated
+          ? `Left from, by warehouse · first ${whole(rows.length)} of ${whole(total)} bills`
+          : 'Left from, by warehouse',
+        items: byWarehouse,
+        empty: 'No bill on this page carries a warehouse.',
+      }}
       rows={rows}
       rowKey={(row) => String(row.id)}
       empty={
@@ -780,6 +889,9 @@ function DispatchedDrill({
       columns={[
         { label: 'Invoice', cell: (row) => row.sap_doc_num || row.invoice_number },
         { label: 'Customer', cell: (row) => row.customer_name },
+        // Next to the customer rather than at the end: the pair "who, and out
+        // of where" is the one a reader scans down.
+        { label: 'Warehouse', cell: (row) => billWarehouse(row.warehouses), dim: true },
         { label: 'Vehicle', cell: (row) => row.vehicle_no || '—' },
         { label: 'Transporter', cell: (row) => row.transporter_name || '—', dim: true },
         {

@@ -1,7 +1,7 @@
 import '../../logistics-control/styles/ops-board.css';
 import '../styles/plant-board.css';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import {
@@ -11,8 +11,10 @@ import {
   OpsMeter,
   OpsTopbar,
 } from '../../logistics-control/components';
+import { useFullBleed } from '../../logistics-control/hooks';
 import type { WorkforceStrip } from '../../logistics-control/types';
 import { usePlantBoard } from '../api';
+import { PlantBoardDrill, type PlantDrillKey } from '../components/PlantBoardDrill';
 import type {
   PlantBoardResponse,
   PlantBoardWorkforce,
@@ -201,7 +203,30 @@ function peopleFor(
 export default function PlantBoardDashboardPage() {
   const { data, isFetching, error, refetch } = usePlantBoard();
   const shellRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * Which tile's rows are open, if any.
+   *
+   * One at a time by construction — the panel covers the board, so a second
+   * would have nothing to open over. Held here rather than inside a tile so
+   * the panel is a sibling of the board: every card sets `overflow: hidden`,
+   * and a panel rendered inside one would be clipped by the card that opened
+   * it.
+   *
+   * Nothing about the wall changes. A television is not clicked, so a board
+   * left alone never opens one of these; it is the desks with the same URL
+   * open that ask "which ones" of every figure.
+   */
+  const [drill, setDrill] = useState<PlantDrillKey | null>(null);
+  const openDrill: DrillOpener = (key) => () => setDrill(key);
+
   const { isFullscreen, toggle } = useFullscreen(shellRef);
+  // Releases the shell's max-width and padding for the duration, the same way
+  // the Logistics board does. Without it the board was laid out for the
+  // viewport while living in a column several hundred pixels narrower, and
+  // every length inside is a multiple of a unit that believed the wider
+  // figure -- which is what pushed the big numbers into their own units.
+  useFullBleed(shellRef);
 
   if (error && !data) {
     return (
@@ -249,15 +274,25 @@ export default function PlantBoardDashboardPage() {
         />
 
         <main className="ops-stack">
-          <PurchaseBand data={data} degraded={degraded} />
-          <StoreBand data={data} degraded={degraded} />
-          <ProductionBand data={data} degraded={degraded} />
-          <ShiftingBand data={data} degraded={degraded} />
+          <PurchaseBand data={data} degraded={degraded} onOpen={openDrill} />
+          <StoreBand data={data} degraded={degraded} onOpen={openDrill} />
+          <ProductionBand data={data} degraded={degraded} onOpen={openDrill} />
+          <ShiftingBand data={data} degraded={degraded} onOpen={openDrill} />
         </main>
       </div>
+
+      {/* The rows behind whichever tile was clicked. It reads the same `data`
+          the tiles do, so the poll keeps it current while it is open and the
+          panel can never disagree with the card underneath it. */}
+      {drill && (
+        <PlantBoardDrill which={drill} data={data} onClose={() => setDrill(null)} />
+      )}
     </div>
   );
 }
+
+/** Curried so a tile can be handed `onOpen('non-moving')` and nothing else. */
+type DrillOpener = (key: PlantDrillKey) => () => void;
 
 // ============================================================================
 // Header
@@ -410,9 +445,11 @@ function PlantTopbar({
 function PurchaseBand({
   data,
   degraded,
+  onOpen,
 }: {
   data: PlantBoardResponse | undefined;
   degraded: string[];
+  onOpen: DrillOpener;
 }) {
   const purchase = data?.purchase ?? null;
   const people = peopleFor(data?.workforce, 'purchase');
@@ -486,6 +523,7 @@ function PurchaseBand({
     >
       <OpsGroup
         name="Plan this month"
+        onOpen={onOpen('plan')}
         // The tag is the share, the figure is the absolute — never the same
         // number twice in different type sizes. Which plan month this is
         // already sits in the header chip.
@@ -551,6 +589,7 @@ function PurchaseBand({
           registers that would each have their own idea of the month. */}
       <OpsGroup
         name="Purchased"
+        onOpen={onOpen('purchased')}
         tag={{ label: `${whole(purchase.po_count)} POs raised`, tone: 'neut' }}
         // The line count, and nothing else. How many of them are past due was
         // asked for and then dropped: the tile answers "what did we buy", and
@@ -580,6 +619,7 @@ function PurchaseBand({
 
       <OpsGroup
         name="Against benchmark"
+        onOpen={onOpen('benchmark')}
         tag={
           purchase.below_benchmark_count > 0
             ? {
@@ -625,6 +665,7 @@ function PurchaseBand({
           one thing a wall board must not do. */}
       <OpsGroup
         name="Over purchased"
+        onOpen={onOpen('over-purchased')}
         tag={
           purchase.over_purchased_count > 0
             ? { label: `${whole(purchase.over_purchased_count)} SKUs over`, tone: 'warn' }
@@ -659,9 +700,11 @@ function PurchaseBand({
 function StoreBand({
   data,
   degraded,
+  onOpen,
 }: {
   data: PlantBoardResponse | undefined;
   degraded: string[];
+  onOpen: DrillOpener;
 }) {
   const store = data?.store ?? null;
   const people = peopleFor(data?.workforce, 'store');
@@ -718,6 +761,7 @@ function StoreBand({
           movements would actually mean "last count that found a discrepancy". */}
       <OpsGroup
         name="Stock space"
+        onOpen={onOpen('stock-space')}
         tag={
           space.audit_days_ago == null
             ? { label: 'never counted', tone: 'nil' }
@@ -809,6 +853,7 @@ function StoreBand({
           divide by. A count and a value need neither. */}
       <OpsGroup
         name="Non-moving stock"
+        onOpen={onOpen('non-moving')}
         tag={{ label: `${whole(idle.item_count)} SKUs idle`, tone: 'neut' }}
         sub={`Oldest ${whole(idle.oldest_days)} days · ${whole(idle.recent_count)} SKUs still moving`}
         value={money(idle.total_value)}
@@ -841,6 +886,7 @@ function StoreBand({
           packaging store. */}
       <OpsGroup
         name="Packing material in"
+        onOpen={onOpen('pm-vehicles')}
         tag={{
           label: `${whole(vehicles.po_count)} POs · ${whole(vehicles.line_count)} lines`,
           tone: 'neut',
@@ -890,6 +936,7 @@ function StoreBand({
           by it reports one. */}
       <OpsGroup
         name="Blowing this month"
+        onOpen={onOpen('blowing')}
         // What is turning right now, and what it has cost so far. A different
         // question from the two monthly figures below it, which is why it sits
         // in the tag rather than beside them.
@@ -940,9 +987,11 @@ function StoreBand({
 function ProductionBand({
   data,
   degraded,
+  onOpen,
 }: {
   data: PlantBoardResponse | undefined;
   degraded: string[];
+  onOpen: DrillOpener;
 }) {
   const production = data?.production ?? null;
   const people = peopleFor(data?.workforce, 'production');
@@ -1039,6 +1088,7 @@ function ProductionBand({
           payload for anyone who wants them; they are not a second headline. */}
       <OpsGroup
         name="Today on the lines"
+        onOpen={onOpen('today-lines')}
         tag={{
           label:
             todayRuns === null
@@ -1080,6 +1130,7 @@ function ProductionBand({
           which is what the note under the bar counts. */}
       <OpsGroup
         name="Monthly planning"
+        onOpen={onOpen('monthly-planning')}
         tag={{
           label: attainment == null ? 'no plan' : `${attainment}% produced`,
           tone: attainmentTone,
@@ -1123,6 +1174,7 @@ function ProductionBand({
           moment a new pallet of the same SKU lands beside it. */}
       <OpsGroup
         name="Total stock"
+        onOpen={onOpen('total-stock')}
         // The value as the pill: a different measure from the pieces above it,
         // and the one a reader quotes.
         tag={{ label: money(floor.stock_value), tone: 'neut' }}
@@ -1179,6 +1231,7 @@ function ProductionBand({
           starts logging oil waste against runs. */}
       <OpsGroup
         name="Wastage"
+        onOpen={onOpen('wastage')}
         tag={{
           label:
             wasteBehind == null
@@ -1228,9 +1281,11 @@ function ProductionBand({
 function ShiftingBand({
   data,
   degraded,
+  onOpen,
 }: {
   data: PlantBoardResponse | undefined;
   degraded: string[];
+  onOpen: DrillOpener;
 }) {
   const shifting = data?.shifting ?? null;
   const people = peopleFor(data?.workforce, 'shifting');
@@ -1272,6 +1327,7 @@ function ShiftingBand({
           compare them by eye instead. */}
       <OpsGroup
         name="Declared today"
+        onOpen={onOpen('declared')}
         // No SAP branch on this half: the register snapshots its own litres per
         // piece as each line is typed, so its tonnage stands whatever HANA is
         // doing. What it can report that nothing else can is a WITHDRAWN
@@ -1299,6 +1355,7 @@ function ShiftingBand({
 
       <OpsGroup
         name="Shipped today"
+        onOpen={onOpen('shipped')}
         tag={
           (shifting.shipped.rejected_pieces ?? 0) > 0
             ? {

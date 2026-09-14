@@ -20,6 +20,26 @@ export interface OpsDrillColumn<Row> {
   dim?: boolean;
 }
 
+/**
+ * A second cut of the same rows, above the table.
+ *
+ * The table answers "which ones"; this answers "where", or "whose", or
+ * whatever the second question about a figure is. It is a strip of totals
+ * rather than a second table on purpose: the panel is already as long as its
+ * rows, and a reader who wants the detail has it directly underneath.
+ *
+ * Every item must be a partition of the SAME figure the stats report. A
+ * breakdown whose parts do not add up to the headline is the drill-down
+ * disagreeing with the tile that opened it, which is the one thing this panel
+ * exists not to do.
+ */
+export interface OpsDrillBreakdown {
+  title: string;
+  items: { key: string; label: string; value: string; sub?: string }[];
+  /** Said plainly when there is nothing to break down. */
+  empty?: string;
+}
+
 export interface OpsDrillProps<Row> {
   /** The tile's name, repeated so the panel is visibly the thing clicked. */
   title: string;
@@ -28,6 +48,8 @@ export interface OpsDrillProps<Row> {
   domain: OpsDomain;
   /** The figures the table adds up to — the tile's own numbers. */
   stats?: { label: string; value: string }[];
+  /** A second cut of the same rows, between the stats and the table. */
+  breakdown?: OpsDrillBreakdown;
   columns: OpsDrillColumn<Row>[];
   rows: readonly Row[];
   /** Stable key per row. */
@@ -72,6 +94,7 @@ export function OpsDrill<Row>({
   subtitle,
   domain,
   stats,
+  breakdown,
   columns,
   rows,
   rowKey,
@@ -139,6 +162,27 @@ export function OpsDrill<Row>({
                 <span className="v">{stat.value}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {breakdown && (
+          <div className="ops-drill__cut">
+            <h3>{breakdown.title}</h3>
+            {breakdown.items.length === 0 ? (
+              <p className="ops-drill__empty">
+                {breakdown.empty ?? 'Nothing to break down.'}
+              </p>
+            ) : (
+              <div className="ops-drill__cutrow">
+                {breakdown.items.map((item) => (
+                  <div key={item.key} className="ops-drill__stat">
+                    <span className="k">{item.label}</span>
+                    <span className="v">{item.value}</span>
+                    {item.sub && <span className="s">{item.sub}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

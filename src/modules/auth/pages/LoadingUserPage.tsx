@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { AUTH_ROUTES } from '@/config/constants';
+import { AUTH_ROUTES, HTTP_STATUS } from '@/config/constants';
 import { ROUTES } from '@/config/routes.config';
 import { updateUser } from '@/core/auth';
 import { authService } from '@/core/auth/services/auth.service';
@@ -9,6 +9,35 @@ import { indexedDBService } from '@/core/auth/services/indexedDb.service';
 import { ensureValidToken } from '@/core/auth/utils/tokenRefresh.util';
 import { useAppDispatch } from '@/core/store';
 import { PageLoadError } from '@/shared/components/PageLoadError';
+
+/**
+ * Was this a rejected session rather than a broken connection?
+ *
+ * Read off the STATUS, not the message text. The api client throws an
+ * `ApiError` whose `message` is the server's own `detail` — for a rejected
+ * token that is "Authentication credentials were not provided.", which contains
+ * neither "401" nor "Unauthorized". Matching on those strings therefore missed
+ * every real expiry and sent the reader to "check your internet connection"
+ * with the backend up and answering.
+ *
+ * The string check stays as a fallback for the paths that still throw a plain
+ * `Error` — losing a redirect is worse than an extra one, because the failure
+ * mode is a dead-end page on a working system.
+ */
+function isUnauthorized(error: unknown): boolean {
+  if (typeof error === 'object' && error !== null) {
+    const status = (error as { status?: number; response?: { status?: number } }).status;
+    const responseStatus = (error as { response?: { status?: number } }).response?.status;
+    if (status === HTTP_STATUS.UNAUTHORIZED || responseStatus === HTTP_STATUS.UNAUTHORIZED) {
+      return true;
+    }
+  }
+
+  return (
+    error instanceof Error &&
+    (error.message.includes('401') || error.message.includes('Unauthorized'))
+  );
+}
 
 /**
  * LoadingUserPage component
@@ -67,11 +96,9 @@ export default function LoadingUserPage() {
         // Navigate to the intended URL (or dashboard if none)
         navigate(from, { replace: true });
       } catch (err) {
-        // If token is invalid (401), redirect to login
-        if (
-          err instanceof Error &&
-          (err.message.includes('401') || err.message.includes('Unauthorized'))
-        ) {
+        // An expired session sends you to the login page; anything else is a
+        // real failure worth showing.
+        if (isUnauthorized(err)) {
           await indexedDBService.clearAuthData();
           navigate(AUTH_ROUTES.login, { replace: true });
         } else {

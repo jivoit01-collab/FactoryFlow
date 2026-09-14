@@ -124,6 +124,14 @@ export interface BillRow {
   eway_bill: string;
   priority: string;
   product_variety: string;
+  /**
+   * Where the stock left from, as SAP aggregated it — one code per invoice
+   * LINE, repeats and all. Collapse it with `billWarehouse` before showing it.
+   *
+   * Optional because an older backend does not send it, and absent has to read
+   * as unknown rather than as no warehouse.
+   */
+  warehouses?: string;
   dispatches: BillDispatch[];
 }
 

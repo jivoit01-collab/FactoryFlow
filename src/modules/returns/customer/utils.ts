@@ -61,8 +61,18 @@ export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
   REJECTED: 'bg-rose-100 text-rose-800',
 };
 
+/**
+ * The condition picker, most-used first — `DAMAGED` is the default the line is
+ * created with, and `LEAKED` sits next to it because the two are what the clerk
+ * is choosing between on nearly every line.
+ *
+ * `LEAKED` is deliberately its own option rather than a word typed into the
+ * reason box: oil coming back wet is the commonest return and the only one that
+ * points at a specific cause, so it has to be countable without reading prose.
+ */
 export const CONDITION_OPTIONS: { value: GoodsReturnItemCondition; label: string }[] = [
   { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'LEAKED', label: 'Leaked' },
   { value: 'GOOD', label: 'Good' },
   { value: 'EXPIRED', label: 'Expired' },
   { value: 'OTHER', label: 'Other' },

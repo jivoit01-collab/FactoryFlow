@@ -11,6 +11,8 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
+import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
 import {
   LOGISTICS_CONTROL_VIEW_PERMISSIONS,
@@ -64,6 +66,12 @@ const FactoryExpenseWallPage = lazy(
 const FactoryExpenseConfigPage = lazy(
   () => import('./factory-expense/pages/FactoryExpenseConfigPage'),
 );
+const CompanyExpenseDashboardPage = lazy(
+  () => import('./company-expense/pages/CompanyExpenseDashboardPage'),
+);
+const CustomerReturnsDashboardPage = lazy(
+  () => import('./customer-returns/pages/CustomerReturnsDashboardPage'),
+);
 const WarehouseControlDashboardPage = lazy(
   () => import('./warehouse-control/pages/WarehouseControlDashboardPage'),
 );
@@ -79,6 +87,12 @@ const LogisticsControlDashboardPage = lazy(
 );
 const LogisticsControlConfigPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlConfigPage'),
+);
+const BeveragesControlDashboardPage = lazy(
+  () => import('./logistics-control/pages/BeveragesControlDashboardPage'),
+);
+const BeveragesControlConfigPage = lazy(
+  () => import('./logistics-control/pages/BeveragesControlConfigPage'),
 );
 
 export const dashboardsModuleConfig: ModuleConfig = {
@@ -181,6 +195,33 @@ export const dashboardsModuleConfig: ModuleConfig = {
       // the board already displays to anyone who can open it.
       path: '/dashboards/logistics-control/settings',
       element: <LogisticsControlConfigPage />,
+      layout: 'main',
+      permissions: LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
+      breadcrumb: { label: 'Board Settings' },
+    },
+    {
+      // The same board, read for the beverages plant: BH-FG and Jivo Beverages
+      // alone. Its own route rather than a scope toggle on the logistics board,
+      // because a wall screen has nobody standing at it to click one and both
+      // plants are watched at the same time, on two screens.
+      //
+      // Top level rather than nested under the logistics path, even though the
+      // two boards share one implementation. That sharing is a fact about this
+      // codebase, not about the plant -- a nested URL would tell a reader the
+      // beverages wall is part of the oil one, and it is a separate operation
+      // watched by separate people.
+      path: '/dashboards/beverage',
+      element: <BeveragesControlDashboardPage />,
+      layout: 'main',
+      permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Beverages Control' },
+    },
+    {
+      // BH-FG's rated capacity and last audit, and the Beverages fleet and
+      // section salaries. A separate screen from the logistics board's because
+      // every figure on it is stored per company.
+      path: '/dashboards/beverage/settings',
+      element: <BeveragesControlConfigPage />,
       layout: 'main',
       permissions: LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
       breadcrumb: { label: 'Board Settings' },
@@ -320,6 +361,36 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Configuration' },
     },
     {
+      // The same spend as a grid: a row per company, a column per cost line.
+      // Its own route rather than a tab on the wall above, because the two
+      // answer different questions — that board asks "what is the factory
+      // spending today", this one "whose spend is it" — and a wall screen has
+      // nobody standing at it to switch tabs.
+      //
+      // Gated on the same pair as the wall: it reads the same registers through
+      // the same server-side permission class, so it is that board rearranged
+      // rather than a new disclosure, and no new right has to be created on the
+      // live database before anyone can open it.
+      path: '/dashboards/company-expense',
+      element: <CompanyExpenseDashboardPage />,
+      layout: 'main',
+      permissions: COMPANY_EXPENSE_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Company Expense' },
+    },
+    {
+      // Customer returns: how much came back, in what state, and from whom.
+      //
+      // Gated on the returns module's own view right rather than a dashboards
+      // one: the board reports the returns its reader can already open one at a
+      // time, so it discloses nothing extra, and it needs no permission row
+      // created on the live database before anyone can use it.
+      path: '/dashboards/customer-returns',
+      element: <CustomerReturnsDashboardPage />,
+      layout: 'main',
+      permissions: CUSTOMER_RETURNS_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Customer Returns' },
+    },
+    {
       path: '/dashboards/dispatch-tracking',
       element: <DispatchTrackingDashboardPage />,
       layout: 'main',
@@ -362,6 +433,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // gate later cannot silently hide the whole Dashboards menu from
         // whoever it was narrowed to.
         ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+        // Customer Returns lives here too. A returns clerk holds none of the
+        // rights above, so without this the whole Dashboards menu -- not just
+        // their board -- stays hidden from them.
+        ...CUSTOMER_RETURNS_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
@@ -383,6 +458,18 @@ export const dashboardsModuleConfig: ModuleConfig = {
         {
           path: '/dashboards/logistics-control',
           title: 'Logistics Control',
+          permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+        },
+        {
+          // The same board for the beverages plant. Listed as its own entry
+          // rather than hidden behind a toggle on the one above — two walls,
+          // two teams, and each has to be reachable in one click.
+          //
+          // No new right: it reads the same feeds as the board above, scoped
+          // to a different company, so a viewer who may read one may read the
+          // other. See the parent's note for why that list is spread there.
+          path: '/dashboards/beverage',
+          title: 'Beverages Control',
           permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
         },
         {
@@ -441,6 +528,20 @@ export const dashboardsModuleConfig: ModuleConfig = {
             DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
             DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
           ],
+        },
+        {
+          // The same spend, company by company. Needs nothing added to the
+          // parent's permission list above — it holds exactly the two rights
+          // the Factory Expense entry already spreads there, so the Dashboards
+          // menu cannot be hidden by this board's gate.
+          path: '/dashboards/company-expense',
+          title: 'Company Expense',
+          permissions: COMPANY_EXPENSE_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/customer-returns',
+          title: 'Customer Returns',
+          permissions: CUSTOMER_RETURNS_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/dispatch-fulfilment',

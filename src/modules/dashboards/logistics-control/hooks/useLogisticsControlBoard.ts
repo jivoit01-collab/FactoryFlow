@@ -25,7 +25,6 @@ import {
   useTransporterAccount,
 } from '../api';
 import {
-  LOGISTICS_CONTROL_DISPATCH_COMPANIES,
   LOGISTICS_CONTROL_FREIGHT_PAYMENT_DAYS,
   LOGISTICS_CONTROL_FREIGHT_REFRESH_MS,
   LOGISTICS_CONTROL_FUNNEL_AGE_BANDS,
@@ -35,14 +34,12 @@ import {
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_ITEM_GROUP,
+  LOGISTICS_CONTROL_OIL_SCOPE,
   LOGISTICS_CONTROL_REFRESH_MS,
-  LOGISTICS_CONTROL_SECTION_DEPARTMENTS,
-  LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS,
   LOGISTICS_CONTROL_STOCK_ITEM_GROUPS,
   LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS,
-  LOGISTICS_CONTROL_WAREHOUSE,
-  LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
+  type LogisticsControlScope,
 } from '../constants';
 import {
   buildFunnelColumnFromBuckets,
@@ -80,8 +77,15 @@ function localDate(date: Date): string {
  *
  * The single aggregate endpoint this board eventually wants would replace the
  * fan-out here and nothing above it.
+ *
+ * Everything that makes one plant's board different from another's arrives in
+ * `scope` -- the warehouse, the companies added together, the labour departments
+ * and the tiles with no source on that side of the plant. Defaulted to the
+ * original Oil scope so a caller that names none behaves as it always did.
  */
-export function useLogisticsControlBoard() {
+export function useLogisticsControlBoard(
+  scope: LogisticsControlScope = LOGISTICS_CONTROL_OIL_SCOPE,
+) {
   const { hasAnyPermission, hasPermission } = usePermission();
   // The employee roll is the one feed behind a grant this board can check
   // before asking: a viewer without it would get a 403 per company, every time
@@ -109,7 +113,7 @@ export function useLogisticsControlBoard() {
   // Finished goods only, filtered in the endpoint's own SQL rather than here —
   // see LOGISTICS_CONTROL_STOCK_ITEM_GROUPS for why packaging is excluded.
   const occupancy = useWarehouseOccupancy(
-    LOGISTICS_CONTROL_WAREHOUSE,
+    scope.warehouse,
     true,
     LOGISTICS_CONTROL_STOCK_ITEM_GROUPS,
   );
@@ -118,20 +122,28 @@ export function useLogisticsControlBoard() {
     {
       age: LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
       item_group: LOGISTICS_CONTROL_NON_MOVING_ITEM_GROUP,
-      warehouse: [LOGISTICS_CONTROL_WAREHOUSE],
+      warehouse: [scope.warehouse],
     },
-    LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
+    scope.warehouseCompany,
   );
 
-  const wmsWarehouses = useControlWmsCollection('warehouses');
-  const wmsLocations = useControlWmsCollection('locations');
-  const wmsPallets = useControlWmsCollection('pallets');
-  const wmsPurposes = useControlWmsCollection('cellPurposes');
+  /**
+   * Pallet slots, and only where a scope has a WMS floor mapped to it.
+   *
+   * Four collection reads for one fallback figure, so a scope WMS knows nothing
+   * about skips them outright rather than fetching the whole estate and finding
+   * its warehouse absent from it.
+   */
+  const wmsMapped = !scope.absent.palletSpace;
+  const wmsWarehouses = useControlWmsCollection('warehouses', wmsMapped);
+  const wmsLocations = useControlWmsCollection('locations', wmsMapped);
+  const wmsPallets = useControlWmsCollection('pallets', wmsMapped);
+  const wmsPurposes = useControlWmsCollection('cellPurposes', wmsMapped);
 
   // One request per company, kept apart: the bills endpoint takes no company
   // parameter, and the tile shows Oil and Mart side by side.
   const planBills = usePendingBillsByCompany(
-    LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    scope.dispatchCompanies,
     warehouseControlPlanWindow(today),
     LOGISTICS_CONTROL_MAX_ROLLUP_ROWS,
   );
@@ -148,7 +160,7 @@ export function useLogisticsControlBoard() {
    * would just accumulate everything ever sent and call it allocated.
    */
   const floorToWarehouse = usePFMovements({
-    toWarehouse: LOGISTICS_CONTROL_WAREHOUSE,
+    toWarehouse: scope.warehouse,
     destinationKind: 'GODOWN',
     dateFrom: today,
     dateTo: today,
@@ -167,11 +179,11 @@ export function useLogisticsControlBoard() {
   // gate, and the month total grows with it. Postgres-backed, so the cost is a
   // cheap aggregate rather than a SAP round-trip.
   const dispatchToday = useDispatchFulfilment(
-    { from: today, to: today, companies: LOGISTICS_CONTROL_DISPATCH_COMPANIES },
+    { from: today, to: today, companies: scope.dispatchCompanies },
     { refetchIntervalMs: LOGISTICS_CONTROL_REFRESH_MS },
   );
   const dispatchMonth = useDispatchFulfilment(
-    { from: monthStart, to: today, companies: LOGISTICS_CONTROL_DISPATCH_COMPANIES },
+    { from: monthStart, to: today, companies: scope.dispatchCompanies },
     { refetchIntervalMs: LOGISTICS_CONTROL_REFRESH_MS },
   );
 
@@ -185,7 +197,7 @@ export function useLogisticsControlBoard() {
   const dispatchYesterday = useDispatchFulfilment({
     from: yesterday,
     to: yesterday,
-    companies: LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    companies: scope.dispatchCompanies,
   });
 
   /**
@@ -197,7 +209,7 @@ export function useLogisticsControlBoard() {
    * the day's target from eleven o'clock.
    */
   const dayPlanBills = useDayPlanBills(
-    LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    scope.dispatchCompanies,
     today,
     LOGISTICS_CONTROL_MAX_ROLLUP_ROWS,
     LOGISTICS_CONTROL_REFRESH_MS,
@@ -227,7 +239,10 @@ export function useLogisticsControlBoard() {
    * stores no tonnage and no per-bill split, so this tile cannot be stated in
    * tonnes without a source that does not exist yet.
    */
-  const partialScans = useApprovedPartialScans(LOGISTICS_CONTROL_DISPATCH_COMPANIES);
+  const partialScans = useApprovedPartialScans(
+    scope.dispatchCompanies,
+    !scope.absent.barcodeScanning,
+  );
 
   // ------------------------------------------------------------------ freight
   /**
@@ -240,7 +255,7 @@ export function useLogisticsControlBoard() {
    * nothing dispatched can be older than 11 days.
    */
   const grpoQueue = usePendingGrpoSummary(
-    LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    scope.dispatchCompanies,
     LOGISTICS_CONTROL_REFRESH_MS,
     canSeeFreight,
   );
@@ -254,7 +269,7 @@ export function useLogisticsControlBoard() {
    * any point. It comes off SAP's own open A/P invoices instead.
    */
   const transporterAccount = useTransporterAccount(
-    LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    scope.dispatchCompanies,
     LOGISTICS_CONTROL_FREIGHT_PAYMENT_DAYS,
     LOGISTICS_CONTROL_FREIGHT_REFRESH_MS,
     canSeeFreight,
@@ -266,7 +281,7 @@ export function useLogisticsControlBoard() {
   // Owned vehicles and per-section salary, typed in on the settings screen
   // because nothing in the system holds them. The head counts typed there are
   // now a fallback rather than the only source — see the roll below.
-  const boardSettings = useBoardSettings();
+  const boardSettings = useBoardSettings(true, scope.settingsCompany);
 
   /**
    * The permanent staff on the roll, both companies.
@@ -277,14 +292,22 @@ export function useLogisticsControlBoard() {
    * saying so — a standing payroll and a daily gate intake are two different
    * populations.
    */
-  const employeeRoll = useEmployeeRoll(LOGISTICS_CONTROL_DISPATCH_COMPANIES, canSeeWorkforce);
+  const employeeRoll = useEmployeeRoll(scope.dispatchCompanies, canSeeWorkforce);
 
   // Today's duty state per owned truck. Polled with the board — gate arrivals
   // move through the day, unlike the fleet list itself.
-  const ownedVehicles = useOwnedVehicleStatus(LOGISTICS_CONTROL_REFRESH_MS);
+  const ownedVehicles = useOwnedVehicleStatus(
+    LOGISTICS_CONTROL_REFRESH_MS,
+    scope.settingsCompany,
+  );
 
-  // Stock dispatched from a godown and not yet received.
-  const transit = useStockInTransit(LOGISTICS_CONTROL_REFRESH_MS);
+  // Stock dispatched from a godown and not yet received. Switched off entirely
+  // for a scope the endpoint's route table has no leg for -- see `absent`.
+  const transit = useStockInTransit(
+    LOGISTICS_CONTROL_REFRESH_MS,
+    scope.settingsCompany,
+    !scope.absent.stockInTransit,
+  );
 
   // ============================================================== derivations
 
@@ -307,7 +330,7 @@ export function useLogisticsControlBoard() {
     // object does nothing — the Non-Moving dashboard narrows it client-side too,
     // and without this the board was weighing idle stock from the whole plant.
     const rows = (nonMoving.data?.data ?? []).filter(
-      (row) => row.warehouse?.trim().toUpperCase() === LOGISTICS_CONTROL_WAREHOUSE,
+      (row) => row.warehouse?.trim().toUpperCase() === scope.warehouse,
     );
     const stockRows = occupancy.data?.data ?? [];
 
@@ -343,7 +366,7 @@ export function useLogisticsControlBoard() {
       quantity: nonMoving.data?.summary?.total_quantity ?? 0,
       value: nonMoving.data?.summary?.total_value ?? 0,
     };
-  }, [nonMoving.data, occupancy.data]);
+  }, [nonMoving.data, occupancy.data, scope.warehouse]);
 
   /**
    * Filled percentage for the pinned warehouse, by pallet slot.
@@ -365,10 +388,16 @@ export function useLogisticsControlBoard() {
 
     return (
       summary.warehouses.find(
-        (row) => row.code.trim().toUpperCase() === LOGISTICS_CONTROL_WAREHOUSE,
+        (row) => row.code.trim().toUpperCase() === scope.warehouse,
       ) ?? null
     );
-  }, [wmsWarehouses.data, wmsLocations.data, wmsPallets.data, wmsPurposes.data]);
+  }, [
+    wmsWarehouses.data,
+    wmsLocations.data,
+    wmsPallets.data,
+    wmsPurposes.data,
+    scope.warehouse,
+  ]);
 
   /**
    * Bills with a dispatch date that have not gone out.
@@ -482,7 +511,7 @@ export function useLogisticsControlBoard() {
           grpoQueue.isLoading
             ? 'Reading the queue'
             : !grpoQueue.data ||
-                grpoQueue.data.unread.length >= LOGISTICS_CONTROL_DISPATCH_COMPANIES.length
+                grpoQueue.data.unread.length >= scope.dispatchCompanies.length
               ? 'Could not read the receipt queue'
               : undefined,
         ),
@@ -539,6 +568,9 @@ export function useLogisticsControlBoard() {
     grpoQueue.isLoading,
     transporterAccount.data,
     transporterAccount.isLoading,
+    // The GRPO column calls itself unreadable when every company refused, so it
+    // has to recompute when the board is pointed at a different set of them.
+    scope.dispatchCompanies.length,
   ]);
 
   /** Employees and labour, per card and in total. */
@@ -590,8 +622,7 @@ export function useLogisticsControlBoard() {
     ) => {
       const section = labourForSection(departments, names);
       const onRoll =
-        employeesForSection(roll, LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS[section_]) ??
-        employees;
+        employeesForSection(roll, scope.sectionEmployeeDepartments[section_]) ?? employees;
       // Priced against the gate's own head count when a rate is set, rather
       // than the expense board's figure for the same people.
       const labourCost =
@@ -660,24 +691,30 @@ export function useLogisticsControlBoard() {
       })(),
       warehouse: strip(
         'warehouse',
-        LOGISTICS_CONTROL_SECTION_DEPARTMENTS.warehouse,
+        scope.sectionDepartments.warehouse,
         cfg?.warehouse_employees ?? null,
         cfg?.warehouse_salary_daily ?? null,
       ),
       dispatch: strip(
         'dispatch',
-        LOGISTICS_CONTROL_SECTION_DEPARTMENTS.dispatch,
+        scope.sectionDepartments.dispatch,
         cfg?.dispatch_employees ?? null,
         cfg?.dispatch_salary_daily ?? null,
       ),
       transport: strip(
         'transport',
-        LOGISTICS_CONTROL_SECTION_DEPARTMENTS.transport,
+        scope.sectionDepartments.transport,
         cfg?.transport_employees ?? null,
         cfg?.transport_salary_daily ?? null,
       ),
     };
-  }, [expense.data, boardSettings.data, employeeRoll.data]);
+  }, [
+    expense.data,
+    boardSettings.data,
+    employeeRoll.data,
+    scope.sectionDepartments,
+    scope.sectionEmployeeDepartments,
+  ]);
 
   /**
    * Today's tile: tonnage out, the day's booked plan, and yesterday's mark.
@@ -752,7 +789,7 @@ export function useLogisticsControlBoard() {
    * anything the dispatch dashboard does and should not slow that page down.
    */
   const freightRate = useFreightRate(
-    LOGISTICS_CONTROL_DISPATCH_COMPANIES,
+    scope.dispatchCompanies,
     monthStart,
     today,
     LOGISTICS_CONTROL_FREIGHT_REFRESH_MS,
@@ -832,6 +869,15 @@ export function useLogisticsControlBoard() {
    * spinner on a background refresh.
    */
   return {
+    /**
+     * The scope this board was read for.
+     *
+     * Returned rather than left for the caller to remember: the page, the
+     * topbar and every drill-down need the warehouse and the companies to
+     * label themselves, and a component that imported the constant instead
+     * would caption Beverages rows with an Oil warehouse code.
+     */
+    scope,
     today,
     monthStart,
     isFetching:
@@ -848,6 +894,14 @@ export function useLogisticsControlBoard() {
       /** Every stock row behind the tonnage, for the drill-down. */
       stockRows: occupancy.data?.data ?? [],
       nonMoving: nonMovingBands,
+      /**
+       * Why there are no pallet slots to fall back on, or null when there are.
+       *
+       * Only ever set for a scope with no WMS floor mapped to it. An unmapped
+       * warehouse and one whose slots simply have not loaded yet are the same
+       * `null` space otherwise, and the tile has to tell them apart.
+       */
+      spaceAbsent: scope.absent.palletSpace ?? null,
       // Reshaped for the shared CapacityMeter, which takes slot counts rather
       // than a percentage so it can draw used, unusable and free separately.
       space: palletSpace
@@ -864,6 +918,14 @@ export function useLogisticsControlBoard() {
           (row.reviewed_at ?? row.requested_at ?? '').slice(0, 7) === monthStart.slice(0, 7),
         );
         return {
+          /**
+           * Why this floor has no scan to fall short of, or null where it does.
+           *
+           * A floor that does not barcode its stock produces an empty register,
+           * which reads on a wall as flawless scanning discipline. This is what
+           * the tile prints instead of that zero.
+           */
+          absent: scope.absent.barcodeScanning ?? null,
           /** The approvals themselves, for the drill-down. */
           rows,
           approvals: rows.length,
@@ -989,6 +1051,15 @@ export function useLogisticsControlBoard() {
       loading: ownedVehicles.isLoading,
     },
     transit: {
+      /**
+       * Why this scope has nothing on the road to report, or null where it has.
+       *
+       * The transit read matches invoices against the receiving company's goods
+       * receipt over a fixed route table, so a plant with no leg in that table
+       * can only ever answer nothing -- which is not the same as nothing being
+       * out there.
+       */
+      absent: scope.absent.stockInTransit ?? null,
       bands: transit.data?.bands ?? null,
       totals: transit.data?.totals ?? { loads: 0, tonnes: 0 },
       /** The unreceived invoices themselves, for the drill-down. */

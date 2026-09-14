@@ -3,6 +3,7 @@ import {
   Boxes,
   ClipboardCheck,
   ClipboardList,
+  CupSoda,
   DoorOpen,
   Factory,
   IndianRupee,
@@ -11,6 +12,8 @@ import {
   Navigation,
   Package,
   PackageX,
+  Table2,
+  Undo2,
   Target,
   Truck,
   Wind,
@@ -27,7 +30,10 @@ import {
 import { usePermission } from '@/core/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
 
+import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
+import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
+import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
@@ -58,6 +64,18 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/warehouse-control',
     color: 'text-indigo-600',
     permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
+  },
+  {
+    // The beverages plant's own wall board. Its own card because it is its own
+    // page: the nav submenu is the only other way to it, and a board nobody can
+    // find is a board nobody puts on a screen.
+    title: 'Beverages Control',
+    description:
+      "BH-FG's stock, the beverages plant's dispatch, and the freight bills behind it",
+    icon: <CupSoda className="h-5 w-5" />,
+    route: '/dashboards/beverage',
+    color: 'text-violet-600',
+    permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   },
   {
     title: 'Stock Benchmark',
@@ -120,6 +138,24 @@ const dashboardsModules: DashboardsModuleCard[] = [
       DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
       DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
     ],
+  },
+  {
+    title: 'Company Expense',
+    description:
+      'The same spend as a grid - salary, electricity, maintenance and labour, company by company',
+    icon: <Table2 className="h-5 w-5" />,
+    route: '/dashboards/company-expense',
+    color: 'text-amber-600',
+    permissions: COMPANY_EXPENSE_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Customer Returns',
+    description:
+      'How much came back, in what state, which SKUs come back most, and who sent them',
+    icon: <Undo2 className="h-5 w-5" />,
+    route: '/dashboards/customer-returns',
+    color: 'text-sky-600',
+    permissions: CUSTOMER_RETURNS_VIEW_PERMISSIONS,
   },
   {
     title: 'Budget Approvals',

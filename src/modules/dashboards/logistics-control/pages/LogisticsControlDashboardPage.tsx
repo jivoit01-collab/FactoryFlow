@@ -22,10 +22,11 @@ import {
   LOGISTICS_CONTROL_DISPATCH_PERMISSIONS,
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
+  LOGISTICS_CONTROL_OIL_SCOPE,
   LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS,
-  LOGISTICS_CONTROL_WAREHOUSE,
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
+  type LogisticsControlScope,
 } from '../constants';
 import { useFullBleed, useLogisticsControlBoard } from '../hooks';
 
@@ -78,15 +79,25 @@ function decimal(value: number, digits = 1): string {
  * Built for a screen nobody is standing at: one viewport, nothing below the
  * fold, and type that scales with the display. See `ops-board.css` for why every
  * length is a `calc()` against a board-local unit rather than a `rem`.
+ *
+ * One component, two boards. `scope` carries the plant -- which floor, which
+ * companies, which labour departments, and which tiles have no source on that
+ * side of the site. Deliberately not two copies of this file: the whole value of
+ * a wall is that somebody learns the grid once, and two pages drift the moment
+ * one of them gets a fix the other does not.
  */
-export function LogisticsControlDashboardPage() {
+export function LogisticsControlDashboardPage({
+  scope = LOGISTICS_CONTROL_OIL_SCOPE,
+}: {
+  scope?: LogisticsControlScope;
+}) {
   const { hasAnyPermission } = usePermission();
   const canSeeWarehouse = hasAnyPermission(LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS);
   const canSeeDispatch = hasAnyPermission(LOGISTICS_CONTROL_DISPATCH_PERMISSIONS);
   const canSeeFreight = hasAnyPermission(LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS);
   const canSeeWorkforce = hasAnyPermission(LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS);
 
-  const board = useLogisticsControlBoard();
+  const board = useLogisticsControlBoard(scope);
 
   // Fullscreen targets the board itself, not the document, so the app shell
   // drops away and the `--u` clamp gets the real viewport to scale against.
@@ -105,11 +116,19 @@ export function LogisticsControlDashboardPage() {
   const [drill, setDrill] = useState<DrillKey | null>(null);
   const open = (key: DrillKey) => () => setDrill(key);
 
-  // The two facts SAP does not hold, typed in on the settings screen.
-  const settings = useWarehouseSettings(LOGISTICS_CONTROL_WAREHOUSE, canSeeWarehouse);
+  // The two facts SAP does not hold, typed in on the settings screen. Read for
+  // the board's own company, not the viewer's: capacity is stored per (company,
+  // warehouse) and a wall must show the same rating to everyone in front of it.
+  const settings = useWarehouseSettings(
+    scope.warehouse,
+    canSeeWarehouse,
+    scope.settingsCompany,
+  );
 
   const stock = board.warehouse.stockTonnage;
   const space = board.warehouse.space;
+  /** Why there are no pallet slots behind this scope, where that is settled. */
+  const spaceAbsent = board.warehouse.spaceAbsent;
   const nonMoving = board.warehouse.nonMoving;
   const pending = board.warehouse.pendingDispatch;
   const allocated = board.warehouse.allocated;
@@ -197,16 +216,16 @@ export function LogisticsControlDashboardPage() {
     <div className="ops-board" ref={boardRef}>
       <div className="ops-board__inner">
         <OpsTopbar
-          title="Operations board"
+          title={scope.title}
           scope={
             board.dispatch.companies.length > 0
-              ? `${LOGISTICS_CONTROL_WAREHOUSE} · ${board.dispatch.companies.join(' | ')}`
-              : `${LOGISTICS_CONTROL_WAREHOUSE} terminal`
+              ? `${scope.warehouse} · ${board.dispatch.companies.join(' | ')}`
+              : `${scope.warehouse} terminal`
           }
           busy={board.isFetching}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggle}
-          settingsTo="/dashboards/logistics-control/settings"
+          settingsTo={scope.settingsPath}
           chips={[
             { label: 'Month', value: format(new Date(board.monthStart), 'MMMM yyyy') },
             {
@@ -229,7 +248,14 @@ export function LogisticsControlDashboardPage() {
               sub:
                 board.workforce.roll.unread.length > 0
                   ? `${board.workforce.roll.unread.join(' and ')} unread`
-                  : `${board.dispatch.companies.length || 2} companies`,
+                  : // The board's own company count, never a hardcoded two: a
+                    // single-company board captioned "2 companies" states a
+                    // scope it does not have.
+                    (() => {
+                      const companies =
+                        board.dispatch.companies.length || scope.dispatchCompanies.length;
+                      return companies === 1 ? '1 company' : `${companies} companies`;
+                    })(),
             },
             {
               caption: 'Workforce cost today',
@@ -251,7 +277,7 @@ export function LogisticsControlDashboardPage() {
           <OpsBand
             domain="warehouse"
             title="Warehouse"
-            scope={LOGISTICS_CONTROL_WAREHOUSE}
+            scope={scope.warehouse}
             people={canSeeWorkforce ? board.workforce.warehouse : undefined}
             unavailable={canSeeWarehouse ? undefined : 'No access to warehouse stock.'}
           >
@@ -305,6 +331,10 @@ export function LogisticsControlDashboardPage() {
                   <p className="ops-note">
                     No rated capacity set — add one in board settings to show how full
                     this warehouse is.
+                    {/* Where slots are not merely unloaded but will never exist,
+                        say so: otherwise this reads as a warehouse somebody has
+                        yet to map, and somebody goes looking for the mapping. */}
+                    {space === null && spaceAbsent !== null ? ` ${spaceAbsent}` : ''}
                   </p>
                 )
               }
@@ -432,7 +462,7 @@ export function LogisticsControlDashboardPage() {
             scope={
               board.dispatch.companies.length > 0
                 ? board.dispatch.companies.join(' | ')
-                : 'Oil | Mart'
+                : scope.dispatchCompanies.join(' | ')
             }
             people={canSeeWorkforce ? board.workforce.dispatch : undefined}
             unavailable={canSeeDispatch ? undefined : 'No access to dispatch plans.'}
@@ -585,18 +615,28 @@ export function LogisticsControlDashboardPage() {
               }
             />
 
+            {/*
+              The one tile on this board that a floor without barcodes cannot
+              answer at all. An empty register there is not a clean month, it is
+              an absent practice -- and "none this month, 0 boxes" is the single
+              most flattering thing this board could say about a floor that scans
+              nothing. So the tile refuses the figure and states the reason.
+            */}
             <OpsGroup
               name="Sent without barcodes"
-              onOpen={open('unscanned')}
+              onOpen={unscanned.absent === null ? open('unscanned') : undefined}
               tag={
-                unscanned.approvals === 0
-                  ? { label: 'none this month', tone: 'ok' }
-                  : { label: `${whole(unscanned.approvals)} approvals`, tone: 'bad' }
+                unscanned.absent !== null
+                  ? { label: 'not barcoded', tone: 'nil' }
+                  : unscanned.approvals === 0
+                    ? { label: 'none this month', tone: 'ok' }
+                    : { label: `${whole(unscanned.approvals)} approvals`, tone: 'bad' }
               }
-              value={whole(unscanned.shortfallBoxes)}
-              unit="boxes"
+              value={unscanned.absent === null ? whole(unscanned.shortfallBoxes) : undefined}
+              unit={unscanned.absent === null ? 'boxes' : undefined}
+              missing={unscanned.absent ?? undefined}
               viz={
-                unscanned.error ? (
+                unscanned.absent !== null ? undefined : unscanned.error ? (
                   <p className="ops-note">Could not read the partial dispatch register.</p>
                 ) : (
                   <OpsMeter
@@ -814,38 +854,53 @@ export function LogisticsControlDashboardPage() {
 
             <OpsGroup
               name="Stock in transit"
-              onOpen={open('transit')}
+              onOpen={transit.absent === null ? open('transit') : undefined}
               tag={
-                transit.bands === null
-                  ? { label: 'no data', tone: 'nil' }
-                  : transit.bands.stale.loads > 0
-                    ? { label: `${whole(transit.bands.stale.loads)} over 7 days`, tone: 'bad' }
-                    : { label: `${whole(transit.totals.loads)} loads`, tone: 'neut' }
+                transit.absent !== null
+                  ? { label: 'no route', tone: 'nil' }
+                  : transit.bands === null
+                    ? { label: 'no data', tone: 'nil' }
+                    : transit.bands.stale.loads > 0
+                      ? {
+                          label: `${whole(transit.bands.stale.loads)} over 7 days`,
+                          tone: 'bad',
+                        }
+                      : { label: `${whole(transit.totals.loads)} loads`, tone: 'neut' }
               }
               sub="Dispatched, no SAP receipt"
               value={
-                transit.bands === null || !transit.weightsAvailable
+                transit.absent !== null ||
+                transit.bands === null ||
+                !transit.weightsAvailable
                   ? undefined
                   : decimal(transit.totals.tonnes)
               }
-              unit="tonnes"
-              loading={transit.loading}
+              unit={transit.absent === null ? 'tonnes' : undefined}
+              loading={transit.absent === null && transit.loading}
               // Every no-data case needs its own reason. Leaving this undefined
               // rendered an empty value beside a live "tonnes" unit, which reads
               // as a broken tile rather than an absent figure. Both sides of the
               // figure come from SAP now — the invoices out and the receipts
               // against them — so an outage leaves nothing to show at all.
               missing={
-                transit.error
-                  ? 'Could not read dispatches from SAP'
-                  : transit.bands === null
-                    ? 'SAP did not answer'
-                    : !transit.weightsAvailable
-                      ? 'SAP unreachable — dispatches not read'
-                      : undefined
+                // The scope having no leg in the route table comes first: it is
+                // settled rather than transient, and reporting it as an outage
+                // would send somebody to check on a SAP box that is perfectly
+                // well.
+                transit.absent !== null
+                  ? transit.absent
+                  : transit.error
+                    ? 'Could not read dispatches from SAP'
+                    : transit.bands === null
+                      ? 'SAP did not answer'
+                      : !transit.weightsAvailable
+                        ? 'SAP unreachable — dispatches not read'
+                        : undefined
               }
               viz={
-                transit.bands === null || !transit.weightsAvailable ? undefined : (
+                transit.absent !== null ||
+                transit.bands === null ||
+                !transit.weightsAvailable ? undefined : (
                   <>
                     <OpsMeter
                       segments={[
@@ -886,7 +941,14 @@ export function LogisticsControlDashboardPage() {
       {/* The rows behind whichever tile was clicked. Rendered here rather than
           inside the tile so only one can ever be open, and so the panel is a
           sibling of the board rather than a child of a clipped card. */}
-      {drill && <BoardDrill which={drill} board={board} onClose={() => setDrill(null)} />}
+      {drill && (
+        <BoardDrill
+          which={drill}
+          board={board}
+          scope={scope}
+          onClose={() => setDrill(null)}
+        />
+      )}
     </div>
   );
 }

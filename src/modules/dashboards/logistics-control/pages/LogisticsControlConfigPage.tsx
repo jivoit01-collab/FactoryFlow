@@ -7,7 +7,7 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useSaveWarehouseSettings, useWarehouseSettings } from '../api';
 import { BoardFigures } from '../components';
-import { LOGISTICS_CONTROL_WAREHOUSE } from '../constants';
+import { LOGISTICS_CONTROL_OIL_SCOPE, type LogisticsControlScope } from '../constants';
 
 /** Local `YYYY-MM-DD` — never `toISOString()`, which shifts the day in IST. */
 function localToday(): string {
@@ -28,11 +28,20 @@ function localToday(): string {
  *
  * Empty is a valid answer for both, and a meaningful one: it makes the board say
  * the figure is not configured rather than showing a number nobody set.
+ *
+ * One screen per board, told apart by `scope`. Both the warehouse row and the
+ * company-level figures below are stored per company, so the scope decides what
+ * is being edited — without it, configuring the Beverages board while signed
+ * into Oil would quietly rewrite Oil's capacity and Oil's fleet.
  */
-export function LogisticsControlConfigPage() {
-  const warehouse = LOGISTICS_CONTROL_WAREHOUSE;
-  const settings = useWarehouseSettings(warehouse);
-  const save = useSaveWarehouseSettings(warehouse);
+export function LogisticsControlConfigPage({
+  scope = LOGISTICS_CONTROL_OIL_SCOPE,
+}: {
+  scope?: LogisticsControlScope;
+}) {
+  const warehouse = scope.warehouse;
+  const settings = useWarehouseSettings(warehouse, true, scope.settingsCompany);
+  const save = useSaveWarehouseSettings(warehouse, scope.settingsCompany);
 
   /**
    * Only what the operator has typed, or null while they have typed nothing.
@@ -77,7 +86,7 @@ export function LogisticsControlConfigPage() {
     <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6">
       <header className="space-y-2">
         <Link
-          to="/dashboards/logistics-control"
+          to={scope.boardPath}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -204,7 +213,7 @@ export function LogisticsControlConfigPage() {
         </div>
       )}
 
-      <BoardFigures />
+      <BoardFigures companyCode={scope.settingsCompany} />
     </div>
   );
 }
