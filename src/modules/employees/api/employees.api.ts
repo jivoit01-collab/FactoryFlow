@@ -26,6 +26,12 @@ import type {
   EmployeePayload,
   EmployeeSalaryResponse,
   HistoryEntry,
+  LabourAuditResponse,
+  LabourPresencePayload,
+  LabourPresenceResponse,
+  LabourPresenceRow,
+  LabourStrength,
+  LabourStrengthPayload,
   ManagerChangePayload,
   OrgTreeResponse,
   PagedResponse,
@@ -295,6 +301,50 @@ export const employeesApi = {
     const response = await apiClient.get<WorkforceReports>(EP.REPORTS, {
       params: includePast ? { include_past: 1 } : {},
     });
+    return response.data;
+  },
+
+  // -- permanent labour ----------------------------------------------------
+
+  async getLabourStrength(): Promise<LabourStrength> {
+    const response = await apiClient.get<LabourStrength>(EP.LABOUR_STRENGTH);
+    return response.data;
+  },
+
+  async setLabourStrength(payload: LabourStrengthPayload): Promise<LabourStrength> {
+    const response = await apiClient.put<LabourStrength>(EP.LABOUR_STRENGTH, payload);
+    return response.data;
+  },
+
+  /** A window of days, newest first. Both ends optional — see the view. */
+  async getLabourPresence(range: { from?: string; to?: string } = {}): Promise<
+    LabourPresenceResponse
+  > {
+    const params = new URLSearchParams();
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    const query = params.toString();
+    const response = await apiClient.get<LabourPresenceResponse>(
+      query ? `${EP.LABOUR_PRESENCE}?${query}` : EP.LABOUR_PRESENCE,
+    );
+    return response.data;
+  },
+
+  /** Upsert: the same date + shift replaces its own row rather than adding one. */
+  async recordLabourPresence(payload: LabourPresencePayload): Promise<LabourPresenceRow> {
+    const response = await apiClient.post<LabourPresenceRow>(EP.LABOUR_PRESENCE, payload);
+    return response.data;
+  },
+
+  async getLabourStrengthAudit(): Promise<LabourAuditResponse> {
+    const response = await apiClient.get<LabourAuditResponse>(EP.LABOUR_STRENGTH_AUDIT);
+    return response.data;
+  },
+
+  async getLabourPresenceAudit(presenceId: number): Promise<LabourAuditResponse> {
+    const response = await apiClient.get<LabourAuditResponse>(
+      EP.LABOUR_PRESENCE_AUDIT(presenceId),
+    );
     return response.data;
   },
 };

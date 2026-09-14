@@ -24,6 +24,8 @@ import type {
   EmployeeEditPayload,
   EmployeeFilters,
   EmployeePayload,
+  LabourPresencePayload,
+  LabourStrengthPayload,
   ManagerChangePayload,
   PromotionPayload,
   SalaryPayload,
@@ -50,6 +52,12 @@ export const EMPLOYEE_KEYS = {
   revisions: (params: Record<string, unknown>) =>
     ['employee-hierarchy', 'salary-revisions', params] as const,
   reports: (includePast: boolean) => ['employee-hierarchy', 'reports', includePast] as const,
+  labourStrength: () => ['employee-hierarchy', 'labour-strength'] as const,
+  labourPresence: (range: { from?: string; to?: string }) =>
+    ['employee-hierarchy', 'labour-presence', range] as const,
+  labourStrengthAudit: () => ['employee-hierarchy', 'labour-strength', 'audit'] as const,
+  labourPresenceAudit: (presenceId: number) =>
+    ['employee-hierarchy', 'labour-presence', 'audit', presenceId] as const,
 };
 
 /** The masters and this user's rights. Stable enough to keep for a while. */
@@ -313,5 +321,71 @@ export function useRetireDesignation() {
   return useMutation({
     mutationFn: (designationId: number) => employeesApi.retireDesignation(designationId),
     onSuccess: invalidate,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Permanent labour
+// ---------------------------------------------------------------------------
+
+/** The strength on the rolls. A master — it moves when somebody is hired. */
+export function useLabourStrength() {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourStrength(),
+    queryFn: () => employeesApi.getLabourStrength(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetLabourStrength() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LabourStrengthPayload) => employeesApi.setLabourStrength(payload),
+    onSuccess: (strength) => {
+      queryClient.setQueryData(EMPLOYEE_KEYS.labourStrength(), strength);
+      // Every presence response carries the strength alongside its rows, so a
+      // new figure makes those windows stale even though no count changed.
+      queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'labour-presence'] });
+      queryClient.invalidateQueries({ queryKey: EMPLOYEE_KEYS.labourStrengthAudit() });
+    },
+  });
+}
+
+export function useLabourPresence(range: { from?: string; to?: string } = {}) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourPresence(range),
+    queryFn: () => employeesApi.getLabourPresence(range),
+  });
+}
+
+export function useRecordLabourPresence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LabourPresencePayload) => employeesApi.recordLabourPresence(payload),
+    // Which window a recorded day falls in depends on the window, so every
+    // presence query is invalidated rather than the one on screen — and that
+    // prefix covers the shift's own audit trail, which the write just extended.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'labour-presence'] }),
+  });
+}
+
+/**
+ * The trail behind a figure. Only fetched once somebody asks to see it — it is
+ * a dialog nobody opens most days, and the page is already two requests.
+ */
+export function useLabourStrengthAudit(enabled: boolean) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourStrengthAudit(),
+    queryFn: () => employeesApi.getLabourStrengthAudit(),
+    enabled,
+  });
+}
+
+export function useLabourPresenceAudit(presenceId: number | null) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourPresenceAudit(presenceId ?? 0),
+    queryFn: () => employeesApi.getLabourPresenceAudit(presenceId as number),
+    enabled: presenceId !== null,
   });
 }

@@ -1643,6 +1643,16 @@ export const API_ENDPOINTS = {
     DESIGNATIONS: '/employee-hierarchy/designations/',
     DESIGNATION_DETAIL: (designationId: number) =>
       `/employee-hierarchy/designations/${designationId}/`,
+
+    // Permanent labour: the strength on the rolls (GET/PUT) and the daily
+    // presence register (GET a window, POST one date + shift).
+    LABOUR_STRENGTH: '/employee-hierarchy/labour-strength/',
+    LABOUR_PRESENCE: '/employee-hierarchy/labour-presence/',
+    // The append-only trail behind each figure: both are overwritten in place,
+    // so what they used to say lives only here.
+    LABOUR_STRENGTH_AUDIT: '/employee-hierarchy/labour-strength/audit/',
+    LABOUR_PRESENCE_AUDIT: (presenceId: number) =>
+      `/employee-hierarchy/labour-presence/${presenceId}/audit/`,
   },
 
   // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),

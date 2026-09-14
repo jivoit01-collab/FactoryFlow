@@ -57,6 +57,8 @@ export interface EmployeePermissionFlags {
   can_manage_structure: boolean;
   can_view_reports: boolean;
   can_view_audit: boolean;
+  /** Record a shift's permanent-labour presence. Its own grant. */
+  can_record_presence: boolean;
   salary: {
     any: boolean;
     own: boolean;
@@ -524,4 +526,86 @@ export interface WorkforceReports {
     rate_percent: number;
   };
   salary: SalaryReport;
+}
+
+// ---------------------------------------------------------------------------
+// Permanent labour
+// ---------------------------------------------------------------------------
+
+export type LabourShift = 'DAY' | 'NIGHT';
+
+/** How many permanent labourers the plant has on its rolls. One per company. */
+export interface LabourStrength {
+  headcount: number;
+  note: string;
+  updated_at: string | null;
+  updated_by_detail: UserBrief | null;
+  /**
+   * Whether anybody has entered it. A plant with no permanent labour and a
+   * figure nobody has typed both read as 0, and the screen must tell them
+   * apart — only the second is something to go and fix.
+   */
+  is_set: boolean;
+}
+
+export interface LabourStrengthPayload {
+  headcount: number;
+  note?: string;
+}
+
+/** One shift's count, measured against the strength as it stood that day. */
+export interface LabourPresenceRow {
+  id: number;
+  work_date: string;
+  shift: LabourShift;
+  shift_display: string;
+  present_count: number;
+  /** Snapshot, not a live lookup — see the model. */
+  strength: number;
+  absent_count: number;
+  is_over_strength: boolean;
+  remark: string;
+  recorded_by_detail: UserBrief | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LabourPresenceResponse {
+  from: string;
+  to: string;
+  strength: { headcount: number; note: string; is_set: boolean };
+  results: LabourPresenceRow[];
+}
+
+/**
+ * One write to the strength or to a shift's count.
+ *
+ * `previous_count` is null on the write that created the figure — the rest are
+ * changes, and carry what it was before.
+ */
+export interface LabourAuditEntry {
+  id: number;
+  subject: 'STRENGTH' | 'PRESENCE';
+  work_date: string | null;
+  shift: string;
+  shift_display: string;
+  previous_count: number | null;
+  new_count: number;
+  previous_remark: string;
+  new_remark: string;
+  strength: number | null;
+  is_first: boolean;
+  performed_at: string;
+  performed_by_detail: UserBrief | null;
+}
+
+export interface LabourAuditResponse {
+  results: LabourAuditEntry[];
+}
+
+export interface LabourPresencePayload {
+  work_date: string;
+  shift: LabourShift;
+  present_count: number;
+  remark?: string;
 }

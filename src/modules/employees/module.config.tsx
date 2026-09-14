@@ -1,19 +1,24 @@
 /**
  * Employees module — the directory, the reporting tree, and compensation.
  *
- * Six screens, gated on their own `employee_hierarchy.*` permissions rather
+ * Seven screens, gated on their own `employee_hierarchy.*` permissions rather
  * than on a module prefix, because the permissions here are not a ladder: the
  * directory, the structure masters, the reports and the salary screens are four
  * separate grants, and somebody may hold any one of them without the others. A
  * prefix match would put Compensation in the sidebar of anybody who could open
  * the org chart.
  *
+ * The permanent-labour register rides on the directory grant to be *seen*;
+ * recording a shift is its own right, checked inside the page against the meta
+ * endpoint's flags rather than here, because a clerk who may count heads and an
+ * HR user who may edit the roll both belong on the same screen.
+ *
  * The profile route is registered last of the static paths but its dynamic
  * segment (`/employees/:employeeId`) cannot swallow them: React Router ranks a
  * static segment above a dynamic one, so `/employees/chart` is never read as an
  * employee id.
  */
-import { Building2, Network, Users, Wallet } from 'lucide-react';
+import { Building2, HardHat, Network, Users, Wallet } from 'lucide-react';
 
 import {
   EMPLOYEE_ACCESS,
@@ -30,6 +35,7 @@ const EmployeeProfilePage = lazy(() => import('./pages/EmployeeProfilePage'));
 const OrgStructurePage = lazy(() => import('./pages/OrgStructurePage'));
 const WorkforceReportsPage = lazy(() => import('./pages/WorkforceReportsPage'));
 const CompensationReviewPage = lazy(() => import('./pages/CompensationReviewPage'));
+const LabourPresencePage = lazy(() => import('./pages/LabourPresencePage'));
 
 export const employeesModuleConfig: ModuleConfig = {
   name: 'employees',
@@ -54,6 +60,13 @@ export const employeesModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: EMPLOYEE_STRUCTURE_ACCESS,
       breadcrumb: { label: 'Structure' },
+    },
+    {
+      path: '/employees/labour',
+      element: <LabourPresencePage />,
+      layout: 'main',
+      permissions: EMPLOYEE_ACCESS,
+      breadcrumb: { label: 'Permanent labour' },
     },
     {
       path: '/employees/compensation',
@@ -102,6 +115,12 @@ export const employeesModuleConfig: ModuleConfig = {
           title: 'Structure',
           icon: Building2,
           permissions: EMPLOYEE_STRUCTURE_ACCESS,
+        },
+        {
+          path: '/employees/labour',
+          title: 'Permanent labour',
+          icon: HardHat,
+          permissions: EMPLOYEE_ACCESS,
         },
         {
           path: '/employees/compensation',

@@ -16,6 +16,11 @@ The Labour frontend is **thin and reuses gate screens**. The top-level
 `src/modules/gate/pages/`, because Labour reuses the gate's masters
 (`Contractor`, `Department`) and API clients.
 
+**Not this module: the plant's own permanent labour.** Everything here counts
+*contractor* heads. The factory's own labourers — the strength on the rolls and
+how many of them were present each shift — live in the Employees module, at
+`/employees/labour` (backend `employee_hierarchy`).
+
 There are **five screens**, backed by **two backend apps** (`labour_gate` for
 the live in/out tally + allocation, `labour_count` for the man-day register —
 see the paired backend doc for the domain model):
