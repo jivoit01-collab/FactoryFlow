@@ -17,6 +17,8 @@ export const BILL_SUMMARY_QUERY_KEYS = {
     [...BILL_SUMMARY_QUERY_KEYS.all, 'sap', 'detail', docEntry] as const,
   lookup: (billNumber: string) =>
     [...BILL_SUMMARY_QUERY_KEYS.all, 'lookup', billNumber] as const,
+  invoicePrint: (docEntry: number) =>
+    [...BILL_SUMMARY_QUERY_KEYS.all, 'invoice-print', docEntry] as const,
 };
 
 /**
@@ -82,6 +84,24 @@ export function useBillSummary(id: number | null) {
     queryKey: BILL_SUMMARY_QUERY_KEYS.detail(id ?? 0),
     queryFn: () => billSummaryApi.detail(id as number),
     enabled: Boolean(id),
+  });
+}
+
+/**
+ * SAP's TAX INVOICE for the bill behind a sheet, fetched only when asked for.
+ *
+ * Uncached on purpose: this is SAP's document, not ours, and it can be amended
+ * or cancelled there after the sheet was issued — a print has to be what SAP
+ * currently says, not what it said when the screen opened.
+ */
+export function useBillSummaryInvoicePrint(docEntry: number | null) {
+  return useQuery({
+    queryKey: BILL_SUMMARY_QUERY_KEYS.invoicePrint(docEntry ?? 0),
+    queryFn: () => billSummaryApi.invoicePrint(docEntry as number),
+    enabled: docEntry != null,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 

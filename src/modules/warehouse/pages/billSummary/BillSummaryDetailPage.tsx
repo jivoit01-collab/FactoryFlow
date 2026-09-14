@@ -25,6 +25,7 @@ import {
   usePostBillSummaryToSap,
   useSapBillSummary,
 } from '../../api';
+import { BillInvoicePrintButton } from './BillInvoicePrintButton';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
 
 function num(value: string | number, dp = 0): string {
@@ -169,8 +170,16 @@ export default function BillSummaryDetailPage() {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <Button variant="outline" onClick={() => handlePrint()}>
-          <Printer className="mr-2 h-4 w-4" /> Print
+          <Printer className="mr-2 h-4 w-4" /> Print summary
         </Button>
+        {/* The other sheet this dispatch has: the customer's own bill, printed
+            from SAP. A cancelled sheet still prints it — the invoice is SAP's
+            and stands until SAP says otherwise — but a bill SAP has cancelled
+            is refused there rather than printed as though it were live. */}
+        <BillInvoicePrintButton
+          docEntry={summary.sap_invoice_doc_entry}
+          docNum={summary.sap_invoice_doc_num}
+        />
       </DashboardHeader>
 
       <Card>

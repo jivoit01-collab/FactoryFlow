@@ -1,6 +1,5 @@
-import { forwardRef, useEffect, useRef } from 'react';
-
 import JsBarcode from 'jsbarcode';
+import { forwardRef, useEffect, useRef } from 'react';
 
 import type { ARInvoicePrintLine, ARInvoicePrintPayload } from '../types';
 
@@ -17,6 +16,14 @@ import type { ARInvoicePrintLine, ARInvoicePrintPayload } from '../types';
  * Everything is in POINTS on a 595 x 842pt A4 page. `fontSize: 8.8` in a React
  * style means 8.8 *pixels*, a quarter smaller than the 8.8pt SAP sets, so every
  * size here carries its unit.
+ *
+ * One thing the measurements cannot carry over: SAP's x offsets assume SAP's own
+ * glyph widths. Where a label and the figure after it were placed as two runs at
+ * their measured offsets, the browser's wider Arial ran one into the other - the
+ * grid printed "2 Box0.00" and the ship-to address started underneath its own
+ * "Address :". Those pairs are therefore set as one flow (label, gap, value)
+ * anchored at the measured position, rather than at two of them. Anything that
+ * stands alone still sits exactly where SAP puts it.
  *
  * The document geometry, in page coordinates:
  *
@@ -572,8 +579,8 @@ function Masthead({ invoice }: { invoice: ARInvoicePrintPayload }) {
       <HRule x1={FRAME_L} x2={FRAME_R} y={263} />
       <VRule x={306} y1={250} y2={394.1} />
 
-      <PartyBlock x={24} labelX={24} valueX={66} party={billTo} addressValueX={65.1} />
-      <PartyBlock x={312} labelX={312} valueX={354} party={shipTo} addressValueX={346.8} />
+      <PartyBlock x={24} labelX={24} valueX={66} party={billTo} right={306} />
+      <PartyBlock x={312} labelX={312} valueX={354} party={shipTo} right={FRAME_R} />
 
       {/* The customer's own FSSAI licence, which SAP prints on the bill-to
           side only. Blank for a partner that has not given one. */}
@@ -619,16 +626,24 @@ function DetailColumn({
   );
 }
 
+/**
+ * One party's name and address.
+ *
+ * The address is set as label-then-value on one line rather than at two measured
+ * x positions: SAP's offsets assume SAP's glyph widths, and the browser sets
+ * "Address :" wider, which ran the ship-to label into its own address.
+ */
 function PartyBlock({
   labelX,
   valueX,
-  addressValueX,
+  right,
   party,
 }: {
   x: number;
   labelX: number;
   valueX: number;
-  addressValueX: number;
+  /** Right edge of this party's half, so a long address wraps inside it. */
+  right: number;
   party: { name: string; address: string };
 }) {
   return (
@@ -639,18 +654,16 @@ function PartyBlock({
       <At x={valueX} y={262.5} w={FRAME_R - valueX - 6} size={8.8} bold>
         {party.name}
       </At>
-      <At x={labelX} y={277} size={8.3} bold font="Tahoma, Verdana, sans-serif">
-        Address :
-      </At>
       <At
-        x={addressValueX}
-        y={278}
-        w={(labelX < 300 ? 306 : FRAME_R) - addressValueX - 4}
-        size={6.6}
+        x={labelX}
+        y={277}
+        w={right - labelX - 4}
+        size={8.3}
         bold
         font="Tahoma, Verdana, sans-serif"
       >
-        {party.address}
+        Address :
+        <span style={{ fontSize: '6.6pt', paddingLeft: '3pt' }}>{party.address}</span>
       </At>
     </>
   );
@@ -728,7 +741,9 @@ function GridHeader({ top }: { top: number }) {
       <At x={COL_EDGES[1] + 3} y={top + 2.5} size={8.3} bold font={TAHOMA}>
         Description of Goods
       </At>
-      {head(2, <>God<br />own</>)}
+      {/* One line at 7: "Godown" is 29pt of Arial at the shared 8.3 against a
+          29.5pt column, which wrapped it to "God / own". */}
+      {head(2, 'Godown', 7, 6)}
       {head(3, <>HSN/SAC<br />Code</>)}
       {head(4, 'Box + Loose')}
       {head(5, <>Total<br />Qty</>)}
@@ -787,27 +802,45 @@ function GridRow({
       <At x={COL_EDGES[2]} y={y + 1.5} w={COL_WIDTHS[2]} size={6.6} align="center" font={TAHOMA}>
         {line.warehouse_code}
       </At>
-      {num(3, line.hsn, 0)}
+      {/* Every figure is inset from its rule; at the measured 0 the HSN, both
+          rates and the discount printed hard against the column line. */}
+      {num(3, line.hsn, 3)}
 
-      {/* Box + Loose is one column with four pieces at measured offsets, not
-          four sub-columns: SAP rules no verticals inside it. */}
-      <At x={COL_EDGES[4]} y={y + 1.3} w={18} size={8.1} align="right">
-        {nWhole(line.boxes)}
-      </At>
-      <At x={COL_EDGES[4] + 24} y={y + 1.5} size={7.8} bold>
-        Box
-      </At>
-      <At x={COL_EDGES[4] + 37} y={y + 1.5} w={18.2} size={8.1} align="right">
-        {n2(line.loose_qty)}
-      </At>
-      <At x={COL_EDGES[4] + 69} y={y + 1.4} size={7} bold italic>
-        {line.loose_uom}
+      {/* Box + Loose is one column with four pieces, not four sub-columns: SAP
+          rules no verticals inside it. Laid out as a row rather than at four
+          measured offsets, which is how it was first built — SAP's own offsets
+          assume SAP's glyph widths, and the browser's Arial sets "Box" wider,
+          so the label ran into the loose figure and printed "2 Box0.00". The
+          segment widths keep the four pieces in column down the grid. */}
+      <At
+        x={COL_EDGES[4] + 2}
+        y={y + 1.3}
+        w={COL_WIDTHS[4] - 4}
+        size={8.1}
+        style={{ display: 'flex', alignItems: 'baseline' }}
+      >
+        <span style={{ width: '18pt', textAlign: 'right' }}>{nWhole(line.boxes)}</span>
+        <span style={{ paddingLeft: '4pt', fontSize: '7.8pt', fontWeight: 'bold' }}>Box</span>
+        <span style={{ flex: 1, paddingLeft: '4pt', textAlign: 'right' }}>
+          {n2(line.loose_qty)}
+        </span>
+        <span
+          style={{
+            width: '22pt',
+            paddingLeft: '6pt',
+            fontSize: '7pt',
+            fontWeight: 'bold',
+            fontStyle: 'italic',
+          }}
+        >
+          {line.loose_uom}
+        </span>
       </At>
 
       {num(5, n2(line.quantity), 3.2)}
-      {num(6, n2(line.rate_per_bottle), 0)}
-      {num(7, n2(line.discount_pct), 0)}
-      {num(8, n2(line.net_rate_per_bottle), 0)}
+      {num(6, n2(line.rate_per_bottle), 3)}
+      {num(7, n2(line.discount_pct), 3)}
+      {num(8, n2(line.net_rate_per_bottle), 3)}
       {num(9, n2(line.taxable_value), 4)}
     </>
   );
@@ -848,10 +881,10 @@ function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
       <At x={210} y={TOTALS_TOP + 1.5} size={8.3} bold font={TAHOMA}>
         Total :
       </At>
-      <At x={COL_EDGES[4] + 42} y={TOTALS_TOP + 0.8} size={8.8} bold>
+      <At x={COL_EDGES[4] + 42} y={TOTALS_TOP + 1.4} size={8.8} bold>
         {nWhole(t.boxes)} Box
       </At>
-      <At x={COL_EDGES[5] + 6} y={TOTALS_TOP + 2} size={8.8} bold>
+      <At x={COL_EDGES[5] + 6} y={TOTALS_TOP + 1.4} size={8.8} bold>
         {nWhole(t.loose_qty)} {t.loose_uom}
       </At>
       <At x={COL_EDGES[8]} y={TOTALS_TOP + 2.2} w={FRAME_R - COL_EDGES[8] - 2.4} size={7.4} bold
@@ -863,7 +896,10 @@ function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
       <At x={24} y={447.8} size={5.8} font={TAHOMA}>
         Amount(Words):&nbsp; {amountInWords(t.grand_total)}
       </At>
-      <At x={388.4} y={446.5} size={7.4} bold font={TAHOMA}>
+      {/* Below the rule, level with its own figure — at the measured 446.5 the
+          totals rule struck through it. The label is SAP's, unclosed bracket
+          and all: the Crystal field cuts it there. */}
+      <At x={388.4} y={448} size={7.4} bold font={TAHOMA}>
         Amt before freight &amp; Disc [INR
       </At>
       <At x={507.5} y={448} w={FRAME_R - 507.5 - 2.4} size={7.4} bold align="right" font={TAHOMA}>
@@ -958,7 +994,7 @@ function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
           <At x={62} y={671.8 + i * 10} w={30} size={7.2} align="right">
             {n4(row.litres)}
           </At>
-          <At x={132} y={671.8 + i * 10} w={38} size={7.2} align="right">
+          <At x={132} y={671.8 + i * 10} w={34} size={7.2} align="right">
             {n4(row.gross_weight)}
           </At>
         </div>

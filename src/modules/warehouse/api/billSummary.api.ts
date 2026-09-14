@@ -1,6 +1,8 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+import type { ARInvoicePrintPayload } from '../ar-invoice/types';
+
 export type BillSummaryStatus = 'GENERATED' | 'PICKED' | 'CANCELLED';
 export type BillSummarySapStatus = 'NOT_POSTED' | 'POSTED' | 'FAILED';
 
@@ -234,6 +236,21 @@ export const billSummaryApi = {
     const { data } = await apiClient.post<BillSummaryDetail>(
       API_ENDPOINTS.DISPATCH.BILL_SUMMARY_SAP_ADOPT(docEntry),
       {},
+    );
+    return data;
+  },
+
+  /**
+   * The BILL, not the summary — SAP's own TAX INVOICE for this dispatch.
+   *
+   * Keyed by the invoice's DocEntry rather than by the sheet: a dispatch
+   * stamped straight into SAP has no sheet id to ask with, and the printed bill
+   * is the same document either way. Read from SAP on every click, so an
+   * invoice amended after the sheet was issued prints as it now stands.
+   */
+  async invoicePrint(docEntry: number): Promise<ARInvoicePrintPayload> {
+    const { data } = await apiClient.get<ARInvoicePrintPayload>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_INVOICE_PRINT(docEntry),
     );
     return data;
   },

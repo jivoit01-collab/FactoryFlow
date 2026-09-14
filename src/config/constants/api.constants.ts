@@ -675,6 +675,10 @@ export const API_ENDPOINTS = {
     BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
     BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
     BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+    // The BILL itself — SAP's own TAX INVOICE, not the picking sheet. Keyed by
+    // the invoice, so it serves an app sheet and a SAP-stamped dispatch alike.
+    BILL_SUMMARY_INVOICE_PRINT: (docEntry: number) =>
+      `/dispatch/bill-summaries/invoice/${docEntry}/print/`,
     // Dispatches stamped straight onto the invoice in SAP, with no app sheet.
     BILL_SUMMARIES_SAP: '/dispatch/bill-summaries/sap/',
     BILL_SUMMARY_SAP_DETAIL: (docEntry: number) =>
