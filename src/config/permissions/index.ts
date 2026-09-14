@@ -116,6 +116,14 @@ export {
   type ARInvoicePermission,
 } from './ar-invoice.permissions';
 
+// Short Dispatch Module (SAP Return Note for short-picked bills; nav under Warehouse)
+export {
+  SHORT_DISPATCH_ACCESS,
+  SHORT_DISPATCH_MODULE_PREFIX,
+  SHORT_DISPATCH_PERMISSIONS,
+  type ShortDispatchPermission,
+} from './short-dispatch.permissions';
+
 // Vehicle Management Module
 export {
   VEHICLE_MANAGEMENT_MODULE_PREFIX,

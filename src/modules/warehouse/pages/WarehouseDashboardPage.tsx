@@ -6,6 +6,7 @@ import {
   FileCheck,
   FileText,
   PackageCheck,
+  PackageMinus,
   PackageOpen,
   PackagePlus,
   Receipt,
@@ -22,6 +23,7 @@ import {
   GATE_PERMISSIONS,
   GRPO_PERMISSIONS,
   INVOICE_APPROVAL_PERMISSIONS,
+  SHORT_DISPATCH_ACCESS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
@@ -48,6 +50,13 @@ const WAREHOUSE_SECTIONS = [
       DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
       DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
     ],
+  },
+  {
+    title: 'Short Dispatch',
+    description: 'Put back stock a posted bill says went out but which never left',
+    icon: PackageMinus,
+    path: '/warehouse/short-dispatch',
+    permissions: SHORT_DISPATCH_ACCESS,
   },
   {
     title: 'Dispatch Loading',

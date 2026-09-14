@@ -647,6 +647,17 @@ export const API_ENDPOINTS = {
     GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
   },
+  // Short Dispatch — the return note for stock a posted bill says went out but
+  // which never left the floor. `CREATE` posts the SAP A/R Return as part of the
+  // same call; there is no draft stage and no way back from the app.
+  SHORT_DISPATCH: {
+    LIST: '/short-dispatch/',
+    CREATE: '/short-dispatch/',
+    BY_ID: (id: number) => `/short-dispatch/${id}/`,
+    PRINT: (id: number) => `/short-dispatch/${id}/print/`,
+    INVOICE: '/short-dispatch/invoice/',
+    WAREHOUSES: '/short-dispatch/warehouses/',
+  },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
     BILLS: '/dispatch-plans/bills/',

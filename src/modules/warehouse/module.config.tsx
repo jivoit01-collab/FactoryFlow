@@ -7,6 +7,7 @@ import {
   GATE_PERMISSIONS,
   GRPO_PERMISSIONS,
   INVOICE_APPROVAL_PERMISSIONS,
+  SHORT_DISPATCH_ACCESS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -16,6 +17,7 @@ import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.confi
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
+import { shortDispatchNavChildren, shortDispatchRoutes } from './short-dispatch/module.config';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
 const BillSummaryListPage = lazy(() => import('./pages/billSummary/BillSummaryListPage'));
@@ -234,6 +236,8 @@ export const warehouseModuleConfig: ModuleConfig = {
     ...invoiceApprovalRoutes,
     // A/R invoice submodule route (/warehouse/ar-invoices)
     ...arInvoiceRoutes,
+    // Short Dispatch submodule routes (/warehouse/short-dispatch/*)
+    ...shortDispatchRoutes,
   ],
   navigation: [
     {
@@ -257,6 +261,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         GRPO_PERMISSIONS.VIEW_PENDING,
         INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE,
         AR_INVOICE_PERMISSIONS.VIEW,
+        ...SHORT_DISPATCH_ACCESS,
         // A floor picker may hold only the bill-summary permissions; without
         // these the Warehouse menu would not appear for them at all.
         ...billSummaryViewPermissions,
@@ -268,6 +273,9 @@ export const warehouseModuleConfig: ModuleConfig = {
           title: 'Bill Summaries',
           permissions: billSummaryViewPermissions,
         },
+        // Directly under Bill Summaries: posting one is what takes the stock out
+        // of SAP, and this is how the part that never went comes back.
+        ...shortDispatchNavChildren,
         {
           path: '/warehouse/dispatch-loading',
           title: 'Dispatch Loading',
