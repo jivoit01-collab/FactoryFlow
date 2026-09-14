@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -97,6 +98,21 @@ export default function BillSummaryNewPage() {
 
   async function handleGenerate() {
     if (!lookup) return;
+    const confirmed = await confirmSapPost({
+      title: `Generate the sheet and stamp bill ${lookup.doc_num}?`,
+      creates: (
+        <>
+          no new document — it stamps the dispatch date {form.dispatch_date}, bilty{' '}
+          {form.bilty_no.trim()}, vehicle and per-line quantities onto invoice{' '}
+          {lookup.doc_num}
+        </>
+      ),
+      detail:
+        'SAP freezes those fields once they hold a value: a wrong date, bilty, vehicle ' +
+        'or driver cannot be corrected afterwards, by this app or by anyone in SAP.',
+      confirmLabel: 'Generate and stamp',
+    });
+    if (!confirmed) return;
     try {
       const summary = await generate.mutateAsync({
         sap_invoice_doc_entry: lookup.doc_entry,

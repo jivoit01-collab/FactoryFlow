@@ -17,6 +17,7 @@ import {
   SheetTitle,
   Textarea,
 } from '@/shared/components/ui';
+import { confirmSapPost } from '@/shared/components';
 import { cn, formatCurrency, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import {
@@ -88,6 +89,18 @@ function InvoiceDetailBody({
   };
 
   const approve = async () => {
+    const confirmed = await confirmSapPost({
+      title: `Approve invoice ${invoice.so_number}?`,
+      creates: (
+        <>
+          no new document — it records your approval against the SAP document
+          {source === 'OMS' ? ', sent through OMS' : ', signed with your own SAP user'}
+        </>
+      ),
+      detail: 'SAP does not allow a decision to be changed once it is recorded.',
+      confirmLabel: 'Approve',
+    });
+    if (!confirmed) return;
     try {
       await updateStatus.mutateAsync({
         id: invoice.id,
@@ -101,6 +114,19 @@ function InvoiceDetailBody({
   };
 
   const reject = async (data: RejectInvoiceFormData) => {
+    const confirmed = await confirmSapPost({
+      title: `Reject invoice ${invoice.so_number}?`,
+      creates: (
+        <>
+          no new document — it records your rejection against the SAP document
+          {source === 'OMS' ? ', sent through OMS' : ', signed with your own SAP user'}
+        </>
+      ),
+      detail: 'SAP does not allow a decision to be changed once it is recorded.',
+      confirmLabel: 'Reject',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await updateStatus.mutateAsync({
         id: invoice.id,

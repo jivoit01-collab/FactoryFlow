@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmSapPost } from '@/shared/components';
 import { Badge, Button, Card, CardContent, Label } from '@/shared/components/ui';
 import { cn, resolveFileUrl } from '@/shared/utils';
 
@@ -249,6 +250,20 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
       toast.error('Select the goods-return warehouse.');
       return;
     }
+    const confirmed = await confirmSapPost({
+      title: 'Receive this return and post it to SAP?',
+      creates: (
+        <>
+          one A/R Return per source invoice on this return, putting the goods back into{' '}
+          {warehouseCode}
+        </>
+      ),
+      detail:
+        'A posted return cannot be withdrawn. Receiving again later is a retry: the ' +
+        'invoices SAP already accepted are skipped.',
+      confirmLabel: 'Receive and post',
+    });
+    if (!confirmed) return;
     try {
       const updated = await receive.mutateAsync(warehouseCode);
       // `detail` is only set when SAP refused some of the return's invoices; the

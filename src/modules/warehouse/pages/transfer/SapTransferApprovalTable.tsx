@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 
+import { confirmSapPost } from '@/shared/components';
 import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 
 import { useDecideSapTransferApproval } from '../../api';
@@ -323,11 +324,17 @@ export function SapTransferApprovalTable({
     });
   }
 
-  async function run(fn: () => Promise<{ message: string; signed_as: string }>, fallback: string) {
+  async function run(
+    // Null when the user backed out of the SAP warning: nothing was decided, so
+    // there is nothing to report either way.
+    fn: () => Promise<{ message: string; signed_as: string } | null | undefined>,
+    fallback: string,
+  ) {
     setError('');
     setDone('');
     try {
       const result = await fn();
+      if (!result) return;
       setDone(`${result.message} Signed in SAP as ${result.signed_as}.`);
       setRejectingId(null);
       setReason('');
@@ -526,11 +533,21 @@ export function SapTransferApprovalTable({
                                     disabled={decide.isPending}
                                     onClick={() =>
                                       run(
-                                        () =>
-                                          decide.mutateAsync({
+                                        async () => {
+                                          const confirmed = await confirmSapPost({
+                                            title: `Approve ${row.doc_num || 'this transfer'} in SAP?`,
+                                            creates:
+                                              'no new document — it records your approval on the SAP request, signed with your own SAP user',
+                                            detail:
+                                              'SAP does not allow a decision to be changed once it is recorded.',
+                                            confirmLabel: 'Approve in SAP',
+                                          });
+                                          if (!confirmed) return null;
+                                          return decide.mutateAsync({
                                             wddCode: row.id,
                                             payload: { status: 'APPROVED' },
-                                          }),
+                                          });
+                                        },
                                         'Could not approve this transfer in SAP.',
                                       )
                                     }
@@ -586,14 +603,25 @@ export function SapTransferApprovalTable({
                                   disabled={!reason.trim() || decide.isPending}
                                   onClick={() =>
                                     run(
-                                      () =>
-                                        decide.mutateAsync({
+                                      async () => {
+                                        const confirmed = await confirmSapPost({
+                                          title: `Reject ${row.doc_num || 'this transfer'} in SAP?`,
+                                          creates:
+                                            'no new document — it records your rejection on the SAP request, signed with your own SAP user',
+                                          detail:
+                                            'SAP does not allow a decision to be changed once it is recorded.',
+                                          confirmLabel: 'Reject in SAP',
+                                          destructive: true,
+                                        });
+                                        if (!confirmed) return null;
+                                        return decide.mutateAsync({
                                           wddCode: row.id,
                                           payload: {
                                             status: 'REJECTED',
                                             rejection_reason: reason.trim(),
                                           },
-                                        }),
+                                        });
+                                      },
                                       'Could not reject this transfer in SAP.',
                                     )
                                   }

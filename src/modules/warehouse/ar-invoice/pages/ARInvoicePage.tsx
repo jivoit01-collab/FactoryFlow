@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -97,6 +98,21 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
   const submit = async () => {
     if (!customerCode) return toast.error('Select a customer.');
     if (selected.length === 0) return toast.error('Select at least one Sales Order line.');
+
+    const confirmed = await confirmSapPost({
+      title: 'Raise this invoice in SAP?',
+      creates: (
+        <>
+          an A/R invoice for {customerCode} against {selected.length} Sales
+          Order line(s)
+        </>
+      ),
+      detail:
+        'Where the company runs an approval procedure it lands as a draft for approval ' +
+        'first; otherwise it is a live invoice the moment SAP takes it.',
+      confirmLabel: 'Raise the invoice',
+    });
+    if (!confirmed) return;
 
     try {
       const posting = await createInvoice.mutateAsync({

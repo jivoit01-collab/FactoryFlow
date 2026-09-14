@@ -1,13 +1,27 @@
 import { AlertTriangle, FileText, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Switch,
+} from '@/shared/components/ui';
+import { getErrorMessage } from '@/shared/utils';
 
-import { type BillSummaryStatus, useBillSummaries } from '../../api';
+import {
+  type BillSummary,
+  type BillSummaryStatus,
+  useBillSummaries,
+  useSapBillSummaries,
+} from '../../api';
 
 const STATUS_STYLE: Record<string, string> = {
   GENERATED: 'bg-sky-100 text-sky-800',
@@ -35,12 +49,39 @@ export default function BillSummaryListPage() {
   const [status, setStatus] = useState<BillSummaryStatus | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [includeSap, setIncludeSap] = useState(false);
+
+  const params = {
+    ...(dateFrom ? { date_from: dateFrom } : {}),
+    ...(dateTo ? { date_to: dateTo } : {}),
+  };
 
   const { data: rows = [], isLoading } = useBillSummaries({
     ...(status ? { status } : {}),
-    ...(dateFrom ? { date_from: dateFrom } : {}),
-    ...(dateTo ? { date_to: dateTo } : {}),
+    ...params,
   });
+
+  /* Dispatches stamped straight onto the invoice in SAP — the flow this module
+     replaced, still in daily use. Fetched only when asked for: it reads HANA,
+     and the app's own list should not wait behind it. */
+  const {
+    data: sapRows = [],
+    isFetching: sapLoading,
+    error: sapError,
+  } = useSapBillSummaries(params, includeSap);
+
+  /* A SAP row is a live dispatch SAP is holding, which is what a GENERATED sheet
+     is. Filtering to any other status is therefore a question about the app's
+     own records, and these have no answer to it. */
+  const sapHidden = includeSap && status !== '' && status !== 'GENERATED';
+
+  const allRows = useMemo(() => {
+    const merged: BillSummary[] = includeSap && !sapHidden ? [...rows, ...sapRows] : [...rows];
+    return merged.sort((a, b) => {
+      const byDate = String(b.dispatch_date ?? '').localeCompare(String(a.dispatch_date ?? ''));
+      return byDate !== 0 ? byDate : b.entry_no.localeCompare(a.entry_no);
+    });
+  }, [rows, sapRows, includeSap, sapHidden]);
 
   const canIssue = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
 
@@ -58,55 +99,86 @@ export default function BillSummaryListPage() {
       </DashboardHeader>
 
       <Card>
-        <CardContent className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_160px_160px]">
-          <div className="space-y-1">
-            <Label htmlFor="bs-status">Status</Label>
-            <select
-              id="bs-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as BillSummaryStatus | '')}
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-            >
-              <option value="">All</option>
-              <option value="GENERATED">With the floor</option>
-              <option value="PICKED">Picked</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
+        <CardContent className="space-y-3 p-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_160px]">
+            <div className="space-y-1">
+              <Label htmlFor="bs-status">Status</Label>
+              <select
+                id="bs-status"
+                value={status}
+                onChange={(event) => setStatus(event.target.value as BillSummaryStatus | '')}
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">All</option>
+                <option value="GENERATED">With the floor</option>
+                <option value="PICKED">Picked</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bs-from">Dispatch from</Label>
+              <Input
+                id="bs-from"
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bs-to">Dispatch to</Label>
+              <Input
+                id="bs-to"
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="bs-from">Dispatch from</Label>
-            <Input
-              id="bs-from"
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="bs-to">Dispatch to</Label>
-            <Input
-              id="bs-to"
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-            />
+
+          <div className="flex flex-wrap items-center gap-3 border-t pt-3">
+            <Switch id="bs-sap" checked={includeSap} onChange={setIncludeSap} />
+            <Label htmlFor="bs-sap" className="cursor-pointer">
+              Also show dispatches stamped in SAP
+            </Label>
+            <span className="text-xs text-muted-foreground">
+              Bills whose dispatch was typed straight into SAP, without a sheet issued here.
+              {!dateFrom && !dateTo && ' Defaults to this month.'}
+            </span>
           </div>
         </CardContent>
       </Card>
 
+      {includeSap && sapError && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+          {getErrorMessage(sapError, 'Could not read the SAP-stamped dispatches.')}
+        </p>
+      )}
+
+      {/* Said out loud rather than silently returning fewer rows: the toggle is
+          on, so the user is entitled to know why none of them are showing. */}
+      {sapHidden && (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          SAP-stamped dispatches are hidden while the status filter is set — they are all
+          live dispatches, so only “All” or “With the floor” can show them.
+        </p>
+      )}
+
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading bill summaries…</p>
-      ) : rows.length === 0 ? (
+      ) : allRows.length === 0 ? (
         <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No bill summaries yet.
+          {sapLoading ? 'Reading SAP…' : 'No bill summaries yet.'}
         </p>
       ) : (
         <div className="space-y-2">
-          {rows.map((row) => (
+          {sapLoading && (
+            <p className="text-xs text-muted-foreground">Reading SAP for stamped dispatches…</p>
+          )}
+          {allRows.map((row) => (
             <button
-              key={row.id}
+              key={row.key}
               type="button"
-              onClick={() => navigate(`/warehouse/bill-summaries/${row.id}`)}
+              onClick={() => navigate(`/warehouse/bill-summaries/${row.key}`)}
               className="flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
             >
               <div className="min-w-0">
@@ -124,6 +196,13 @@ export default function BillSummaryListPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {/* Which flow produced it. The row behaves the same either way,
+                    but "no sheet was ever issued for this one" is worth seeing. */}
+                {row.source === 'SAP' && (
+                  <Badge variant="outline" className="border-violet-400 text-violet-700">
+                    Stamped in SAP
+                  </Badge>
+                )}
                 {/* A picked sheet whose SAP write failed is the case that needs
                     chasing, so it is called out rather than folded into status. */}
                 {row.sap_status === 'FAILED' && (

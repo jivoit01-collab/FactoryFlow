@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { SapPostWarning } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -213,10 +214,14 @@ export default function FGReceiptListPage() {
               </div>
 
               {actionType === 'post-sap' && (
-                <p className="text-sm text-muted-foreground">
-                  This will create an SAP Goods Receipt (InventoryGenEntries) linked to the
-                  production order. Finished goods stock will increase in the warehouse.
-                </p>
+                <SapPostWarning
+                  creates={
+                    <>
+                      a Goods Receipt (InventoryGenEntries) against the production order,
+                      raising finished-goods stock in {actionTarget.warehouse}
+                    </>
+                  }
+                />
               )}
 
               {actionTarget.sap_error && (

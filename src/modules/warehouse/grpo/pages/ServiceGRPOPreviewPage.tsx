@@ -20,7 +20,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { ApiError } from '@/core/api/types';
 import type { Vendor } from '@/modules/gate/api/po/po.api';
 import { VendorSelect } from '@/modules/gate/components';
-import { SearchableSelect } from '@/shared/components';
+import { SapPostWarning, SearchableSelect } from '@/shared/components';
 import {
   Button,
   Card,
@@ -1786,6 +1786,12 @@ export default function ServiceGRPOPreviewPage() {
             <DialogTitle>Confirm Service GRPO Posting</DialogTitle>
             <DialogDescription>Review the details below before posting to SAP.</DialogDescription>
           </DialogHeader>
+          <SapPostWarning
+            creates={<>a service Goods Receipt PO for the freight on bill {billNo}</>}
+            detail="SAP refuses a bilty number it already holds against this vendor, so a
+              duplicate is rejected rather than doubled — but one that goes through has to
+              be cancelled in SAP."
+          />
           {form && preview && (
             <div className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">

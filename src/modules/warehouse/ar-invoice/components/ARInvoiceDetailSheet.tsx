@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmSapPost, type SapPostConfirmOptions } from '@/shared/components';
 import {
   Button,
   Separator,
@@ -71,7 +72,10 @@ export function ARInvoiceDetailSheet({
     id: number,
     successMessage: (p: ARInvoicePosting) => string,
     fallback: string,
+    /** Omitted by the actions that only read SAP, like refreshing a status. */
+    warning?: SapPostConfirmOptions,
   ) => {
+    if (warning && !(await confirmSapPost(warning))) return;
     try {
       const updated = await action.mutateAsync(id);
       toast.success(successMessage(updated));
@@ -289,6 +293,20 @@ export function ARInvoiceDetailSheet({
                               ? `Sent to SAP — awaiting approval (draft ${p.sap_draft_entry}).`
                               : `Posted to SAP as ${p.sap_doc_num}.`,
                           'Failed to post the invoice to SAP',
+                          {
+                            title: 'Post this invoice to SAP?',
+                            creates: (
+                              <>
+                                an A/R invoice for{' '}
+                                {posting.customer_name || posting.customer_code} worth{' '}
+                                {amount(posting.selected_total)} before tax
+                              </>
+                            ),
+                            detail:
+                              'Where the company runs an approval procedure it lands as a ' +
+                              'draft for approval first; otherwise it is a live invoice ' +
+                              'the moment SAP takes it.',
+                          },
                         )
                       }
                     >
@@ -322,6 +340,16 @@ export function ARInvoiceDetailSheet({
                           posting.id,
                           (p) => `Invoice posted to SAP as ${p.sap_doc_num}.`,
                           'Failed to post the approved draft',
+                          {
+                            title: 'Turn this approved draft into a real invoice?',
+                            creates: (
+                              <>
+                                the A/R invoice SAP draft {posting.sap_draft_entry} has been
+                                approved for, allocating batches onto it first
+                              </>
+                            ),
+                            confirmLabel: 'Post the invoice',
+                          },
                         )
                       }
                     >

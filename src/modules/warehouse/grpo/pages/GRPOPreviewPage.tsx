@@ -18,6 +18,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { isPmItemCode } from '@/modules/warehouse/pages/bst/bstBoxCounts';
+import { SapPostWarning } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -1667,6 +1668,16 @@ export default function GRPOPreviewPage() {
                 : 'Review the details below before posting to SAP.'}
             </DialogDescription>
           </DialogHeader>
+          <SapPostWarning
+            creates={
+              <>
+                a Goods Receipt PO against{' '}
+                {selectedPOs.map((po) => po.po_number).join(', ') || 'the purchase order'}, which
+                receives this stock into the warehouse
+              </>
+            }
+            detail="A GRPO SAP has accepted can only be reversed by a goods return there."
+          />
           {mergedForm && (
             <div className="space-y-3">
               <div className="text-sm">

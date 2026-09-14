@@ -4,6 +4,14 @@ import { apiClient } from '@/core/api';
 export type BillSummaryStatus = 'GENERATED' | 'PICKED' | 'CANCELLED';
 export type BillSummarySapStatus = 'NOT_POSTED' | 'POSTED' | 'FAILED';
 
+/**
+ * Where a row came from: a sheet this app issued, or a dispatch somebody typed
+ * straight onto the invoice in SAP — the flow this module replaced, still in
+ * use. The two are shown and opened identically; a SAP one simply has no record
+ * behind it until somebody acts on it.
+ */
+export type BillSummarySource = 'APP' | 'SAP';
+
 /** One line of the bill, as the lookup returns it before anything is saved. */
 export interface BillLookupLine {
   sap_line_num: number;
@@ -76,7 +84,11 @@ export interface BillSummaryTotals {
 }
 
 export interface BillSummary {
-  id: number;
+  /** Null on a SAP-stamped dispatch: there is no record to have a key yet. */
+  id: number | null;
+  source: BillSummarySource;
+  /** What the screen routes on — `'138'` for an app sheet, `'sap-5101'` for a SAP one. */
+  key: string;
   entry_no: string;
   company: number;
   company_code: string;
@@ -114,6 +126,8 @@ export interface BillSummary {
 
 export interface BillSummaryDetail extends BillSummary {
   lines: BillSummaryLine[];
+  /** Set on a SAP row somebody has already taken over: open that sheet instead. */
+  app_summary_id?: number | null;
 }
 
 export interface BillSummaryListParams {
@@ -183,6 +197,42 @@ export const billSummaryApi = {
   async postToSap(id: number): Promise<BillSummaryDetail> {
     const { data } = await apiClient.post<BillSummaryDetail>(
       API_ENDPOINTS.DISPATCH.BILL_SUMMARY_STAMP_SAP(id),
+      {},
+    );
+    return data;
+  },
+
+  /**
+   * Dispatches stamped in SAP without an app sheet.
+   *
+   * Reads SAP, so it is a separate call from the app's own list rather than a
+   * flag on it: the screen should not wait on HANA for rows nobody asked for.
+   * The window defaults to the current month server-side.
+   */
+  async sapList(params?: BillSummaryListParams): Promise<BillSummary[]> {
+    const { data } = await apiClient.get<BillSummary[]>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARIES_SAP,
+      { params },
+    );
+    return data;
+  },
+
+  async sapDetail(docEntry: number): Promise<BillSummaryDetail> {
+    const { data } = await apiClient.get<BillSummaryDetail>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_SAP_DETAIL(docEntry),
+    );
+    return data;
+  },
+
+  /**
+   * Put a SAP-stamped dispatch on the app's books so it can be acted on.
+   *
+   * Nothing is written to SAP: it already holds the stamp. This only gives the
+   * dispatch a record, which cancelling needs something to act on.
+   */
+  async adopt(docEntry: number): Promise<BillSummaryDetail> {
+    const { data } = await apiClient.post<BillSummaryDetail>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_SAP_ADOPT(docEntry),
       {},
     );
     return data;

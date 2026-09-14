@@ -16,6 +16,7 @@
 import { AlertTriangle, FileCheck2, Info, Stamp } from 'lucide-react';
 import { Fragment, useState } from 'react';
 
+import { confirmSapPost } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useAddSapTransferDraft } from '../../api';
@@ -35,6 +36,18 @@ function DraftRow({ row }: { row: SapTransferDraft }) {
   async function submit() {
     setError('');
     setDone('');
+    const confirmed = await confirmSapPost({
+      title: `Add draft ${row.doc_num ?? row.draft_entry} in SAP?`,
+      creates: (
+        <>
+          the real Inventory Transfer this approved draft stands for, moving the stock out
+          of {row.from_warehouse || 'the source warehouse'}
+        </>
+      ),
+      detail: 'Approving a transfer in SAP leaves a draft; this is the step that makes it real.',
+      confirmLabel: 'Add it in SAP',
+    });
+    if (!confirmed) return;
     try {
       const result = await add.mutateAsync(row.draft_entry);
       setDone(

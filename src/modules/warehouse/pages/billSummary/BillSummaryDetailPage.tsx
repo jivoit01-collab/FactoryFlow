@@ -7,20 +7,23 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import {
+  useAdoptSapBillSummary,
   useBillSummary,
   useCancelBillSummary,
   usePostBillSummaryToSap,
+  useSapBillSummary,
 } from '../../api';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
 
@@ -32,14 +35,25 @@ function num(value: string | number, dp = 0): string {
 }
 
 export default function BillSummaryDetailPage() {
+  /* Two kinds of sheet open here, and the URL says which: `138` is one the app
+     issued, `sap-5101` a dispatch somebody stamped onto invoice DocEntry 5101 in
+     SAP without one. Everything below this point treats them alike — that is the
+     point of reading the SAP one back in the same shape. */
   const { summaryId } = useParams();
-  const id = Number(summaryId);
+  const routeKey = summaryId ?? '';
+  const isSap = routeKey.startsWith('sap-');
+  const docEntry = isSap ? Number(routeKey.slice(4)) : NaN;
+  const id = isSap ? NaN : Number(routeKey);
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
 
-  const { data: summary, isLoading } = useBillSummary(Number.isFinite(id) ? id : null);
-  const post = usePostBillSummaryToSap(id);
-  const cancel = useCancelBillSummary(id);
+  const app = useBillSummary(!isSap && Number.isFinite(id) ? id : null);
+  const sap = useSapBillSummary(isSap && Number.isFinite(docEntry) ? docEntry : null);
+  const { data: summary, isLoading } = isSap ? sap : app;
+
+  const post = usePostBillSummaryToSap(Number.isFinite(id) ? id : 0);
+  const cancel = useCancelBillSummary();
+  const adopt = useAdoptSapBillSummary();
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
@@ -54,9 +68,37 @@ export default function BillSummaryDetailPage() {
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (!summary) return <p className="p-6 text-sm text-red-600">Bill summary not found.</p>;
 
+  /* Opened by URL after somebody took this dispatch over: show the sheet it
+     became rather than a second copy of the same thing. */
+  if (isSap && summary.app_summary_id) {
+    return (
+      <Navigate to={`/warehouse/bill-summaries/${summary.app_summary_id}`} replace />
+    );
+  }
+
   const canPost = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
   const canCancel = hasPermission(DISPATCH_PERMISSIONS.CANCEL_BILL_SUMMARY);
   const isOpen = summary.status === 'GENERATED';
+  const fromSap = summary.source === 'SAP';
+
+  /* Cancelling needs a record to cancel. A dispatch stamped in SAP has none
+     until now, so it is taken onto the app's books first and the URL moves to
+     the sheet it became — nothing is written to SAP by that step, which already
+     holds the stamp. */
+  async function cancelSheet() {
+    let targetId = summary!.id;
+    if (fromSap) {
+      const adopted = await adopt.mutateAsync(summary!.sap_invoice_doc_entry);
+      targetId = adopted.id;
+    }
+    if (!targetId) throw new Error('This sheet has no record to cancel.');
+    await cancel.mutateAsync({ id: targetId, reason: cancelReason });
+    setShowCancel(false);
+    // Moved only once the cancellation is through: a failed one leaves the user
+    // on the sheet they were looking at, with the error, rather than on a
+    // half-adopted sheet that still says it is live.
+    if (fromSap) navigate(`/warehouse/bill-summaries/${targetId}`, { replace: true });
+  }
 
   async function run(action: () => Promise<unknown>, ok: string, fail: string) {
     try {
@@ -75,6 +117,28 @@ export default function BillSummaryDetailPage() {
      screen. */
   async function retrySap() {
     const cancelled = summary!.status === 'CANCELLED';
+    const confirmed = await confirmSapPost({
+      title: cancelled
+        ? 'Clear this dispatch from the SAP invoice?'
+        : 'Stamp this dispatch onto the SAP invoice?',
+      creates: cancelled ? (
+        <>
+          no new document — it clears the dispatch date and quantities back off invoice{' '}
+          {summary!.sap_invoice_doc_num}, leaving the bilty as it is
+        </>
+      ) : (
+        <>
+          no new document — it stamps the dispatch date, bilty and per-line quantities onto
+          invoice {summary!.sap_invoice_doc_num}
+        </>
+      ),
+      detail:
+        'SAP freezes the bilty, vehicle, driver and dates once they hold a value; ' +
+        'whatever it already holds is left alone and reported back.',
+      confirmLabel: cancelled ? 'Clear it from SAP' : 'Stamp the invoice',
+      destructive: cancelled,
+    });
+    if (!confirmed) return;
     try {
       const updated = await post.mutateAsync();
       if (updated.sap_status === 'FAILED') {
@@ -96,6 +160,11 @@ export default function BillSummaryDetailPage() {
           summary.customer_name || summary.customer_code
         }`}
       >
+        {fromSap && (
+          <Badge variant="outline" className="border-violet-400 text-violet-700">
+            Stamped in SAP
+          </Badge>
+        )}
         <Button variant="outline" onClick={() => navigate('/warehouse/bill-summaries')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
@@ -128,7 +197,10 @@ export default function BillSummaryDetailPage() {
                 : '—'
             }
           />
-          <Field label="Issued by" value={summary.issued_by_name || '—'} />
+          <Field
+            label="Issued by"
+            value={summary.issued_by_name || (fromSap ? 'Typed into SAP' : '—')}
+          />
           {summary.remarks && (
             <div className="sm:col-span-2">
               <p className="text-xs uppercase text-muted-foreground">Remarks</p>
@@ -226,7 +298,7 @@ export default function BillSummaryDetailPage() {
       {isOpen && (
         <div className="flex flex-wrap justify-end gap-2">
           {canCancel && (
-            <Button variant="outline" onClick={() => setShowCancel((v) => !v)}>
+            <Button variant="destructive" onClick={() => setShowCancel((v) => !v)}>
               <XCircle className="mr-2 h-4 w-4" /> Cancel sheet
             </Button>
           )}
@@ -234,15 +306,36 @@ export default function BillSummaryDetailPage() {
       )}
 
       {showCancel && (
-        <Card className="border-rose-300">
+        <Card className="border-destructive/50">
           <CardContent className="space-y-3 p-4">
-            <Label htmlFor="bs-cancel">Why is this sheet being cancelled?</Label>
-            {summary.sap_status === 'POSTED' && (
-              <p className="text-xs text-muted-foreground">
-                This will also clear the dispatch date and quantities from SAP invoice{' '}
-                {summary.sap_invoice_doc_num}.
+            {/* A cancellation cannot be taken back: the sheet stays cancelled
+                and the floor has to generate a fresh one. Said plainly, next to
+                the button, rather than discovered afterwards. */}
+            <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              <p className="flex items-center gap-2 font-semibold">
+                <AlertTriangle className="h-4 w-4" />
+                Cancelling {summary.entry_no} cannot be undone
               </p>
-            )}
+              <p className="text-xs">
+                The sheet stays cancelled — a new one has to be generated for this bill
+                if the goods still go out.
+                {fromSap && (
+                  <>
+                    {' '}
+                    This dispatch was typed into SAP rather than issued here, so it is
+                    taken onto the app&apos;s books as a cancelled sheet.
+                  </>
+                )}
+                {summary.sap_status === 'POSTED' && (
+                  <>
+                    {' '}
+                    The dispatch date and quantities will also be cleared from SAP invoice{' '}
+                    {summary.sap_invoice_doc_num}; the bilty number is left as it is.
+                  </>
+                )}
+              </p>
+            </div>
+            <Label htmlFor="bs-cancel">Why is this sheet being cancelled?</Label>
             <Input
               id="bs-cancel"
               value={cancelReason}
@@ -255,16 +348,9 @@ export default function BillSummaryDetailPage() {
               </Button>
               <Button
                 variant="destructive"
-                disabled={cancel.isPending}
+                disabled={cancel.isPending || adopt.isPending || !cancelReason.trim()}
                 onClick={() =>
-                  run(
-                    async () => {
-                      await cancel.mutateAsync(cancelReason);
-                      setShowCancel(false);
-                    },
-                    'Sheet cancelled',
-                    'Could not cancel the sheet.',
-                  )
+                  run(cancelSheet, 'Sheet cancelled', 'Could not cancel the sheet.')
                 }
               >
                 Cancel the sheet

@@ -2,6 +2,7 @@ import { ArrowLeft, Plus, Send, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -95,6 +96,20 @@ export default function TransferRequestNewPage() {
 
   async function submit() {
     setError('');
+    const confirmed = await confirmSapPost({
+      title: 'Raise this request in SAP?',
+      creates: (
+        <>
+          an Inventory Transfer Request from {fromWarehouse} to {toWarehouse} covering{' '}
+          {filledLines.length} line(s)
+        </>
+      ),
+      detail:
+        'The request reserves the stock in SAP from the moment it exists. Rejecting it ' +
+        'here closes it again; nothing else in this app can remove it.',
+      confirmLabel: 'Raise the request',
+    });
+    if (!confirmed) return;
     try {
       const created = await createRequest.mutateAsync({
         from_warehouse: fromWarehouse,

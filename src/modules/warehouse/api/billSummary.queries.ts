@@ -11,6 +11,10 @@ export const BILL_SUMMARY_QUERY_KEYS = {
   list: (params?: BillSummaryListParams) =>
     [...BILL_SUMMARY_QUERY_KEYS.all, 'list', params ?? {}] as const,
   detail: (id: number) => [...BILL_SUMMARY_QUERY_KEYS.all, 'detail', id] as const,
+  sapList: (params?: BillSummaryListParams) =>
+    [...BILL_SUMMARY_QUERY_KEYS.all, 'sap', 'list', params ?? {}] as const,
+  sapDetail: (docEntry: number) =>
+    [...BILL_SUMMARY_QUERY_KEYS.all, 'sap', 'detail', docEntry] as const,
   lookup: (billNumber: string) =>
     [...BILL_SUMMARY_QUERY_KEYS.all, 'lookup', billNumber] as const,
 };
@@ -34,6 +38,42 @@ export function useBillSummaries(params?: BillSummaryListParams) {
   return useQuery({
     queryKey: BILL_SUMMARY_QUERY_KEYS.list(params),
     queryFn: () => billSummaryApi.list(params),
+  });
+}
+
+/**
+ * Dispatches stamped straight into SAP.
+ *
+ * Off by default and only fetched when the screen asks for them: this one reads
+ * HANA, and the app's own list should not be held up behind it.
+ */
+export function useSapBillSummaries(params: BillSummaryListParams, enabled: boolean) {
+  return useQuery({
+    queryKey: BILL_SUMMARY_QUERY_KEYS.sapList(params),
+    queryFn: () => billSummaryApi.sapList(params),
+    enabled,
+    retry: false,
+  });
+}
+
+export function useSapBillSummary(docEntry: number | null) {
+  return useQuery({
+    queryKey: BILL_SUMMARY_QUERY_KEYS.sapDetail(docEntry ?? 0),
+    queryFn: () => billSummaryApi.sapDetail(docEntry as number),
+    enabled: Boolean(docEntry),
+    retry: false,
+  });
+}
+
+/** Give a SAP-stamped dispatch a record, so it can be acted on like any sheet. */
+export function useAdoptSapBillSummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (docEntry: number) => billSummaryApi.adopt(docEntry),
+    onSuccess: (data) => {
+      if (data.id) qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(data.id), data);
+      void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
   });
 }
 
@@ -77,12 +117,20 @@ export function usePostBillSummaryToSap(id: number) {
   });
 }
 
-export function useCancelBillSummary(id: number) {
+/**
+ * Cancel a sheet, naming it at call time rather than at mount.
+ *
+ * A SAP-stamped dispatch has no id until it is adopted, and that happens in the
+ * same click as the cancellation — so the id cannot be bound when the hook is
+ * created.
+ */
+export function useCancelBillSummary() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (reason: string) => billSummaryApi.cancel(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      billSummaryApi.cancel(id, reason),
     onSuccess: (data) => {
-      qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(id), data);
+      if (data.id) qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(data.id), data);
       void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
     },
   });

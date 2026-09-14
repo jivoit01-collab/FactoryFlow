@@ -15,6 +15,7 @@
 import { AlertTriangle, Info, PackageCheck, Search, Truck } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
+import { confirmSapPost } from '@/shared/components';
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
 
 import { usePostSapTransfer } from '../../api';
@@ -58,6 +59,17 @@ function RequestRow({ row }: { row: SapAwaitingTransfer }) {
     for (const line of moving) {
       quantities[String(line.line_num)] = amounts[line.line_num];
     }
+    const confirmed = await confirmSapPost({
+      title: `Post request ${row.doc_num ?? row.doc_entry} as a transfer?`,
+      creates: (
+        <>
+          an Inventory Transfer against this request, moving {moving.length} line(s) out of{' '}
+          {row.from_warehouse || 'the source warehouse'}
+        </>
+      ),
+      detail: 'Stock leaves the source warehouse the moment SAP accepts it.',
+    });
+    if (!confirmed) return;
     try {
       const result = await post.mutateAsync({ docEntry: row.doc_entry, quantities });
       setDone(

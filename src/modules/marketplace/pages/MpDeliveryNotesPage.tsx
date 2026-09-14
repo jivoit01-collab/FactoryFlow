@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
+import { SapPostWarning } from '@/shared/components';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
@@ -1186,12 +1187,17 @@ export default function MpDeliveryNotesPage() {
           <DialogHeader>
             <DialogTitle>Cut SAP delivery note?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This posts the SAP delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
-            <strong>{count}</strong> dispatch(es) with{' '}
-            <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be
-            undone.
-          </p>
+          <SapPostWarning
+            creates={
+              <>
+                the delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
+                <strong>{count}</strong> dispatch(es) with{' '}
+                <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s), and the
+                goods issue behind them
+              </>
+            }
+            detail="Posting into a closed month needs the date below set deliberately."
+          />
 
           <div className="space-y-2">
             <label htmlFor="dn-doc-date" className="text-sm font-medium">

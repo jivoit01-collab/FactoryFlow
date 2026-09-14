@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { confirmSapPost } from '@/shared/components';
 import { Button, Card, Input } from '@/shared/components/ui';
 
 import { useFGGRPOPreview, usePostFGGRPO } from '../api/fgGrpo.queries';
@@ -127,6 +128,19 @@ export default function FGGRPOPreviewPage() {
       setError('Enter an accepted quantity for at least one item.');
       return;
     }
+
+    const confirmed = await confirmSapPost({
+      title: 'Post this FG receipt to SAP?',
+      creates: (
+        <>
+          a Goods Receipt PO against{' '}
+          {postablePOs.map((po) => po.po_number).join(', ') || 'the purchase order'}, which
+          receives these finished goods into {warehouseCode || 'the warehouse'}
+        </>
+      ),
+      detail: `${items.length} line(s) will be received.`,
+    });
+    if (!confirmed) return;
 
     try {
       const response = await postGRPO.mutateAsync({

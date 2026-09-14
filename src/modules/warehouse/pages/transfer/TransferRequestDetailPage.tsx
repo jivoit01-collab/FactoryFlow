@@ -15,6 +15,7 @@ import { useReactToPrint } from 'react-to-print';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 
@@ -385,10 +386,23 @@ export default function TransferRequestDetailPage() {
                 setShowBatches(true);
                 return;
               }
-              void run(
-                () => post.mutateAsync({ requestId: id }),
-                'Could not post the transfer to SAP.',
-              );
+              void run(async () => {
+                const confirmed = await confirmSapPost({
+                  title: 'Post this transfer to SAP?',
+                  creates: (
+                    <>
+                      an Inventory Transfer moving the approved quantities out of{' '}
+                      {r.from_warehouse} into{' '}
+                      {r.is_cross_branch ? 'the in-transit warehouse' : r.to_warehouse}
+                    </>
+                  ),
+                  detail: r.is_cross_branch
+                    ? 'This is leg 1 of a cross-branch move; leg 2 posts when the receipt completes.'
+                    : undefined,
+                });
+                if (!confirmed) return;
+                await post.mutateAsync({ requestId: id });
+              }, 'Could not post the transfer to SAP.');
             }}
           >
             <Upload className="mr-2 h-4 w-4" />
@@ -427,10 +441,20 @@ export default function TransferRequestDetailPage() {
             variant="outline"
             disabled={secondLeg.isPending}
             onClick={() =>
-              run(
-                () => secondLeg.mutateAsync({ requestId: id }),
-                'Could not post the second leg.',
-              )
+              run(async () => {
+                const confirmed = await confirmSapPost({
+                  title: 'Post the second leg to SAP?',
+                  creates: (
+                    <>
+                      an Inventory Transfer moving the stock out of the in-transit warehouse
+                      into {r.to_warehouse}
+                    </>
+                  ),
+                  detail: 'Only needed when the automatic post at receipt failed.',
+                });
+                if (!confirmed) return;
+                await secondLeg.mutateAsync({ requestId: id });
+              }, 'Could not post the second leg.')
             }
           >
             <Truck className="mr-2 h-4 w-4" />
@@ -465,7 +489,25 @@ export default function TransferRequestDetailPage() {
                 onClick={() =>
                   run(
                     () =>
-                      reject.mutateAsync({ requestId: id, data: { reason: rejectReason.trim() } }),
+                      confirmSapPost({
+                        title: 'Reject this request?',
+                        creates: (
+                          <>
+                            no new document — it closes Inventory Transfer Request{' '}
+                            {r.sap_request_doc_num || r.sap_request_doc_entry} in SAP so it
+                            stops reserving the stock
+                          </>
+                        ),
+                        confirmLabel: 'Reject and close it',
+                        destructive: true,
+                      }).then((confirmed) =>
+                        confirmed
+                          ? reject.mutateAsync({
+                              requestId: id,
+                              data: { reason: rejectReason.trim() },
+                            })
+                          : undefined,
+                      ),
                     'Could not reject this request.',
                   )
                 }
@@ -485,6 +527,17 @@ export default function TransferRequestDetailPage() {
         crossBranch={r.is_cross_branch}
         onConfirm={(allocations: TransferPostAllocation[]) =>
           run(async () => {
+            const confirmed = await confirmSapPost({
+              title: 'Post this transfer to SAP?',
+              creates: (
+                <>
+                  an Inventory Transfer moving the chosen batches out of {r.from_warehouse}{' '}
+                  into {r.is_cross_branch ? 'the in-transit warehouse' : r.to_warehouse}
+                </>
+              ),
+              detail: `${allocations.length} batch allocation(s) will be sent with it.`,
+            });
+            if (!confirmed) return;
             await post.mutateAsync({ requestId: id, allocations });
             setShowBatches(false);
           }, 'Could not post the transfer to SAP.')

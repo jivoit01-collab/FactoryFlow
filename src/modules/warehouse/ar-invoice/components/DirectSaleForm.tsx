@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
-import { SearchableSelect } from '@/shared/components';
+import { confirmSapPost, SearchableSelect } from '@/shared/components';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@/shared/components/ui';
 import { formatCurrency, getErrorMessage } from '@/shared/utils';
 
@@ -120,6 +120,21 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
   const submit = async () => {
     if (!customerCode) return toast.error('Select a customer.');
     if (cart.length === 0) return toast.error('Add at least one line.');
+
+    const confirmed = await confirmSapPost({
+      title: 'Raise this cash sale in SAP?',
+      creates: (
+        <>
+          an A/R invoice for {customerCode} covering {cart.length} line(s), which issues the
+          stock out of the warehouse
+        </>
+      ),
+      detail:
+        'Where the company runs an approval procedure it lands as a draft for approval ' +
+        'first; otherwise it is a live invoice the moment SAP takes it.',
+      confirmLabel: 'Raise the invoice',
+    });
+    if (!confirmed) return;
 
     try {
       const posting = await createInvoice.mutateAsync({

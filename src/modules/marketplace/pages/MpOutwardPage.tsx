@@ -41,7 +41,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui';
-import { confirmDialog, promptDialog } from '@/shared/components';
+import { confirmDialog, confirmSapPost, promptDialog } from '@/shared/components';
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
@@ -893,16 +893,24 @@ function ConfirmButton({ dispatchId, orderId, partialOf = null }: {
       className={partialOf ? 'border-amber-400 text-amber-700 dark:text-amber-400' : undefined}
       disabled={confirm.isPending}
       onClick={async () => {
-        if (partialOf) {
-          const shipPartial = await confirmDialog({
-            title: `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?`,
-            description:
-              `They get their own delivery note. The ${partialOf.remaining} still to scan stay `
-              + `in "To scan" — scan them later and confirm again.`,
-            confirmLabel: 'Ship scanned now',
-          });
-          if (!shipPartial) return;
-        }
+        const posted = await confirmSapPost({
+          title: partialOf
+            ? `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?`
+            : `Dispatch ${orderId}?`,
+          creates: (
+            <>
+              a Delivery Note and its Goods Issue for{' '}
+              {partialOf ? `the ${partialOf.scanned} scanned parcel(s)` : 'this order'}
+            </>
+          ),
+          detail: partialOf
+            ? `The ${partialOf.remaining} still to scan stay in "To scan" — scan them later ` +
+              'and confirm again, which cuts a second delivery note.'
+            : 'If SAP is down the dispatch still stands here and the note is cut later from ' +
+              'SAP Delivery Notes.',
+          confirmLabel: partialOf ? 'Ship scanned now' : 'Dispatch it',
+        });
+        if (!posted) return;
         confirm.mutate(
           {},
           {

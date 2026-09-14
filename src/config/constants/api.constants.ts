@@ -675,6 +675,12 @@ export const API_ENDPOINTS = {
     BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
     BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
     BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+    // Dispatches stamped straight onto the invoice in SAP, with no app sheet.
+    BILL_SUMMARIES_SAP: '/dispatch/bill-summaries/sap/',
+    BILL_SUMMARY_SAP_DETAIL: (docEntry: number) =>
+      `/dispatch/bill-summaries/sap/${docEntry}/`,
+    BILL_SUMMARY_SAP_ADOPT: (docEntry: number) =>
+      `/dispatch/bill-summaries/sap/${docEntry}/adopt/`,
 
     OPEN_BILTIES: '/dispatch/open-bilties/',
     // What the company still owes its hauliers, and what it has paid them,
