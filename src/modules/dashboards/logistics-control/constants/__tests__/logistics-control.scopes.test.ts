@@ -32,8 +32,9 @@ describe('logistics control scopes', () => {
       );
     });
 
-    it('has every tile sourced', () => {
+    it('has every tile sourced, and hides none of them', () => {
       expect(LOGISTICS_CONTROL_OIL_SCOPE.absent).toEqual({});
+      expect(LOGISTICS_CONTROL_OIL_SCOPE.hidden).toEqual([]);
     });
 
     it('reads its typed-in figures as the warehouse company, not the viewer', () => {
@@ -69,16 +70,25 @@ describe('logistics control scopes', () => {
       );
     });
 
+    it('drops the two tiles that ask an Oil question, rather than zeroing them', () => {
+      // Allocated stock reads the oil floor's godown register and the beverages
+      // floor scans no barcodes, so both tiles could only ever print a nought —
+      // which on a wall reads as a clean day rather than as no such practice.
+      expect([...LOGISTICS_CONTROL_BEVERAGES_SCOPE.hidden].sort()).toEqual([
+        'allocated',
+        'unscanned',
+      ]);
+      // And a hidden tile is not also given a reason to print: the two are
+      // alternatives, and a tile that is gone cannot say anything.
+      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.absent.barcodeScanning).toBeUndefined();
+    });
+
     it('states a reason for each tile it cannot source', () => {
       // A reason, never a bare flag: the board's one hard rule is that a figure
       // with no source behind it does not look like a figure, and "no data" is
       // not a reason somebody can act on.
       const { absent } = LOGISTICS_CONTROL_BEVERAGES_SCOPE;
-      expect(Object.keys(absent).sort()).toEqual([
-        'barcodeScanning',
-        'palletSpace',
-        'stockInTransit',
-      ]);
+      expect(Object.keys(absent).sort()).toEqual(['palletSpace', 'stockInTransit']);
       for (const reason of Object.values(absent)) {
         expect(reason).toMatch(/\S/);
         expect(reason).not.toMatch(/^no data$/i);

@@ -20,8 +20,26 @@ export type LogisticsSection = 'warehouse' | 'dispatch' | 'transport';
  * from an unbuilt feed without leaving the wall. Absent a key here, the tile
  * reads its feed normally.
  */
+/**
+ * A tile a scope drops from the grid entirely.
+ *
+ * The board's other answer to a missing source is `absent`, which keeps the
+ * tile and prints the reason — the right answer where the question still makes
+ * sense on that floor and only the feed is missing. `hidden` is for the tiles
+ * whose question does not apply at all: a slot that would say the same sentence
+ * every day for the life of the board is wall space spent on nothing, and a
+ * wall has exactly as much of it as the room is wide.
+ */
+export type LogisticsHiddenTile = 'allocated' | 'unscanned';
+
 export interface LogisticsAbsentSources {
-  /** WMS pallet slots — the fallback for "how full" where no tonnage capacity is set. */
+  /**
+   * WMS pallet slots — the fallback for "how full" where no tonnage capacity is
+   * set. Set where no WMS floor is mapped, which keeps the four collection
+   * reads behind that fallback from being spent. The stock tile no longer
+   * prints this sentence, so today it reads as a documented flag; it is left a
+   * string because the reason is the thing worth recording.
+   */
   palletSpace?: string;
   /** The partial-scan register behind "Sent without barcodes". */
   barcodeScanning?: string;
@@ -75,6 +93,8 @@ export interface LogisticsControlScope {
   sectionEmployeeDepartments: Record<LogisticsSection, readonly string[]>;
   /** Tiles with no source under this scope, each with the sentence it prints. */
   absent: LogisticsAbsentSources;
+  /** Tiles this scope does not show at all. Their feeds are not fetched. */
+  hidden: readonly LogisticsHiddenTile[];
 }
 
 /**
@@ -101,6 +121,7 @@ export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
   sectionDepartments: LOGISTICS_CONTROL_SECTION_DEPARTMENTS,
   sectionEmployeeDepartments: LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS,
   absent: {},
+  hidden: [],
 };
 
 /**
@@ -155,21 +176,33 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
     // No WMS floor is mapped to a Beverages warehouse — WMS holds two Oil
     // warehouses and one Mart godown and nothing else. The tile's first choice
     // is the rated tonnage capacity anyway, which is typed in and works here;
-    // this only removes the slot-count fallback behind it.
+    // this only removes the slot-count fallback behind it, and the four WMS
+    // reads that would have gone looking for a floor that is not there.
     palletSpace:
       'No WMS floor is mapped for Beverages, so pallet slots cannot stand in for a rated capacity.',
-    // 22 barcoded boxes against Oil's 327,738. Beverages stock is not barcoded,
-    // so the partial-scan register is structurally empty — and a tile reading
-    // "0 boxes, none this month" would report perfect scanning discipline on a
-    // floor that does not scan at all.
-    barcodeScanning:
-      'Beverages stock is not barcoded, so there is no box scan for a dispatch to fall short of.',
     // The transit read matches A/R invoices against the receiving company's
     // goods receipt, and its route table covers Oil → Mart only. Beverages has
     // never raised a branch stock transfer.
     stockInTransit:
       'No intercompany route is configured for Beverages — this read covers Oil to Mart only.',
   },
+  /*
+   * Two tiles off this wall, at the plant's request, and both because the
+   * question behind them is an Oil question:
+   *
+   *   - "Allocated stock" counts what the production floor declared into the
+   *     warehouse today, through FactoryFlow's godown movement register. That
+   *     register is the oil floor's — Beverages declares nothing into it — so
+   *     the tile could only ever read nought pieces.
+   *   - "Sent without barcodes" measures a truck's scan against its bill.
+   *     Beverages holds 22 barcoded boxes against Oil's 327,738: the floor does
+   *     not scan, so there is no discipline here to fall short of.
+   *
+   * Dropped rather than kept with a reason — see `LogisticsHiddenTile`. Both
+   * bands lose a tile and the three that remain take the full width, which is
+   * the point: what is left on this wall is what this plant can act on.
+   */
+  hidden: ['allocated', 'unscanned'],
 };
 
 /**

@@ -26,6 +26,7 @@ import {
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
   type LogisticsControlScope,
+  type LogisticsHiddenTile,
 } from '../constants';
 import { useFullBleed, useLogisticsControlBoard, useLogisticsControlScope } from '../hooks';
 
@@ -96,6 +97,20 @@ export function LogisticsControlDashboardPage({
   scope?: LogisticsControlScope;
 } = {}) {
   const scope = useLogisticsControlScope(scopeOverride);
+
+  /**
+   * Whether this plant shows a tile at all.
+   *
+   * Distinct from a tile that has no source and says so: a hidden tile leaves
+   * the grid, and the band's remaining tiles widen to fill the row rather than
+   * a gap being left where it stood. See `LogisticsHiddenTile`.
+   */
+  const shows = (tile: LogisticsHiddenTile) => !scope.hidden.includes(tile);
+
+  /** A band of four tiles, minus whichever of them this plant does not show. */
+  const bandColumns = (tiles: readonly LogisticsHiddenTile[]) =>
+    `repeat(${4 - tiles.filter((tile) => !shows(tile)).length}, minmax(0, 1fr))`;
+
   const { hasAnyPermission } = usePermission();
   const canSeeWarehouse = hasAnyPermission(LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS);
   const canSeeDispatch = hasAnyPermission(LOGISTICS_CONTROL_DISPATCH_PERMISSIONS);
@@ -129,7 +144,6 @@ export function LogisticsControlDashboardPage({
   const stock = board.warehouse.stockTonnage;
   const space = board.warehouse.space;
   /** Why there are no pallet slots behind this scope, where that is settled. */
-  const spaceAbsent = board.warehouse.spaceAbsent;
   const nonMoving = board.warehouse.nonMoving;
   const pending = board.warehouse.pendingDispatch;
   const allocated = board.warehouse.allocated;
@@ -278,6 +292,7 @@ export function LogisticsControlDashboardPage({
           <OpsBand
             domain="warehouse"
             title="Warehouse"
+            columns={bandColumns(['allocated'])}
             scope={scope.warehouse}
             people={canSeeWorkforce ? board.workforce.warehouse : undefined}
             unavailable={canSeeWarehouse ? undefined : 'No access to warehouse stock.'}
@@ -328,16 +343,12 @@ export function LogisticsControlDashboardPage({
                       },
                     ]}
                   />
-                ) : (
-                  <p className="ops-note">
-                    No rated capacity set — add one in board settings to show how full this
-                    warehouse is.
-                    {/* Where slots are not merely unloaded but will never exist,
-                        say so: otherwise this reads as a warehouse somebody has
-                        yet to map, and somebody goes looking for the mapping. */}
-                    {space === null && spaceAbsent !== null ? ` ${spaceAbsent}` : ''}
-                  </p>
-                )
+                ) : // Neither a rated capacity nor slots to fall back on, so
+                // there is nothing to draw. The tile says so in its tag — "capacity
+                // not set" — and leaves the visualisation row empty rather than
+                // filling it with a paragraph: the tonnage above is still the
+                // answer, and on a wall a block of prose is read as an error.
+                undefined
               }
             />
 
@@ -424,42 +435,45 @@ export function LogisticsControlDashboardPage({
               }
             />
 
-            <OpsGroup
-              name="Allocated stock"
-              onOpen={open('allocated')}
-              tag={
-                allocated.movements > 0
-                  ? { label: `${whole(allocated.movements)} consignments`, tone: 'neut' }
-                  : { label: 'none today', tone: 'ok' }
-              }
-              value={whole(allocated.pieces)}
-              unit="pieces"
-              viz={
-                allocated.error ? (
-                  <p className="ops-note">Could not read the godown movement register.</p>
-                ) : (
-                  // Pieces and litres, never weight: the Godown Movements
-                  // register carries no per-item weight, so this tile cannot be
-                  // stated in tonnes the way the rest of the band is.
-                  <div className="ops-duo">
-                    <div>
-                      <span className="k">Pieces</span>
-                      <span className="v">{whole(allocated.pieces)}</span>
+            {shows('allocated') && (
+              <OpsGroup
+                name="Allocated stock"
+                onOpen={open('allocated')}
+                tag={
+                  allocated.movements > 0
+                    ? { label: `${whole(allocated.movements)} consignments`, tone: 'neut' }
+                    : { label: 'none today', tone: 'ok' }
+                }
+                value={whole(allocated.pieces)}
+                unit="pieces"
+                viz={
+                  allocated.error ? (
+                    <p className="ops-note">Could not read the godown movement register.</p>
+                  ) : (
+                    // Pieces and litres, never weight: the Godown Movements
+                    // register carries no per-item weight, so this tile cannot be
+                    // stated in tonnes the way the rest of the band is.
+                    <div className="ops-duo">
+                      <div>
+                        <span className="k">Pieces</span>
+                        <span className="v">{whole(allocated.pieces)}</span>
+                      </div>
+                      <div>
+                        <span className="k">Litres</span>
+                        <span className="v">{whole(allocated.litres)}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="k">Litres</span>
-                      <span className="v">{whole(allocated.litres)}</span>
-                    </div>
-                  </div>
-                )
-              }
-            />
+                  )
+                }
+              />
+            )}
           </OpsBand>
 
           {/* ═════ DISPATCH · blue ═════ */}
           <OpsBand
             domain="dispatch"
             title="Dispatch"
+            columns={bandColumns(['unscanned'])}
             scope={
               board.dispatch.companies.length > 0
                 ? board.dispatch.companies.join(' | ')
@@ -617,52 +631,55 @@ export function LogisticsControlDashboardPage({
             />
 
             {/*
-              The one tile on this board that a floor without barcodes cannot
-              answer at all. An empty register there is not a clean month, it is
-              an absent practice -- and "none this month, 0 boxes" is the single
-              most flattering thing this board could say about a floor that scans
-              nothing. So the tile refuses the figure and states the reason.
+              A floor that barcodes nothing produces an empty register, and
+              "none this month, 0 boxes" is the single most flattering thing
+              this board could say about it. So the tile states its reason where
+              only the feed is missing (`missing` below) and leaves the band
+              entirely where the practice itself does not exist — as it does on
+              the beverages wall, which scans no boxes at all.
             */}
-            <OpsGroup
-              name="Sent without barcodes"
-              onOpen={unscanned.absent === null ? open('unscanned') : undefined}
-              tag={
-                unscanned.absent !== null
-                  ? { label: 'not barcoded', tone: 'nil' }
-                  : unscanned.approvals === 0
-                    ? { label: 'none this month', tone: 'ok' }
-                    : { label: `${whole(unscanned.approvals)} approvals`, tone: 'bad' }
-              }
-              value={unscanned.absent === null ? whole(unscanned.shortfallBoxes) : undefined}
-              unit={unscanned.absent === null ? 'boxes' : undefined}
-              missing={unscanned.absent ?? undefined}
-              viz={
-                unscanned.absent !== null ? undefined : unscanned.error ? (
-                  <p className="ops-note">Could not read the partial dispatch register.</p>
-                ) : (
-                  <OpsMeter
-                    segments={[
-                      {
-                        fill: 'main',
-                        pct:
-                          unscanned.expectedBoxes > 0
-                            ? (unscanned.shortfallBoxes / unscanned.expectedBoxes) * 100
-                            : 0,
-                      },
-                      {
-                        fill: 'mute',
-                        pct:
-                          unscanned.expectedBoxes > 0
-                            ? (unscanned.scannedBoxes / unscanned.expectedBoxes) * 100
-                            : 100,
-                        label: 'Scanned',
-                        figure: whole(unscanned.scannedBoxes),
-                      },
-                    ]}
-                  />
-                )
-              }
-            />
+            {shows('unscanned') && (
+              <OpsGroup
+                name="Sent without barcodes"
+                onOpen={unscanned.absent === null ? open('unscanned') : undefined}
+                tag={
+                  unscanned.absent !== null
+                    ? { label: 'not barcoded', tone: 'nil' }
+                    : unscanned.approvals === 0
+                      ? { label: 'none this month', tone: 'ok' }
+                      : { label: `${whole(unscanned.approvals)} approvals`, tone: 'bad' }
+                }
+                value={unscanned.absent === null ? whole(unscanned.shortfallBoxes) : undefined}
+                unit={unscanned.absent === null ? 'boxes' : undefined}
+                missing={unscanned.absent ?? undefined}
+                viz={
+                  unscanned.absent !== null ? undefined : unscanned.error ? (
+                    <p className="ops-note">Could not read the partial dispatch register.</p>
+                  ) : (
+                    <OpsMeter
+                      segments={[
+                        {
+                          fill: 'main',
+                          pct:
+                            unscanned.expectedBoxes > 0
+                              ? (unscanned.shortfallBoxes / unscanned.expectedBoxes) * 100
+                              : 0,
+                        },
+                        {
+                          fill: 'mute',
+                          pct:
+                            unscanned.expectedBoxes > 0
+                              ? (unscanned.scannedBoxes / unscanned.expectedBoxes) * 100
+                              : 100,
+                          label: 'Scanned',
+                          figure: whole(unscanned.scannedBoxes),
+                        },
+                      ]}
+                    />
+                  )
+                }
+              />
+            )}
           </OpsBand>
 
           {/* ═════ TRANSPORTATION · violet ═════ */}

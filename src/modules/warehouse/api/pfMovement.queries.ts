@@ -29,10 +29,14 @@ export const PF_MOVEMENT_QUERY_KEYS = {
   destinations: () => [...PF_MOVEMENT_QUERY_KEYS.all, 'destinations'] as const,
 };
 
-export function usePFMovements(params?: PFMovementListParams) {
+export function usePFMovements(params?: PFMovementListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: PF_MOVEMENT_QUERY_KEYS.list(params),
     queryFn: () => pfMovementApi.list(params),
+    // On by default — the register is this hook's whole purpose. The flag is
+    // for callers that render the register conditionally and should not spend a
+    // request on rows they will not show.
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -127,8 +131,7 @@ export function useCancelPFMovement() {
 export function useRestorePFMovement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (vars: { id: number; note?: string }) =>
-      pfMovementApi.restore(vars.id, vars.note),
+    mutationFn: (vars: { id: number; note?: string }) => pfMovementApi.restore(vars.id, vars.note),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: PF_MOVEMENT_QUERY_KEYS.all });
     },

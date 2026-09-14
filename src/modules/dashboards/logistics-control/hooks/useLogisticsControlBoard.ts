@@ -156,13 +156,19 @@ export function useLogisticsControlBoard(
    * or closed state, so there is no "outstanding" set to total: a wider window
    * would just accumulate everything ever sent and call it allocated.
    */
-  const floorToWarehouse = usePFMovements({
-    toWarehouse: scope.warehouse,
-    destinationKind: 'GODOWN',
-    dateFrom: today,
-    dateTo: today,
-    allCompanies: true,
-  });
+  const floorToWarehouse = usePFMovements(
+    {
+      toWarehouse: scope.warehouse,
+      destinationKind: 'GODOWN',
+      dateFrom: today,
+      dateTo: today,
+      allCompanies: true,
+    },
+    // Not fetched where the tile is not on the wall: the register belongs to
+    // the oil floor, so a scope that hides this tile would be paying for rows
+    // it could not show.
+    { enabled: !scope.hidden.includes('allocated') },
+  );
 
   // ----------------------------------------------------------------- dispatch
   // Two windows on the same feed, each aggregating both companies server-side —
@@ -238,7 +244,7 @@ export function useLogisticsControlBoard(
    */
   const partialScans = useApprovedPartialScans(
     scope.dispatchCompanies,
-    !scope.absent.barcodeScanning,
+    !scope.hidden.includes('unscanned') && !scope.absent.barcodeScanning,
   );
 
   // ------------------------------------------------------------------ freight
@@ -874,14 +880,6 @@ export function useLogisticsControlBoard(
       /** Every stock row behind the tonnage, for the drill-down. */
       stockRows: occupancy.data?.data ?? [],
       nonMoving: nonMovingBands,
-      /**
-       * Why there are no pallet slots to fall back on, or null when there are.
-       *
-       * Only ever set for a scope with no WMS floor mapped to it. An unmapped
-       * warehouse and one whose slots simply have not loaded yet are the same
-       * `null` space otherwise, and the tile has to tell them apart.
-       */
-      spaceAbsent: scope.absent.palletSpace ?? null,
       // Reshaped for the shared CapacityMeter, which takes slot counts rather
       // than a percentage so it can draw used, unusable and free separately.
       space: palletSpace
