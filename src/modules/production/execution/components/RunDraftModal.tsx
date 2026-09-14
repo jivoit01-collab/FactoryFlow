@@ -9,9 +9,11 @@
  * answered yet is not dimmed, it is absent, so there is never a screenful of
  * fields to read past to find the one that is actually next.
  *
- * The speed, the manpower and the supervisor names ride in on the
- * configuration. The material lines are the SKU's BOM scaled to the quantity —
- * worked out here, shown in full once there is a quantity to scale by, and
+ * The speed and the supervisor names ride in on the configuration, and so
+ * does the head count — but that one is only filled in, not fixed, because a
+ * line runs short-handed often enough that the day's figure belongs to the
+ * run. The material lines are the SKU's BOM scaled to the quantity — worked
+ * out here, shown in full once there is a quantity to scale by, and
  * editable per component for the case where the plan really does draw
  * something other than the BOM figure.
  *
@@ -258,12 +260,19 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
   const itemCode = config?.sku_code || typedItemCode;
   const product = config?.sku_code ? config.sku_name || config.sku_code : typedProduct;
 
-  // A preset that states a head count answers the manpower question; only a
-  // preset that leaves it at zero — or a line with no preset at all — leaves it
-  // to be asked, and then it is asked right where the quantity is, because how
-  // many people it takes is part of saying what the line will make.
-  const labourFromConfig = (config?.labour_count ?? 0) > 0;
-  const labourCount = labourFromConfig ? config!.labour_count : parseInt(labour || '0', 10) || 0;
+  // A preset that states a head count answers the manpower question, but only
+  // as the day's starting answer: the field is always on screen, next to the
+  // quantity, because how many people it takes is part of saying what the line
+  // will make and the same line runs a hand short often enough that the
+  // supervisor must be able to say so. Picking a preset fills the box in; once
+  // it has been typed over — or a draft was saved with a count of its own —
+  // the typed figure stands and a later preset does not overwrite it. The edit
+  // belongs to this run only; the preset itself is changed on the line setup
+  // page.
+  const configLabour = config?.labour_count ?? 0;
+  const [labourEdited, setLabourEdited] = useState(!!run?.labour_count);
+  const labourValue = labourEdited || configLabour <= 0 ? labour : String(configLabour);
+  const labourCount = parseInt(labourValue || '0', 10) || 0;
 
   // ---------------------------------------------------------------- product
   const [skuSearch, setSkuSearch] = useState('');
@@ -626,12 +635,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
                     />
                   )}
 
-                  <div
-                    className={cn(
-                      'grid grid-cols-2 gap-3',
-                      labourFromConfig ? 'sm:grid-cols-3' : 'sm:grid-cols-4',
-                    )}
-                  >
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div>
                       <Label htmlFor="run-draft-qty">
                         Quantity <span className="text-destructive">*</span>
@@ -649,20 +653,21 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
                         placeholder="cases"
                       />
                     </div>
-                    {!labourFromConfig && (
-                      <div>
-                        <Label htmlFor="run-draft-labour">Labour</Label>
-                        <Input
-                          id="run-draft-labour"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={labour}
-                          onChange={(e) => setLabour(e.target.value)}
-                          placeholder="people"
-                        />
-                      </div>
-                    )}
+                    <div>
+                      <Label htmlFor="run-draft-labour">Labour</Label>
+                      <Input
+                        id="run-draft-labour"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={labourValue}
+                        onChange={(e) => {
+                          setLabour(e.target.value);
+                          setLabourEdited(true);
+                        }}
+                        placeholder="people"
+                      />
+                    </div>
                     <div>
                       <Label htmlFor="run-draft-date">
                         Date <span className="text-destructive">*</span>
