@@ -1497,6 +1497,23 @@ export const API_ENDPOINTS = {
     PACKING_COMPLETE: (id: number) => `/marketplace/packing/${id}/complete/`,
     PACK_BARCODE_PRINT: (id: number) => `/marketplace/packing/barcodes/${id}/print/`,
   },
+  // Label & carton artwork register — the controlled document, the barcode and
+  // the two files held for every packaging item that carries artwork. ITEMS is
+  // the only one that reads HANA (the SAP item master supplies the universe of
+  // items), so a HANA outage costs the gap list and not the artwork itself.
+  ARTWORK: {
+    ITEMS: '/artwork/items/',
+    OPTIONS: '/artwork/options/',
+    SUMMARY: '/artwork/summary/',
+    RECORDS: '/artwork/records/',
+    RECORD_DETAIL: (recordId: number) => `/artwork/records/${recordId}/`,
+    RECORD_REVISIONS: (recordId: number) => `/artwork/records/${recordId}/revisions/`,
+    RECORD_DOWNLOAD: (recordId: number, kind: 'pdf' | 'cdr') =>
+      `/artwork/records/${recordId}/download/${kind}/`,
+    REVISION_DOWNLOAD: (revisionId: number, kind: 'pdf' | 'cdr') =>
+      `/artwork/revisions/${revisionId}/download/${kind}/`,
+  },
+
   // ETP / STP — the treatment plants' QA registers. Masters first (the Settings
   // screen), then one endpoint set per register; every register list accepts
   // ?plant=&date=&date_from=&date_to=&company=.

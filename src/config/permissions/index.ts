@@ -138,6 +138,14 @@ export {
   type MaintenancePermission,
 } from './maintenance.permissions';
 
+// Artwork Module (label + carton artwork register)
+export {
+  ARTWORK_ACCESS,
+  ARTWORK_MODULE_PREFIX,
+  ARTWORK_PERMISSIONS,
+  type ArtworkPermission,
+} from './artwork.permissions';
+
 // ETP / STP Module (effluent + sewage treatment plant registers)
 export {
   ETP_ACCESS,

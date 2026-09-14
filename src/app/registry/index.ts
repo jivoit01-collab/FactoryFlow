@@ -4,6 +4,7 @@ import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
 import { adminModuleConfig } from '@/modules/admin/module.config';
+import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
@@ -44,6 +45,9 @@ export const moduleRegistry: ModuleConfig[] = [
   labourModuleConfig,
   vehicleManagementModuleConfig,
   qcModuleConfig,
+  // Sits after QC: the artwork on a label is a controlled document, and QA
+  // is who holds it. One page, gated on artwork.* alone.
+  artworkModuleConfig,
   productionModuleConfig,
   // Sits next to Production: it reads the plan SAP holds and turns its bill of
   // materials into purchase orders.
