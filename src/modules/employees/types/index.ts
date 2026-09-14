@@ -17,13 +17,7 @@ export type EmploymentStatus =
   | 'TERMINATED'
   | 'RETIRED';
 
-export type SalaryStatus =
-  | 'DRAFT'
-  | 'PENDING'
-  | 'SCHEDULED'
-  | 'ACTIVE'
-  | 'SUPERSEDED'
-  | 'REJECTED';
+export type SalaryStatus = 'DRAFT' | 'PENDING' | 'SCHEDULED' | 'ACTIVE' | 'SUPERSEDED' | 'REJECTED';
 
 export type RevisionType =
   | 'ANNUAL_INCREMENT'
@@ -388,8 +382,7 @@ export interface EmployeePayload {
  * *creating* an employee can — so a photo is always a second step, against
  * somebody who already exists.
  */
-export interface EmployeeEditPayload
-  extends Omit<Partial<EmployeePayload>, 'initial_salary'> {
+export interface EmployeeEditPayload extends Omit<Partial<EmployeePayload>, 'initial_salary'> {
   photo?: File | null;
   reason?: string;
 }
@@ -534,8 +527,40 @@ export interface WorkforceReports {
 
 export type LabourShift = 'DAY' | 'NIGHT';
 
-/** How many permanent labourers the plant has on its rolls. One per company. */
+/**
+ * Which slice of the register a request is about.
+ *
+ * `ALL` is every department added up — a read-only total, since "everybody" is
+ * not something a person can take a headcount of. `UNDIVIDED` is the one bucket
+ * for a plant that does not split its labour by department, which is a row of
+ * its own and not the same thing as the total.
+ */
+export type LabourScope = 'ALL' | 'DEPARTMENT' | 'UNDIVIDED';
+
+/**
+ * A department id, or `null` for the undivided bucket. The page holds `'ALL'`
+ * separately, because a null that sometimes means "no department" and sometimes
+ * "all of them" is the bug this type exists to prevent.
+ */
+export type LabourDepartmentChoice = number | null | 'ALL';
+
+/** One department's strength on the rolls. */
+export interface LabourStrengthRow {
+  id: number;
+  department: number | null;
+  department_name: string | null;
+  headcount: number;
+  note: string;
+  updated_at: string | null;
+  updated_by_detail: UserBrief | null;
+}
+
+/** How many permanent labourers the plant has on its rolls, for one scope. */
 export interface LabourStrength {
+  scope: LabourScope;
+  department: number | null;
+  department_name: string | null;
+  /** The figure for the scope asked for — the sum of the rows when scope is ALL. */
   headcount: number;
   note: string;
   updated_at: string | null;
@@ -546,16 +571,32 @@ export interface LabourStrength {
    * apart — only the second is something to go and fix.
    */
   is_set: boolean;
+  /** The breakdown behind a total. Empty unless scope is ALL. */
+  departments: LabourStrengthRow[];
+  departments_with_strength: number;
 }
 
 export interface LabourStrengthPayload {
+  /** Required, and nullable: null is the undivided bucket, not "unspecified". */
+  department: number | null;
   headcount: number;
   note?: string;
 }
 
-/** One shift's count, measured against the strength as it stood that day. */
+/**
+ * One shift's count, measured against the strength as it stood that day.
+ *
+ * Also the shape of a plant-wide total, which the server synthesises by adding
+ * its departments up: those carry `id: null` and `is_editable: false`, because
+ * the count behind them was taken per department and is corrected there.
+ */
 export interface LabourPresenceRow {
-  id: number;
+  id: number | null;
+  department: number | null;
+  department_name: string | null;
+  is_editable: boolean;
+  /** How many departments a total was added up from. Absent on a real row. */
+  departments_counted?: number;
   work_date: string;
   shift: LabourShift;
   shift_display: string;
@@ -566,14 +607,22 @@ export interface LabourPresenceRow {
   is_over_strength: boolean;
   remark: string;
   recorded_by_detail: UserBrief | null;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface LabourPresenceResponse {
   from: string;
   to: string;
-  strength: { headcount: number; note: string; is_set: boolean };
+  scope: LabourScope;
+  department: number | null;
+  department_name: string | null;
+  strength: {
+    headcount: number;
+    note: string;
+    is_set: boolean;
+    departments_with_strength: number;
+  };
   results: LabourPresenceRow[];
 }
 
@@ -586,6 +635,8 @@ export interface LabourPresenceResponse {
 export interface LabourAuditEntry {
   id: number;
   subject: 'STRENGTH' | 'PRESENCE';
+  department: number | null;
+  department_name: string | null;
   work_date: string | null;
   shift: string;
   shift_display: string;
@@ -604,6 +655,8 @@ export interface LabourAuditResponse {
 }
 
 export interface LabourPresencePayload {
+  /** Required, and nullable: null is the undivided bucket, not "unspecified". */
+  department: number | null;
   work_date: string;
   shift: LabourShift;
   present_count: number;

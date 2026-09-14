@@ -18,8 +18,10 @@ The Labour frontend is **thin and reuses gate screens**. The top-level
 
 **Not this module: the plant's own permanent labour.** Everything here counts
 *contractor* heads. The factory's own labourers — the strength on the rolls and
-how many of them were present each shift — live in the Employees module, at
-`/employees/labour` (backend `employee_hierarchy`).
+how many of them were present each shift, both kept per department — live in the
+Employees module, at `/employees/labour` (backend `employee_hierarchy`). That
+page shows the plant totals until a department is picked, and only a picked
+department can be written to.
 
 There are **five screens**, backed by **two backend apps** (`labour_gate` for
 the live in/out tally + allocation, `labour_count` for the man-day register —

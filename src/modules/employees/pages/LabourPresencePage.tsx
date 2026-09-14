@@ -7,19 +7,27 @@
  * nowhere — everybody knows there are eighty-five of them, and nobody could say
  * how many of the eighty-five were on site yesterday. This is that register.
  *
- * It is deliberately two facts, not one. **The strength** is a master: one
- * number per company, moved only when the plant hires or loses somebody, and
+ * It is deliberately two facts, not one. **The strength** is a master: a
+ * number per department, moved only when the plant hires or loses somebody, and
  * editable by whoever maintains the org structure. **The presence** is a daily
- * entry, per shift, by whoever is asked to take the count — a separate grant,
- * because taking a headcount is not the same job as changing what the roll
- * says.
+ * entry, per department and shift, by whoever is asked to take the count — a
+ * separate grant, because taking a headcount is not the same job as changing
+ * what the roll says.
  *
- * The shape follows from that: **one date at the top, three cards under it**,
- * each a figure with an Edit behind it. The day being looked at is chosen once
- * rather than repeated in a form below, and a shift is corrected where it is
- * read — the card, or its row in the register — so the same count is never
+ * The shape follows from that: **a department and a date at the top, three
+ * cards under them**, each a figure with an Edit behind it. Both are chosen
+ * once rather than repeated in a form below, and a shift is corrected where it
+ * is read — the card, or its row in the register — so the same count is never
  * entered in two places. Rows in the register open the same dialog, which is
  * how a day older than the one on screen gets fixed.
+ *
+ * With no department picked the page shows the **plant totals**, added up from
+ * the departments, and every Edit goes away: "everybody" is not something a
+ * person can take a headcount of, and a total that could be typed over would
+ * stop agreeing with the departments behind it. Picking one turns the page back
+ * into something writable. The picker also holds **No department**, which is a
+ * real bucket of its own — where a plant that does not divide its labour keeps
+ * its figure — and not a synonym for the total.
  *
  * Each recorded shift keeps the strength it was measured against, so a day that
  * read "78 of 85" still reads that after the eighty-sixth is hired. That is why
@@ -34,7 +42,7 @@
  *
  * Record-only: nothing costs or plans off these figures yet.
  */
-import { CalendarDays, History, Loader2, Moon, Pencil, Plus, Sun } from 'lucide-react';
+import { Building2, CalendarDays, History, Loader2, Moon, Pencil, Plus, Sun } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -56,6 +64,7 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import {
+  useDepartments,
   useEmployeeMeta,
   useLabourPresence,
   useLabourPresenceAudit,
@@ -64,7 +73,27 @@ import {
   useRecordLabourPresence,
   useSetLabourStrength,
 } from '../api';
-import type { LabourAuditEntry, LabourPresenceRow, LabourShift } from '../types';
+import type {
+  LabourAuditEntry,
+  LabourDepartmentChoice,
+  LabourPresenceRow,
+  LabourShift,
+} from '../types';
+
+/** The picker's own value, since a `<select>` speaks only in strings. */
+const ALL = 'ALL';
+const NO_DEPARTMENT = 'none';
+
+function parseChoice(value: string): LabourDepartmentChoice {
+  if (value === ALL) return ALL;
+  if (value === NO_DEPARTMENT) return null;
+  return Number(value);
+}
+
+function choiceValue(choice: LabourDepartmentChoice) {
+  if (choice === ALL) return ALL;
+  return choice === null ? NO_DEPARTMENT : String(choice);
+}
 
 const SHIFTS: { value: LabourShift; label: string; hours: string; icon: typeof Sun }[] = [
   { value: 'DAY', label: 'Day', hours: '07:00 – 19:00', icon: Sun },
@@ -179,12 +208,32 @@ interface PresenceDraft {
 
 export default function LabourPresencePage() {
   const meta = useEmployeeMeta();
-  const strength = useLabourStrength();
+  const { data: departmentPage } = useDepartments();
+  // Retired departments stay out of the picker but keep their rows: a figure
+  // already recorded against one is still part of the plant's history, and the
+  // total says so.
+  const departments = (departmentPage?.results ?? []).filter(
+    (department) => department.status === 'ACTIVE',
+  );
   const setStrength = useSetLabourStrength();
   const record = useRecordLabourPresence();
 
-  const canSetStrength = !!meta.data?.permissions.can_manage_structure;
-  const canRecord = !!meta.data?.permissions.can_record_presence;
+  // The plant total is the opening view: somebody arriving at the page wants
+  // to know where the factory stands before they want to know where one
+  // department does.
+  const [choice, setChoice] = useState<LabourDepartmentChoice>(ALL);
+  const isTotals = choice === ALL;
+  const departmentName = isTotals
+    ? null
+    : choice === null
+      ? 'No department'
+      : (departments.find((entry) => entry.id === choice)?.name ?? 'Department');
+
+  const strength = useLabourStrength(choice);
+
+  // Recording is refused on a total, whatever the grants say — see the header.
+  const canSetStrength = !!meta.data?.permissions.can_manage_structure && !isTotals;
+  const canRecord = !!meta.data?.permissions.can_record_presence && !isTotals;
 
   const [date, setDate] = useState(todayIso());
   const [strengthDraft, setStrengthDraft] = useState<{ headcount: string; note: string } | null>(
@@ -195,7 +244,7 @@ export default function LabourPresencePage() {
 
   // The trail is fetched only while its dialog is open — it is a question
   // nobody asks most days.
-  const strengthAudit = useLabourStrengthAudit(auditView?.kind === 'STRENGTH');
+  const strengthAudit = useLabourStrengthAudit(auditView?.kind === 'STRENGTH', choice);
   const presenceAudit = useLabourPresenceAudit(
     auditView?.kind === 'PRESENCE' ? auditView.presenceId : null,
   );
@@ -203,13 +252,14 @@ export default function LabourPresencePage() {
 
   // Plain, not memoised: it reads today's date, so it is not a pure function of
   // its dependencies, and react-query hashes the key by value anyway.
-  const range = presenceWindow(date);
+  const range = { ...presenceWindow(date), department: choice };
   const presence = useLabourPresence(range);
 
   const rows = useMemo(() => presence.data?.results ?? [], [presence.data]);
   const headcount = strength.data?.headcount ?? 0;
   const isSet = !!strength.data?.is_set && headcount > 0;
   const isToday = date === todayIso();
+  const departmentsWithStrength = strength.data?.departments_with_strength ?? 0;
 
   const shiftCards = useMemo(
     () =>
@@ -221,6 +271,9 @@ export default function LabourPresencePage() {
   );
 
   function openPresence(workDate: string, shift: LabourShift, existing: LabourPresenceRow | null) {
+    // Totals have no row of their own to correct, and the buttons that would
+    // pass one are not rendered in that view — this is the backstop.
+    if (existing && !existing.is_editable) return;
     setPresenceDraft({
       work_date: workDate,
       shift,
@@ -251,13 +304,16 @@ export default function LabourPresencePage() {
     }
     try {
       await setStrength.mutateAsync({
+        // Never reached while the totals view is on screen: the button that
+        // opens this dialog is not rendered there.
+        department: isTotals ? null : choice,
         headcount: headcountValue,
         note: strengthDraft.note.trim(),
       });
       setStrengthDraft(null);
       toast.success('Permanent labour strength saved');
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, 'The strength could not be saved'));
     }
   }
 
@@ -270,6 +326,7 @@ export default function LabourPresencePage() {
     }
     try {
       await record.mutateAsync({
+        department: isTotals ? null : choice,
         work_date: presenceDraft.work_date,
         shift: presenceDraft.shift,
         present_count: count,
@@ -282,7 +339,7 @@ export default function LabourPresencePage() {
       );
       setPresenceDraft(null);
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, 'The count could not be saved'));
     }
   }
 
@@ -305,11 +362,32 @@ export default function LabourPresencePage() {
         </Button>
       </header>
 
-      {/* The day being looked at, chosen once. Both shift cards and everything
-          the dialogs default to follow it. */}
+      {/* The department and the day, chosen once. Every figure on the page and
+          everything the dialogs default to follow them. */}
       <div className="flex flex-wrap items-center gap-2">
-        <Label htmlFor="presence-date" className="text-sm font-medium">
+        <Label
+          htmlFor="presence-department"
+          className="flex items-center gap-1.5 text-sm font-medium"
+        >
+          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
           Showing
+        </Label>
+        <select
+          id="presence-department"
+          value={choiceValue(choice)}
+          onChange={(event) => setChoice(parseChoice(event.target.value))}
+          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+        >
+          <option value={ALL}>All departments</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.id}>
+              {department.name}
+            </option>
+          ))}
+          <option value={NO_DEPARTMENT}>No department</option>
+        </select>
+        <Label htmlFor="presence-date" className="text-sm font-medium">
+          on
         </Label>
         <Input
           id="presence-date"
@@ -334,7 +412,7 @@ export default function LabourPresencePage() {
           <CardContent className="flex h-full flex-col justify-between gap-3 p-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                On the rolls
+                On the rolls{!isTotals && departmentName ? ` · ${departmentName}` : ''}
               </p>
               {strength.isLoading ? (
                 <Loader2 className="mt-2 h-5 w-5 animate-spin text-muted-foreground" />
@@ -350,15 +428,23 @@ export default function LabourPresencePage() {
               )}
               <p className="mt-1 text-xs text-muted-foreground">
                 {!strength.isLoading && !isSet
-                  ? 'Nobody has entered the strength yet. A shift cannot be recorded until somebody does.'
-                  : strength.data?.note || 'What the plant employs directly'}
+                  ? isTotals
+                    ? 'No department has a strength yet. Pick one to enter it.'
+                    : 'Nobody has entered the strength yet. A shift cannot be recorded until somebody does.'
+                  : isTotals
+                    ? `Added up across ${departmentsWithStrength} ${
+                        departmentsWithStrength === 1 ? 'department' : 'departments'
+                      }`
+                    : strength.data?.note || 'What the plant employs directly'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] text-muted-foreground">
-                {strength.data?.updated_by_detail
-                  ? `Set by ${strength.data.updated_by_detail.full_name}`
-                  : 'Not set'}
+                {isTotals
+                  ? 'Pick a department to edit'
+                  : strength.data?.updated_by_detail
+                    ? `Set by ${strength.data.updated_by_detail.full_name}`
+                    : 'Not set'}
               </p>
               {canSetStrength && (
                 <Button
@@ -402,14 +488,22 @@ export default function LabourPresencePage() {
                       : `${row.absent_count} absent · ${hours}`
                     : `Not recorded · ${hours}`}
                 </p>
+                {isTotals && row?.departments_counted !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    Counted in {row.departments_counted} of {departmentsWithStrength}{' '}
+                    {departmentsWithStrength === 1 ? 'department' : 'departments'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground">
-                  {row?.recorded_by_detail
-                    ? `By ${row.recorded_by_detail.full_name}`
-                    : row
-                      ? 'Recorded'
-                      : 'Nobody has counted this shift'}
+                  {isTotals
+                    ? 'Pick a department to record'
+                    : row?.recorded_by_detail
+                      ? `By ${row.recorded_by_detail.full_name}`
+                      : row
+                        ? 'Recorded'
+                        : 'Nobody has counted this shift'}
                 </p>
                 {canRecord && (
                   <Button
@@ -444,7 +538,9 @@ export default function LabourPresencePage() {
         <CardContent className="p-0">
           <div className="flex items-center gap-2 border-b px-4 py-3">
             <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-semibold">Register</h2>
+            <h2 className="text-sm font-semibold">
+              Register{!isTotals && departmentName ? ` · ${departmentName}` : ''}
+            </h2>
             <span className="text-xs text-muted-foreground">
               {range.from === range.to
                 ? formatDay(range.from)
@@ -465,6 +561,7 @@ export default function LabourPresencePage() {
                   <tr className="border-b bg-muted/50 text-left">
                     <th className="p-3 font-medium">Date</th>
                     <th className="p-3 font-medium">Shift</th>
+                    {isTotals && <th className="p-3 font-medium">Departments</th>}
                     <th className="p-3 text-right font-medium">Present</th>
                     <th className="p-3 text-right font-medium">Absent</th>
                     <th className="p-3 text-right font-medium">Of strength</th>
@@ -475,7 +572,10 @@ export default function LabourPresencePage() {
                 </thead>
                 <tbody>
                   {rows.map((row: LabourPresenceRow) => (
-                    <tr key={row.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr
+                      key={`${row.work_date}-${row.shift}-${row.id ?? 'total'}`}
+                      className="border-b last:border-0 hover:bg-muted/30"
+                    >
                       <td className="whitespace-nowrap p-3">{formatDay(row.work_date)}</td>
                       <td className="whitespace-nowrap p-3 text-muted-foreground">
                         {row.shift === 'NIGHT' ? (
@@ -485,6 +585,11 @@ export default function LabourPresencePage() {
                         )}
                         {row.shift === 'NIGHT' ? 'Night' : 'Day'}
                       </td>
+                      {isTotals && (
+                        <td className="whitespace-nowrap p-3 text-muted-foreground">
+                          {row.departments_counted ?? 0} counted
+                        </td>
+                      )}
                       <td className="p-3 text-right font-semibold tabular-nums">
                         {row.present_count}
                       </td>
@@ -500,15 +605,20 @@ export default function LabourPresencePage() {
                       </td>
                       {canRecord && (
                         <td className="p-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            aria-label={`Edit ${formatDay(row.work_date)} ${row.shift === 'NIGHT' ? 'night' : 'day'} shift`}
-                            onClick={() => openPresence(row.work_date, row.shift, row)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          {/* A plant-wide total carries no row to correct — the
+                              departments behind it are each corrected on their
+                              own page. */}
+                          {row.is_editable && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              aria-label={`Edit ${formatDay(row.work_date)} ${row.shift === 'NIGHT' ? 'night' : 'day'} shift`}
+                              onClick={() => openPresence(row.work_date, row.shift, row)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -523,7 +633,9 @@ export default function LabourPresencePage() {
       <Dialog open={!!strengthDraft} onOpenChange={(open) => !open && setStrengthDraft(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Permanent labour strength</DialogTitle>
+            <DialogTitle>
+              Permanent labour strength{departmentName ? ` · ${departmentName}` : ''}
+            </DialogTitle>
           </DialogHeader>
           <DialogBody className="space-y-3">
             <div>
@@ -583,7 +695,7 @@ export default function LabourPresencePage() {
               {presenceDraft
                 ? `${presenceDraft.shift === 'NIGHT' ? 'Night' : 'Day'} shift · ${formatDay(
                     presenceDraft.work_date,
-                  )}`
+                  )}${departmentName ? ` · ${departmentName}` : ''}`
                 : 'Record a shift'}
             </DialogTitle>
           </DialogHeader>
@@ -626,12 +738,12 @@ export default function LabourPresencePage() {
           </DialogBody>
           <DialogFooter className="sm:justify-between">
             {/* Nothing to show for a shift nobody has counted yet. */}
-            {presenceDraft?.existing ? (
+            {presenceDraft?.existing?.id != null ? (
               <AuditLink
                 onClick={() =>
                   setAuditView({
                     kind: 'PRESENCE',
-                    presenceId: presenceDraft.existing!.id,
+                    presenceId: presenceDraft.existing!.id!,
                     title: `${presenceDraft.shift === 'NIGHT' ? 'Night' : 'Day'} shift · ${formatDay(
                       presenceDraft.work_date,
                     )}`,
