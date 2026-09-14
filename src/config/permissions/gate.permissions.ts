@@ -16,8 +16,31 @@ export const GATE_PERMISSIONS = {
   // DASHBOARD
   // ============================================
   DASHBOARD: {
-    /** View gate dashboard */
+    /**
+     * The PERSON-GATE dashboard, despite the name — visitors and contractors.
+     * It is not the right that opens the gate wall board; that is
+     * `GATE_WALL.VIEW` below.
+     */
     VIEW: 'person_gatein.can_view_dashboard',
+  },
+
+  // ============================================
+  // GATE WALL BOARD (/dashboards/gate)
+  // ============================================
+  GATE_WALL: {
+    /**
+     * Open the gate wall board.
+     *
+     * Its own right on purpose. The board used to be gated on ANY of five
+     * unrelated operational rights, so being allowed to view a PO receipt or a
+     * sales dispatch gate-out silently carried permission to watch the whole
+     * gate — on live that was 41 of 107 active users, 13 of them QC chemists.
+     *
+     * Holding it opens the board but does not fill it in: every section is
+     * fetched under its own right, and one the viewer lacks reads "—" rather
+     * than a zero.
+     */
+    VIEW: 'gate_core.can_view_gate_dashboard',
   },
 
   // ============================================

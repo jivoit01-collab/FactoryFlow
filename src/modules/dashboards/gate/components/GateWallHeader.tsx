@@ -5,6 +5,7 @@ import { cn } from '@/shared/utils';
 import { useNow } from '../../dispatch/hooks';
 import { count, longDate, since } from '../../dispatch/utils/format';
 import { GATE_STALE_AFTER_MS, type GateRange } from '../constants/gate-dashboard.constants';
+import type { GateBoardAccess } from '../hooks/useGateBoard';
 
 export interface GateWallHeaderProps {
   range: GateRange;
@@ -21,6 +22,9 @@ export interface GateWallHeaderProps {
   vehiclesIn: number;
   vehiclesOut: number;
   insideNow: number;
+  /** Which of the three the viewer may actually read; the rest show a dash
+   *  rather than a zero, which on this bar would read as a real figure. */
+  access: GateBoardAccess;
   isFetching: boolean;
   updatedAt: number;
   onRefresh: () => void;
@@ -58,6 +62,7 @@ export function GateWallHeader({
   vehiclesIn,
   vehiclesOut,
   insideNow,
+  access,
   isFetching,
   updatedAt,
   onRefresh,
@@ -123,9 +128,9 @@ export function GateWallHeader({
       </div>
 
       <div className="flex min-w-0 items-center gap-6">
-        <HeaderFigure value={count(vehiclesIn)} label="Vehicles in" />
-        <HeaderFigure value={count(vehiclesOut)} label="Vehicles out" />
-        <HeaderFigure value={count(insideNow)} label="Inside now" />
+        <HeaderFigure value={access.inbound ? count(vehiclesIn) : '—'} label="Vehicles in" />
+        <HeaderFigure value={access.outbound ? count(vehiclesOut) : '—'} label="Vehicles out" />
+        <HeaderFigure value={access.persons ? count(insideNow) : '—'} label="Inside now" />
         {mode === 'live' && (
           <div className="min-w-0">
             <div className="text-2xl font-bold leading-none tabular-nums text-foreground">

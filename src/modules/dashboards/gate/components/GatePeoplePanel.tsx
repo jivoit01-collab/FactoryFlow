@@ -79,12 +79,14 @@ export function GatePeoplePanel({
       className={className}
       flush
       aside={
-        <>
-          <PanelBadge>{count(board.insideNow)} inside</PanelBadge>
-          {board.longStay > 0 && (
-            <PanelBadge tone="bad">{count(board.longStay)} long stay</PanelBadge>
-          )}
-        </>
+        board.access.persons ? (
+          <>
+            <PanelBadge>{count(board.insideNow)} inside</PanelBadge>
+            {board.longStay > 0 && (
+              <PanelBadge tone="bad">{count(board.longStay)} long stay</PanelBadge>
+            )}
+          </>
+        ) : null
       }
     >
       {board.longStay > 0 && (
@@ -99,7 +101,11 @@ export function GatePeoplePanel({
       <div className="flex shrink-0 flex-wrap gap-2 px-4 pb-3">
         {personTypes.length === 0 ? (
           <span className="text-xs text-muted-foreground/70">
-            {board.peopleLoading ? 'Reading the person register…' : 'Nobody is signed in.'}
+            {!board.access.persons
+              ? 'You cannot see who is on site — needs the person gate permission.'
+              : board.peopleLoading
+                ? 'Reading the person register…'
+                : 'Nobody is signed in.'}
           </span>
         ) : (
           personTypes.map((type) => (
@@ -137,7 +143,9 @@ export function GatePeoplePanel({
           </h3>
         </div>
         <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-          {count(board.labourAllocated)} of {count(board.laboursIn)} allocated
+          {board.access.labour
+            ? `${count(board.labourAllocated)} of ${count(board.laboursIn)} allocated`
+            : 'Not visible to you'}
           {/* The labour endpoint takes one date, not a range, so a multi-day
               board shows its last day and has to name it. Everything else on
               this screen spans the full From→To. */}
@@ -151,11 +159,13 @@ export function GatePeoplePanel({
 
       {rows.length === 0 ? (
         <PanelEmpty>
-          {board.labourLoading
-            ? 'Reading the labour register…'
-            : board.laboursIn > 0
-              ? 'No contractor labour has been split across departments yet.'
-              : 'No contractor labour came through the gate on this day.'}
+          {!board.access.labour
+            ? 'You cannot see the labour split — needs the labour gate permission.'
+            : board.labourLoading
+              ? 'Reading the labour register…'
+              : board.laboursIn > 0
+                ? 'No contractor labour has been split across departments yet.'
+                : 'No contractor labour came through the gate on this day.'}
         </PanelEmpty>
       ) : (
         <ul

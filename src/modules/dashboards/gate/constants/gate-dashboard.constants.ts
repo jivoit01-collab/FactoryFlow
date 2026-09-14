@@ -49,14 +49,21 @@ export function shiftISO(anchor: string, days: number): string {
  */
 export const GATE_INSIDE_DAYS_BACK = 7;
 
-/** Broad view-gate for the Gate dashboard route/section. */
-export const GATE_DASHBOARD_VIEW_PERMISSIONS = [
-  GATE_PERMISSIONS.DASHBOARD.VIEW,
-  GATE_PERMISSIONS.GATE_ENTRY.VIEW,
-  GATE_PERMISSIONS.PERSON_GATE_IN.VIEW,
-  GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
-  GATE_PERMISSIONS.RAW_MATERIAL.VIEW,
-] as const;
+/**
+ * The one right that opens the Gate dashboard.
+ *
+ * This was an OR over five operational rights — view a PO receipt, a gate entry,
+ * a person entry, a sales dispatch gate-out — which made the board a side effect
+ * of doing almost anything at the gate rather than a thing anybody was granted.
+ * On live that reached 41 of 107 active users, 13 of them QC chemists who hold
+ * `raw_material_gatein.view_poreceipt` and nothing else gate-shaped.
+ *
+ * It is now `gate_core.can_view_gate_dashboard`, handed out through the
+ * "Dashboards — Gate" group (backend: `setup_dashboard_groups`). Holding it
+ * opens the board and nothing more: each section still loads under its own
+ * right, and one the viewer lacks reads "—" instead of a zero.
+ */
+export const GATE_DASHBOARD_VIEW_PERMISSIONS = [GATE_PERMISSIONS.GATE_WALL.VIEW] as const;
 
 export interface GateActivity {
   title: string;
