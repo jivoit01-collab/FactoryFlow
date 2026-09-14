@@ -47,6 +47,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { SearchableSelect } from '@/shared/components';
 import { DashboardError } from '@/shared/components/dashboard';
 import {
   Button,
@@ -80,9 +81,15 @@ import type {
   LabourShift,
 } from '../types';
 
-/** The picker's own value, since a `<select>` speaks only in strings. */
+/** The picker's own value, since it speaks only in strings. */
 const ALL = 'ALL';
 const NO_DEPARTMENT = 'none';
+
+/** One row of the department picker, including its two synthetic choices. */
+interface DepartmentOption {
+  key: string;
+  label: string;
+}
 
 function parseChoice(value: string): LabourDepartmentChoice {
   if (value === ALL) return ALL;
@@ -90,8 +97,14 @@ function parseChoice(value: string): LabourDepartmentChoice {
   return Number(value);
 }
 
+/**
+ * The plant total is the picker's *empty* state rather than a typed-in value,
+ * so clearing the box lands back on it and the placeholder can say so. Every
+ * other choice — a real department, or the deliberate "No department" — is the
+ * option's key.
+ */
 function choiceValue(choice: LabourDepartmentChoice) {
-  if (choice === ALL) return ALL;
+  if (choice === ALL) return '';
   return choice === null ? NO_DEPARTMENT : String(choice);
 }
 
@@ -208,12 +221,32 @@ interface PresenceDraft {
 
 export default function LabourPresencePage() {
   const meta = useEmployeeMeta();
-  const { data: departmentPage } = useDepartments();
+  const departmentQuery = useDepartments();
   // Retired departments stay out of the picker but keep their rows: a figure
   // already recorded against one is still part of the plant's history, and the
   // total says so.
-  const departments = (departmentPage?.results ?? []).filter(
-    (department) => department.status === 'ACTIVE',
+  const departments = useMemo(
+    () =>
+      (departmentQuery.data?.results ?? []).filter(
+        (department) => department.status === 'ACTIVE',
+      ),
+    [departmentQuery.data],
+  );
+  // The picker searches a list nearer forty than four, which is why it is a
+  // typed search rather than a `<select>`. "No department" sits at the bottom
+  // of it, where it reads as the exception it is rather than as one more
+  // department. "All departments" is listed first *and* is what an emptied box
+  // means, so the way back to the plant total is both clickable and typeable.
+  const departmentOptions = useMemo<DepartmentOption[]>(
+    () => [
+      { key: ALL, label: 'All departments' },
+      ...departments.map((department) => ({
+        key: String(department.id),
+        label: department.name,
+      })),
+      { key: NO_DEPARTMENT, label: 'No department' },
+    ],
+    [departments],
   );
   const setStrength = useSetLabourStrength();
   const record = useRecordLabourPresence();
@@ -372,20 +405,25 @@ export default function LabourPresencePage() {
           <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
           Showing
         </Label>
-        <select
-          id="presence-department"
-          value={choiceValue(choice)}
-          onChange={(event) => setChoice(parseChoice(event.target.value))}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-        >
-          <option value={ALL}>All departments</option>
-          {departments.map((department) => (
-            <option key={department.id} value={department.id}>
-              {department.name}
-            </option>
-          ))}
-          <option value={NO_DEPARTMENT}>No department</option>
-        </select>
+        <div className="w-60">
+          <SearchableSelect<DepartmentOption>
+            inputId="presence-department"
+            value={choiceValue(choice)}
+            items={departmentOptions}
+            isLoading={departmentQuery.isLoading}
+            isError={departmentQuery.isError}
+            placeholder="All departments"
+            inputClassName="h-9"
+            getItemKey={(option) => option.key}
+            getItemLabel={(option) => option.label}
+            loadingText="Loading departments…"
+            emptyText="No departments yet"
+            notFoundText="No department matches that"
+            errorText="Could not load departments"
+            onItemSelect={(option) => setChoice(parseChoice(option.key))}
+            onClear={() => setChoice(ALL)}
+          />
+        </div>
         <Label htmlFor="presence-date" className="text-sm font-medium">
           on
         </Label>

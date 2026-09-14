@@ -1,5 +1,11 @@
 /**
- * Employees module — the directory, the reporting tree, and compensation.
+ * Organisation module — the directory, the reporting tree, and compensation.
+ *
+ * The sidebar calls it "Organisation" and it opens on the department ownership
+ * chart at `/organization`, which is registered by its own module; everything
+ * below the first submenu entry is the employee screens, which keep their
+ * `/employees/*` paths. The name is the only thing shared — nothing was moved,
+ * so a bookmark, a deep link or a printed URL still lands where it did.
  *
  * Seven screens, gated on their own `employee_hierarchy.*` permissions rather
  * than on a module prefix, because the permissions here are not a ladder: the
@@ -18,12 +24,13 @@
  * static segment above a dynamic one, so `/employees/chart` is never read as an
  * employee id.
  */
-import { Building2, HardHat, Network, Users, Wallet } from 'lucide-react';
+import { Building2, HardHat, Network, Table2, Users, Wallet } from 'lucide-react';
 
 import {
   EMPLOYEE_ACCESS,
   EMPLOYEE_REPORTS_ACCESS,
   EMPLOYEE_STRUCTURE_ACCESS,
+  ORG_CHART_ACCESS,
   SALARY_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -36,6 +43,14 @@ const OrgStructurePage = lazy(() => import('./pages/OrgStructurePage'));
 const WorkforceReportsPage = lazy(() => import('./pages/WorkforceReportsPage'));
 const CompensationReviewPage = lazy(() => import('./pages/CompensationReviewPage'));
 const LabourPresencePage = lazy(() => import('./pages/LabourPresencePage'));
+
+/**
+ * Anything that should reveal the Organisation module in the sidebar: the
+ * ownership chart or any of the employee screens. The parent item is a link as
+ * well as a header, so it has to be visible to somebody who holds only one
+ * side of that.
+ */
+const ORGANISATION_ACCESS: readonly string[] = [...ORG_CHART_ACCESS, ...EMPLOYEE_ACCESS];
 
 export const employeesModuleConfig: ModuleConfig = {
   name: 'employees',
@@ -91,13 +106,19 @@ export const employeesModuleConfig: ModuleConfig = {
   ],
   navigation: [
     {
-      path: '/employees',
-      title: 'Employees',
-      icon: Users,
+      path: '/organization',
+      title: 'Organisation',
+      icon: Network,
       showInSidebar: true,
       hasSubmenu: true,
-      permissions: EMPLOYEE_ACCESS,
+      permissions: ORGANISATION_ACCESS,
       children: [
+        {
+          path: '/organization',
+          title: 'Ownership chart',
+          icon: Table2,
+          permissions: ORG_CHART_ACCESS,
+        },
         {
           path: '/employees',
           title: 'Directory',

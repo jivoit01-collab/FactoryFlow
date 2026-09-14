@@ -62,12 +62,12 @@ export const moduleRegistry: ModuleConfig[] = [
   marketplaceModuleConfig,
   sapReportsModuleConfig,
   notificationsModuleConfig,
-  // Reference, not a workflow: the department ownership chart lives near the
-  // bottom with the other look-it-up pages.
+  // The department ownership chart. Route only — its sidebar entry is the
+  // Organisation module's, which opens on it.
   organizationModuleConfig,
-  // The people themselves — the directory, the reporting tree and compensation.
-  // Sits next to the ownership chart: same subject, but real employees, real
-  // salaries and its own access control.
+  // Organisation: the ownership chart plus the people themselves — the
+  // directory, the reporting tree and compensation, each with its own access
+  // control.
   employeesModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
