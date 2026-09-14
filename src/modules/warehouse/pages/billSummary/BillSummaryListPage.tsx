@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { PaginationControls } from '@/shared/components/PaginationControls';
 import {
   Badge,
   Button,
@@ -22,6 +23,9 @@ import {
   useBillSummaries,
   useSapBillSummaries,
 } from '../../api';
+
+/** Matches the smallest option PaginationControls offers. */
+const DEFAULT_PAGE_SIZE = 25;
 
 const STATUS_STYLE: Record<string, string> = {
   GENERATED: 'bg-sky-100 text-sky-800',
@@ -50,6 +54,8 @@ export default function BillSummaryListPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [includeSap, setIncludeSap] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const params = {
     ...(dateFrom ? { date_from: dateFrom } : {}),
@@ -83,6 +89,24 @@ export default function BillSummaryListPage() {
     });
   }, [rows, sapRows, includeSap, sapHidden]);
 
+  /* Paged in the browser, not on the server. The list on screen is two feeds
+     sorted into one — the app's own sheets and the dispatches stamped straight
+     into SAP — and a row's place in it depends on the other feed's dates, so a
+     page can only be cut once both are in hand. The app side is a few hundred
+     rows and the SAP side is a month's window. */
+  const totalPages = Math.max(1, Math.ceil(allRows.length / pageSize));
+
+  /* A filter that shortens the list can strand the viewer past the end of it,
+     as can the SAP rows arriving late. Clamped here rather than written back
+     through setState, so the page number stays derived from the list instead
+     of chasing it a render behind. */
+  const safePage = Math.min(page, totalPages);
+
+  const pagedRows = useMemo(
+    () => allRows.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [allRows, safePage, pageSize],
+  );
+
   const canIssue = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
 
   return (
@@ -106,7 +130,10 @@ export default function BillSummaryListPage() {
               <select
                 id="bs-status"
                 value={status}
-                onChange={(event) => setStatus(event.target.value as BillSummaryStatus | '')}
+                onChange={(event) => {
+                  setStatus(event.target.value as BillSummaryStatus | '');
+                  setPage(1);
+                }}
                 className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               >
                 <option value="">All</option>
@@ -121,7 +148,10 @@ export default function BillSummaryListPage() {
                 id="bs-from"
                 type="date"
                 value={dateFrom}
-                onChange={(event) => setDateFrom(event.target.value)}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setPage(1);
+                }}
               />
             </div>
             <div className="space-y-1">
@@ -130,13 +160,23 @@ export default function BillSummaryListPage() {
                 id="bs-to"
                 type="date"
                 value={dateTo}
-                onChange={(event) => setDateTo(event.target.value)}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setPage(1);
+                }}
               />
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-3">
-            <Switch id="bs-sap" checked={includeSap} onChange={setIncludeSap} />
+            <Switch
+              id="bs-sap"
+              checked={includeSap}
+              onChange={(next) => {
+                setIncludeSap(next);
+                setPage(1);
+              }}
+            />
             <Label htmlFor="bs-sap" className="cursor-pointer">
               Also show dispatches stamped in SAP
             </Label>
@@ -174,7 +214,7 @@ export default function BillSummaryListPage() {
           {sapLoading && (
             <p className="text-xs text-muted-foreground">Reading SAP for stamped dispatches…</p>
           )}
-          {allRows.map((row) => (
+          {pagedRows.map((row) => (
             <button
               key={row.key}
               type="button"
@@ -221,6 +261,26 @@ export default function BillSummaryListPage() {
               </div>
             </button>
           ))}
+
+          <PaginationControls
+            page={safePage}
+            pageSize={pageSize}
+            /* The whole filtered list, not the page — "Showing 1-25 of 154" is
+               the sentence somebody reads to know how much is left. */
+            total={allRows.length}
+            totalPages={totalPages}
+            /* Left enabled while SAP is still being read: the app's own sheets
+               are already on screen and worth paging through. The count grows
+               when the SAP rows land, and the clamp above keeps the viewer on
+               a page that exists. */
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              // Row 100 sits on a different page once the size changes, so the
+              // old page number means nothing.
+              setPage(1);
+            }}
+          />
         </div>
       )}
     </div>
