@@ -14,21 +14,45 @@
  */
 
 import { AlertTriangle, FileCheck2, Info, Stamp } from 'lucide-react';
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 
 import { confirmSapPost } from '@/shared/components';
-import { Button, Card, CardContent } from '@/shared/components/ui';
+import { Button } from '@/shared/components/ui';
 
 import { useAddSapTransferDraft } from '../../api';
 import type { SapTransferDraft } from '../../types';
 import { Route } from './TransferBadges';
 import { qty, shortDate } from './transferFormat';
+import {
+  ItemCell,
+  LineCount,
+  LineTable,
+  RecordActions,
+  RecordList,
+  RecordRow,
+  RecordWarning,
+} from './TransferRecordList';
 
 function apiError(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
 }
 
-function DraftRow({ row }: { row: SapTransferDraft }) {
+const COLUMNS = [
+  { label: 'Item' },
+  { label: 'On the draft', align: 'right' as const, width: '9rem' },
+  { label: 'At the source now', align: 'right' as const, width: '10rem' },
+  { label: 'UoM', width: '5rem' },
+];
+
+function DraftRow({
+  row,
+  open,
+  onToggle,
+}: {
+  row: SapTransferDraft;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const add = useAddSapTransferDraft();
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -61,98 +85,123 @@ function DraftRow({ row }: { row: SapTransferDraft }) {
     }
   }
 
+  const needsAttention = row.warnings.length > 0 || Boolean(row.blocked_reason);
+
   return (
-    <>
-      <tr className="border-b bg-muted/20">
-        <td colSpan={4} className="px-4 py-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div>
-              <div className="font-medium">
-                {row.doc_num ? `SAP ${row.doc_num}` : `draft ${row.draft_entry}`}
-                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800">
-                  approved draft
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                keyed {shortDate(row.doc_date)}
-                {row.created_by ? ` by ${row.created_by}` : ''} · {row.age_days} day
-                {row.age_days === 1 ? '' : 's'} unposted
-              </div>
-            </div>
-            <Route from={row.from_warehouse} to={row.to_warehouse} />
-            {row.comments && (
-              <span className="max-w-sm text-xs text-muted-foreground">{row.comments}</span>
-            )}
-          </div>
-          {row.blocked_reason && (
-            <div className="mt-2 inline-flex items-start gap-1 text-xs text-amber-700">
-              <Info className="mt-0.5 h-3 w-3 shrink-0" />
-              {row.blocked_reason}
-            </div>
-          )}
-        </td>
-      </tr>
-
-      {row.lines.map((line) => (
-        <tr key={line.line_num} className="border-b last:border-0">
-          <td className="px-4 py-2 pl-8">
-            <div className="font-mono text-xs">{line.item_code}</div>
-            <div className="text-xs text-muted-foreground">{line.item_name}</div>
-          </td>
-          <td className="px-4 py-2 text-right text-xs tabular-nums">{qty(line.quantity)}</td>
-          <td className="px-4 py-2 text-right text-xs tabular-nums">
-            {line.source_stock === null ? (
-              <span className="text-muted-foreground">—</span>
-            ) : (
-              <span className={line.short ? 'font-medium text-red-600' : ''}>
-                {qty(line.source_stock)}
-              </span>
-            )}
-            {line.batches_missing && (
-              <div className="text-xs text-amber-700">no batch allocated</div>
-            )}
-          </td>
-          <td className="px-4 py-2 text-xs text-muted-foreground">{line.uom}</td>
-        </tr>
-      ))}
-
-      <tr className="border-b">
-        <td colSpan={4} className="px-4 pb-4 pl-8">
-          {row.warnings.map((warning) => (
-            <div
-              key={warning}
-              className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900"
+    <RecordRow
+      open={open}
+      onToggle={onToggle}
+      title={row.doc_num ? `SAP ${row.doc_num}` : `draft ${row.draft_entry}`}
+      chip={
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          approved draft
+        </span>
+      }
+      meta={
+        <>
+          keyed {shortDate(row.doc_date)}
+          {row.created_by ? ` by ${row.created_by}` : ''}
+        </>
+      }
+      note={row.comments || undefined}
+      route={<Route from={row.from_warehouse} to={row.to_warehouse} />}
+      flag={
+        <>
+          <LineCount lines={row.lines.length} />
+          {needsAttention && (
+            /* Said on the closed row: on a backlog of twenty, which ones SAP
+               will refuse is the thing worth seeing without opening each. */
+            <span
+              className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-amber-700 dark:text-amber-300"
+              title={row.blocked_reason ?? row.warnings.join(' ')}
             >
-              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-              {warning}
-            </div>
-          ))}
-          {error && (
-            <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">
-              {error}
-            </div>
+              <AlertTriangle className="h-3 w-3" />
+              {row.blocked_reason ? 'blocked' : `${row.warnings.length} to check`}
+            </span>
           )}
-          {done && (
-            <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800">
-              {done}
-            </div>
-          )}
-          {row.can_post && !done && (
-            <div className="flex items-center gap-3">
-              <Button size="sm" disabled={add.isPending} onClick={submit}>
-                <Stamp className="mr-1 h-4 w-4" />
-                {add.isPending ? 'Adding in SAP…' : 'Add in SAP'}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                Posts the draft exactly as it stands — all {row.lines.length} line
-                {row.lines.length === 1 ? '' : 's'}, with the batches SAP already holds. The stock
-                moves the moment it lands.
-              </span>
-            </div>
-          )}
-        </td>
-      </tr>
-    </>
+        </>
+      }
+      aside={
+        <span className="whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+          {row.age_days} day{row.age_days === 1 ? '' : 's'} unposted
+        </span>
+      }
+      action={
+        row.can_post && !done ? (
+          // On the row itself: a draft is added exactly as it stands, so there
+          // is nothing to fill in first — and a 23-row backlog should not need
+          // 23 expansions to clear.
+          <Button size="sm" disabled={add.isPending} onClick={submit}>
+            <Stamp className="mr-1 h-4 w-4" />
+            {add.isPending ? 'Adding…' : 'Add in SAP'}
+          </Button>
+        ) : done ? (
+          <span className="whitespace-nowrap text-xs font-medium text-green-700 dark:text-green-400">
+            added in SAP
+          </span>
+        ) : undefined
+      }
+    >
+      <LineTable columns={COLUMNS}>
+        {row.lines.map((line) => (
+          <tr key={line.line_num} className="border-b last:border-0">
+            <ItemCell code={line.item_code} name={line.item_name} />
+            <td className="px-4 py-2 text-right text-xs tabular-nums">{qty(line.quantity)}</td>
+            <td className="px-4 py-2 text-right text-xs tabular-nums">
+              {line.source_stock === null ? (
+                <span className="text-muted-foreground">—</span>
+              ) : (
+                <span className={line.short ? 'font-medium text-red-600' : ''}>
+                  {qty(line.source_stock)}
+                </span>
+              )}
+              {line.batches_missing && (
+                <div className="text-xs text-amber-700">no batch allocated</div>
+              )}
+            </td>
+            <td className="px-4 py-2 text-xs text-muted-foreground">{line.uom}</td>
+          </tr>
+        ))}
+      </LineTable>
+
+      <RecordActions
+        banners={
+          <>
+            {row.blocked_reason && (
+              <div className="mb-2 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-300">
+                <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                {row.blocked_reason}
+              </div>
+            )}
+            {row.warnings.map((warning) => (
+              <RecordWarning key={warning}>
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                {warning}
+              </RecordWarning>
+            ))}
+            {error && (
+              <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+                {error}
+              </div>
+            )}
+            {done && (
+              <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/20 dark:text-green-300">
+                {done}
+              </div>
+            )}
+          </>
+        }
+        hint={
+          row.can_post && !done ? (
+            <>
+              Posts the draft exactly as it stands — all {row.lines.length} line
+              {row.lines.length === 1 ? '' : 's'}, with the batches SAP already holds. The stock
+              moves the moment it lands.
+            </>
+          ) : undefined
+        }
+      />
+    </RecordRow>
   );
 }
 
@@ -160,59 +209,63 @@ export function SapUnpostedDraftTable({
   rows,
   isLoading,
   isError,
+  searching = false,
 }: {
   rows: SapTransferDraft[];
   isLoading: boolean;
   isError: boolean;
+  /** A search is on, so an empty list means "no match here", not "nothing owed". */
+  searching?: boolean;
 }) {
-  // Nothing waiting is the normal state, and a second empty card under the
+  /* Closed by default, open by default while searching — a row that came back
+     from a search usually matched on an item, which is inside it. An explicit
+     click wins over both, for as long as the list is on screen. */
+  const [toggled, setToggled] = useState<Record<number, boolean>>({});
+
+  // Nothing waiting is the normal state, and a second empty list under the
   // requests table would only be noise.
-  if (!isLoading && !isError && rows.length === 0) return null;
+  if (!isLoading && !isError && rows.length === 0 && !searching) return null;
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-        These transfers were raised in the SAP client and approved, but never <b>added</b> — in SAP
-        an approved transfer is still only a draft, and the stock stays where it is until someone
-        adds it. Adding here does exactly what the Add button in SAP does.
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+        <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>
+          These transfers were raised in the SAP client and approved, but never <b>added</b> — in
+          SAP an approved transfer is still only a draft, and the stock stays where it is until
+          someone adds it. Adding here does exactly what the Add button in SAP does.
+        </span>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Loading approved drafts…</p>
-          ) : isError ? (
-            <p className="p-6 text-sm text-red-600">
-              Could not read SAP&apos;s approved drafts. Try again in a moment.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">
-                      <span className="inline-flex items-center gap-1">
-                        <FileCheck2 className="h-3 w-3" />
-                        Approved draft / item
-                      </span>
-                    </th>
-                    <th className="px-4 py-3 text-right font-medium">On the draft</th>
-                    <th className="px-4 py-3 text-right font-medium">At the source now</th>
-                    <th className="px-4 py-3 text-left font-medium">UoM</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <Fragment key={row.draft_entry}>
-                      <DraftRow row={row} />
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <p className="rounded-lg border p-6 text-sm text-muted-foreground">
+          Loading approved drafts…
+        </p>
+      ) : isError ? (
+        <p className="rounded-lg border p-6 text-sm text-red-600">
+          Could not read SAP&apos;s approved drafts. Try again in a moment.
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="rounded-lg border p-6 text-sm text-muted-foreground">
+          No approved draft matches that search.
+        </p>
+      ) : (
+        <RecordList>
+          {rows.map((row) => (
+            <DraftRow
+              key={row.draft_entry}
+              row={row}
+              open={toggled[row.draft_entry] ?? searching}
+              onToggle={() =>
+                setToggled((prev) => ({
+                  ...prev,
+                  [row.draft_entry]: !(prev[row.draft_entry] ?? searching),
+                }))
+              }
+            />
+          ))}
+        </RecordList>
+      )}
     </div>
   );
 }

@@ -302,12 +302,15 @@ export function SapTransferApprovalTable({
   isLoading,
   isError,
   view = 'PENDING',
+  searching = false,
 }: {
   rows: SapTransferApproval[];
   isLoading: boolean;
   isError: boolean;
   /** Which queue is on screen: the live one, or one of the history views. */
   view?: SapApprovalStatus;
+  /** A search is on, so an empty queue means "no match", not "nothing here". */
+  searching?: boolean;
 }) {
   const decide = useDecideSapTransferApproval();
   const [rejectingId, setRejectingId] = useState<number | null>(null);
@@ -447,11 +450,13 @@ export function SapTransferApprovalTable({
             </p>
           ) : rows.length === 0 ? (
             <p className="p-6 text-sm text-muted-foreground">
-              {view === 'PENDING'
-                ? 'SAP is not holding any transfer for approval.'
-                : view === 'APPROVED'
-                  ? 'No transfer approvals on record yet.'
-                  : 'No transfer has been rejected.'}
+              {searching
+                ? 'Nothing in this queue matches that search.'
+                : view === 'PENDING'
+                  ? 'SAP is not holding any transfer for approval.'
+                  : view === 'APPROVED'
+                    ? 'No transfer approvals on record yet.'
+                    : 'No transfer has been rejected.'}
             </p>
           ) : (
             <div className="overflow-x-auto">

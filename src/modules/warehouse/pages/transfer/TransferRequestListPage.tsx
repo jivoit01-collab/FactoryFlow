@@ -1,11 +1,21 @@
-import { ArrowRightLeft, Inbox, PackageCheck, Plus, ShieldCheck, Truck } from 'lucide-react';
-import { useState } from 'react';
+import {
+  ArrowRightLeft,
+  Inbox,
+  PackageCheck,
+  Plus,
+  Search,
+  ShieldCheck,
+  Truck,
+  X,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent } from '@/shared/components/ui';
+import { Button, Card, CardContent, Input } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 
 import {
   useInTransitTransferRequests,
@@ -21,6 +31,14 @@ import { SapTransferApprovalTable } from './SapTransferApprovalTable';
 import { SapUnpostedDraftTable } from './SapUnpostedDraftTable';
 import { ApprovalBadge, PostingBadge, Route, RouteBadge } from './TransferBadges';
 import { shortDate } from './transferFormat';
+import {
+  filterBy,
+  matchesApproval,
+  matchesAwaiting,
+  matchesDraft,
+  matchesRequest,
+  MIN_SEARCH,
+} from './transferSearch';
 
 type Tab = 'all' | 'pending' | 'in-transit' | 'sap' | 'awaiting';
 
@@ -40,6 +58,13 @@ export default function TransferRequestListPage() {
   // same question as "what is waiting", one step later.
   const [sapView, setSapView] = useState<SapApprovalStatus>('PENDING');
 
+  /* One box over every tab. Somebody chasing a transfer has a number, a
+     warehouse or an item — not the tab it happens to live in, which is the
+     thing they came here to find out. */
+  const [search, setSearch] = useState('');
+  const needle = useDebounce(search.trim().toLowerCase(), 150);
+  const searching = needle.length >= MIN_SEARCH;
+
   const canApprove = hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST);
   const canCreate = hasPermission(WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST);
 
@@ -47,44 +72,76 @@ export default function TransferRequestListPage() {
   // Only fetch the approval queue for someone who can act on it.
   const pending = usePendingTransferRequests(canApprove);
   const inTransit = useInTransitTransferRequests();
-  // SAP's own queue on transfer drafts. Every HANA read costs a round trip, so
-  // only fetch it once the operator opens the tab.
-  const sapApprovals = useSapTransferApprovals(sapView, tab === 'sap');
+  /* SAP's own queues cost a HANA round trip each, so they are fetched when
+     their tab is opened — or when a search is running, which is the one other
+     time their rows have to be in hand. */
+  const sapApprovals = useSapTransferApprovals(sapView, tab === 'sap' || searching);
   // The tab badge counts the backlog, not whatever view is open — history has
   // no backlog. Only fetched for the pending view; on a history view the cached
   // pending result keeps the badge honest without a second HANA round trip.
-  const sapPending = useSapTransferApprovals('PENDING', tab === 'sap' && sapView === 'PENDING');
-  // Approved requests that still owe stock. Another HANA read, so it waits
-  // for the tab too.
-  const awaiting = useSapAwaitingTransfers(tab === 'awaiting');
+  const sapPending = useSapTransferApprovals(
+    'PENDING',
+    (tab === 'sap' || searching) && sapView === 'PENDING',
+  );
+  // Approved requests that still owe stock.
+  const awaiting = useSapAwaitingTransfers(tab === 'awaiting' || searching);
   // The other half of "approved, but the stock has not moved": a transfer
   // raised in the SAP client is approved as a DRAFT, and stays one until
   // somebody adds it. Same tab, because to a warehouse it is the same wait.
-  const drafts = useSapTransferDrafts(tab === 'awaiting');
+  const drafts = useSapTransferDrafts(tab === 'awaiting' || searching);
+
+  /* Filtering is done here rather than in each table so that one needle gives
+     every tab its own match count — which is what makes the strip tell you
+     where the thing you are looking for actually is. */
+  const allRows = useMemo(
+    () => filterBy(all.data, needle, matchesRequest),
+    [all.data, needle],
+  );
+  const pendingRows = useMemo(
+    () => filterBy(pending.data, needle, matchesRequest),
+    [needle, pending.data],
+  );
+  const inTransitRows = useMemo(
+    () => filterBy(inTransit.data, needle, matchesRequest),
+    [inTransit.data, needle],
+  );
+  const approvalRows = useMemo(
+    () => filterBy(sapApprovals.data, needle, matchesApproval),
+    [needle, sapApprovals.data],
+  );
+  const awaitingRows = useMemo(
+    () => filterBy(awaiting.data, needle, matchesAwaiting),
+    [awaiting.data, needle],
+  );
+  const draftRows = useMemo(
+    () => filterBy(drafts.data, needle, matchesDraft),
+    [drafts.data, needle],
+  );
 
   const active = tab === 'pending' ? pending : tab === 'in-transit' ? inTransit : all;
-  const rows: TransferRequestListItem[] = active.data ?? [];
+  const rows: TransferRequestListItem[] =
+    tab === 'pending' ? pendingRows : tab === 'in-transit' ? inTransitRows : allRows;
 
   const tabs: { key: Tab; label: string; icon: typeof Inbox; count?: number; show: boolean }[] = [
     {
       key: 'all',
       label: 'All requests',
       icon: ArrowRightLeft,
-      count: all.data?.length,
+      count: all.data ? allRows.length : undefined,
       show: true,
     },
     {
       key: 'pending',
       label: 'Awaiting my decision',
       icon: Inbox,
-      count: pending.data?.length,
+      count: pending.data ? pendingRows.length : undefined,
       show: canApprove,
     },
     {
       key: 'in-transit',
       label: 'In transit',
       icon: Truck,
-      count: inTransit.data?.length,
+      count: inTransit.data ? inTransitRows.length : undefined,
       show: true,
     },
     {
@@ -93,7 +150,13 @@ export default function TransferRequestListPage() {
       key: 'sap',
       label: 'SAP approvals',
       icon: ShieldCheck,
-      count: sapPending.data?.length,
+      // While searching, the count is what the open view matched: the search
+      // reads the queue that is selected, not all three.
+      count: searching
+        ? sapApprovals.data
+          ? approvalRows.length
+          : undefined
+        : sapPending.data?.length,
       show: true,
     },
     {
@@ -103,12 +166,23 @@ export default function TransferRequestListPage() {
       label: 'Awaiting transfer',
       icon: PackageCheck,
       count:
-        awaiting.data || drafts.data
-          ? (awaiting.data?.length ?? 0) + (drafts.data?.length ?? 0)
-          : undefined,
+        awaiting.data || drafts.data ? awaitingRows.length + draftRows.length : undefined,
       show: true,
     },
   ];
+
+  const shownTabs = tabs.filter((t) => t.show);
+  /* Named per tab rather than totalled: the same request is listed in All
+     requests AND in the queue it is waiting in, so any total would be adding up
+     one transfer twice. Where it is, is also the useful answer. */
+  const found = shownTabs.filter((t) => (t.count ?? 0) > 0);
+  const hereCount = shownTabs.find((t) => t.key === tab)?.count ?? 0;
+  // Everything a search reads is already in hand except SAP's, which arrives a
+  // round trip later; saying so beats a bare "0 matches" that is about to change.
+  const stillReading =
+    searching &&
+    (sapApprovals.isLoading || awaiting.isLoading || drafts.isLoading || all.isLoading);
+  const nothingFound = found.length === 0;
 
   return (
     <div className="space-y-6">
@@ -124,12 +198,33 @@ export default function TransferRequestListPage() {
         )}
       </DashboardHeader>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs
-          .filter((t) => t.show)
-          .map((t) => {
+      <div className="space-y-3">
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search every transfer queue"
+            placeholder="Search every tab — entry no., SAP no., warehouse, item or person"
+            className="h-10 pl-9 pr-9"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear the search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {shownTabs.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
+            const hasMatches = searching && (t.count ?? 0) > 0;
             return (
               <button
                 key={t.key}
@@ -138,19 +233,63 @@ export default function TransferRequestListPage() {
                 className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
                     ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-muted-foreground hover:bg-muted'
-                }`}
+                    : hasMatches
+                      ? 'border-primary/40 text-foreground hover:bg-muted'
+                      : 'border-border text-muted-foreground hover:bg-muted'
+                } ${searching && !hasMatches && !isActive ? 'opacity-50' : ''}`}
               >
                 <Icon className="h-4 w-4" />
                 {t.label}
                 {typeof t.count === 'number' && (
-                  <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">
+                  <span
+                    className={`rounded-full px-1.5 text-xs tabular-nums ${
+                      hasMatches ? 'bg-primary/15 text-primary' : 'bg-muted'
+                    }`}
+                  >
                     {t.count}
                   </span>
                 )}
               </button>
             );
           })}
+        </div>
+
+        {searching && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {stillReading && nothingFound
+                ? 'Searching SAP’s queues…'
+                : nothingFound
+                  ? `Nothing matches “${needle}” in any tab.`
+                  : hereCount === 0
+                    ? `Nothing here matches “${needle}”. Found in`
+                    : `“${needle}” found in`}
+            </span>
+            {!nothingFound && (
+              <span className="flex flex-wrap items-center gap-2">
+                {found.map((t) =>
+                  t.key === tab ? (
+                    <span
+                      key={t.key}
+                      className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                    >
+                      {t.label} ({t.count}) · open
+                    </span>
+                  ) : (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setTab(t.key)}
+                      className="rounded-md border border-primary/40 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10"
+                    >
+                      {t.label} ({t.count})
+                    </button>
+                  ),
+                )}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {tab === 'awaiting' ? (
@@ -158,14 +297,16 @@ export default function TransferRequestListPage() {
           {/* Drafts first: they are the older backlog and the stock behind
               them has been frozen the longest. */}
           <SapUnpostedDraftTable
-            rows={drafts.data ?? []}
+            rows={draftRows}
             isLoading={drafts.isLoading}
             isError={drafts.isError}
+            searching={searching}
           />
           <SapAwaitingTransferTable
-            rows={awaiting.data ?? []}
+            rows={awaitingRows}
             isLoading={awaiting.isLoading}
             isError={awaiting.isError}
+            searching={searching}
           />
         </div>
       ) : tab === 'sap' ? (
@@ -187,16 +328,17 @@ export default function TransferRequestListPage() {
             ))}
           </div>
           <SapTransferApprovalTable
-            rows={sapApprovals.data ?? []}
+            rows={approvalRows}
             isLoading={sapApprovals.isLoading}
             isError={sapApprovals.isError}
             view={sapView}
+            searching={searching}
           />
         </div>
       ) : (
         <>
           {tab === 'in-transit' && rows.length > 0 && (
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-200">
               These moves cross SAP branches, so the stock is sitting in an in-transit warehouse. It
               only lands at the destination once the receiving side finishes the BST receipt.
             </div>
@@ -212,11 +354,13 @@ export default function TransferRequestListPage() {
                 </p>
               ) : rows.length === 0 ? (
                 <p className="p-6 text-sm text-muted-foreground">
-                  {tab === 'pending'
-                    ? 'Nothing is waiting on your decision.'
-                    : tab === 'in-transit'
-                      ? 'No stock is sitting in transit.'
-                      : 'No transfer requests yet.'}
+                  {searching
+                    ? 'No request here matches that search.'
+                    : tab === 'pending'
+                      ? 'Nothing is waiting on your decision.'
+                      : tab === 'in-transit'
+                        ? 'No stock is sitting in transit.'
+                        : 'No transfer requests yet.'}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
