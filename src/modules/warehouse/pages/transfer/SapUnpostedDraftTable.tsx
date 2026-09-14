@@ -62,13 +62,11 @@ function DraftRow({
     setDone('');
     const confirmed = await confirmSapPost({
       title: `Add draft ${row.doc_num ?? row.draft_entry} in SAP?`,
-      creates: (
-        <>
-          the real Inventory Transfer this approved draft stands for, moving the stock out
-          of {row.from_warehouse || 'the source warehouse'}
-        </>
-      ),
-      detail: 'Approving a transfer in SAP leaves a draft; this is the step that makes it real.',
+      details: [
+        { label: 'Creates', value: 'The Inventory Transfer this approved draft stands for' },
+        { label: 'Draft', value: row.doc_num ?? row.draft_entry },
+        { label: 'Out of', value: row.from_warehouse || 'the source warehouse' },
+      ],
       confirmLabel: 'Add it in SAP',
     });
     if (!confirmed) return;

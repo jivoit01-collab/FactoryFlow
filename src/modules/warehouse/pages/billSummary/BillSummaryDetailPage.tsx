@@ -122,20 +122,16 @@ export default function BillSummaryDetailPage() {
       title: cancelled
         ? 'Clear this dispatch from the SAP invoice?'
         : 'Stamp this dispatch onto the SAP invoice?',
-      creates: cancelled ? (
-        <>
-          no new document — it clears the dispatch date and quantities back off invoice{' '}
-          {summary!.sap_invoice_doc_num}, leaving the bilty as it is
-        </>
-      ) : (
-        <>
-          no new document — it stamps the dispatch date, bilty and per-line quantities onto
-          invoice {summary!.sap_invoice_doc_num}
-        </>
-      ),
-      detail:
-        'SAP freezes the bilty, vehicle, driver and dates once they hold a value; ' +
-        'whatever it already holds is left alone and reported back.',
+      details: [
+        { label: 'SAP invoice', value: summary!.sap_invoice_doc_num },
+        {
+          label: cancelled ? 'Clears' : 'Stamps',
+          value: cancelled
+            ? 'The dispatch date and quantities, leaving the bilty as it is'
+            : 'The dispatch date, bilty and per-line quantities',
+        },
+        { label: 'In SAP', value: 'Bilty, vehicle, driver and dates can only be set once' },
+      ],
       confirmLabel: cancelled ? 'Clear it from SAP' : 'Stamp the invoice',
       destructive: cancelled,
     });

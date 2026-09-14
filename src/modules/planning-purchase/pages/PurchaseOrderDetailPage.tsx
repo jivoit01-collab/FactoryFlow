@@ -108,15 +108,12 @@ export default function PurchaseOrderDetailPage() {
               onClick={async () => {
                 const confirmed = await confirmSapPost({
                   title: 'Post this purchase order to SAP?',
-                  creates: (
-                    <>
-                      a Purchase Order on {order.vendor_name || order.vendor_code} worth{' '}
-                      {order.total_value} {order.currency}, across {order.line_count} line(s)
-                    </>
-                  ),
-                  detail:
-                    'The vendor can be sent this order the moment it exists in SAP; ' +
-                    'cancelling it afterwards is a job for SAP.',
+                  details: [
+                    { label: 'Creates', value: 'Purchase Order' },
+                    { label: 'Vendor', value: order.vendor_name || order.vendor_code },
+                    { label: 'Value', value: `${order.total_value} ${order.currency}` },
+                    { label: 'Lines', value: order.line_count },
+                  ],
                 });
                 if (confirmed) post.mutate(order.id);
               }}

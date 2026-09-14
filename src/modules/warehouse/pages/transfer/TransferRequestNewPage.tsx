@@ -98,15 +98,12 @@ export default function TransferRequestNewPage() {
     setError('');
     const confirmed = await confirmSapPost({
       title: 'Raise this request in SAP?',
-      creates: (
-        <>
-          an Inventory Transfer Request from {fromWarehouse} to {toWarehouse} covering{' '}
-          {filledLines.length} line(s)
-        </>
-      ),
-      detail:
-        'The request reserves the stock in SAP from the moment it exists. Rejecting it ' +
-        'here closes it again; nothing else in this app can remove it.',
+      details: [
+        { label: 'Creates', value: 'Inventory Transfer Request' },
+        { label: 'From', value: fromWarehouse },
+        { label: 'To', value: toWarehouse },
+        { label: 'Lines', value: filledLines.length },
+      ],
       confirmLabel: 'Raise the request',
     });
     if (!confirmed) return;

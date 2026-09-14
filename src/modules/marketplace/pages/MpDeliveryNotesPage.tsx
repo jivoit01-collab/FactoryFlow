@@ -38,11 +38,11 @@ import {
   CardTitle,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
-import { SapPostWarning } from '@/shared/components';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
@@ -1186,18 +1186,23 @@ export default function MpDeliveryNotesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cut SAP delivery note?</DialogTitle>
+            <DialogDescription>Review the details below before posting to SAP.</DialogDescription>
           </DialogHeader>
-          <SapPostWarning
-            creates={
-              <>
-                the delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
-                <strong>{count}</strong> dispatch(es) with{' '}
-                <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s), and the
-                goods issue behind them
-              </>
-            }
-            detail="Posting into a closed month needs the date below set deliberately."
-          />
+
+          <div className="space-y-3">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Scope:</span>{' '}
+              <span className="font-medium">{scopeLabel}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Dispatches:</span>{' '}
+              <span className="font-medium">{count}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Line items:</span>{' '}
+              <span className="font-medium">{summary?.totals.fg_item_count ?? 0}</span>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <label htmlFor="dn-doc-date" className="text-sm font-medium">

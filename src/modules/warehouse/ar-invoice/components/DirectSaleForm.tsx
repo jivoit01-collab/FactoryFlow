@@ -123,15 +123,11 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
 
     const confirmed = await confirmSapPost({
       title: 'Raise this cash sale in SAP?',
-      creates: (
-        <>
-          an A/R invoice for {customerCode} covering {cart.length} line(s), which issues the
-          stock out of the warehouse
-        </>
-      ),
-      detail:
-        'Where the company runs an approval procedure it lands as a draft for approval ' +
-        'first; otherwise it is a live invoice the moment SAP takes it.',
+      details: [
+        { label: 'Creates', value: 'A/R invoice' },
+        { label: 'Customer', value: customerCode },
+        { label: 'Lines', value: cart.length },
+      ],
       confirmLabel: 'Raise the invoice',
     });
     if (!confirmed) return;

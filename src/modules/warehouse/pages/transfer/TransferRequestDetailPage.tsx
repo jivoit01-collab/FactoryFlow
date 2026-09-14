@@ -389,16 +389,20 @@ export default function TransferRequestDetailPage() {
               void run(async () => {
                 const confirmed = await confirmSapPost({
                   title: 'Post this transfer to SAP?',
-                  creates: (
-                    <>
-                      an Inventory Transfer moving the approved quantities out of{' '}
-                      {r.from_warehouse} into{' '}
-                      {r.is_cross_branch ? 'the in-transit warehouse' : r.to_warehouse}
-                    </>
-                  ),
-                  detail: r.is_cross_branch
-                    ? 'This is leg 1 of a cross-branch move; leg 2 posts when the receipt completes.'
-                    : undefined,
+                  details: [
+                    {
+                      label: 'Creates',
+                      value: r.is_cross_branch
+                        ? 'Inventory Transfer (leg 1 of a cross-branch move)'
+                        : 'Inventory Transfer',
+                    },
+                    { label: 'Out of', value: r.from_warehouse },
+                    {
+                      label: 'Into',
+                      value: r.is_cross_branch ? 'The in-transit warehouse' : r.to_warehouse,
+                    },
+                    { label: 'Quantities', value: 'The approved quantities' },
+                  ],
                 });
                 if (!confirmed) return;
                 await post.mutateAsync({ requestId: id });
@@ -444,13 +448,11 @@ export default function TransferRequestDetailPage() {
               run(async () => {
                 const confirmed = await confirmSapPost({
                   title: 'Post the second leg to SAP?',
-                  creates: (
-                    <>
-                      an Inventory Transfer moving the stock out of the in-transit warehouse
-                      into {r.to_warehouse}
-                    </>
-                  ),
-                  detail: 'Only needed when the automatic post at receipt failed.',
+                  details: [
+                    { label: 'Creates', value: 'Inventory Transfer (leg 2)' },
+                    { label: 'Out of', value: 'The in-transit warehouse' },
+                    { label: 'Into', value: r.to_warehouse },
+                  ],
                 });
                 if (!confirmed) return;
                 await secondLeg.mutateAsync({ requestId: id });
@@ -491,13 +493,15 @@ export default function TransferRequestDetailPage() {
                     () =>
                       confirmSapPost({
                         title: 'Reject this request?',
-                        creates: (
-                          <>
-                            no new document — it closes Inventory Transfer Request{' '}
-                            {r.sap_request_doc_num || r.sap_request_doc_entry} in SAP so it
-                            stops reserving the stock
-                          </>
-                        ),
+                        details: [
+                          {
+                            label: 'Closes',
+                            value: `Inventory Transfer Request ${
+                              r.sap_request_doc_num || r.sap_request_doc_entry
+                            }`,
+                          },
+                          { label: 'Effect', value: 'The request stops reserving the stock' },
+                        ],
                         confirmLabel: 'Reject and close it',
                         destructive: true,
                       }).then((confirmed) =>
@@ -529,13 +533,20 @@ export default function TransferRequestDetailPage() {
           run(async () => {
             const confirmed = await confirmSapPost({
               title: 'Post this transfer to SAP?',
-              creates: (
-                <>
-                  an Inventory Transfer moving the chosen batches out of {r.from_warehouse}{' '}
-                  into {r.is_cross_branch ? 'the in-transit warehouse' : r.to_warehouse}
-                </>
-              ),
-              detail: `${allocations.length} batch allocation(s) will be sent with it.`,
+              details: [
+                {
+                  label: 'Creates',
+                  value: r.is_cross_branch
+                    ? 'Inventory Transfer (leg 1 of a cross-branch move)'
+                    : 'Inventory Transfer',
+                },
+                { label: 'Out of', value: r.from_warehouse },
+                {
+                  label: 'Into',
+                  value: r.is_cross_branch ? 'The in-transit warehouse' : r.to_warehouse,
+                },
+                { label: 'Batch allocations', value: allocations.length },
+              ],
             });
             if (!confirmed) return;
             await post.mutateAsync({ requestId: id, allocations });

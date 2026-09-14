@@ -100,16 +100,12 @@ export default function BillSummaryNewPage() {
     if (!lookup) return;
     const confirmed = await confirmSapPost({
       title: `Generate the sheet and stamp bill ${lookup.doc_num}?`,
-      creates: (
-        <>
-          no new document — it stamps the dispatch date {form.dispatch_date}, bilty{' '}
-          {form.bilty_no.trim()}, vehicle and per-line quantities onto invoice{' '}
-          {lookup.doc_num}
-        </>
-      ),
-      detail:
-        'SAP freezes those fields once they hold a value: a wrong date, bilty, vehicle ' +
-        'or driver cannot be corrected afterwards, by this app or by anyone in SAP.',
+      details: [
+        { label: 'SAP invoice', value: lookup.doc_num },
+        { label: 'Dispatch date', value: form.dispatch_date },
+        { label: 'Bilty', value: form.bilty_no.trim() },
+        { label: 'In SAP', value: 'Date, bilty, vehicle and driver can only be set once' },
+      ],
       confirmLabel: 'Generate and stamp',
     });
     if (!confirmed) return;

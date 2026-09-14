@@ -295,17 +295,17 @@ export function ARInvoiceDetailSheet({
                           'Failed to post the invoice to SAP',
                           {
                             title: 'Post this invoice to SAP?',
-                            creates: (
-                              <>
-                                an A/R invoice for{' '}
-                                {posting.customer_name || posting.customer_code} worth{' '}
-                                {amount(posting.selected_total)} before tax
-                              </>
-                            ),
-                            detail:
-                              'Where the company runs an approval procedure it lands as a ' +
-                              'draft for approval first; otherwise it is a live invoice ' +
-                              'the moment SAP takes it.',
+                            details: [
+                              { label: 'Creates', value: 'A/R invoice' },
+                              {
+                                label: 'Customer',
+                                value: posting.customer_name || posting.customer_code,
+                              },
+                              {
+                                label: 'Value before tax',
+                                value: amount(posting.selected_total),
+                              },
+                            ],
                           },
                         )
                       }
@@ -342,12 +342,11 @@ export function ARInvoiceDetailSheet({
                           'Failed to post the approved draft',
                           {
                             title: 'Turn this approved draft into a real invoice?',
-                            creates: (
-                              <>
-                                the A/R invoice SAP draft {posting.sap_draft_entry} has been
-                                approved for, allocating batches onto it first
-                              </>
-                            ),
+                            details: [
+                              { label: 'Creates', value: 'A/R invoice from the approved draft' },
+                              { label: 'SAP draft', value: posting.sap_draft_entry },
+                              { label: 'Batches', value: 'Allocated onto the draft first' },
+                            ],
                             confirmLabel: 'Post the invoice',
                           },
                         )

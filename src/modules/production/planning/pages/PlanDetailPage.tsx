@@ -353,7 +353,7 @@ export default function PlanDetailPage() {
         case 'postSap':
           const confirmed = await confirmSapPost({
             title: 'Post this plan to SAP?',
-            creates: 'a production order in SAP for each planned line',
+            details: [{ label: 'Creates', value: 'A production order for each planned line' }],
           });
           if (!confirmed) return;
           await postToSap.mutateAsync();

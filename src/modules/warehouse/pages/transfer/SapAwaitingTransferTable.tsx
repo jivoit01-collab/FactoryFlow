@@ -84,13 +84,12 @@ function RequestRow({
     }
     const confirmed = await confirmSapPost({
       title: `Post request ${row.doc_num ?? row.doc_entry} as a transfer?`,
-      creates: (
-        <>
-          an Inventory Transfer against this request, moving {moving.length} line(s) out of{' '}
-          {row.from_warehouse || 'the source warehouse'}
-        </>
-      ),
-      detail: 'Stock leaves the source warehouse the moment SAP accepts it.',
+      details: [
+        { label: 'Creates', value: 'Inventory Transfer against this request' },
+        { label: 'Request', value: row.doc_num ?? row.doc_entry },
+        { label: 'Out of', value: row.from_warehouse || 'the source warehouse' },
+        { label: 'Lines moving', value: moving.length },
+      ],
     });
     if (!confirmed) return;
     try {

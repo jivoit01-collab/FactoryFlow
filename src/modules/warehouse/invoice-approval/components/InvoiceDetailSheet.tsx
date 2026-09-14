@@ -91,13 +91,11 @@ function InvoiceDetailBody({
   const approve = async () => {
     const confirmed = await confirmSapPost({
       title: `Approve invoice ${invoice.so_number}?`,
-      creates: (
-        <>
-          no new document — it records your approval against the SAP document
-          {source === 'OMS' ? ', sent through OMS' : ', signed with your own SAP user'}
-        </>
-      ),
-      detail: 'SAP does not allow a decision to be changed once it is recorded.',
+      details: [
+        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Decision', value: 'Approve' },
+        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+      ],
       confirmLabel: 'Approve',
     });
     if (!confirmed) return;
@@ -116,13 +114,11 @@ function InvoiceDetailBody({
   const reject = async (data: RejectInvoiceFormData) => {
     const confirmed = await confirmSapPost({
       title: `Reject invoice ${invoice.so_number}?`,
-      creates: (
-        <>
-          no new document — it records your rejection against the SAP document
-          {source === 'OMS' ? ', sent through OMS' : ', signed with your own SAP user'}
-        </>
-      ),
-      detail: 'SAP does not allow a decision to be changed once it is recorded.',
+      details: [
+        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Decision', value: 'Reject' },
+        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+      ],
       confirmLabel: 'Reject',
       destructive: true,
     });

@@ -30,6 +30,13 @@ import {
 export interface ConfirmDialogOptions {
   title: string;
   description?: ReactNode;
+  /**
+   * Rendered between the header and the buttons, for a dialog that shows the
+   * thing being confirmed rather than only describing it — the detail rows on
+   * a SAP posting, say. `description` is a `<p>`, so anything laid out in a
+   * block goes here instead.
+   */
+  body?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   /** Renders the confirm button in the destructive (red) style. */
@@ -107,8 +114,14 @@ function ConfirmDialogRequest({ request }: { request: DialogRequest }) {
     request.kind === 'prompt' ? (request.options.defaultValue ?? '') : '',
   );
 
-  const { title, description, confirmLabel = 'Confirm', cancelLabel = 'Cancel', destructive } =
-    request.options;
+  const {
+    title,
+    description,
+    body,
+    confirmLabel = 'Confirm',
+    cancelLabel = 'Cancel',
+    destructive,
+  } = request.options;
   const isPrompt = request.kind === 'prompt';
   const required = isPrompt && (request.options.required ?? true);
   const missing = required && !value.trim();
@@ -131,6 +144,8 @@ function ConfirmDialogRequest({ request }: { request: DialogRequest }) {
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
+
+        {body}
 
         {isPrompt && (
           <div className="space-y-1">

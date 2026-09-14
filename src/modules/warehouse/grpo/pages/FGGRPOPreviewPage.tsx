@@ -131,14 +131,15 @@ export default function FGGRPOPreviewPage() {
 
     const confirmed = await confirmSapPost({
       title: 'Post this FG receipt to SAP?',
-      creates: (
-        <>
-          a Goods Receipt PO against{' '}
-          {postablePOs.map((po) => po.po_number).join(', ') || 'the purchase order'}, which
-          receives these finished goods into {warehouseCode || 'the warehouse'}
-        </>
-      ),
-      detail: `${items.length} line(s) will be received.`,
+      details: [
+        { label: 'Creates', value: 'Goods Receipt PO' },
+        {
+          label: postablePOs.length > 1 ? 'POs' : 'PO',
+          value: postablePOs.map((po) => po.po_number).join(', ') || 'the purchase order',
+        },
+        { label: 'Warehouse', value: warehouseCode || 'the warehouse' },
+        { label: 'Lines received', value: items.length },
+      ],
     });
     if (!confirmed) return;
 

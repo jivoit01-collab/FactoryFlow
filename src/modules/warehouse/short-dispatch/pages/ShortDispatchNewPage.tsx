@@ -144,15 +144,12 @@ export default function ShortDispatchNewPage() {
 
     const confirmed = await confirmSapPost({
       title: `Post the return note for invoice ${invoice.doc_num}?`,
-      creates: (
-        <>
-          an A/R Return for {shortLines.length} item
-          {shortLines.length === 1 ? '' : 's'} back into <strong>{warehouseCode}</strong>
-        </>
-      ),
-      detail:
-        'SAP mints a new batch number for the returned stock — the batch physically ' +
-        'on the floor is recorded on the line, not reused.',
+      details: [
+        { label: 'Creates', value: 'A/R Return' },
+        { label: 'Invoice', value: invoice.doc_num },
+        { label: 'Items', value: shortLines.length },
+        { label: 'Stock goes back into', value: warehouseCode },
+      ],
     });
     if (!confirmed) return;
 

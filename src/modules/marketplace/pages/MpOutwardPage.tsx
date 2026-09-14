@@ -897,17 +897,15 @@ function ConfirmButton({ dispatchId, orderId, partialOf = null }: {
           title: partialOf
             ? `${orderId} — ship the ${partialOf.scanned} scanned parcel(s) of ${partialOf.total} now?`
             : `Dispatch ${orderId}?`,
-          creates: (
-            <>
-              a Delivery Note and its Goods Issue for{' '}
-              {partialOf ? `the ${partialOf.scanned} scanned parcel(s)` : 'this order'}
-            </>
-          ),
-          detail: partialOf
-            ? `The ${partialOf.remaining} still to scan stay in "To scan" — scan them later ` +
-              'and confirm again, which cuts a second delivery note.'
-            : 'If SAP is down the dispatch still stands here and the note is cut later from ' +
-              'SAP Delivery Notes.',
+          details: [
+            { label: 'Creates', value: 'Delivery Note and its Goods Issue' },
+            { label: 'Order', value: orderId },
+            partialOf && { label: 'Parcels', value: `${partialOf.scanned} of ${partialOf.total}` },
+            partialOf && {
+              label: 'Still to scan',
+              value: `${partialOf.remaining} — scanning them later cuts a second note`,
+            },
+          ],
           confirmLabel: partialOf ? 'Ship scanned now' : 'Dispatch it',
         });
         if (!posted) return;

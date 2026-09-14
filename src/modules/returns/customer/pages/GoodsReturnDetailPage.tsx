@@ -252,15 +252,10 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     }
     const confirmed = await confirmSapPost({
       title: 'Receive this return and post it to SAP?',
-      creates: (
-        <>
-          one A/R Return per source invoice on this return, putting the goods back into{' '}
-          {warehouseCode}
-        </>
-      ),
-      detail:
-        'A posted return cannot be withdrawn. Receiving again later is a retry: the ' +
-        'invoices SAP already accepted are skipped.',
+      details: [
+        { label: 'Creates', value: 'One A/R Return per source invoice' },
+        { label: 'Goods go back into', value: warehouseCode },
+      ],
       confirmLabel: 'Receive and post',
     });
     if (!confirmed) return;

@@ -4,7 +4,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
-import { SapPostWarning } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -340,17 +339,6 @@ export default function TransporterInvoiceDetailPage() {
             <DialogTitle>Confirm A/P Invoice Posting</DialogTitle>
             <DialogDescription>Review the details below before posting to SAP.</DialogDescription>
           </DialogHeader>
-          <SapPostWarning
-            creates={
-              <>
-                an A/P invoice for {posting?.vendor_name || 'the transporter'} worth{' '}
-                {formatCurrency(posting?.invoice_amount ?? 0)}
-              </>
-            }
-            detail="SAP refuses a vendor reference it already holds, so a duplicate is
-              rejected rather than doubled — but an invoice that goes through has to be
-              cancelled in SAP."
-          />
           {posting && (
             <div className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">

@@ -101,15 +101,11 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
 
     const confirmed = await confirmSapPost({
       title: 'Raise this invoice in SAP?',
-      creates: (
-        <>
-          an A/R invoice for {customerCode} against {selected.length} Sales
-          Order line(s)
-        </>
-      ),
-      detail:
-        'Where the company runs an approval procedure it lands as a draft for approval ' +
-        'first; otherwise it is a live invoice the moment SAP takes it.',
+      details: [
+        { label: 'Creates', value: 'A/R invoice' },
+        { label: 'Customer', value: customerCode },
+        { label: 'Sales Order lines', value: selected.length },
+      ],
       confirmLabel: 'Raise the invoice',
     });
     if (!confirmed) return;

@@ -541,10 +541,14 @@ export function SapTransferApprovalTable({
                                         async () => {
                                           const confirmed = await confirmSapPost({
                                             title: `Approve ${row.doc_num || 'this transfer'} in SAP?`,
-                                            creates:
-                                              'no new document — it records your approval on the SAP request, signed with your own SAP user',
-                                            detail:
-                                              'SAP does not allow a decision to be changed once it is recorded.',
+                                            details: [
+                                              { label: 'Transfer', value: row.doc_num || '—' },
+                                              { label: 'Decision', value: 'Approve' },
+                                              {
+                                                label: 'Recorded',
+                                                value: 'With your own SAP user',
+                                              },
+                                            ],
                                             confirmLabel: 'Approve in SAP',
                                           });
                                           if (!confirmed) return null;
@@ -611,10 +615,12 @@ export function SapTransferApprovalTable({
                                       async () => {
                                         const confirmed = await confirmSapPost({
                                           title: `Reject ${row.doc_num || 'this transfer'} in SAP?`,
-                                          creates:
-                                            'no new document — it records your rejection on the SAP request, signed with your own SAP user',
-                                          detail:
-                                            'SAP does not allow a decision to be changed once it is recorded.',
+                                          details: [
+                                            { label: 'Transfer', value: row.doc_num || '—' },
+                                            { label: 'Decision', value: 'Reject' },
+                                            { label: 'Reason', value: reason.trim() },
+                                            { label: 'Recorded', value: 'With your own SAP user' },
+                                          ],
                                           confirmLabel: 'Reject in SAP',
                                           destructive: true,
                                         });
