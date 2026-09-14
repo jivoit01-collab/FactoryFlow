@@ -148,6 +148,11 @@ export default function SalesDispatchBarcodeScanPage() {
   const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false);
   const [partialReason, setPartialReason] = useState('');
   const [partialError, setPartialError] = useState('');
+  // Which bills the operator is sending for approval. An approval covers ONE bill, and the
+  // dialog used to say nothing about that: a request raised from one bill's screen quietly
+  // asked the admin to approve every short bill on the truck. `null` means "untouched" —
+  // the default (every bill that is short) still applies and follows the scans live.
+  const [partialBillKeys, setPartialBillKeys] = useState<string[] | null>(null);
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
   // Computed once per device — auto-focus the barcode field only where a hardware
@@ -350,6 +355,39 @@ export default function SalesDispatchBarcodeScanPage() {
   const hasTrustworthyScanQuantities = scans.some(
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
+  // The bills the partial-dispatch dialog lists, each with whether it still owes goods.
+  // Scan-exempt bills (packaging material only) are left out: they have no label to scan,
+  // so there is nothing for an admin to approve. Complete ones stay on the list, shown and
+  // locked, so the operator can see exactly which bills the request does and does not cover.
+  const partialRequestStatusByBill = useMemo(() => {
+    const map = new Map<string, DockingPartialScanRequest['status']>();
+    (partialRequests ?? []).forEach((request) => {
+      const key = `${request.sales_dispatch}:${request.document ?? ''}`;
+      // Newest first from the API; a bill re-requested after a rejection reads PENDING.
+      if (!map.has(key)) map.set(key, request.status);
+    });
+    return map;
+  }, [partialRequests]);
+  const partialBillChoices = useMemo(
+    () =>
+      gatingBillGroups
+        .filter((bill) => bill.requiresScan)
+        .map((bill) => {
+          const key = `${bill.dockingId}:${bill.documentId ?? ''}`;
+          return {
+            key,
+            bill,
+            needsApproval: hasUnscannedGoods(bill.summary),
+            requestStatus: partialRequestStatusByBill.get(key) ?? null,
+          };
+        }),
+    [gatingBillGroups, partialRequestStatusByBill],
+  );
+  const defaultPartialBillKeys = useMemo(
+    () => partialBillChoices.filter((choice) => choice.needsApproval).map((choice) => choice.key),
+    [partialBillChoices],
+  );
+  const selectedPartialBillKeys = partialBillKeys ?? defaultPartialBillKeys;
   const isPartialScan =
     gatingScanCount > 0 &&
     (hasTrustworthyScanQuantities
@@ -720,13 +758,34 @@ export default function SalesDispatchBarcodeScanPage() {
       setPartialError('Enter a reason for dispatching with a partial scan.');
       return;
     }
+    const selected = partialBillChoices.filter(
+      (choice) => choice.needsApproval && selectedPartialBillKeys.includes(choice.key),
+    );
+    if (!selected.length && defaultPartialBillKeys.length) {
+      setPartialError('Select at least one bill to send for approval.');
+      return;
+    }
     setPartialError('');
+    // The selection is sent only when the operator actually NARROWED it. Left as it opened
+    // — every short bill ticked — the backend decides which bills are short, exactly as
+    // before: its judgement is the one the gate enforces, so a bill this page failed to
+    // flag (a load whose scans carry no quantity, judged there on box counts instead) can
+    // still get the approval that releases the truck.
+    const narrowed = defaultPartialBillKeys.some((key) => !selectedPartialBillKeys.includes(key));
     try {
-      // One request per short bill — say how many went, so the operator knows to expect
+      // One request per SELECTED bill — say how many went, so the operator knows to expect
       // that many approvals rather than watching for a single one.
       const raised = await createPartialRequest.mutateAsync({
         sales_dispatch: entry.id,
         reason: trimmedReason,
+        ...(narrowed
+          ? {
+              bills: selected.map((choice) => ({
+                sales_dispatch: choice.bill.dockingId,
+                document: choice.bill.documentId,
+              })),
+            }
+          : {}),
       });
       setIsPartialDialogOpen(false);
       setPartialReason('');
@@ -813,6 +872,7 @@ export default function SalesDispatchBarcodeScanPage() {
           onRequest={() => {
             setPartialReason('');
             setPartialError('');
+            setPartialBillKeys(null);
             setIsPartialDialogOpen(true);
           }}
         />
@@ -1049,10 +1109,80 @@ export default function SalesDispatchBarcodeScanPage() {
               {gatingFullBoxCount < expectedBoxes
                 ? `Only ${gatingFullBoxCount} of ${expectedBoxes} boxes are scanned.`
                 : 'Some bills on this load still have unscanned items.'}{' '}
-              Send this load to Admin for approval to dispatch with a partial scan. You cannot
-              continue until an admin approves the request.
+              Approval is given <strong>one bill at a time</strong>, so pick the bills to send.
+              Every bill you send must be approved before the load can continue.
             </DialogDescription>
           </DialogHeader>
+          {partialBillChoices.length ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Bills to send for approval</Label>
+                <span className="text-xs text-muted-foreground">
+                  {
+                    partialBillChoices.filter(
+                      (choice) =>
+                        choice.needsApproval && selectedPartialBillKeys.includes(choice.key),
+                    ).length
+                  }{' '}
+                  of {defaultPartialBillKeys.length} selected
+                </span>
+              </div>
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-1">
+                {partialBillChoices.map((choice) => {
+                  const checked =
+                    choice.needsApproval && selectedPartialBillKeys.includes(choice.key);
+                  return (
+                    <label
+                      key={choice.key}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm',
+                        choice.needsApproval ? 'hover:bg-muted/50' : 'cursor-default opacity-60',
+                      )}
+                    >
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={checked}
+                        // A fully scanned bill owes nothing, so there is no approval to ask
+                        // for — ticking it would send a request the backend rightly drops.
+                        disabled={!choice.needsApproval}
+                        onCheckedChange={(value) => {
+                          setPartialError('');
+                          setPartialBillKeys(
+                            value === true
+                              ? [...selectedPartialBillKeys, choice.key]
+                              : selectedPartialBillKeys.filter((key) => key !== choice.key),
+                          );
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium">Bill {formatValue(choice.bill.sapDocNum)}</span>
+                        {choice.bill.customerName ? (
+                          <span className="text-muted-foreground"> · {choice.bill.customerName}</span>
+                        ) : null}
+                        {isArrivalMode && choice.bill.companyName ? (
+                          <span className="text-muted-foreground"> · {choice.bill.companyName}</span>
+                        ) : null}
+                        <span className="block text-xs text-muted-foreground">
+                          {choice.bill.scannedBoxes}
+                          {choice.bill.expectedBoxes > 0 ? `/${choice.bill.expectedBoxes}` : ''} boxes
+                          scanned
+                          {choice.bill.expectedLoose > 0 || choice.bill.scannedLoose > 0
+                            ? ` · ${formatNumber(choice.bill.scannedLoose)}/${formatNumber(choice.bill.expectedLoose)} PCS loose`
+                            : ''}
+                          {choice.needsApproval ? '' : ' · fully scanned, no approval needed'}
+                          {choice.requestStatus === 'PENDING'
+                            ? ' · already sent, awaiting approval'
+                            : choice.requestStatus === 'REJECTED'
+                              ? ' · previous request rejected'
+                              : ''}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="docking-partial-scan-reason">Reason</Label>
             <Textarea
@@ -1078,7 +1208,11 @@ export default function SalesDispatchBarcodeScanPage() {
             <Button
               type="button"
               onClick={() => void handleSubmitPartialRequest()}
-              disabled={createPartialRequest.isPending || !partialReason.trim()}
+              disabled={
+                createPartialRequest.isPending ||
+                !partialReason.trim() ||
+                (defaultPartialBillKeys.length > 0 && selectedPartialBillKeys.length === 0)
+              }
             >
               {createPartialRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Send for Approval

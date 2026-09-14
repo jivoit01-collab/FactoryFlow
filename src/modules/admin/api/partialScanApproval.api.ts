@@ -43,9 +43,22 @@ export type DockingPartialScanListParams = {
   sales_dispatch?: number;
 };
 
+/** One bill the operator ticked in the approval dialog. */
+export interface DockingPartialScanBillSelection {
+  /** The bill's OWN docking — two dockings on one truck number their bills apart. */
+  sales_dispatch: number;
+  /** Null for a legacy docking carrying no bill rows. */
+  document: number | null;
+}
+
 export interface DockingPartialScanCreateRequest {
   sales_dispatch: number;
   reason: string;
+  /**
+   * The bills to raise approvals for. Omitted, the backend raises one for EVERY short
+   * bill on the truck — which is what the operator could not see was happening.
+   */
+  bills?: DockingPartialScanBillSelection[];
 }
 
 export interface DockingPartialScanReviewRequest {

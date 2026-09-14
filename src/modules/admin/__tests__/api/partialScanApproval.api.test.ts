@@ -61,6 +61,23 @@ describe('partialScanApprovalApi', () => {
     expect(raised).toHaveLength(2);
   });
 
+  it('sends only the bills the operator selected', async () => {
+    // Approval is per bill, so a request must carry the operator's own picks — without
+    // them the backend raises one for every short bill on the truck, including bills he
+    // never saw.
+    post.mockResolvedValueOnce({ data: [{ id: 1, status: 'PENDING', sap_doc_num: '626090324' }] });
+    await partialScanApprovalApi.create({
+      sales_dispatch: 7,
+      reason: 'short load',
+      bills: [{ sales_dispatch: 9, document: 41 }],
+    });
+    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/', {
+      sales_dispatch: 7,
+      reason: 'short load',
+      bills: [{ sales_dispatch: 9, document: 41 }],
+    });
+  });
+
   it('approves a request', async () => {
     await partialScanApprovalApi.approve(7, { notes: 'ok' });
     expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/7/approve/', {
