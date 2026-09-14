@@ -17,6 +17,7 @@ export const ARTWORK_QUERY_KEYS = {
       params?.subGroup ?? '',
       params?.search ?? '',
       params?.status ?? '',
+      params?.changedRecently ? 'recent' : '',
     ] as const,
   options: () => [...ARTWORK_QUERY_KEYS.all, 'options'] as const,
   detail: (id: number) => [...ARTWORK_QUERY_KEYS.all, 'detail', id] as const,

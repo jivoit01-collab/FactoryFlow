@@ -42,6 +42,14 @@ import { ArtworkHistoryDialog } from './ArtworkHistoryDialog';
 
 const ALL = 'ALL';
 
+/**
+ * The change window, until the server says what it really is.
+ *
+ * Only ever a label: the filtering itself is the server's, so a stale number
+ * here cannot make the list disagree with what it claims to show.
+ */
+const FALLBACK_RECENT_DAYS = 3;
+
 /** Matches the smallest option PaginationControls offers. */
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -67,6 +75,7 @@ export default function ArtworkRegisterPage() {
 
   const [kind, setKind] = useState<ArtworkSubGroup | typeof ALL>(ALL);
   const [status, setStatus] = useState<ArtworkStatus | typeof ALL>(ALL);
+  const [changedRecently, setChangedRecently] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -80,6 +89,7 @@ export default function ArtworkRegisterPage() {
   const { data, isLoading } = useArtworkItems({
     ...(kind === ALL ? {} : { subGroup: kind }),
     ...(status === ALL ? {} : { status }),
+    ...(changedRecently ? { changedRecently: true } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
   });
   const retire = useRetireArtwork();
@@ -87,6 +97,7 @@ export default function ArtworkRegisterPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
   const summary = data?.summary;
+  const recentDays = data?.recent_change_days ?? FALLBACK_RECENT_DAYS;
 
   // What a capture may be filed against. Taken from the loaded list rather
   // than fetched again: the whole item master for a company is a few hundred
@@ -116,9 +127,9 @@ export default function ArtworkRegisterPage() {
 
   // The revise/history dialogs need the full record, which the row does not
   // carry. Fetched on demand so the list stays one request.
-  const [activeRecord, setActiveRecord] = useState<
-    Awaited<ReturnType<typeof artworkApi.detail>> | null
-  >(null);
+  const [activeRecord, setActiveRecord] = useState<Awaited<
+    ReturnType<typeof artworkApi.detail>
+  > | null>(null);
 
   async function loadRecord(recordId: number) {
     try {
@@ -175,7 +186,7 @@ export default function ArtworkRegisterPage() {
     if (row.record_id == null) return;
     const ok = await confirmDialog({
       title: `Take the artwork for ${row.item_code} off the register?`,
-      description: `${row.document_number} rev ${row.revision_label} will stop being listed. The files and the revision history are kept, and the item goes back to pending so a replacement can be filed.`,
+      description: `${row.document_number || 'The artwork'} rev ${row.revision_label} will stop being listed. The files and the revision history are kept, and the item goes back to pending so a replacement can be filed.`,
       confirmLabel: 'Retire',
       destructive: true,
     });
@@ -209,9 +220,9 @@ export default function ArtworkRegisterPage() {
           <CardContent className="flex items-start gap-2 p-4 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              SAP could not be reached, so only the artwork already on file is listed — the
-              items with nothing filed for them are not known right now. Artwork cannot be
-              captured until SAP is back. {data.sap_error}
+              SAP could not be reached, so only the artwork already on file is listed — the items
+              with nothing filed for them are not known right now. Artwork cannot be captured until
+              SAP is back. {data.sap_error}
             </span>
           </CardContent>
         </Card>
@@ -253,6 +264,22 @@ export default function ArtworkRegisterPage() {
         </div>
 
         <div className="space-y-1">
+          <Label htmlFor="artwork-filter-changed">Changed</Label>
+          <NativeSelect
+            id="artwork-filter-changed"
+            className="w-[190px]"
+            value={changedRecently ? 'RECENT' : ALL}
+            onChange={(e) => {
+              setChangedRecently(e.target.value === 'RECENT');
+              setPage(1);
+            }}
+          >
+            <SelectOption value={ALL}>Any time</SelectOption>
+            <SelectOption value="RECENT">Last {recentDays} days</SelectOption>
+          </NativeSelect>
+        </div>
+
+        <div className="space-y-1">
           <Label htmlFor="artwork-filter-search">Search</Label>
           <Input
             id="artwork-filter-search"
@@ -271,6 +298,12 @@ export default function ArtworkRegisterPage() {
             <span className="font-medium text-foreground">{summary.captured}</span> of{' '}
             {summary.total} on file
             {summary.pending > 0 && <> · {summary.pending} still to capture</>}
+            {summary.changed_recently > 0 && !changedRecently && (
+              <>
+                {' '}
+                · {summary.changed_recently} changed in the last {recentDays} days
+              </>
+            )}
           </p>
         )}
       </div>
@@ -284,9 +317,11 @@ export default function ArtworkRegisterPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ImageIcon className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {search || kind !== ALL || status !== ALL
-                ? 'No label or carton matches those filters.'
-                : 'SAP has no label or carton items for this company.'}
+              {changedRecently
+                ? `No artwork has been captured or revised in the last ${recentDays} days.`
+                : search || kind !== ALL || status !== ALL
+                  ? 'No label or carton matches those filters.'
+                  : 'SAP has no label or carton items for this company.'}
             </p>
           </CardContent>
         </Card>
@@ -318,11 +353,22 @@ export default function ArtworkRegisterPage() {
                     <td className="px-3 py-2">
                       <p className="font-mono text-xs font-medium">{row.item_code}</p>
                       <p className="text-sm">{row.item_name}</p>
-                      {!row.in_sap && (
-                        <Badge variant="outline" className="mt-1 text-[10px]">
-                          Not in SAP any more
-                        </Badge>
-                      )}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {!row.in_sap && (
+                          <Badge variant="outline" className="text-[10px]">
+                            Not in SAP any more
+                          </Badge>
+                        )}
+                        {/* Says which of the two kinds of change it was: a
+                            brand-new capture and a revision to artwork already
+                            on file are read very differently. */}
+                        {row.changed_recently && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {row.newly_captured ? 'Newly filed' : 'Revised'} ·{' '}
+                            {row.updated_at ? row.updated_at.slice(0, 10) : ''}
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <Badge variant="outline" className="text-xs">
@@ -331,7 +377,11 @@ export default function ArtworkRegisterPage() {
                     </td>
                     <td className="px-3 py-2">
                       {captured ? (
-                        <span className="font-medium">{row.document_number}</span>
+                        row.document_number ? (
+                          <span className="font-medium">{row.document_number}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not yet numbered</span>
+                        )
                       ) : (
                         <span className="text-xs text-muted-foreground">Nothing filed</span>
                       )}

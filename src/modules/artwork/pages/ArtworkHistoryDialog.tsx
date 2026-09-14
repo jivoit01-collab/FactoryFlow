@@ -27,11 +27,7 @@ export interface ArtworkHistoryDialogProps {
  * that was printed on everything produced before the change, so the old PDF
  * and CDR stay downloadable from here rather than being overwritten.
  */
-export function ArtworkHistoryDialog({
-  open,
-  onOpenChange,
-  record,
-}: ArtworkHistoryDialogProps) {
+export function ArtworkHistoryDialog({ open, onOpenChange, record }: ArtworkHistoryDialogProps) {
   const { data: revisions, isLoading } = useArtworkRevisions(open ? (record?.id ?? null) : null);
   const openFile = useOpenArtworkFile();
 
@@ -52,7 +48,7 @@ export function ArtworkHistoryDialog({
             Revision history — {record?.item_code}
           </DialogTitle>
           <DialogDescription>
-            {record?.item_name}. Currently {record?.document_number} rev{' '}
+            {record?.item_name}. Currently {record?.document_number || 'not yet numbered'} rev{' '}
             {record?.revision_label}.
           </DialogDescription>
         </DialogHeader>
@@ -71,7 +67,13 @@ export function ArtworkHistoryDialog({
               <div key={revision.id} className="rounded-md border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline">rev {revision.revision_label}</Badge>
-                  <span className="font-medium">{revision.document_number}</span>
+                  <span
+                    className={
+                      revision.document_number ? 'font-medium' : 'text-sm text-muted-foreground'
+                    }
+                  >
+                    {revision.document_number || 'Not yet numbered'}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     issued {revision.revision_date}
                   </span>

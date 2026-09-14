@@ -30,6 +30,10 @@ export interface ArtworkItemRow {
   has_pdf: boolean;
   has_cdr: boolean;
   updated_at: string | null;
+  /** Captured or revised inside the server's recent-change window. */
+  changed_recently: boolean;
+  /** True when that recent change was the artwork first arriving. */
+  newly_captured: boolean;
 }
 
 export interface ArtworkItemList {
@@ -40,7 +44,14 @@ export interface ArtworkItemList {
    */
   sap_available: boolean;
   sap_error: string;
-  summary: { total: number; captured: number; pending: number };
+  /** How many days back `changed_recently` looks. Decided by the server. */
+  recent_change_days: number;
+  summary: {
+    total: number;
+    captured: number;
+    pending: number;
+    changed_recently: number;
+  };
   rows: ArtworkItemRow[];
 }
 
@@ -95,6 +106,7 @@ export interface ArtworkRevision {
 export interface ArtworkOptions {
   sub_groups: { value: ArtworkSubGroup; label: string }[];
   statuses: { value: ArtworkStatus; label: string }[];
+  recent_change_days: number;
   max_pdf_bytes: number;
   max_cdr_bytes: number;
   accepted_pdf: string;
@@ -107,11 +119,14 @@ export interface ArtworkItemListParams {
   subGroup?: ArtworkSubGroup;
   search?: string;
   status?: ArtworkStatus;
+  /** Narrows to artwork touched inside the recent-change window. */
+  changedRecently?: boolean;
 }
 
 export interface CaptureArtworkPayload {
   item_code: string;
-  document_number: string;
+  /** Optional: artwork is often filed before it has been given a number. */
+  document_number?: string;
   revision_number: number;
   revision_date: string;
   barcode?: string;
@@ -148,6 +163,7 @@ export const artworkApi = {
         ...(params?.subGroup ? { sub_group: params.subGroup } : {}),
         ...(params?.search ? { search: params.search } : {}),
         ...(params?.status ? { status: params.status } : {}),
+        ...(params?.changedRecently ? { changed_recently: 'true' } : {}),
       },
     });
     return data;
