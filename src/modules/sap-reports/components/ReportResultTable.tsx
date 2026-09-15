@@ -6,8 +6,11 @@ import { Badge, Button, Checkbox, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 import { cn, formatNumber } from '@/shared/utils';
 
-import type { SapReportCell, SapReportColumn } from '../api';
+import type { SapReportCell, SapReportColumn, SapReportReferenceMatch } from '../api';
+import { useSapReportReferences } from '../api';
 import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
+import { findReferenceColumn } from '../utils/references';
+import { ReferenceRecordDialog } from './ReferenceRecordDialog';
 
 const PAGE_SIZE = 100;
 
@@ -54,6 +57,8 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   // Shift-click picks a block. The checkbox reports only its new state, so the
   // modifier is caught on the way down and read back on the change.
   const shiftHeld = useRef(false);
+  // The report row whose app record is open over the grid.
+  const [openReference, setOpenReference] = useState<string | null>(null);
 
   const indexed = useMemo<IndexedRow[]>(() => rows.map((row, index) => ({ row, index })), [rows]);
 
@@ -84,8 +89,9 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
     if (!sort) return filtered;
     const isNumeric = columns[sort.index]?.type === 'number';
     const factor = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort((left, right) =>
-      factor * compareCells(left.row[sort.index], right.row[sort.index], isNumeric),
+    return [...filtered].sort(
+      (left, right) =>
+        factor * compareCells(left.row[sort.index], right.row[sort.index], isNumeric),
     );
   }, [filtered, sort, columns]);
 
@@ -93,6 +99,28 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const visible = sorted.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+
+  const referenceIndex = useMemo(() => findReferenceColumn(columns), [columns]);
+
+  // Only what is on screen: a truncated report can be thousands of rows, and
+  // the viewer can only click the hundred in front of them. Sorted so paging
+  // back to a page already seen hits the cache instead of re-asking.
+  const visibleReferences = useMemo(() => {
+    if (referenceIndex === -1) return [];
+    const values = new Set<string>();
+    for (const { row } of visible) {
+      const cell = row[referenceIndex];
+      if (cell !== null && cell !== undefined && cell !== '') values.add(String(cell));
+    }
+    return [...values].sort();
+  }, [visible, referenceIndex]);
+
+  // A failure here leaves every row unlinked, which is exactly how the grid
+  // behaved before — the report itself is unaffected.
+  const { data: referenceMatches } = useSapReportReferences(visibleReferences);
+
+  const openMatches: SapReportReferenceMatch[] =
+    (openReference && referenceMatches?.[openReference]) || [];
 
   const allShownSelected = sorted.length > 0 && sorted.every(({ index }) => selected.has(index));
 
@@ -264,23 +292,53 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
                       aria-label={`Select row ${positionInSorted + 1}`}
                     />
                   </td>
-                  {columns.map((column, index) => (
-                    <td
-                      key={column.key}
-                      className={cn(
-                        'whitespace-nowrap px-3 py-1.5',
-                        column.type === 'number' && 'text-right tabular-nums',
-                      )}
-                    >
-                      {renderCell(row[index], column)}
-                    </td>
-                  ))}
+                  {columns.map((column, index) => {
+                    const cell = row[index];
+                    // A reference this app knows a record for becomes the way
+                    // into it. Everything else stays plain text — most document
+                    // numbers in SAP predate this app and match nothing.
+                    const matches =
+                      index === referenceIndex && cell !== null && cell !== undefined && cell !== ''
+                        ? referenceMatches?.[String(cell)]
+                        : undefined;
+                    return (
+                      <td
+                        key={column.key}
+                        className={cn(
+                          'whitespace-nowrap px-3 py-1.5',
+                          column.type === 'number' && 'text-right tabular-nums',
+                        )}
+                      >
+                        {matches?.length ? (
+                          <button
+                            type="button"
+                            className="text-primary underline underline-offset-2 hover:no-underline"
+                            title={matches.map((m) => `${m.entry_no} — ${m.summary}`).join(' · ')}
+                            onClick={() => setOpenReference(String(cell))}
+                          >
+                            {renderCell(cell, column)}
+                          </button>
+                        ) : (
+                          renderCell(cell, column)
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {openReference && openMatches.length > 0 && (
+        <ReferenceRecordDialog
+          reference={openReference}
+          matches={openMatches}
+          open
+          onOpenChange={(next) => !next && setOpenReference(null)}
+        />
+      )}
 
       {pageCount > 1 && (
         <div className="flex items-center justify-between text-sm">

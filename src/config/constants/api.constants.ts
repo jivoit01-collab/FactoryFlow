@@ -623,6 +623,7 @@ export const API_ENDPOINTS = {
       `/sap-reports/reports/${slug}/parameters/${position}/options/`,
     REPORT_RUNS: (slug: string) => `/sap-reports/reports/${slug}/runs/`,
     RUNS: '/sap-reports/runs/',
+    RESOLVE_REFERENCES: '/sap-reports/resolve-references/',
     CATEGORIES: '/sap-reports/categories/',
     SYNC: '/sap-reports/sync/',
     ACCESS: '/sap-reports/access/',

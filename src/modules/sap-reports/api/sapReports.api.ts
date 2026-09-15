@@ -109,6 +109,25 @@ export interface SapReportResult {
   };
 }
 
+/** What kind of app record a report's document number points at. */
+export type SapReportReferenceKind = 'TRANSFER_REQUEST' | 'BST';
+
+export interface SapReportReferenceMatch {
+  kind: SapReportReferenceKind;
+  id: number;
+  entry_no: string;
+  /** One line naming the record — the route, usually. */
+  summary: string;
+  /** Which SAP document matched, e.g. "Inventory Transfer". */
+  matched_on: string;
+}
+
+/**
+ * Document number → the app records carrying it. Only references that matched
+ * something come back, so "present in this map" means "this row is clickable".
+ */
+export type SapReportReferenceMatches = Record<string, SapReportReferenceMatch[]>;
+
 export interface SapReportSql {
   slug: string;
   sap_name: string;
@@ -225,10 +244,7 @@ export const sapReportsApi = {
   },
 
   async update(slug: string, payload: UpdateSapReportPayload) {
-    const response = await apiClient.patch<{ data: SapReportDetail }>(
-      EP.BY_SLUG(slug),
-      payload,
-    );
+    const response = await apiClient.patch<{ data: SapReportDetail }>(EP.BY_SLUG(slug), payload);
     return response.data.data;
   },
 
@@ -286,6 +302,20 @@ export const sapReportsApi = {
   async sync(payload?: { category?: string; all_categories?: boolean; dry_run?: boolean }) {
     const response = await apiClient.post<{ data: SapReportSyncSummary }>(EP.SYNC, payload ?? {});
     return response.data.data;
+  },
+
+  /**
+   * Resolves the document numbers on screen to app records in one round trip.
+   *
+   * Batched deliberately: a page of 100 rows would otherwise be 100 requests,
+   * and the answer for most reports is "none of them match".
+   */
+  async resolveReferences(references: string[]) {
+    const response = await apiClient.post<{ matches: SapReportReferenceMatches }>(
+      EP.RESOLVE_REFERENCES,
+      { references },
+    );
+    return response.data.matches;
   },
 
   async listAccess(params?: { user?: number; activeOnly?: boolean }) {

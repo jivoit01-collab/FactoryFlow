@@ -17,6 +17,7 @@ export const sapReportKeys = {
   runs: (slug: string) => ['sap-reports', 'runs', slug] as const,
   categories: () => ['sap-reports', 'categories'] as const,
   access: (user?: number) => ['sap-reports', 'access', user ?? 0] as const,
+  references: (references: string[]) => ['sap-reports', 'references', references] as const,
 };
 
 export function useSapReports(params?: { search?: string; include_hidden?: boolean }) {
@@ -98,18 +99,15 @@ export function useRunSapReport(slug: string | undefined) {
 
 export function useExportSapReport(slug: string | undefined) {
   return useMutation({
-    mutationFn: (input: {
-      parameters: SapReportParameterValues;
-      exportFormat: 'csv' | 'xlsx';
-    }) => sapReportsApi.export(slug as string, input.parameters, input.exportFormat),
+    mutationFn: (input: { parameters: SapReportParameterValues; exportFormat: 'csv' | 'xlsx' }) =>
+      sapReportsApi.export(slug as string, input.parameters, input.exportFormat),
   });
 }
 
 export function useUpdateSapReport(slug: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: UpdateSapReportPayload) =>
-      sapReportsApi.update(slug as string, payload),
+    mutationFn: (payload: UpdateSapReportPayload) => sapReportsApi.update(slug as string, payload),
     onSuccess: (report) => {
       queryClient.setQueryData(sapReportKeys.detail(report.slug), report);
       queryClient.invalidateQueries({ queryKey: sapReportKeys.all });
@@ -154,5 +152,25 @@ export function useSyncSapReports() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: sapReportKeys.all });
     },
+  });
+}
+
+/**
+ * Resolves the document numbers on the current page of a result to app records.
+ *
+ * Cached on the reference list itself: paging back and forth, sorting or
+ * searching re-asks with the same set and is answered from cache. Kept fresh
+ * for a while because the answer only changes when someone raises a new
+ * transfer or BST against a document already on screen.
+ */
+export function useSapReportReferences(references: string[]) {
+  return useQuery({
+    queryKey: sapReportKeys.references(references),
+    queryFn: () => sapReportsApi.resolveReferences(references),
+    enabled: references.length > 0,
+    staleTime: 60_000,
+    // A report is readable whether or not the link lookup works; a failure here
+    // must not put an error over the rows.
+    retry: false,
   });
 }

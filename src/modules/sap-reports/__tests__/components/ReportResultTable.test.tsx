@@ -1,7 +1,15 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// The grid resolves the document numbers on screen to app records. This
+// suite is about copying and selection, so nothing resolves.
+vi.mock('../../api/sapReports.api', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, sapReportsApi: { resolveReferences: vi.fn(async () => ({})) } };
+});
 
 import type { SapReportCell, SapReportColumn } from '../../api';
 import { ReportResultTable } from '../../components/ReportResultTable';
@@ -21,14 +29,21 @@ const rows: SapReportCell[][] = [
 const writeText = vi.fn(() => Promise.resolve());
 
 function renderTable(props: Partial<Parameters<typeof ReportResultTable>[0]> = {}) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <ReportResultTable
-      columns={columns}
-      rows={rows}
-      wasTruncated={false}
-      rowLimit={5000}
-      {...props}
-    />,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ReportResultTable
+          columns={columns}
+          rows={rows}
+          wasTruncated={false}
+          rowLimit={5000}
+          {...props}
+        />
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
