@@ -7,6 +7,10 @@
  * nowhere — everybody knows there are eighty-five of them, and nobody could say
  * how many of the eighty-five were on site yesterday. This is that register.
  *
+ * Both are counted against the **same departments** — the plant-wide master the
+ * Labour screens use, not the HR org tree — so the two halves of a shift's
+ * manpower can be laid side by side.
+ *
  * It is deliberately two facts, not one. **The strength** is a master: a
  * number per department, moved only when the plant hires or loses somebody, and
  * editable by whoever maintains the org structure. **The presence** is a daily
@@ -47,6 +51,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useDepartments as useOrgDepartments } from '@/modules/gate/api/department/department.queries';
 import { SearchableSelect } from '@/shared/components';
 import { DashboardError } from '@/shared/components/dashboard';
 import {
@@ -65,7 +70,6 @@ import {
 import { getErrorMessage } from '@/shared/utils';
 
 import {
-  useDepartments,
   useEmployeeMeta,
   useLabourPresence,
   useLabourPresenceAudit,
@@ -221,17 +225,14 @@ interface PresenceDraft {
 
 export default function LabourPresencePage() {
   const meta = useEmployeeMeta();
-  const departmentQuery = useDepartments();
-  // Retired departments stay out of the picker but keep their rows: a figure
-  // already recorded against one is still part of the plant's history, and the
-  // total says so.
-  const departments = useMemo(
-    () =>
-      (departmentQuery.data?.results ?? []).filter(
-        (department) => department.status === 'ACTIVE',
-      ),
-    [departmentQuery.data],
-  );
+  // The plant-wide department master — the same list, and the same fetch, the
+  // contractor labour count is kept against. Permanent and contractor labour
+  // are two halves of "how many people were on the floor", and a picker that
+  // offered a different set of departments could not be added up with the one
+  // next door. Not the HR department tree: that is the payroll org, per
+  // company, and most plants have never filled it in.
+  const departmentQuery = useOrgDepartments();
+  const departments = useMemo(() => departmentQuery.data ?? [], [departmentQuery.data]);
   // The picker searches a list nearer forty than four, which is why it is a
   // typed search rather than a `<select>`. "No department" sits at the bottom
   // of it, where it reads as the exception it is rather than as one more
