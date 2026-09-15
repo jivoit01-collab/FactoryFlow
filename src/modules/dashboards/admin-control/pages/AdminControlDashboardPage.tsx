@@ -186,7 +186,12 @@ export default function AdminControlDashboardPage() {
               tag={
                 cost
                   ? (() => {
-                      const nil = cost.slices.filter((slice) => slice.amount <= 0).length;
+                      // NOT "reads zero" — a line can be nil from a source
+                      // that works, and maintenance usually is. Unsourced means
+                      // nothing is configured behind it, which is the same test
+                      // the action centre applies; counting nils instead put a
+                      // red badge on the tile that its own alert list denied.
+                      const nil = cost.slices.filter((slice) => !slice.has_source).length;
                       return nil
                         ? { label: `${nil} of ${cost.slices.length} unsourced`, tone: 'bad' as const }
                         : { label: 'all four sourced', tone: 'ok' as const };
