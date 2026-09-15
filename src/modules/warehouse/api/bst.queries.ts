@@ -41,7 +41,13 @@ export const BST_QUERY_KEYS = {
   gateInwards: () => [...BST_QUERY_KEYS.all, 'gate', 'inwards'] as const,
   sapTransfers: (search?: string, documentType?: string) =>
     [...BST_QUERY_KEYS.all, 'sap-transfers', { search, documentType }] as const,
-  sapTransfer: (docEntry: number) => [...BST_QUERY_KEYS.all, 'sap-transfer', docEntry] as const,
+  sapTransfer: (docEntry: number, documentType?: string) =>
+    [
+      ...BST_QUERY_KEYS.all,
+      'sap-transfer',
+      docEntry,
+      ...(documentType ? [documentType] : []),
+    ] as const,
   partialTransfers: (params?: BSTListParams) =>
     [...BST_QUERY_KEYS.all, 'partial-transfers', params ?? {}] as const,
 };
@@ -62,10 +68,15 @@ export function useBSTSapTransfers(search?: string, enabled = true, documentType
   });
 }
 
-export function useBSTSapTransfer(docEntry: number | null) {
+/**
+ * One SAP source document with its lines. `documentType` picks which SAP object
+ * the doc entry is read from — omit it (or pass STOCK_TRANSFER) for an OWTR
+ * transfer, pass INVOICE to read a dispatch bill instead.
+ */
+export function useBSTSapTransfer(docEntry: number | null, documentType?: string) {
   return useQuery({
-    queryKey: BST_QUERY_KEYS.sapTransfer(docEntry!),
-    queryFn: () => bstApi.getSapTransfer(docEntry!),
+    queryKey: BST_QUERY_KEYS.sapTransfer(docEntry!, documentType),
+    queryFn: () => bstApi.getSapTransfer(docEntry!, documentType),
     enabled: docEntry !== null,
   });
 }

@@ -23,6 +23,7 @@ import {
   useCreateBST,
   useWarehouseScope,
 } from '../../api';
+import { SapTransferPrintButton } from '../../components/SapTransferPrintButton';
 import type { BSTCreatePayload, BSTSourceType, SAPStockTransfer } from '../../types';
 
 const norm = (value?: string | null) => (value ?? '').trim().toLowerCase();
@@ -286,6 +287,13 @@ export default function BSTNewPage() {
                         {mismatched ? (isInvoice ? ' · different customer' : ' · different destination') : ''}
                       </div>
                     </div>
+                    {/* Printable whether or not it is added — a document raised
+                        in SAP often just needs its paperwork, not a BST. */}
+                    <SapTransferPrintButton
+                      docEntry={t.doc_entry}
+                      docNum={t.doc_num}
+                      documentType={documentType}
+                    />
                     {added ? (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
                         <Check className="h-3.5 w-3.5" /> Added
@@ -334,10 +342,17 @@ export default function BSTNewPage() {
                       {isInvoice ? 'Invoice' : 'Doc'} #{d.doc_num}
                     </span>
                     <span className="text-muted-foreground">· {d.line_count} lines</span>
+                    <div className="ml-auto">
+                      <SapTransferPrintButton
+                        docEntry={d.doc_entry}
+                        docNum={d.doc_num}
+                        documentType={documentType}
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeDoc(d.doc_entry)}
-                      className="ml-auto rounded p-1 text-muted-foreground hover:text-foreground"
+                      className="rounded p-1 text-muted-foreground hover:text-foreground"
                       aria-label={`Remove doc ${d.doc_num}`}
                     >
                       <X className="h-4 w-4" />
