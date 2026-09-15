@@ -34,6 +34,7 @@ const draft: SapTransferDraft = {
   can_post: true,
   blocked_reason: null,
   warnings: [],
+  will_be_refused: false,
   lines: [
     {
       line_num: 0,
@@ -45,9 +46,39 @@ const draft: SapTransferDraft = {
       to_warehouse: 'BH-SC',
       source_stock: '16',
       short: false,
+      source_empty: false,
       batch_managed: false,
       batches_allocated: 0,
+      allocated_quantity: '0',
       batches_missing: false,
+      allocation_partial: false,
+      batches_short: [],
+      last_issue: null,
+    },
+  ],
+};
+
+/** A draft SAP is certain to refuse — the shape the first live add hit. */
+const refused: SapTransferDraft = {
+  ...draft,
+  warnings: ['BH-GR holds none of SC0000007 any more, so this draft can no longer be added.'],
+  will_be_refused: true,
+  lines: [
+    {
+      ...draft.lines[0],
+      source_stock: '0',
+      short: true,
+      source_empty: true,
+      batch_managed: true,
+      batches_allocated: 1,
+      allocated_quantity: '16',
+      batches_short: [{ batch: 'LS1103', allocated: '16', in_stock: '0' }],
+      last_issue: {
+        doc_num: '726678123',
+        doc_type: 'inventory transfer',
+        doc_date: '2026-07-25',
+        quantity: '16',
+      },
     },
   ],
 };
@@ -102,5 +133,32 @@ describe('SapUnpostedDraftTable', () => {
 
     expect(screen.getByText('blocked')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Add in SAP/i })).toBeNull();
+  });
+
+  describe('a draft SAP will refuse', () => {
+    it('does not offer Add on the row', () => {
+      /* The refusal is certain, so the one-click path is the wrong one: five
+         identical presses is what happened when it was offered anyway. */
+      show([refused]);
+
+      expect(screen.getByText('SAP will refuse')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /Add in SAP/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /Add anyway/i })).toBeNull();
+    });
+
+    it('offers it inside, under the reason', () => {
+      // Not removed: SAP, not this page, is the authority on its own stock.
+      show([refused], true);
+
+      expect(screen.getByText(/holds none of SC0000007/)).toBeTruthy();
+      expect(screen.getByRole('button', { name: /Add anyway/i })).toBeTruthy();
+    });
+
+    it('names the batch and the document that took the stock', () => {
+      show([refused], true);
+
+      expect(screen.getByText(/batch LS1103/)).toBeTruthy();
+      expect(screen.getByText(/0 of 16/)).toBeTruthy();
+    });
   });
 });

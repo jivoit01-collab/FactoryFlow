@@ -53,6 +53,7 @@ const draft = {
   can_post: true,
   blocked_reason: null,
   warnings: [],
+  will_be_refused: false,
   lines: [
     {
       line_num: 0,
@@ -64,9 +65,14 @@ const draft = {
       to_warehouse: 'BH-SC',
       source_stock: '16',
       short: false,
+      source_empty: false,
       batch_managed: false,
       batches_allocated: 0,
+      allocated_quantity: '0',
       batches_missing: false,
+      allocation_partial: false,
+      batches_short: [],
+      last_issue: null,
     },
   ],
 } as SapTransferDraft;
@@ -84,6 +90,13 @@ vi.mock('../../../api', () => ({
   // Reached only once a card's button is pressed, which these never do.
   useAddSapTransferDraft: () => ({ isPending: false, mutateAsync: vi.fn() }),
   usePostSapTransfer: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  // The document side of this page — printing a posted SAP transfer. These
+  // tests are about the search box, so the lookup stays empty and nothing is
+  // ever printed; they exist so the imports resolve.
+  useSapTransferSearch: () => empty,
+  sapTransferApi: { search: vi.fn(), get: vi.fn() },
+  SAP_TRANSFER_QUERY_KEYS: { detail: (docEntry: number) => ['sap-transfer', docEntry] },
+  warehousePrintInfoQuery: () => ({ codes: [], options: {} }),
 }));
 
 vi.mock('@/core/auth', () => ({ usePermission: () => ({ hasPermission: () => true }) }));

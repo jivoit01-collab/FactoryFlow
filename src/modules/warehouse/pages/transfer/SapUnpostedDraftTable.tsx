@@ -11,6 +11,14 @@
  * Nothing here is editable, deliberately. The draft carries its own
  * quantities, warehouses and batch allocations, settled when it was approved;
  * adding posts exactly that. Changing any of it belongs on the draft in SAP.
+ *
+ * What IS decided here is whether to offer the button at all. A draft that sat
+ * for two months is usually stale rather than short — its stock left the
+ * warehouse whole on some later document — and SAP answers the add with a code
+ * ("10001153 - Insufficient quantity ... with batch LS1103") that means nothing
+ * on a warehouse floor. So when the refusal is certain the row says so and
+ * keeps the button inside, behind the reason; pressing it anyway stays possible
+ * because SAP, not this page, is the authority on its own stock.
  */
 
 import { AlertTriangle, FileCheck2, Info, Stamp } from 'lucide-react';
@@ -66,8 +74,13 @@ function DraftRow({
         { label: 'Creates', value: 'The Inventory Transfer this approved draft stands for' },
         { label: 'Draft', value: row.doc_num ?? row.draft_entry },
         { label: 'Out of', value: row.from_warehouse || 'the source warehouse' },
+        // Said again at the last moment, because this is the press that five
+        // identical refusals went through.
+        ...(row.will_be_refused
+          ? [{ label: 'Expect', value: 'SAP to refuse this — see the reasons on the row' }]
+          : []),
       ],
-      confirmLabel: 'Add it in SAP',
+      confirmLabel: row.will_be_refused ? 'Try it anyway' : 'Add it in SAP',
     });
     if (!confirmed) return;
     try {
@@ -84,6 +97,10 @@ function DraftRow({
   }
 
   const needsAttention = row.warnings.length > 0 || Boolean(row.blocked_reason);
+  /* The button only sits on the closed row when pressing it can work. A
+     refusal that is certain moves it inside, under the reason for it. */
+  const offerOnRow = row.can_post && !done && !row.will_be_refused;
+  const offerInside = row.can_post && !done && row.will_be_refused;
 
   return (
     <RecordRow
@@ -114,7 +131,11 @@ function DraftRow({
               title={row.blocked_reason ?? row.warnings.join(' ')}
             >
               <AlertTriangle className="h-3 w-3" />
-              {row.blocked_reason ? 'blocked' : `${row.warnings.length} to check`}
+              {row.blocked_reason
+                ? 'blocked'
+                : row.will_be_refused
+                  ? 'SAP will refuse'
+                  : `${row.warnings.length} to check`}
             </span>
           )}
         </>
@@ -125,7 +146,7 @@ function DraftRow({
         </span>
       }
       action={
-        row.can_post && !done ? (
+        offerOnRow ? (
           // On the row itself: a draft is added exactly as it stands, so there
           // is nothing to fill in first — and a 23-row backlog should not need
           // 23 expansions to clear.
@@ -156,6 +177,20 @@ function DraftRow({
               {line.batches_missing && (
                 <div className="text-xs text-amber-700">no batch allocated</div>
               )}
+              {line.allocation_partial && (
+                <div className="text-xs text-amber-700">
+                  only {qty(line.allocated_quantity)} allocated
+                </div>
+              )}
+              {/* Per batch, because that is what SAP checks — the item total
+                  beside it can be perfectly sufficient. Defaulted, because the
+                  frontend and the API are deployed separately here: a row from
+                  a backend that predates this field must not blank the page. */}
+              {(line.batches_short ?? []).map((batch) => (
+                <div key={batch.batch} className="text-xs text-amber-700">
+                  batch {batch.batch}: {qty(batch.in_stock)} of {qty(batch.allocated)}
+                </div>
+              ))}
             </td>
             <td className="px-4 py-2 text-xs text-muted-foreground">{line.uom}</td>
           </tr>
@@ -190,15 +225,28 @@ function DraftRow({
           </>
         }
         hint={
-          row.can_post && !done ? (
+          offerOnRow ? (
             <>
               Posts the draft exactly as it stands — all {row.lines.length} line
               {row.lines.length === 1 ? '' : 's'}, with the batches SAP already holds. The stock
               moves the moment it lands.
             </>
+          ) : offerInside ? (
+            <>
+              SAP will refuse this as things stand, so the fix is on the draft in SAP — or the
+              draft is finished with and belongs removed there. Adding anyway costs nothing but
+              the same refusal.
+            </>
           ) : undefined
         }
-      />
+      >
+        {offerInside && (
+          <Button size="sm" variant="outline" disabled={add.isPending} onClick={submit}>
+            <Stamp className="mr-1 h-4 w-4" />
+            {add.isPending ? 'Adding…' : 'Add anyway'}
+          </Button>
+        )}
+      </RecordActions>
     </RecordRow>
   );
 }

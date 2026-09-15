@@ -371,10 +371,34 @@ export interface SapTransferDraftLine {
   source_stock: string | null;
   /** The source no longer holds the quantity, so SAP will refuse the add. */
   short: boolean;
+  /** Holds none of it at all: the draft is stale, not merely short. */
+  source_empty: boolean;
   batch_managed: boolean;
   batches_allocated: number;
+  /** Pieces the draft's batches add up to — less than `quantity` is refused. */
+  allocated_quantity: string;
   /** Batch-managed with no allocation on the draft — fix it in SAP first. */
   batches_missing: boolean;
+  /** Allocated, but to fewer pieces than the line moves. */
+  allocation_partial: boolean;
+  /**
+   * Batches the draft allocates that no longer hold what it claims. SAP checks
+   * the BATCH, not the item total, so a line can look covered and still be
+   * refused: "10001153 - Insufficient quantity for item FG0000296 with batch
+   * LS1103".
+   */
+  batches_short: { batch: string; allocated: string; in_stock: string }[];
+  /**
+   * The last document that took this item out of the source warehouse. Read
+   * only for lines already short, and the answer to the question a stale draft
+   * really poses: has this move already been made another way?
+   */
+  last_issue: {
+    doc_num: string | null;
+    doc_type: string;
+    doc_date: string | null;
+    quantity: string;
+  } | null;
 }
 
 export interface SapTransferDraft {
@@ -402,6 +426,12 @@ export interface SapTransferDraft {
   blocked_reason: string | null;
   /** What SAP would refuse: stock gone, batch allocation missing. */
   warnings: string[];
+  /**
+   * The add cannot succeed as things stand. Separate from `warnings` being
+   * non-empty: this is what takes the Add button off the row, so it must mean
+   * "certain to be refused", not "worth reading".
+   */
+  will_be_refused: boolean;
   lines: SapTransferDraftLine[];
 }
 
