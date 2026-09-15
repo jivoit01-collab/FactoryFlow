@@ -121,7 +121,7 @@ export default function TransferRequestNewPage() {
           quantity: Number(line.quantity),
         })),
       });
-      navigate(`/warehouse/transfer-requests/${created.id}`);
+      navigate(`/warehouse/inventory-transfer/${created.id}`);
     } catch (err) {
       // The backend refuses routes SAP would reject and says why, so surface its
       // message verbatim rather than a generic failure.
@@ -138,7 +138,7 @@ export default function TransferRequestNewPage() {
         title="Raise a Transfer Request"
         description="Ask another warehouse to send you stock. It is reserved while they decide."
       >
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -327,7 +327,7 @@ export default function TransferRequestNewPage() {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           Cancel
         </Button>
         <Button onClick={submit} disabled={!canSubmit || createRequest.isPending}>

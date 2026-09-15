@@ -134,7 +134,7 @@ export default function TransferRequestDetailPage() {
           <Printer className="mr-2 h-4 w-4" />
           Print
         </Button>
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>

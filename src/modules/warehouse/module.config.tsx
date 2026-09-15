@@ -17,6 +17,7 @@ import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.confi
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
+import { LegacyTransferRequestRedirect } from './pages/transfer/LegacyTransferRequestRedirect';
 import { shortDispatchNavChildren, shortDispatchRoutes } from './short-dispatch/module.config';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
@@ -53,7 +54,9 @@ const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprovalsPage'));
 
-// Warehouse Transfer Requests — raise → approve → post to SAP → BST
+// Inventory Transfer — raise → approve → post to SAP → BST. This is the
+// DOCUMENT side of a branch move; the physical side is BST, and the two are
+// deliberately kept apart.
 const TransferRequestListPage = lazy(() => import('./pages/transfer/TransferRequestListPage'));
 const TransferRequestNewPage = lazy(() => import('./pages/transfer/TransferRequestNewPage'));
 const TransferRequestDetailPage = lazy(() => import('./pages/transfer/TransferRequestDetailPage'));
@@ -167,24 +170,37 @@ export const warehouseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
     },
-    // Transfer Request Routes ('new' registered before `:requestId`)
+    // Inventory Transfer Routes ('new' registered before `:requestId`)
     {
-      path: '/warehouse/transfer-requests',
+      path: '/warehouse/inventory-transfer',
       element: <TransferRequestListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
     },
     {
-      path: '/warehouse/transfer-requests/new',
+      path: '/warehouse/inventory-transfer/new',
       element: <TransferRequestNewPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
     },
     {
-      path: '/warehouse/transfer-requests/:requestId',
+      path: '/warehouse/inventory-transfer/:requestId',
       element: <TransferRequestDetailPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
+    },
+    {
+      // Legacy: the page was called Transfer Requests and lived at
+      // `/warehouse/transfer-requests`. Forwards old bookmarks and deep links
+      // (path tail + query) to the new prefix; the destination route gates.
+      path: '/warehouse/transfer-requests/*',
+      element: <LegacyTransferRequestRedirect />,
+      layout: 'main',
+    },
+    {
+      path: '/warehouse/transfer-requests',
+      element: <Navigate to="/warehouse/inventory-transfer" replace />,
+      layout: 'main',
     },
     // BST Routes
     {
@@ -247,7 +263,7 @@ export const warehouseModuleConfig: ModuleConfig = {
       showInSidebar: true,
       // Any of these shows the Warehouse group; the children filter individually,
       // so an FG-only user sees the group with just "FG Receipts", a BST-only user
-      // with just "Branch Transfer", and a GRPO-only user with just "Material GRPO".
+      // with just "BST Scanning", and a GRPO-only user with just "Material GRPO".
       // Keep this list in sync with the union of the children's permissions below.
       permissions: [
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
@@ -302,13 +318,13 @@ export const warehouseModuleConfig: ModuleConfig = {
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
         },
         {
-          path: '/warehouse/transfer-requests',
-          title: 'Transfer Requests',
+          path: '/warehouse/inventory-transfer',
+          title: 'Inventory Transfer',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
         },
         {
           path: '/warehouse/bst',
-          title: 'Branch Transfer',
+          title: 'BST Scanning',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
         },
         {
