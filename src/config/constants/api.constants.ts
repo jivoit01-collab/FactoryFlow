@@ -517,6 +517,15 @@ export const API_ENDPOINTS = {
     /** Square feet per 1,000 pieces: the only way to turn stock into floor used. */
     SPACE: '/dashboards/plant-board/space/',
   },
+  // Admin Control Board -- output, storage, cost and the action centre on one
+  // executive screen. ONE endpoint for the same reason the plant board has one:
+  // every tile re-reads on each refresh, and the storage tiles alone span two
+  // SAP schemas. Scope is always the calendar month to date, computed
+  // server-side; the alerts are derived there too, so a second consumer of this
+  // payload cannot reach different conclusions from identical numbers.
+  ADMIN_BOARD: {
+    BOARD: '/dashboards/admin-board/board/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',

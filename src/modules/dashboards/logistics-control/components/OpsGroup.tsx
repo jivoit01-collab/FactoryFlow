@@ -24,6 +24,18 @@ export interface OpsGroupProps {
   missing?: string;
   /** The visualisation under the figure. */
   viz?: ReactNode;
+  /**
+   * A second, smaller figure in the tile's top-right corner.
+   *
+   * For the one case where a tile answers two questions at different scales —
+   * "this month" as the headline and "today" beside it. Absolutely positioned
+   * by the consuming board's stylesheet, so a board that does not use it pays
+   * nothing and its tiles are unchanged.
+   *
+   * Keep it to a figure and a label. It sits over the name row, and anything
+   * wider than a short badge will collide with a long tile name.
+   */
+  corner?: ReactNode;
   /** Let the visualisation take the value row too — for tables and bar pairs. */
   tallViz?: boolean;
   /**
@@ -74,6 +86,7 @@ export function OpsGroup({
   unit,
   missing,
   viz,
+  corner,
   tallViz = false,
   loading = false,
   onOpen,
@@ -111,6 +124,8 @@ export function OpsGroup({
           : undefined
       }
     >
+      {corner}
+
       <div className="ops-grow">
         <b className="ops-nm">{name}</b>
         {tag && <span className={cn('ops-tag', TAG_CLASS[tone])}>{tag.label}</span>}

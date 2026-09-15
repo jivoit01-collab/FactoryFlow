@@ -11,6 +11,7 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { ADMIN_BOARD_VIEW_PERMISSIONS } from './admin-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
@@ -71,6 +72,9 @@ const ProductionControlDashboardPage = lazy(
   () => import('./production-control/pages/ProductionControlDashboardPage'),
 );
 const PlantBoardDashboardPage = lazy(() => import('./plant-board/pages/PlantBoardDashboardPage'));
+const AdminControlDashboardPage = lazy(
+  () => import('./admin-control/pages/AdminControlDashboardPage'),
+);
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlDashboardPage'),
@@ -129,6 +133,28 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: PLANT_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Store Settings' },
+    },
+    {
+      // The owner's screen: what the plant made and shipped this month, what is
+      // standing in it, what it cost, and what somebody has to do about all
+      // three. Three bands and one composed read.
+      //
+      // Deliberately NOT a fifth control board. The others answer "how is my
+      // section doing"; this one answers "how is the factory doing", which is
+      // why it carries an action centre and they do not -- the alerts are
+      // derived server-side so this page and any other consumer cannot reach
+      // different conclusions from the same figures.
+      //
+      // Gated on the four rights its own reports already need rather than a new
+      // one, so no permission row has to be created on the live database before
+      // anyone can open it. Note that this shows the factory's wage and power
+      // bill to anyone holding any of them -- the same disclosure the Logistics
+      // board already makes, recorded in admin_board/permissions.py.
+      path: '/dashboards/admin-control',
+      element: <AdminControlDashboardPage />,
+      layout: 'main',
+      permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Admin Control' },
     },
     {
       // The whole plant on one wall screen, in the order material moves:
@@ -421,9 +447,20 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // rights above, so without this the whole Dashboards menu -- not just
         // their board -- stays hidden from them.
         ...CUSTOMER_RETURNS_VIEW_PERMISSIONS,
+        // Admin Control lives here too. Its rights are all already listed
+        // above, but they are spread explicitly so that narrowing this board's
+        // gate later cannot silently hide the whole Dashboards menu from
+        // whoever it was narrowed to -- the same reasoning as Logistics.
+        ...ADMIN_BOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
+        {
+          // First, because it is the summary the others drill into.
+          path: '/dashboards/admin-control',
+          title: 'Admin Control',
+          permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+        },
         {
           path: '/dashboards/plant-board',
           title: 'Plant Control',
