@@ -1,4 +1,6 @@
 export * from './BoardDrill';
+export * from './BoardEmbed';
+export * from './boardEmbed.context';
 export * from './BoardFigures';
 export * from './OpsBand';
 export * from './OpsDrill';

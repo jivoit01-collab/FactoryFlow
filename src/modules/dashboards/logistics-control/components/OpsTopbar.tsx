@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { useBoardEmbed } from './boardEmbed.context';
+
 export interface OpsTotal {
   caption: string;
   value: string;
@@ -81,6 +83,10 @@ export function OpsTopbar({
 }: OpsTopbarProps) {
   const [now, setNow] = useState(() => new Date());
 
+  // Inside the carousel both corner controls are suppressed — see BoardEmbed
+  // for why a slide must not promote itself to fullscreen or navigate away.
+  const embedded = useBoardEmbed();
+
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(id);
@@ -140,7 +146,7 @@ export function OpsTopbar({
         </div>
       </div>
 
-      {settingsTo && (
+      {settingsTo && !embedded && (
         <Link
           to={settingsTo}
           className="ops-fs"
@@ -151,7 +157,7 @@ export function OpsTopbar({
         </Link>
       )}
 
-      {onToggleFullscreen && (
+      {onToggleFullscreen && !embedded && (
         <button
           type="button"
           className="ops-fs"

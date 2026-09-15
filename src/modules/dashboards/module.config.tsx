@@ -12,6 +12,7 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from './admin-control/constants';
+import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
@@ -75,6 +76,7 @@ const PlantBoardDashboardPage = lazy(() => import('./plant-board/pages/PlantBoar
 const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
+const BoardCarouselPage = lazy(() => import('./carousel/pages/BoardCarouselPage'));
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlDashboardPage'),
@@ -133,6 +135,29 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: PLANT_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Store Settings' },
+    },
+    {
+      // The wall rotation: Admin, Plant and Logistics Control in turn, on a
+      // timer, with nothing to click. First among the routes because it is the
+      // one a screen is left on -- the boards below it are what somebody opens
+      // when they want to stand in front of one.
+      //
+      // Gated on the UNION of the three boards' own gates rather than a right of
+      // its own, for the same reason none of them mints one: a dedicated
+      // permission would need a row created on the live database and added to
+      // every group before anybody could open the screen, and it would buy
+      // nothing -- the page shows exactly what its three slides show, and each
+      // slide re-checks its own gate before it is included in the rotation.
+      //
+      // That re-check matters here in a way it does not on a normal route: the
+      // carousel MOUNTS the three page components directly, which bypasses the
+      // route guards those pages sit behind. A viewer holding one board's rights
+      // therefore gets a rotation of one, not a board they may not read.
+      path: '/dashboards/carousel',
+      element: <BoardCarouselPage />,
+      layout: 'main',
+      permissions: BOARD_CAROUSEL_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Board Carousel' },
     },
     {
       // The owner's screen: what the plant made and shipped this month, what is
@@ -452,9 +477,23 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // gate later cannot silently hide the whole Dashboards menu from
         // whoever it was narrowed to -- the same reasoning as Logistics.
         ...ADMIN_BOARD_VIEW_PERMISSIONS,
+        // The Board Carousel lives here too. Every right in it is already listed
+        // above -- it is the union of three boards that are all here -- but the
+        // spread is kept for the same reason as the two above it: a display
+        // login holding only this must not find the whole Dashboards menu
+        // hidden, whatever any of those three gates is narrowed to later.
+        ...BOARD_CAROUSEL_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
+        {
+          // The rotation, above the boards it rotates: a wall screen is set up
+          // once and never touched again, so the entry that sets it up comes
+          // before the three that are read one at a time.
+          path: '/dashboards/carousel',
+          title: 'Board Carousel',
+          permissions: BOARD_CAROUSEL_VIEW_PERMISSIONS,
+        },
         {
           // First, because it is the summary the others drill into.
           path: '/dashboards/admin-control',
