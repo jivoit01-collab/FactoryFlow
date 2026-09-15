@@ -1689,7 +1689,7 @@ export const API_ENDPOINTS = {
   },
 
   // The cash book — the factory's cash box. ENTRIES takes
-  // ?date_from=&date_to=&direction=&department=&gl_account_code=&bunch=
+  // ?date_from=&date_to=&direction=&branch=&gl_account_code=&bunch=
   // &approval_status=&search=&include_cancelled=&page=&page_size= and answers
   // with a paged envelope that also carries the book's own balance.
   // GL_ACCOUNTS is a type-ahead straight against SAP's chart of accounts and
@@ -1698,6 +1698,8 @@ export const API_ENDPOINTS = {
     OPTIONS: '/cash-book/options/',
     SUMMARY: '/cash-book/summary/',
     GL_ACCOUNTS: '/cash-book/gl-accounts/',
+    BRANCHES: '/cash-book/branches/',
+    BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
     BUNCHES: '/cash-book/bunches/',

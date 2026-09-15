@@ -23,6 +23,8 @@ export const CASH_BOOK_PERMISSIONS = {
   MANAGE: 'cash_book.can_manage_cash_book',
   /** Approve or reject a bunch somebody else sent. */
   APPROVE: 'cash_book.can_approve_cash_bunch',
+  /** Configure the branch list every entry is filed under. */
+  BRANCHES: 'cash_book.can_manage_cash_branches',
 } as const;
 
 export const CASH_BOOK_MODULE_PREFIX = 'cash_book';
@@ -32,12 +34,18 @@ export const CASH_BOOK_ACCESS: readonly string[] = [
   CASH_BOOK_PERMISSIONS.VIEW,
   CASH_BOOK_PERMISSIONS.MANAGE,
   CASH_BOOK_PERMISSIONS.APPROVE,
+  CASH_BOOK_PERMISSIONS.BRANCHES,
 ];
 
 /** The approvals screen is for approvers, and for the custodian chasing one. */
 export const CASH_BOOK_APPROVALS_ACCESS: readonly string[] = [
   CASH_BOOK_PERMISSIONS.APPROVE,
   CASH_BOOK_PERMISSIONS.MANAGE,
+];
+
+/** The settings screen: renaming a branch reaches through the whole register. */
+export const CASH_BOOK_SETTINGS_ACCESS: readonly string[] = [
+  CASH_BOOK_PERMISSIONS.BRANCHES,
 ];
 
 export type CashBookPermission =

@@ -45,10 +45,10 @@ const today = () => new Date().toISOString().slice(0, 10);
  *
  * * **Cash in** — money arriving in the box (drawn on the ATM card, handed
  *   over by accounts). It needs a date, an amount and the narrative. It has no
- *   department and no G/L head, because nothing has been spent yet; the server
+ *   branch and no G/L head, because nothing has been spent yet; the server
  *   clears both, so switching an entry from a payment to a receipt cannot
  *   leave a stale head behind.
- * * **Cash out** — a payment. It must say which department it was for and
+ * * **Cash out** — a payment. It must say which branch it was for and
  *   which SAP G/L head it belongs to. The head is *picked* from SAP's chart of
  *   accounts rather than typed, which is what lets this register be reconciled
  *   against SAP later; the code and the name are both snapshotted onto the
@@ -71,7 +71,7 @@ export function CashEntryDialog({
   const [direction, setDirection] = useState<CashDirection>(entry?.direction ?? presetDirection);
   const [entryDate, setEntryDate] = useState(entry?.entry_date ?? today());
   const [amount, setAmount] = useState(entry?.amount ?? '');
-  const [department, setDepartment] = useState(entry?.department ? String(entry.department) : '');
+  const [branch, setBranch] = useState(entry?.branch ? String(entry.branch) : '');
   const [glCode, setGlCode] = useState(entry?.gl_account_code ?? '');
   const [glName, setGlName] = useState(entry?.gl_account_name ?? '');
   const [item, setItem] = useState(entry?.item ?? '');
@@ -90,17 +90,17 @@ export function CashEntryDialog({
     isError: glError,
   } = useGLAccounts(glSearch, open && isPayment);
 
-  const departments = options?.departments ?? [];
+  const branches = options?.branches ?? [];
   const saving = record.isPending || update.isPending;
 
   const problem = useMemo(() => {
     if (!entryDate) return 'Pick the date the money moved.';
     if (!amount || Number(amount) <= 0) return 'Enter an amount above zero.';
     if (!detail.trim()) return 'Write what the money was for.';
-    if (isPayment && !department) return 'Say which department this was spent for.';
+    if (isPayment && !branch) return 'Say which branch this was spent for.';
     if (isPayment && !glCode) return 'Pick the G/L head this payment belongs to.';
     return null;
-  }, [entryDate, amount, detail, isPayment, department, glCode]);
+  }, [entryDate, amount, detail, isPayment, branch, glCode]);
 
   async function submit() {
     if (problem) {
@@ -116,7 +116,7 @@ export function CashEntryDialog({
       item: item.trim(),
       // Sent as nulls/blanks on a receipt so a correction that turns a payment
       // into one actually clears what the payment held.
-      department: isPayment ? Number(department) : null,
+      branch: isPayment ? Number(branch) : null,
       gl_account_code: isPayment ? glCode : '',
       gl_account_name: isPayment ? glName : '',
     };
@@ -146,8 +146,8 @@ export function CashEntryDialog({
             {isCorrection
               ? 'Correcting an amount rewrites the running balance of every entry recorded after this one.'
               : direction === 'IN'
-                ? 'Money arriving in the cash box. It raises the balance and belongs to no department.'
-                : 'A payment out of the cash box, against a department and a SAP G/L head.'}
+                ? 'Money arriving in the cash box. It raises the balance and belongs to no branch.'
+                : 'A payment out of the cash box, against a branch and a SAP G/L head.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -193,14 +193,14 @@ export function CashEntryDialog({
           {isPayment && (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="cash-department">Department</Label>
+                <Label htmlFor="cash-branch">Branch</Label>
                 <NativeSelect
-                  id="cash-department"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
+                  id="cash-branch"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
                 >
-                  <SelectOption value="">Pick a department…</SelectOption>
-                  {departments.map((row) => (
+                  <SelectOption value="">Pick a branch…</SelectOption>
+                  {branches.map((row) => (
                     <SelectOption key={row.id} value={String(row.id)}>
                       {row.name}
                     </SelectOption>

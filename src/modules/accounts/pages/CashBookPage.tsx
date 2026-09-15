@@ -62,7 +62,7 @@ const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
  *   for the 3rd written into the book on the 5th sits after the 5th's entries,
  *   exactly as it does on paper.
  * * It is the **book's** balance, not the filtered set's. Filter to one
- *   department and each row still shows what the box held at that moment,
+ *   branch and each row still shows what the box held at that moment,
  *   which is the only figure that means anything.
  *
  * Vouchers leave the custodian in bunches: tick the entries, send them, and
@@ -76,7 +76,7 @@ export default function CashBookPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [direction, setDirection] = useState<CashDirection | typeof ALL>(ALL);
-  const [department, setDepartment] = useState<string>(ALL);
+  const [branch, setBranch] = useState<string>(ALL);
   const [approval, setApproval] = useState<EntryApprovalStatus | typeof ALL>(ALL);
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -93,7 +93,7 @@ export default function CashBookPage() {
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
     ...(direction === ALL ? {} : { direction }),
-    ...(department === ALL ? {} : { department: Number(department) }),
+    ...(branch === ALL ? {} : { branch: Number(branch) }),
     ...(approval === ALL ? {} : { approvalStatus: approval }),
     ...(includeCancelled ? { includeCancelled: true } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
@@ -107,7 +107,7 @@ export default function CashBookPage() {
   const send = useSendForApproval();
 
   const rows = useMemo(() => data?.results ?? [], [data]);
-  const departments = options?.departments ?? [];
+  const branches = options?.branches ?? [];
 
   /** Only a live, unsent entry can join a bunch. */
   const sendable = useMemo(
@@ -282,18 +282,18 @@ export default function CashBookPage() {
           </NativeSelect>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="cash-filter-department">Department</Label>
+          <Label htmlFor="cash-filter-branch">Branch</Label>
           <NativeSelect
-            id="cash-filter-department"
+            id="cash-filter-branch"
             className="w-[180px]"
-            value={department}
+            value={branch}
             onChange={(e) => {
-              setDepartment(e.target.value);
+              setBranch(e.target.value);
               resetPage();
             }}
           >
-            <SelectOption value={ALL}>Every department</SelectOption>
-            {departments.map((row) => (
+            <SelectOption value={ALL}>Every branch</SelectOption>
+            {branches.map((row) => (
               <SelectOption key={row.id} value={String(row.id)}>
                 {row.name}
               </SelectOption>
@@ -389,7 +389,7 @@ export default function CashBookPage() {
                   )}
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Bunch</th>
-                  <th className="px-3 py-2">Department</th>
+                  <th className="px-3 py-2">Branch</th>
                   <th className="px-3 py-2">G/L head</th>
                   <th className="px-3 py-2">Item</th>
                   <th className="px-3 py-2">Detail</th>
@@ -426,7 +426,7 @@ export default function CashBookPage() {
                       <td className="px-3 py-2 tabular-nums">
                         {row.bunch ? row.bunch.number : '—'}
                       </td>
-                      <td className="px-3 py-2">{row.department_name ?? '—'}</td>
+                      <td className="px-3 py-2">{row.branch_name ?? '—'}</td>
                       <td className="px-3 py-2">
                         {row.gl_account_code ? (
                           <>

@@ -233,5 +233,6 @@ export {
   CASH_BOOK_APPROVALS_ACCESS,
   CASH_BOOK_MODULE_PREFIX,
   CASH_BOOK_PERMISSIONS,
+  CASH_BOOK_SETTINGS_ACCESS,
   type CashBookPermission,
 } from './cash-book.permissions';

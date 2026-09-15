@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type BranchPayload,
   type BunchStatus,
   cashBookApi,
   type CashEntryListParams,
@@ -17,12 +18,14 @@ export const CASH_BOOK_QUERY_KEYS = {
   summary: (params?: CashEntryListParams) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'summary', params ?? {}] as const,
   glAccounts: (search: string) => [...CASH_BOOK_QUERY_KEYS.all, 'gl-accounts', search] as const,
+  branches: (includeRetired: boolean) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'branches', includeRetired] as const,
   bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
   bunch: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'bunch', id] as const,
 };
 
 /**
- * The departments, the balance and this user's two rights.
+ * The branches, the balance and this user's rights.
  *
  * Long-lived: none of it changes within a session, and both pages read it on
  * every render. The balance it carries is a starting figure — the register's
@@ -55,6 +58,14 @@ export function useGLAccounts(search: string, enabled = true) {
     queryFn: () => cashBookApi.glAccounts(search),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** The branch list. The settings page is the only caller wanting retired ones. */
+export function useCashBranches(includeRetired = false) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.branches(includeRetired),
+    queryFn: () => cashBookApi.branches(includeRetired),
   });
 }
 
@@ -108,6 +119,20 @@ export function useSendForApproval() {
   return useCashBookMutation((payload: SendForApprovalPayload) =>
     cashBookApi.sendForApproval(payload),
   );
+}
+
+export function useCreateCashBranch() {
+  return useCashBookMutation((payload: BranchPayload) => cashBookApi.createBranch(payload));
+}
+
+export function useUpdateCashBranch() {
+  return useCashBookMutation((vars: { id: number; payload: Partial<BranchPayload> }) =>
+    cashBookApi.updateBranch(vars.id, vars.payload),
+  );
+}
+
+export function useRetireCashBranch() {
+  return useCashBookMutation((id: number) => cashBookApi.retireBranch(id));
 }
 
 export function useApproveCashBunch() {

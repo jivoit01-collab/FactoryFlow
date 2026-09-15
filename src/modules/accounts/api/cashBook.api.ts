@@ -16,6 +16,22 @@ export interface CashBunchSummary {
 }
 
 /**
+ * One branch of the business a payment can be filed under.
+ *
+ * Four of them — Oil, Beverage, Water and Common — seeded per company and
+ * edited from the settings page. "Common" is where a spend that belongs to the
+ * whole site goes.
+ */
+export interface CashBranch {
+  id: number;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  /** How many entries are filed under it — what retiring it would hide. */
+  entry_count: number;
+}
+
+/**
  * One line of the cash book.
  *
  * `balance_after` is the book's own running balance at that line — it follows
@@ -30,8 +46,8 @@ export interface CashEntry {
   direction_label: string;
   /** Always positive; `direction` says which way it moved. */
   amount: string;
-  department: number | null;
-  department_name: string | null;
+  branch: number | null;
+  branch_name: string | null;
   gl_account_code: string;
   gl_account_name: string;
   item: string;
@@ -69,7 +85,8 @@ export interface CashEntryPage {
 }
 
 export interface CashBookOptions {
-  departments: { id: number; name: string }[];
+  /** Active branches only — a retired one is not offered to a new entry. */
+  branches: CashBranch[];
   directions: { value: CashDirection; label: string }[];
   bunch_statuses: { value: BunchStatus; label: string }[];
   approval_statuses: { value: EntryApprovalStatus; label: string }[];
@@ -79,6 +96,8 @@ export interface CashBookOptions {
   can_manage: boolean;
   /** Whether this user decides on bunches. Decided by the server. */
   can_approve: boolean;
+  /** Whether this user may configure the branch list. */
+  can_manage_branches: boolean;
 }
 
 export interface CashBookSummary {
@@ -120,7 +139,7 @@ export interface CashEntryListParams {
   dateFrom?: string;
   dateTo?: string;
   direction?: CashDirection;
-  department?: number;
+  branch?: number;
   glAccountCode?: string;
   bunch?: number;
   approvalStatus?: EntryApprovalStatus;
@@ -134,7 +153,7 @@ export interface RecordEntryPayload {
   entry_date: string;
   direction: CashDirection;
   amount: string;
-  department?: number | null;
+  branch?: number | null;
   gl_account_code?: string;
   /** Sent with the code; only used if SAP is down when the entry is saved. */
   gl_account_name?: string;
@@ -154,7 +173,7 @@ function listParams(params?: CashEntryListParams) {
     ...(params?.dateFrom ? { date_from: params.dateFrom } : {}),
     ...(params?.dateTo ? { date_to: params.dateTo } : {}),
     ...(params?.direction ? { direction: params.direction } : {}),
-    ...(params?.department ? { department: params.department } : {}),
+    ...(params?.branch ? { branch: params.branch } : {}),
     ...(params?.glAccountCode ? { gl_account_code: params.glAccountCode } : {}),
     ...(params?.bunch ? { bunch: params.bunch } : {}),
     ...(params?.approvalStatus ? { approval_status: params.approvalStatus } : {}),
@@ -165,7 +184,45 @@ function listParams(params?: CashEntryListParams) {
   };
 }
 
+export interface BranchPayload {
+  name: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
 export const cashBookApi = {
+  /**
+   * The branch list. `includeRetired` is for the settings page — the entry
+   * form only ever wants the active ones, which `options()` already carries.
+   */
+  async branches(includeRetired = false): Promise<CashBranch[]> {
+    const { data } = await apiClient.get<CashBranch[]>(API_ENDPOINTS.CASH_BOOK.BRANCHES, {
+      params: includeRetired ? { include_retired: 'true' } : {},
+    });
+    return data;
+  },
+
+  async createBranch(payload: BranchPayload): Promise<CashBranch> {
+    const { data } = await apiClient.post<CashBranch>(
+      API_ENDPOINTS.CASH_BOOK.BRANCHES,
+      payload,
+    );
+    return data;
+  },
+
+  async updateBranch(branchId: number, payload: Partial<BranchPayload>): Promise<CashBranch> {
+    const { data } = await apiClient.patch<CashBranch>(
+      API_ENDPOINTS.CASH_BOOK.BRANCH_DETAIL(branchId),
+      payload,
+    );
+    return data;
+  },
+
+  /** Retires rather than deletes: entries already filed under it keep it. */
+  async retireBranch(branchId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.CASH_BOOK.BRANCH_DETAIL(branchId));
+  },
+
   async options(): Promise<CashBookOptions> {
     const { data } = await apiClient.get<CashBookOptions>(API_ENDPOINTS.CASH_BOOK.OPTIONS);
     return data;

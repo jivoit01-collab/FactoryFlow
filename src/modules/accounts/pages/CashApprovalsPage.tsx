@@ -258,7 +258,7 @@ export default function CashApprovalsPage() {
                           <thead>
                             <tr className="border-b bg-muted/40 text-left">
                               <th className="px-3 py-2">Date</th>
-                              <th className="px-3 py-2">Department</th>
+                              <th className="px-3 py-2">Branch</th>
                               <th className="px-3 py-2">G/L head</th>
                               <th className="px-3 py-2">Item</th>
                               <th className="px-3 py-2">Detail</th>
@@ -275,7 +275,7 @@ export default function CashApprovalsPage() {
                                 }`}
                               >
                                 <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
-                                <td className="px-3 py-2">{row.department_name ?? '—'}</td>
+                                <td className="px-3 py-2">{row.branch_name ?? '—'}</td>
                                 <td className="px-3 py-2">
                                   {row.gl_account_code ? (
                                     <>

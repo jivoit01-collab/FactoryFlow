@@ -1,10 +1,11 @@
 /**
  * Accounts module — the factory's cash box.
  *
- * Two pages. **Cash Book** is the register itself: every receipt and payment
+ * Three pages. **Cash Book** is the register itself: every receipt and payment
  * in the order it was written down, with the running balance beside it, and
  * the tick-and-send that bundles vouchers for approval. **Cash Approvals** is
- * where those bunches are decided on.
+ * where those bunches are decided on. **Branches** configures the short list
+ * every payment is filed under -- Oil, Beverage, Water, Common.
  *
  * The sidebar hides the whole module from anyone without a `cash_book.*`
  * permission (`modulePrefix`), so the three groups the backend ships with —
@@ -12,18 +13,20 @@
  * is narrowed further: it is for the approver, and for the custodian chasing
  * or re-sending a bunch.
  */
-import { ClipboardCheck, IndianRupee, Wallet } from 'lucide-react';
+import { Building2, ClipboardCheck, IndianRupee, Wallet } from 'lucide-react';
 
 import {
   CASH_BOOK_ACCESS,
   CASH_BOOK_APPROVALS_ACCESS,
   CASH_BOOK_MODULE_PREFIX,
+  CASH_BOOK_SETTINGS_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const CashBookPage = lazy(() => import('./pages/CashBookPage'));
 const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
+const CashBranchSettingsPage = lazy(() => import('./pages/CashBranchSettingsPage'));
 
 export const accountsModuleConfig: ModuleConfig = {
   name: 'accounts',
@@ -41,6 +44,16 @@ export const accountsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: CASH_BOOK_APPROVALS_ACCESS,
       breadcrumb: { label: 'Cash Approvals' },
+    },
+    {
+      path: '/accounts/branches',
+      element: <CashBranchSettingsPage />,
+      layout: 'main',
+      // Readable by anyone who can read the book -- the page says so itself
+      // when the visitor cannot change anything -- but only an administrator
+      // is offered it in the sidebar.
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Cash Book Branches' },
     },
   ],
   navigation: [
@@ -63,6 +76,12 @@ export const accountsModuleConfig: ModuleConfig = {
           title: 'Cash Approvals',
           icon: ClipboardCheck,
           permissions: CASH_BOOK_APPROVALS_ACCESS,
+        },
+        {
+          path: '/accounts/branches',
+          title: 'Branches',
+          icon: Building2,
+          permissions: CASH_BOOK_SETTINGS_ACCESS,
         },
       ],
     },

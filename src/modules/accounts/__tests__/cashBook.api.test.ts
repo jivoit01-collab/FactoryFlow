@@ -35,7 +35,7 @@ describe('cashBookApi', () => {
       dateFrom: '2026-06-01',
       dateTo: '2026-06-30',
       direction: 'OUT',
-      department: 3,
+      branch: 3,
       glAccountCode: '5630004',
       approvalStatus: 'UNSENT',
       search: 'refreshment',
@@ -49,7 +49,7 @@ describe('cashBookApi', () => {
         date_from: '2026-06-01',
         date_to: '2026-06-30',
         direction: 'OUT',
-        department: 3,
+        branch: 3,
         gl_account_code: '5630004',
         approval_status: 'UNSENT',
         search: 'refreshment',
@@ -66,12 +66,12 @@ describe('cashBookApi', () => {
     expect(get.mock.calls[0][1]).toEqual({ params: {} });
   });
 
-  it('records a payment against a department and a SAP G/L head', async () => {
+  it('records a payment against a branch and a SAP G/L head', async () => {
     await cashBookApi.record({
       entry_date: '2026-06-04',
       direction: 'OUT',
       amount: '6000.00',
-      department: 3,
+      branch: 3,
       gl_account_code: '5630004',
       gl_account_name: 'REFRESHMENT',
       item: 'Refreshment',
@@ -101,6 +101,26 @@ describe('cashBookApi', () => {
     await cashBookApi.reject(7, 'Bill number missing');
     expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/7/reject/');
     expect(post.mock.calls[0][1]).toEqual({ note: 'Bill number missing' });
+  });
+
+  it('asks only for the branches in use unless retired ones are wanted', async () => {
+    await cashBookApi.branches();
+    expect(get.mock.calls[0][0]).toBe('/cash-book/branches/');
+    expect(get.mock.calls[0][1]).toEqual({ params: {} });
+
+    await cashBookApi.branches(true);
+    expect(get.mock.calls[1][1]).toEqual({ params: { include_retired: 'true' } });
+  });
+
+  it('retires a branch rather than deleting it', async () => {
+    await cashBookApi.retireBranch(4);
+    expect(del.mock.calls[0][0]).toBe('/cash-book/branches/4/');
+  });
+
+  it('renames a branch in place', async () => {
+    await cashBookApi.updateBranch(4, { name: 'Beverage' });
+    expect(patch.mock.calls[0][0]).toBe('/cash-book/branches/4/');
+    expect(patch.mock.calls[0][1]).toEqual({ name: 'Beverage' });
   });
 
   it('omits remarks on a resend so the bunch keeps the ones it has', async () => {
