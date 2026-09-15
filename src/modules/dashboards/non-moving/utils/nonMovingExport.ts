@@ -42,6 +42,7 @@ function summaryRow(row: NonMovingRow): ExportRow {
     Value: row.value,
     'Days Idle': row.days_since_last_movement,
     'Last Movement': row.last_movement_date ?? '',
+    'Moved In': row.last_movement_warehouse ?? '',
     'Aged On': agedOn(row),
     'Last Godown Movement': row.last_warehouse_movement_date ?? '',
     'Consumption %': row.consumption_ratio,
@@ -54,10 +55,13 @@ function warehouseRow(item: NonMovingItem): ExportRow {
     'Item Code': item.item_code,
     'Item Name': item.item_name,
     'Sub Group': item.sub_group,
+    // SAP has the store closed but it is still holding this stock.
+    'Warehouse Status': item.warehouse_inactive ? 'Inactive in SAP' : 'Active',
     Quantity: item.quantity,
     Value: item.value,
     'Days Idle': item.days_since_last_movement,
     'Last Movement': item.last_movement_date ?? '',
+    'Moved In': item.last_movement_warehouse ?? '',
     'Aged On': agedOn(item),
     'Last Godown Movement': item.last_warehouse_movement_date ?? '',
     'Consumption %': item.consumption_ratio,
@@ -69,8 +73,7 @@ function sheetFrom(rows: ExportRow[]): XLSX.WorkSheet {
   const worksheet = XLSX.utils.json_to_sheet(rows);
   if (rows.length > 0) {
     worksheet['!cols'] = Object.keys(rows[0]).map((key) => ({
-      wch:
-        Math.max(key.length, ...rows.map((row) => String(row[key] ?? '').length)) + 2,
+      wch: Math.max(key.length, ...rows.map((row) => String(row[key] ?? '').length)) + 2,
     }));
   }
   return worksheet;

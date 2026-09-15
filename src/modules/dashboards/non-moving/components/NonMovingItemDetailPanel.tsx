@@ -4,6 +4,9 @@ import { cn } from '@/shared/utils';
 
 import type { NonMovingItem } from '../types';
 import {
+  INACTIVE_WAREHOUSE_HINT,
+  MOVEMENT_ELSEWHERE_HINT,
+  movementWarehouseElsewhere,
   PRODUCTION_AGE_HINT,
   rowAgeClasses,
   wasRestacked,
@@ -69,6 +72,14 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
                     {item.warehouse_name}
                   </span>
                 )}
+                {item.warehouse_inactive && (
+                  <span
+                    className="ml-2 rounded bg-muted px-1 text-[10px] font-medium uppercase text-muted-foreground"
+                    title={INACTIVE_WAREHOUSE_HINT}
+                  >
+                    inactive
+                  </span>
+                )}
               </td>
               <td className="py-2 pr-3 text-right tabular-nums">{formatQuantity(item.quantity)}</td>
               <td className="py-2 pr-3 text-right tabular-nums">{formatCurrency(item.value)}</td>
@@ -77,6 +88,17 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
               </td>
               <td className="py-2 pr-3 text-muted-foreground">
                 {item.last_movement_date ?? '-'}
+                {movementWarehouseElsewhere(item) && (
+                  <span className="block text-[11px] font-medium" title={MOVEMENT_ELSEWHERE_HINT}>
+                    in {movementWarehouseElsewhere(item)}
+                    {item.last_movement_warehouse_name &&
+                      item.last_movement_warehouse_name !== item.last_movement_warehouse && (
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          {item.last_movement_warehouse_name}
+                        </span>
+                      )}
+                  </span>
+                )}
                 {wasRestacked(item) && (
                   <span className="block text-[11px] italic" title={PRODUCTION_AGE_HINT}>
                     godown move {item.days_since_warehouse_movement?.toLocaleString('en-IN')}d ago

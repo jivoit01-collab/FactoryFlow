@@ -4,6 +4,8 @@ import type { NonMovingItem, NonMovingRow, WarehouseGroup, WarehouseSummary } fr
 interface GroupedNonMovingItem {
   item: NonMovingItem;
   warehouses: Set<string>;
+  /** True only while every warehouse folded in is decommissioned in SAP. */
+  allInactive: boolean;
 }
 
 function shouldUseMovementFrom(candidate: NonMovingItem, current: NonMovingItem): boolean {
@@ -32,6 +34,7 @@ export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] 
       grouped.set(key, {
         item: { ...item },
         warehouses: new Set(item.warehouse ? [item.warehouse] : []),
+        allInactive: Boolean(item.warehouse_inactive),
       });
       continue;
     }
@@ -39,6 +42,7 @@ export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] 
     existing.warehouses.add(item.warehouse);
     existing.item.quantity += item.quantity;
     existing.item.value += item.value;
+    existing.allInactive = existing.allInactive && Boolean(item.warehouse_inactive);
 
     if (shouldUseMovementFrom(item, existing.item)) {
       existing.item.days_since_last_movement = item.days_since_last_movement;
@@ -47,13 +51,16 @@ export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] 
       existing.item.movement_basis = item.movement_basis;
       existing.item.last_warehouse_movement_date = item.last_warehouse_movement_date;
       existing.item.days_since_warehouse_movement = item.days_since_warehouse_movement;
+      existing.item.last_movement_warehouse = item.last_movement_warehouse;
+      existing.item.last_movement_warehouse_name = item.last_movement_warehouse_name;
     }
   }
 
-  return [...grouped.values()].map(({ item, warehouses }) => {
+  return [...grouped.values()].map(({ item, warehouses, allInactive }) => {
     const warehouseList = [...warehouses].filter(Boolean).sort();
     return {
       ...item,
+      warehouse_inactive: allInactive,
       warehouse:
         warehouseList.length > 1
           ? `${warehouseList.length} warehouses`
@@ -108,6 +115,8 @@ export function buildNonMovingWarehouseGroups(
       existing.movement_basis = item.movement_basis;
       existing.last_warehouse_movement_date = item.last_warehouse_movement_date;
       existing.days_since_warehouse_movement = item.days_since_warehouse_movement;
+      existing.last_movement_warehouse = item.last_movement_warehouse;
+      existing.last_movement_warehouse_name = item.last_movement_warehouse_name;
     }
   }
 

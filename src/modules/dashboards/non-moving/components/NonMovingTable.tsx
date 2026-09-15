@@ -6,6 +6,9 @@ import { cn } from '@/shared/utils';
 
 import type { NonMovingItem, NonMovingRow, NonMovingSortCol } from '../types';
 import {
+  INACTIVE_WAREHOUSE_HINT,
+  MOVEMENT_ELSEWHERE_HINT,
+  movementWarehouseElsewhere,
   PRODUCTION_AGE_HINT,
   rowAgeClasses,
   wasRestacked,
@@ -228,6 +231,14 @@ export function NonMovingTable({
                             />
                           )}
                           {row.warehouse}
+                          {row.warehouse_inactive && (
+                            <span
+                              className="rounded bg-muted px-1 text-[10px] font-medium uppercase text-muted-foreground"
+                              title={INACTIVE_WAREHOUSE_HINT}
+                            >
+                              inactive
+                            </span>
+                          )}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{row.sub_group}</td>
@@ -242,6 +253,14 @@ export function NonMovingTable({
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {row.last_movement_date ?? '-'}
+                        {movementWarehouseElsewhere(row) && (
+                          <span
+                            className="block text-[11px] font-medium text-muted-foreground"
+                            title={MOVEMENT_ELSEWHERE_HINT}
+                          >
+                            in {movementWarehouseElsewhere(row)}
+                          </span>
+                        )}
                         {wasRestacked(row) && (
                           <span
                             className="block text-[11px] italic text-muted-foreground/80"

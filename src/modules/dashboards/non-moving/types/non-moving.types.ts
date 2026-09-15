@@ -44,6 +44,8 @@ export interface NonMovingItem {
   sub_group: string;
   warehouse: string;
   warehouse_name?: string;
+  /** SAP has this warehouse decommissioned. The stock in it is real, and counted. */
+  warehouse_inactive?: boolean;
   quantity: number;
   value: number;
   last_movement_date: string | null;
@@ -54,6 +56,14 @@ export interface NonMovingItem {
   /** The warehouse's own last movement, transfers included. */
   last_warehouse_movement_date?: string | null;
   days_since_warehouse_movement?: number;
+  /**
+   * The warehouse the movement behind `last_movement_date` happened in. On a
+   * packing-material row that is usually NOT this row's warehouse — the age is
+   * the item's last production, which happens on the floor the godown feeds.
+   * Blank where the age fell back to the item's creation date.
+   */
+  last_movement_warehouse?: string;
+  last_movement_warehouse_name?: string;
 }
 
 /**

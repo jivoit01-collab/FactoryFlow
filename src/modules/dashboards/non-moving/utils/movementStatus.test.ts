@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isProductionAged, wasRestacked } from './movementStatus';
+import { isProductionAged, movementWarehouseElsewhere, wasRestacked } from './movementStatus';
 
 describe('isProductionAged', () => {
   it('is true only for the packing-material basis', () => {
@@ -46,5 +46,44 @@ describe('wasRestacked', () => {
     expect(wasRestacked({ movement_basis: 'production', days_since_last_movement: 711 })).toBe(
       false,
     );
+  });
+});
+
+describe('movementWarehouseElsewhere', () => {
+  it('names the store the age was earned in when it is not this row', () => {
+    // The glass bottle sitting in BH-PM was issued to production out of BH-PP.
+    expect(
+      movementWarehouseElsewhere({ warehouse: 'BH-PM', last_movement_warehouse: 'BH-PP' }),
+    ).toBe('BH-PP');
+  });
+
+  it('stays quiet when the movement happened in this very warehouse', () => {
+    expect(
+      movementWarehouseElsewhere({ warehouse: 'BH-PP', last_movement_warehouse: 'BH-PP' }),
+    ).toBe('');
+  });
+
+  it('stays quiet when the folded line already covers that warehouse', () => {
+    expect(
+      movementWarehouseElsewhere({
+        warehouse: '3 warehouses',
+        warehouses: ['BH-PM', 'BH-PP', 'GP-NM'],
+        last_movement_warehouse: 'BH-PP',
+      }),
+    ).toBe('');
+  });
+
+  it('names it on a folded line that leaves that warehouse out', () => {
+    expect(
+      movementWarehouseElsewhere({
+        warehouse: '2 warehouses',
+        warehouses: ['BH-PM', 'GP-NM'],
+        last_movement_warehouse: 'BH-PP',
+      }),
+    ).toBe('BH-PP');
+  });
+
+  it('has nothing to say when SAP never moved the stock', () => {
+    expect(movementWarehouseElsewhere({ warehouse: 'BH-PM' })).toBe('');
   });
 });
