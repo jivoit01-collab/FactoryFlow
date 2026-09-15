@@ -1,0 +1,70 @@
+/**
+ * Accounts module — the factory's cash box.
+ *
+ * Two pages. **Cash Book** is the register itself: every receipt and payment
+ * in the order it was written down, with the running balance beside it, and
+ * the tick-and-send that bundles vouchers for approval. **Cash Approvals** is
+ * where those bunches are decided on.
+ *
+ * The sidebar hides the whole module from anyone without a `cash_book.*`
+ * permission (`modulePrefix`), so the three groups the backend ships with —
+ * Cash Book Viewer, Custodian and Approver — are the only way in. Approvals
+ * is narrowed further: it is for the approver, and for the custodian chasing
+ * or re-sending a bunch.
+ */
+import { ClipboardCheck, IndianRupee, Wallet } from 'lucide-react';
+
+import {
+  CASH_BOOK_ACCESS,
+  CASH_BOOK_APPROVALS_ACCESS,
+  CASH_BOOK_MODULE_PREFIX,
+} from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
+import type { ModuleConfig } from '@/core/types';
+
+const CashBookPage = lazy(() => import('./pages/CashBookPage'));
+const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
+
+export const accountsModuleConfig: ModuleConfig = {
+  name: 'accounts',
+  routes: [
+    {
+      path: '/accounts/cash-book',
+      element: <CashBookPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Cash Book' },
+    },
+    {
+      path: '/accounts/cash-approvals',
+      element: <CashApprovalsPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_APPROVALS_ACCESS,
+      breadcrumb: { label: 'Cash Approvals' },
+    },
+  ],
+  navigation: [
+    {
+      path: '/accounts/cash-book',
+      title: 'Accounts',
+      icon: IndianRupee,
+      showInSidebar: true,
+      hasSubmenu: true,
+      modulePrefix: CASH_BOOK_MODULE_PREFIX,
+      children: [
+        {
+          path: '/accounts/cash-book',
+          title: 'Cash Book',
+          icon: Wallet,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/cash-approvals',
+          title: 'Cash Approvals',
+          icon: ClipboardCheck,
+          permissions: CASH_BOOK_APPROVALS_ACCESS,
+        },
+      ],
+    },
+  ],
+};

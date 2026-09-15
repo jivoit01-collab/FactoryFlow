@@ -226,3 +226,12 @@ export {
   ORG_CHART_PERMISSIONS,
   type OrgChartPermission,
 } from './org-chart.permissions';
+
+// Cash Book (the factory's cash box: money in, money out, bunches for approval)
+export {
+  CASH_BOOK_ACCESS,
+  CASH_BOOK_APPROVALS_ACCESS,
+  CASH_BOOK_MODULE_PREFIX,
+  CASH_BOOK_PERMISSIONS,
+  type CashBookPermission,
+} from './cash-book.permissions';

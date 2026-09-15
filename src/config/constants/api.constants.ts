@@ -1687,6 +1687,25 @@ export const API_ENDPOINTS = {
     LABELS: '/issues/labels/',
     LABEL_DETAIL: (labelId: number) => `/issues/labels/${labelId}/`,
   },
+
+  // The cash book — the factory's cash box. ENTRIES takes
+  // ?date_from=&date_to=&direction=&department=&gl_account_code=&bunch=
+  // &approval_status=&search=&include_cancelled=&page=&page_size= and answers
+  // with a paged envelope that also carries the book's own balance.
+  // GL_ACCOUNTS is a type-ahead straight against SAP's chart of accounts and
+  // answers 503 when SAP is unreachable.
+  CASH_BOOK: {
+    OPTIONS: '/cash-book/options/',
+    SUMMARY: '/cash-book/summary/',
+    GL_ACCOUNTS: '/cash-book/gl-accounts/',
+    ENTRIES: '/cash-book/entries/',
+    ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
+    BUNCHES: '/cash-book/bunches/',
+    BUNCH_DETAIL: (bunchId: number) => `/cash-book/bunches/${bunchId}/`,
+    BUNCH_APPROVE: (bunchId: number) => `/cash-book/bunches/${bunchId}/approve/`,
+    BUNCH_REJECT: (bunchId: number) => `/cash-book/bunches/${bunchId}/reject/`,
+    BUNCH_RESEND: (bunchId: number) => `/cash-book/bunches/${bunchId}/resend/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {

@@ -3,6 +3,7 @@ import type { Reducer } from '@reduxjs/toolkit';
 import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
+import { accountsModuleConfig } from '@/modules/accounts/module.config';
 import { adminModuleConfig } from '@/modules/admin/module.config';
 import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
@@ -69,6 +70,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // directory, the reporting tree and compensation, each with its own access
   // control.
   employeesModuleConfig,
+  // The cash box and its approvals. Sits after the people modules: it is the
+  // other thing the office keeps a book of, and it is nobody's shop-floor
+  // screen.
+  accountsModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

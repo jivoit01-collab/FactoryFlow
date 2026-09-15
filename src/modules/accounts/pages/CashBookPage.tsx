@@ -1,0 +1,527 @@
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Ban,
+  Loader2,
+  Pencil,
+  Send,
+  Wallet,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+
+import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth/hooks/usePermission';
+import type { CashDirection, CashEntry, EntryApprovalStatus } from '@/modules/accounts/api';
+import {
+  useCancelCashEntry,
+  useCashBookOptions,
+  useCashEntries,
+  useSendForApproval,
+} from '@/modules/accounts/api';
+import { confirmDialog, promptDialog } from '@/shared/components';
+import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { PaginationControls } from '@/shared/components/PaginationControls';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Checkbox,
+  Input,
+  Label,
+  NativeSelect,
+  SelectOption,
+} from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
+import { formatNumber, getErrorMessage } from '@/shared/utils';
+
+import { CashEntryDialog } from './CashEntryDialog';
+
+const ALL = 'ALL';
+const DEFAULT_PAGE_SIZE = 50;
+
+const money = (value: string | number) => formatNumber(Number(value ?? 0));
+
+/** Colour per approval state. Same vocabulary on the approvals screen. */
+const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
+  UNSENT: 'bg-muted text-muted-foreground',
+  PENDING: 'bg-amber-100 text-amber-900',
+  APPROVED: 'bg-emerald-100 text-emerald-900',
+  REJECTED: 'bg-rose-100 text-rose-900',
+};
+
+/**
+ * The cash book — the factory's cash box, line by line.
+ *
+ * It is the spreadsheet it replaces, with the same shape: every receipt and
+ * every payment in the order they were written down, and the running balance
+ * beside each one. Two things are worth knowing about that column:
+ *
+ * * It follows the order entries were **recorded**, not their dates. A voucher
+ *   for the 3rd written into the book on the 5th sits after the 5th's entries,
+ *   exactly as it does on paper.
+ * * It is the **book's** balance, not the filtered set's. Filter to one
+ *   department and each row still shows what the box held at that moment,
+ *   which is the only figure that means anything.
+ *
+ * Vouchers leave the custodian in bunches: tick the entries, send them, and
+ * they freeze until an approver decides. A rejected bunch unfreezes so the
+ * entries can be corrected and sent again — that is what rejecting is for.
+ */
+export default function CashBookPage() {
+  const { hasPermission } = usePermission();
+  const canManage = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
+
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [direction, setDirection] = useState<CashDirection | typeof ALL>(ALL);
+  const [department, setDepartment] = useState<string>(ALL);
+  const [approval, setApproval] = useState<EntryApprovalStatus | typeof ALL>(ALL);
+  const [includeCancelled, setIncludeCancelled] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  const [selected, setSelected] = useState<number[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<CashEntry | null>(null);
+  const [newDirection, setNewDirection] = useState<CashDirection>('OUT');
+
+  const search = useDebounce(searchInput);
+  const params = {
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo ? { dateTo } : {}),
+    ...(direction === ALL ? {} : { direction }),
+    ...(department === ALL ? {} : { department: Number(department) }),
+    ...(approval === ALL ? {} : { approvalStatus: approval }),
+    ...(includeCancelled ? { includeCancelled: true } : {}),
+    ...(search.trim() ? { search: search.trim() } : {}),
+    page,
+    pageSize,
+  };
+
+  const { data, isLoading } = useCashEntries(params);
+  const { data: options } = useCashBookOptions();
+  const cancel = useCancelCashEntry();
+  const send = useSendForApproval();
+
+  const rows = useMemo(() => data?.results ?? [], [data]);
+  const departments = options?.departments ?? [];
+
+  /** Only a live, unsent entry can join a bunch. */
+  const sendable = useMemo(
+    () => rows.filter((row) => row.is_active && row.approval_status === 'UNSENT'),
+    [rows],
+  );
+  // Selection is scoped to what is on screen. A selection that survived paging
+  // would let somebody send entries they never looked at.
+  const chosen = useMemo(
+    () => selected.filter((id) => sendable.some((row) => row.id === id)),
+    [selected, sendable],
+  );
+  const allChosen = sendable.length > 0 && chosen.length === sendable.length;
+
+  function resetPage() {
+    setPage(1);
+    setSelected([]);
+  }
+
+  function toggle(id: number) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  }
+
+  function openNew(which: CashDirection) {
+    setEditing(null);
+    setNewDirection(which);
+    setDialogOpen(true);
+  }
+
+  function openEdit(entry: CashEntry) {
+    setEditing(entry);
+    setDialogOpen(true);
+  }
+
+  async function handleCancel(entry: CashEntry) {
+    const ok = await confirmDialog({
+      title: `Cancel this ${entry.direction === 'IN' ? 'receipt' : 'payment'} of ${money(entry.amount)}?`,
+      description:
+        'The line stays in the book, marked cancelled, and comes out of the balance. Every entry recorded after it is re-balanced.',
+      confirmLabel: 'Cancel entry',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await cancel.mutateAsync(entry.id);
+      toast.success('Entry cancelled');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'That entry could not be cancelled.'));
+    }
+  }
+
+  async function handleSend() {
+    if (chosen.length === 0) return;
+    const remarks = await promptDialog({
+      title: `Send ${chosen.length} ${chosen.length === 1 ? 'entry' : 'entries'} for approval?`,
+      description:
+        'They are bundled into one bunch and freeze until the approver decides. A rejected bunch unfreezes so you can correct it and send it again.',
+      label: 'Note for the approver (optional)',
+      confirmLabel: 'Send bunch',
+      required: false,
+    });
+    if (remarks === null) return;
+    try {
+      const bunch = await send.mutateAsync({ entry_ids: chosen, remarks });
+      setSelected([]);
+      toast.success(`Bunch ${bunch.number} sent for approval`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Those entries could not be sent.'));
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <DashboardHeader
+        title="Cash Book"
+        description="Every rupee in and out of the cash box, with the running balance"
+      >
+        {canManage && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => openNew('IN')}>
+              <ArrowDownLeft className="mr-2 h-4 w-4" /> Cash in
+            </Button>
+            <Button onClick={() => openNew('OUT')}>
+              <ArrowUpRight className="mr-2 h-4 w-4" /> Cash out
+            </Button>
+          </div>
+        )}
+      </DashboardHeader>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Wallet className="h-4 w-4" /> Cash in hand
+            </p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{money(data?.balance ?? 0)}</p>
+            <p className="text-xs text-muted-foreground">The whole book, not the filter</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Cash in (filtered)</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
+              {money(data?.totals.cash_in ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Cash out (filtered)</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700">
+              {money(data?.totals.cash_out ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Entries shown</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{data?.count ?? 0}</p>
+            {sendable.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {sendable.length} on this page not yet sent
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="cash-from">From</Label>
+          <Input
+            id="cash-from"
+            type="date"
+            className="w-[160px]"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              resetPage();
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-to">To</Label>
+          <Input
+            id="cash-to"
+            type="date"
+            className="w-[160px]"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              resetPage();
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-filter-direction">Direction</Label>
+          <NativeSelect
+            id="cash-filter-direction"
+            className="w-[150px]"
+            value={direction}
+            onChange={(e) => {
+              setDirection(e.target.value as CashDirection | typeof ALL);
+              resetPage();
+            }}
+          >
+            <SelectOption value={ALL}>In and out</SelectOption>
+            <SelectOption value="OUT">Out only</SelectOption>
+            <SelectOption value="IN">In only</SelectOption>
+          </NativeSelect>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-filter-department">Department</Label>
+          <NativeSelect
+            id="cash-filter-department"
+            className="w-[180px]"
+            value={department}
+            onChange={(e) => {
+              setDepartment(e.target.value);
+              resetPage();
+            }}
+          >
+            <SelectOption value={ALL}>Every department</SelectOption>
+            {departments.map((row) => (
+              <SelectOption key={row.id} value={String(row.id)}>
+                {row.name}
+              </SelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-filter-approval">Approval</Label>
+          <NativeSelect
+            id="cash-filter-approval"
+            className="w-[170px]"
+            value={approval}
+            onChange={(e) => {
+              setApproval(e.target.value as EntryApprovalStatus | typeof ALL);
+              resetPage();
+            }}
+          >
+            <SelectOption value={ALL}>Any state</SelectOption>
+            <SelectOption value="UNSENT">Not sent</SelectOption>
+            <SelectOption value="PENDING">Awaiting approval</SelectOption>
+            <SelectOption value="APPROVED">Approved</SelectOption>
+            <SelectOption value="REJECTED">Rejected</SelectOption>
+          </NativeSelect>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-search">Search</Label>
+          <Input
+            id="cash-search"
+            className="w-[260px]"
+            placeholder="Detail, item or G/L head…"
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              resetPage();
+            }}
+          />
+        </div>
+        <label className="flex items-center gap-2 pb-2 text-sm">
+          <Checkbox
+            checked={includeCancelled}
+            onCheckedChange={(checked) => {
+              setIncludeCancelled(checked === true);
+              resetPage();
+            }}
+          />
+          Show cancelled
+        </label>
+
+        {canManage && chosen.length > 0 && (
+          <Button className="ml-auto" onClick={handleSend} disabled={send.isPending}>
+            {send.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send {chosen.length} for approval
+          </Button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Reading the book…
+        </div>
+      ) : rows.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Wallet className="mb-2 h-10 w-10 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              {data?.count === 0 && !search && direction === ALL && !dateFrom
+                ? 'Nothing in the book yet. Start by recording the cash that came into the box.'
+                : 'No entry matches those filters.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="rounded-md border">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-left">
+                  {canManage && (
+                    <th className="w-10 px-3 py-2">
+                      <Checkbox
+                        aria-label="Select every unsent entry on this page"
+                        checked={allChosen}
+                        disabled={sendable.length === 0}
+                        onCheckedChange={(checked) =>
+                          setSelected(checked === true ? sendable.map((row) => row.id) : [])
+                        }
+                      />
+                    </th>
+                  )}
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Bunch</th>
+                  <th className="px-3 py-2">Department</th>
+                  <th className="px-3 py-2">G/L head</th>
+                  <th className="px-3 py-2">Item</th>
+                  <th className="px-3 py-2">Detail</th>
+                  <th className="px-3 py-2 text-right">Out</th>
+                  <th className="px-3 py-2 text-right">In</th>
+                  <th className="px-3 py-2 text-right">Balance</th>
+                  <th className="px-3 py-2">Approval</th>
+                  {canManage && <th className="px-3 py-2">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const cancelled = !row.is_active;
+                  const editable = canManage && !cancelled && !row.is_locked;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`border-b align-top hover:bg-muted/40 ${
+                        cancelled ? 'text-muted-foreground line-through' : ''
+                      }`}
+                    >
+                      {canManage && (
+                        <td className="px-3 py-2">
+                          {row.is_active && row.approval_status === 'UNSENT' && (
+                            <Checkbox
+                              aria-label={`Select entry ${row.id}`}
+                              checked={chosen.includes(row.id)}
+                              onCheckedChange={() => toggle(row.id)}
+                            />
+                          )}
+                        </td>
+                      )}
+                      <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
+                      <td className="px-3 py-2 tabular-nums">
+                        {row.bunch ? row.bunch.number : '—'}
+                      </td>
+                      <td className="px-3 py-2">{row.department_name ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        {row.gl_account_code ? (
+                          <>
+                            <p className="font-mono text-xs">{row.gl_account_code}</p>
+                            <p className="text-xs text-muted-foreground">{row.gl_account_name}</p>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-2">{row.item || '—'}</td>
+                      <td className="max-w-[340px] px-3 py-2">{row.detail}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {row.direction === 'OUT' ? money(row.amount) : ''}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {row.direction === 'IN' ? money(row.amount) : ''}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">
+                        {cancelled ? '—' : money(row.balance_after)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${APPROVAL_TONE[row.approval_status]}`}
+                        >
+                          {row.approval_status === 'UNSENT' ? 'Not sent' : row.bunch?.status_label}
+                        </Badge>
+                        {row.bunch?.decided_at && (
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {row.bunch.decided_at.slice(0, 10)}
+                          </p>
+                        )}
+                      </td>
+                      {canManage && (
+                        <td className="px-3 py-2">
+                          {editable ? (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEdit(row)}
+                                aria-label="Correct this entry"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCancel(row)}
+                                aria-label="Cancel this entry"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {cancelled ? 'Cancelled' : 'Locked'}
+                            </span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <PaginationControls
+            page={data?.page ?? page}
+            pageSize={pageSize}
+            total={data?.count ?? 0}
+            totalPages={data?.total_pages ?? 1}
+            isLoading={isLoading}
+            onPageChange={(next) => {
+              setPage(next);
+              setSelected([]);
+            }}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              resetPage();
+            }}
+          />
+        </div>
+      )}
+
+      {dialogOpen && (
+        <CashEntryDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          entry={editing}
+          presetDirection={newDirection}
+        />
+      )}
+    </div>
+  );
+}
