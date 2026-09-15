@@ -1,13 +1,14 @@
 import '../../logistics-control/styles/ops-board.css';
 import '../styles/admin-board.css';
+import '../styles/tank-farm.css';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import { OpsGroup, OpsMeter, OpsPair, OpsTopbar } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useAdminBoard } from '../api';
-import { AdminActions, AdminBand, AdminCorner, AdminDonut } from '../components';
+import { AdminActions, AdminBand, AdminCorner, AdminDonut, AdminTankFarm } from '../components';
 import { ADMIN_BOARD_STALE_AFTER_MS } from '../constants';
 import type {
   AdminDispatch,
@@ -53,6 +54,11 @@ export default function AdminControlDashboardPage() {
   const { data, error, isFetching, dataUpdatedAt } = useAdminBoard();
 
   const { isFullscreen, toggle } = useFullscreen(shellRef);
+
+  // Which tile has been opened out. Only the oil tile has a view behind it
+  // today; kept as a nullable name rather than a boolean so the next one does
+  // not need this rewritten.
+  const [openTile, setOpenTile] = useState<'oil' | null>(null);
   // Releases the shell's max-width and padding while the board is mounted. Every
   // length here is a multiple of a unit read off this element's own width, so
   // without it the board is laid out for a column several hundred pixels
@@ -171,7 +177,7 @@ export default function AdminControlDashboardPage() {
           >
             <FgTile fg={fg} loading={loading} />
             <PmTile pm={pm} loading={loading} />
-            <OilTile oil={oil} loading={loading} />
+            <OilTile oil={oil} loading={loading} onOpen={() => setOpenTile('oil')} />
           </AdminBand>
 
           {/* ═════ COST & ACTION ═════ */}
@@ -217,6 +223,10 @@ export default function AdminControlDashboardPage() {
             <AdminActions alerts={data?.alerts ?? []} degraded={meta?.degraded ?? []} />
           </AdminBand>
         </main>
+
+        {openTile === 'oil' && oil && (
+          <AdminTankFarm oil={oil} onClose={() => setOpenTile(null)} />
+        )}
       </div>
     </div>
   );
@@ -552,13 +562,27 @@ function PmTile({ pm, loading }: { pm: AdminPmStorage | null; loading: boolean }
   );
 }
 
-function OilTile({ oil, loading }: { oil: AdminOilStorage | null; loading: boolean }) {
+function OilTile({
+  oil,
+  loading,
+  onOpen,
+}: {
+  oil: AdminOilStorage | null;
+  loading: boolean;
+  onOpen: () => void;
+}) {
   const top = (oil?.rows ?? []).slice(0, 3);
   const rated = oil?.used_pct != null;
+  // Openable only once there are vessels to draw. A tile that invites a click
+  // and then shows an empty room is worse than one that does not invite it.
+  const openable = (oil?.tank_rows?.length ?? 0) > 0;
 
   return (
     <OpsGroup
       className="adm-has-corner"
+      // OpsGroup already turns a tile with `onOpen` into a keyboard-reachable
+      // button and styles it as drillable — no new affordance needed here.
+      onOpen={openable ? onOpen : undefined}
       name="Oil storage"
       tag={oil ? { label: `loose oil, ${oil.warehouse}`, tone: 'neut' } : undefined}
       // Says the basis out loud because it DIFFERS from the FG tile beside it:
@@ -598,6 +622,11 @@ function OilTile({ oil, loading }: { oil: AdminOilStorage | null; loading: boole
               ))}
             </div>
             {!rated && <p className="ops-note">{oil.no_capacity_reason}</p>}
+            {openable && (
+              <p className="adm-open-hint">
+                {oil.tank_rows.length} vessels — open the tank farm →
+              </p>
+            )}
           </div>
         )
       }

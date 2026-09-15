@@ -160,6 +160,20 @@ export interface AdminPmStorage {
   rows: AdminPmRow[];
 }
 
+export interface AdminOilTank {
+  code: string;
+  /** 'TANK' (a fixed tank) or 'TOTES' (an IBC container). Both hold loose oil. */
+  type: string;
+  item_code: string | null;
+  /** The oil's name, or 'empty' on a vessel holding nothing. */
+  item: string;
+  category: string | null;
+  capacity_tons: number;
+  stock_tons: number;
+  /** Null on a vessel with no rated capacity — never 0, which reads as empty. */
+  used_pct: number | null;
+}
+
 export interface AdminOilStorage {
   unit: 'tonnes';
   warehouse: string;
@@ -167,7 +181,49 @@ export interface AdminOilStorage {
   total_litres: number;
   capacity_tons: number | null;
   used_pct: number | null;
-  no_capacity_reason: string;
+  /**
+   * Null once a capacity is known; otherwise why there is no percentage —
+   * which is now either "EXIM is not configured" or the farm's own error,
+   * rather than the old flat "no rated capacity in any system".
+   */
+  no_capacity_reason: string | null;
+  /**
+   * Which system `total_tons` and `capacity_tons` came from.
+   *
+   * 'EXIM' is the tank farm's own register, which is the only place a rated
+   * capacity exists. 'SAP' is the fallback when EXIM cannot be read — then
+   * there is no capacity and `no_capacity_reason` says why.
+   */
+  source: 'EXIM' | 'SAP';
+  /**
+   * SAP's own reading of the same oil, always present.
+   *
+   * When the source is EXIM this is the comparison that exposes a stock
+   * discrepancy between the two systems; when it is SAP it equals `total_tons`.
+   */
+  sap_tons: number;
+  /** Per-vessel detail, fullest first. Empty unless EXIM answered. */
+  tank_rows: AdminOilTank[];
+  /**
+   * The fixed tanks and the IBC totes counted apart.
+   *
+   * Both are inside `total_tons` and `capacity_tons`. This is here because
+   * "how full is the tank farm" may or may not be meant to include four
+   * totes, and the answer should not have to be re-derived from the rows.
+   */
+  by_type: Record<string, { vessels: number; capacity_tons: number; stock_tons: number }>;
+  /**
+   * Oil the headline figures do NOT include — the IBC totes.
+   *
+   * `total_tons`, `capacity_tons` and `used_pct` cover the fixed tanks only,
+   * because the tile answers "how full is the tank farm". The totes are still
+   * in `tank_rows` and `by_type`; this is the total the headline leaves out,
+   * so the screen can name it rather than lose it. Empty object when there is
+   * nothing outside the headline.
+   */
+  excluded:
+    | { vessels: number; capacity_tons: number; stock_tons: number; types: string[] }
+    | Record<string, never>;
   basis: string;
   rows: { label: string; tons: number }[];
 }
