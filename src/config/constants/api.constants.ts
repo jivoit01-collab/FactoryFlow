@@ -1305,6 +1305,12 @@ export const API_ENDPOINTS = {
     SAP_TRANSFER_DRAFTS: '/warehouse/sap-transfer-drafts/',
     SAP_TRANSFER_DRAFT_POST: (draftEntry: number) =>
       `/warehouse/sap-transfer-drafts/${draftEntry}/post/`,
+
+    // Posted SAP inventory transfers (OWTR), for printing the document from the
+    // Inventory Transfer page — including transfers keyed straight into the SAP
+    // client, which have no record on this side at all.
+    SAP_TRANSFERS: '/warehouse/sap-transfers/',
+    SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/sap-transfers/${docEntry}/`,
   },
 
   // Which SAP B1 account each app user is, per company. Approval decisions

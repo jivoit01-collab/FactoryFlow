@@ -68,6 +68,8 @@ export interface TransferRequestListItem {
   posting_status_display: string;
   sap_request_doc_num: string;
   sap_transfer_doc_num: string;
+  /** DocEntry of the posted transfer — null until it reaches SAP. */
+  sap_transfer_doc_entry: number | null;
   sap_leg2_doc_num: string;
   requested_by_name: string;
   line_count: number;
@@ -87,7 +89,8 @@ export interface TransferRequestDetail extends TransferRequestListItem {
   posting_error: string;
   sap_request_doc_entry: number | null;
   sap_request_closed_at: string | null;
-  sap_transfer_doc_entry: number | null;
+  // sap_transfer_doc_entry is inherited — the list carries it too, so the
+  // Inventory Transfer list can print without opening the request.
   sap_leg2_doc_entry: number | null;
   bst_transfer: number | null;
   bst_entry_no: string;

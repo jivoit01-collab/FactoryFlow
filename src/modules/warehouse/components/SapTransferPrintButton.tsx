@@ -10,46 +10,43 @@ import { useAppSelector } from '@/core/store';
 import { Button } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { BST_QUERY_KEYS, bstApi, warehousePrintInfoQuery } from '../api';
-import type { BSTSourceType, SAPStockTransfer, WarehousePrintInfo } from '../types';
+import { SAP_TRANSFER_QUERY_KEYS, sapTransferApi, warehousePrintInfoQuery } from '../api';
+import type { SAPStockTransfer, WarehousePrintInfo } from '../types';
 import {
   BranchStockTransferPrint,
   BST_DOC_PRINT_PAGE_STYLE,
 } from './BranchStockTransferPrint';
 
 /**
- * Prints the Branch Stock Transfer document straight off a SAP document, for
- * transfers raised in SAP that were never entered here.
+ * Prints the inventory transfer document for a posted SAP transfer (OWTR).
  *
- * The BST detail page prints a `BSTTransfer` — the app's own record. A transfer
- * someone posted directly in SAP has none, so until it was picked up and
- * scanned there was no way to get its paperwork out of the app at all. This
- * button closes that gap: same document, same component, read from SAP.
+ * The paper is wanted when the transfer is created in SAP, before anything
+ * physical happens against it — so this sits on Inventory Transfer, the
+ * document side. It is on BST Scanning too, because the desk moving the stock
+ * often needs the same copy in hand and should not have to go looking for it.
+ *
+ * It reads SAP rather than our own tables because a transfer keyed straight
+ * into the SAP client has no record on this side at all — no request, no BST —
+ * and those are exactly the ones that still need printing.
  *
  * The document is read when the button is pressed, rendered off-screen and
- * handed to the print dialog. Nothing is fetched when a search merely lists it,
- * so a page of results costs no HANA reads for the documents nobody prints.
+ * handed to the print dialog. Nothing is fetched while a list merely shows the
+ * row, so a page of transfers costs no HANA reads for the ones nobody prints.
  *
- * The app-only cells (Delivery Note, vehicle, bilty, transporter, dispatch
- * date) print blank on purpose: they are filled from the BST entry, and a
- * SAP-only document has none. Inventing them would put unverified haulage
- * details on a document people sign.
- *
- * Gated on VIEW_BST — the right to read a branch stock transfer — rather than
- * on the page it happens to sit on. Printing is a read, and the gate belongs to
- * the button so it travels with it wherever this is dropped in next.
+ * Cells fed by an app record (Delivery Note, vehicle, bilty, transporter,
+ * dispatch date) print blank: a SAP-only transfer has none, and inventing them
+ * would put unverified haulage details on a document people sign.
  */
 export function SapTransferPrintButton({
   docEntry,
   docNum,
-  documentType = 'STOCK_TRANSFER',
   label,
   className,
 }: {
+  /** OWTR DocEntry — what the document is read by. */
   docEntry: number;
+  /** SAP document number, for the print's file name and the button's label. */
   docNum: string;
-  /** Which SAP object the entry lives in. Defaults to a stock transfer. */
-  documentType?: BSTSourceType;
   label?: string;
   className?: string;
 }) {
@@ -64,7 +61,7 @@ export function SapTransferPrintButton({
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `branch-stock-transfer-${docNum}`,
+    documentTitle: `inventory-transfer-${docNum}`,
     pageStyle: BST_DOC_PRINT_PAGE_STYLE,
   });
 
@@ -72,10 +69,10 @@ export function SapTransferPrintButton({
     setLoading(true);
     try {
       // Through the query cache, so re-printing the same document — and the
-      // letterhead, which every document on the page shares — reads SAP once.
+      // letterhead, which every transfer on the page shares — reads SAP once.
       const fetched = await queryClient.fetchQuery({
-        queryKey: BST_QUERY_KEYS.sapTransfer(docEntry, documentType),
-        queryFn: () => bstApi.getSapTransfer(docEntry, documentType),
+        queryKey: SAP_TRANSFER_QUERY_KEYS.detail(docEntry),
+        queryFn: () => sapTransferApi.get(docEntry),
       });
       setDoc(fetched);
 
@@ -95,14 +92,14 @@ export function SapTransferPrintButton({
       // the browser to lay it out before the print handler takes it.
       window.requestAnimationFrame(() => window.requestAnimationFrame(() => handlePrint()));
     } catch (err) {
-      toast.error(getErrorMessage(err, `Could not read ${docNum} from SAP.`));
+      toast.error(getErrorMessage(err, `Could not read transfer ${docNum} from SAP.`));
     } finally {
       setLoading(false);
     }
   }
 
   // After the hooks, never before them — the gate must not change how many run.
-  if (!hasPermission(WAREHOUSE_PERMISSIONS.VIEW_BST)) return null;
+  if (!hasPermission(WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST)) return null;
 
   return (
     <>
@@ -113,8 +110,8 @@ export function SapTransferPrintButton({
         className={className}
         disabled={loading}
         onClick={handleClick}
-        title={`Print the Branch Stock Transfer for #${docNum}`}
-        aria-label={`Print document ${docNum}`}
+        title={`Print the inventory transfer document for #${docNum}`}
+        aria-label={`Print inventory transfer ${docNum}`}
       >
         {loading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -138,10 +135,8 @@ export function SapTransferPrintButton({
               docDate: doc.doc_date,
               fromWarehouse: doc.from_warehouse || doc.warehouses || '',
               toWarehouse: doc.to_warehouse,
-              destination:
-                documentType === 'INVOICE'
-                  ? doc.card_name || doc.card_code || ''
-                  : doc.to_warehouse,
+              destination: doc.to_warehouse,
+              cancelled: doc.cancelled,
               lines: (doc.lines ?? []).map((line) => ({
                 description: line.item_name || line.item_code,
                 quantity: line.quantity,

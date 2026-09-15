@@ -23,8 +23,11 @@ import {
   useSapAwaitingTransfers,
   useSapTransferApprovals,
   useSapTransferDrafts,
+  useSapTransferSearch,
   useTransferRequests,
 } from '../../api';
+import { PrintTransferAction } from '../../components/PrintTransferDialog';
+import { SapTransferPrintButton } from '../../components/SapTransferPrintButton';
 import type { SapApprovalStatus, TransferRequestListItem } from '../../types';
 import { SapAwaitingTransferTable } from './SapAwaitingTransferTable';
 import { SapTransferApprovalTable } from './SapTransferApprovalTable';
@@ -89,6 +92,13 @@ export default function TransferRequestListPage() {
   // raised in the SAP client is approved as a DRAFT, and stays one until
   // somebody adds it. Same tab, because to a warehouse it is the same wait.
   const drafts = useSapTransferDrafts(tab === 'awaiting' || searching);
+  /* A POSTED transfer is in none of the queues above — it is finished work,
+     not something waiting on anybody. People search for one here all the same,
+     because a document number is a document number, so the search answers for
+     those too rather than saying "nothing matches" about a document that
+     plainly exists. Only read while a search is running. */
+  const posted = useSapTransferSearch(needle, searching);
+  const postedRows = posted.data ?? [];
 
   /* Filtering is done here rather than in each table so that one needle gives
      every tab its own match count — which is what makes the strip tell you
@@ -187,11 +197,14 @@ export default function TransferRequestListPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader
-        title="Transfer Requests"
-        description="Ask another warehouse for stock, and approve what they ask of you"
+        title="Inventory Transfer"
+        description="Ask another warehouse for stock, approve what they ask of you, and print the transfer document"
       >
+        {/* Reaches transfers keyed straight into SAP too - those are on no row
+            below, and are the ones most often waiting to be printed. */}
+        <PrintTransferAction />
         {canCreate && (
-          <Button onClick={() => navigate('/warehouse/transfer-requests/new')}>
+          <Button onClick={() => navigate('/warehouse/inventory-transfer/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Raise a request
           </Button>
@@ -260,7 +273,9 @@ export default function TransferRequestListPage() {
               {stillReading && nothingFound
                 ? 'Searching SAP’s queues…'
                 : nothingFound
-                  ? `Nothing matches “${needle}” in any tab.`
+                  ? postedRows.length > 0
+                    ? `“${needle}” is a posted transfer — nothing is waiting on it.`
+                    : `Nothing matches “${needle}” in any tab.`
                   : hereCount === 0
                     ? `Nothing here matches “${needle}”. Found in`
                     : `“${needle}” found in`}
@@ -291,6 +306,45 @@ export default function TransferRequestListPage() {
           </div>
         )}
       </div>
+
+      {/* Posted transfers the search matched. They belong to no tab — the work
+          is done — so they are answered here, with the one thing still wanted
+          from a finished transfer: its document. */}
+      {searching && postedRows.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Posted in SAP ({postedRows.length})
+            </div>
+            <div className="divide-y rounded-md border">
+              {postedRows.map((t) => (
+                <div key={t.doc_entry} className="flex items-center gap-3 px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      #{t.doc_num}
+                      {t.cancelled ? (
+                        <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-semibold text-destructive">
+                          Cancelled
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.from_warehouse} → {t.to_warehouse} · {t.line_count} lines ·{' '}
+                      {t.total_quantity} qty
+                      {t.doc_date ? ` · ${new Date(t.doc_date).toLocaleDateString()}` : ''}
+                    </div>
+                  </div>
+                  <SapTransferPrintButton
+                    docEntry={t.doc_entry}
+                    docNum={t.doc_num}
+                    label="Print"
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {tab === 'awaiting' ? (
         <div className="space-y-6">
@@ -374,13 +428,14 @@ export default function TransferRequestListPage() {
                         <th className="px-4 py-3 text-right font-medium">Items</th>
                         <th className="px-4 py-3 text-left font-medium">Raised by</th>
                         <th className="px-4 py-3 text-left font-medium">Raised</th>
+                        <th className="px-4 py-3 text-right font-medium">Document</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((row) => (
                         <tr
                           key={row.id}
-                          onClick={() => navigate(`/warehouse/transfer-requests/${row.id}`)}
+                          onClick={() => navigate(`/warehouse/inventory-transfer/${row.id}`)}
                           className="cursor-pointer border-b last:border-0 hover:bg-muted/40"
                         >
                           <td className="px-4 py-3">
@@ -412,6 +467,19 @@ export default function TransferRequestListPage() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">
                             {shortDate(row.created_at)}
+                          </td>
+                          {/* Stop the click reaching the row, or printing would
+                              navigate away to the request underneath it. */}
+                          <td
+                            className="px-4 py-3 text-right"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {row.sap_transfer_doc_entry ? (
+                              <SapTransferPrintButton
+                                docEntry={row.sap_transfer_doc_entry}
+                                docNum={row.sap_transfer_doc_num || row.entry_no}
+                              />
+                            ) : null}
                           </td>
                         </tr>
                       ))}

@@ -63,6 +63,8 @@ export interface BranchTransferPrintData {
   biltyDate?: string | null;
   dispatchDate?: string | null;
   destination?: string | null;
+  /** SAP cancelled the document; the sheet says so rather than looking live. */
+  cancelled?: boolean;
   lines: BranchTransferPrintLine[];
 }
 
@@ -86,14 +88,19 @@ export const BranchStockTransferPrint = forwardRef<HTMLDivElement, BranchStockTr
       <div ref={ref} className="bst-doc-print">
         <div className="bst-doc-masthead">
           <div className="bst-doc-company-name">{legalName || ' '}</div>
-          <div className="bst-doc-copy">Original</div>
+          <div className="bst-doc-copy">{data.cancelled ? 'Cancelled' : 'Original'}</div>
         </div>
 
         <div className="bst-doc-subhead">
           <div className="bst-doc-company-address">
             <AddressLines info={fromInfo} />
           </div>
-          <div className="bst-doc-title">Branch Stock Transfer</div>
+          <div className="bst-doc-title">
+            Branch Stock Transfer
+            {data.cancelled ? (
+              <div className="bst-doc-cancelled">CANCELLED — THIS DOCUMENT MOVED NO STOCK</div>
+            ) : null}
+          </div>
           <div className="bst-doc-barcode">
             {data.docEntry ? <DocBarcode value={String(data.docEntry)} /> : null}
           </div>

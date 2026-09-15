@@ -1050,6 +1050,16 @@
   text-align: center;
 }
 
+/* A cancelled transfer still prints — somebody may need the copy — so the sheet
+   has to announce it loudly enough that nobody works from it by mistake. */
+.bst-doc-cancelled {
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-top: 1mm;
+}
+
 .bst-doc-barcode {
   display: flex;
   justify-content: flex-end;

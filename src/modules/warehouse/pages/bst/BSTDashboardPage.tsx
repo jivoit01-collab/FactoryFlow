@@ -17,6 +17,8 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
+import { PrintTransferAction } from '../../components/PrintTransferDialog';
+
 const PAGE_SIZE = 20;
 
 import { BST_LIVE_POLL_MS, useBSTIncoming, useBSTTransfers } from '../../api';
@@ -250,14 +252,17 @@ export default function BSTDashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader
-        title="Branch Stock Transfer"
-        description="Move stock between branches — dispatch and receive"
+        title="BST Scanning"
+        description="Move stock between branches — scan it out, and receive it in"
         primaryAction={{
           label: 'New BST',
           icon: <Plus className="h-4 w-4 mr-2" />,
           onClick: () => navigate('/warehouse/bst/new'),
         }}
       >
+        {/* The transfer document, reachable from the desk doing the physical
+            move as well as from the page where it was raised. */}
+        <PrintTransferAction />
         <DateRangePicker
           date={dateRangeAsDateObjects}
           className="w-full sm:w-[300px]"

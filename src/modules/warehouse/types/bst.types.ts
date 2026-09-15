@@ -60,6 +60,12 @@ export interface SAPStockTransfer {
   total_quantity: number;
   /** Bill box count (INVOICE documents; stock transfers carry it per line). */
   total_boxes?: number;
+  /**
+   * SAP kept the document but it moved no stock. Printable — somebody may need
+   * the copy — but never to be read as a live document, so every screen showing
+   * one has to say so.
+   */
+  cancelled?: boolean;
   lines?: SAPStockTransferLine[];
 }
 
