@@ -23,10 +23,13 @@ export const nonMovingApi = {
     filters: NonMovingFilters,
     companyCode?: string,
   ): Promise<NonMovingReportResponse> {
-    const params: Record<string, number> = {
+    const params: Record<string, number | boolean> = {
       age: filters.age,
     };
     if (filters.item_group !== 0) params.item_group = filters.item_group;
+    // Sent only when switched off. The backend defaults to true, so leaving it
+    // out keeps the standing rule and keeps this caller's URL as it was.
+    if (filters.count_production === false) params.count_production = false;
 
     const response = await apiClient.get<NonMovingReportResponse>(EP.REPORT, {
       params,

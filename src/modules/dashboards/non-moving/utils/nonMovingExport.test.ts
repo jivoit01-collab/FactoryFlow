@@ -134,4 +134,33 @@ describe('the packing-material aging basis', () => {
     // The godown move the age ignores is still in the workbook.
     expect(sheetRows(workbook, 'BH-BS')[0]?.['Last Godown Movement']).toBe('2026-09-06 00:00:00');
   });
+
+  it('names the purchase clocks when the production rule is off', () => {
+    // Two exports of the same stock can disagree by hundreds of days, so a
+    // sheet read away from the dashboard has to say which one it is.
+    const bought = makeItem({
+      item_code: 'PM0000643',
+      warehouse: 'BH-PM',
+      movement_basis: 'grpo',
+      last_movement_date: '2025-12-17 00:00:00',
+      days_since_last_movement: 272,
+    });
+    const neverBought = makeItem({
+      item_code: 'PM0000221',
+      warehouse: 'GP-NM',
+      movement_basis: 'none',
+      days_since_last_movement: 738,
+    });
+
+    const workbook = buildNonMovingWorkbook({
+      rows: groupNonMovingRowsBySku([bought, neverBought]),
+      items: [bought, neverBought],
+    });
+
+    const summary = sheetRows(workbook, SUMMARY_SHEET_NAME);
+    expect(summary.find((row) => row['Item Code'] === 'PM0000643')?.['Aged On']).toBe('Last GRPO');
+    expect(summary.find((row) => row['Item Code'] === 'PM0000221')?.['Aged On']).toBe(
+      'Never purchased',
+    );
+  });
 });

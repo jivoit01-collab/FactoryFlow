@@ -6,7 +6,10 @@ import { cn } from '@/shared/utils';
 
 import type { NonMovingItem, NonMovingRow, NonMovingSortCol } from '../types';
 import {
+  ageHintFor,
   INACTIVE_WAREHOUSE_HINT,
+  isNeverPurchased,
+  isPurchaseAged,
   MOVEMENT_ELSEWHERE_HINT,
   movementWarehouseElsewhere,
   PRODUCTION_AGE_HINT,
@@ -152,9 +155,9 @@ export function NonMovingTable({
                 {sortableHeader('days_since_last_movement', 'Days Idle', 'right')}
                 <th
                   className="px-4 py-3 text-left font-medium text-muted-foreground"
-                  title={PRODUCTION_AGE_HINT}
+                  title={rows.length > 0 ? ageHintFor(rows[0]) : PRODUCTION_AGE_HINT}
                 >
-                  Last Movement
+                  {rows.length > 0 && isPurchaseAged(rows[0]) ? 'Last Purchase' : 'Last Movement'}
                 </th>
                 {sortableHeader('consumption_ratio', 'Consumption', 'right')}
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
@@ -252,7 +255,13 @@ export function NonMovingTable({
                         {row.days_since_last_movement.toLocaleString('en-IN')}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                        {row.last_movement_date ?? '-'}
+                        {isNeverPurchased(row) ? (
+                          <span className="italic" title={ageHintFor(row)}>
+                            never purchased
+                          </span>
+                        ) : (
+                          (row.last_movement_date ?? '-')
+                        )}
                         {movementWarehouseElsewhere(row) && (
                           <span
                             className="block text-[11px] font-medium text-muted-foreground"
@@ -264,10 +273,10 @@ export function NonMovingTable({
                         {wasRestacked(row) && (
                           <span
                             className="block text-[11px] italic text-muted-foreground/80"
-                            title={PRODUCTION_AGE_HINT}
+                            title={ageHintFor(row)}
                           >
-                            godown move {row.days_since_warehouse_movement?.toLocaleString('en-IN')}
-                            d ago
+                            {isPurchaseAged(row) ? 'last moved' : 'godown move'}{' '}
+                            {row.days_since_warehouse_movement?.toLocaleString('en-IN')}d ago
                           </span>
                         )}
                       </td>

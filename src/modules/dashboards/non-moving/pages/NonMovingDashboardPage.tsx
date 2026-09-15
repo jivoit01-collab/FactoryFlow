@@ -12,6 +12,7 @@ import { findDefaultMaterialGroup, isRmOrPmGroup } from '../../utils/itemGroupDe
 import { useItemGroups, useNonMovingReport } from '../api';
 import { NonMovingFilters, NonMovingMetaCards, NonMovingTable } from '../components';
 import {
+  DEFAULT_COUNT_PRODUCTION,
   DEFAULT_NON_MOVING_AGE,
   DEFAULT_NON_MOVING_STATUS_FILTER,
   NON_MOVING_PAGE_SIZE,
@@ -50,6 +51,7 @@ export default function NonMovingDashboardPage() {
     age: DEFAULT_NON_MOVING_AGE,
     item_group: 0,
     status: [...DEFAULT_NON_MOVING_STATUS_FILTER],
+    count_production: DEFAULT_COUNT_PRODUCTION,
   });
   const [filterResetSignal, setFilterResetSignal] = useState(0);
   const [hasSelectedMaterialType, setHasSelectedMaterialType] = useState(false);
@@ -190,9 +192,18 @@ export default function NonMovingDashboardPage() {
       selectedWarehouses: effectiveFilters.warehouse,
     });
     const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `non_moving_rm_pm_${stamp}.xlsx`);
+    // The clock goes in the filename, not just in a column: two exports of the
+    // same stock differ by hundreds of days, and one named like the other is
+    // the kind of sheet that gets quoted as the wrong answer.
+    const clock = effectiveFilters.count_production ? '' : '_by_grpo';
+    XLSX.writeFile(workbook, `non_moving_rm_pm${clock}_${stamp}.xlsx`);
     toast.success('Export downloaded');
-  }, [effectiveFilters.warehouse, scopedItems, sortedRows]);
+  }, [
+    effectiveFilters.count_production,
+    effectiveFilters.warehouse,
+    scopedItems,
+    sortedRows,
+  ]);
 
   const hasSAPError = Boolean(reportQuery.error && isSAPError(reportQuery.error));
 

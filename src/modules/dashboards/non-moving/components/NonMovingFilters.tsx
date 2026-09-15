@@ -9,10 +9,12 @@ import {
   MultiSelect,
   NativeSelect as Select,
   SelectOption,
+  Switch,
 } from '@/shared/components/ui';
 
 import { findDefaultMaterialGroup } from '../../utils/itemGroupDefaults';
 import {
+  DEFAULT_COUNT_PRODUCTION,
   DEFAULT_NON_MOVING_AGE,
   DEFAULT_NON_MOVING_STATUS_FILTER,
   NON_MOVING_AGE_OPTIONS,
@@ -23,6 +25,12 @@ import type { MovementStatus } from '../utils/movementStatus';
 import { defaultWarehouseSelection } from '../utils/nonMovingRows';
 
 const TEXT_DEBOUNCE_MS = 500;
+
+export const PRODUCTION_RULE_HINT =
+  'On — the board’s standing rule: a production entry counts as movement, so material ' +
+  'issued to the line reads as recently moved. Off — nothing internal counts; every row ' +
+  'is aged on its last Goods Receipt PO, so Days Idle becomes “days since we last bought ' +
+  'any”. Stock never purchased in this company is marked rather than dated.';
 
 /** Stable identity, so an omitted preset cannot re-fire the effect below. */
 const EMPTY_PRESET: string[] = [];
@@ -52,6 +60,7 @@ interface FiltersForm {
   status: string[];
   sub_group: string[];
   search: string;
+  count_production: boolean;
 }
 
 /** What `watch()` hands back: every field optional, arrays possibly sparse. */
@@ -78,6 +87,7 @@ function buildFilters(values: WatchedForm): NonMovingFiltersType {
     status: selected(values.status) as MovementStatus[],
     sub_group: subGroup.length ? subGroup : undefined,
     search: normalizeSearch(values.search),
+    count_production: values.count_production ?? DEFAULT_COUNT_PRODUCTION,
   };
 }
 
@@ -89,6 +99,7 @@ function formDefaultsFromFilters(defaultValues: NonMovingFiltersType): FiltersFo
     status: defaultValues.status ?? [...DEFAULT_NON_MOVING_STATUS_FILTER],
     sub_group: defaultValues.sub_group ?? [],
     search: defaultValues.search ?? '',
+    count_production: defaultValues.count_production ?? DEFAULT_COUNT_PRODUCTION,
   };
 }
 
@@ -177,6 +188,7 @@ export function NonMovingFilters({
       status: [...DEFAULT_NON_MOVING_STATUS_FILTER],
       sub_group: [],
       search: '',
+      count_production: DEFAULT_COUNT_PRODUCTION,
     };
     reset(resetValues);
     onFiltersChange(buildFilters(resetValues));
@@ -302,6 +314,32 @@ export function NonMovingFilters({
             </SelectOption>
           ))}
         </Select>
+      </div>
+
+      {/* Production rule.
+          A Switch rather than another dropdown because it is not a filter: it
+          changes what Days Idle MEANS on every row, so it reads as a mode and
+          says out loud which clock the table is currently on. */}
+      <div className="flex flex-col gap-1.5" title={PRODUCTION_RULE_HINT}>
+        <Label htmlFor="nm-filter-production" className="text-xs">
+          Production Counts As Movement
+        </Label>
+        <Controller
+          name="count_production"
+          control={control}
+          render={({ field }) => (
+            <div className="flex h-9 items-center gap-2">
+              <Switch
+                id="nm-filter-production"
+                checked={field.value}
+                onChange={field.onChange}
+              />
+              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                {field.value ? 'On' : 'Aged on last GRPO'}
+              </span>
+            </div>
+          )}
+        />
       </div>
 
       {/* Reset */}

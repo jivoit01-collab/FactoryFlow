@@ -4,10 +4,12 @@ import { cn } from '@/shared/utils';
 
 import type { NonMovingItem } from '../types';
 import {
+  ageHintFor,
   INACTIVE_WAREHOUSE_HINT,
+  isNeverPurchased,
+  isPurchaseAged,
   MOVEMENT_ELSEWHERE_HINT,
   movementWarehouseElsewhere,
-  PRODUCTION_AGE_HINT,
   rowAgeClasses,
   wasRestacked,
 } from '../utils/movementStatus';
@@ -54,7 +56,9 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
             <th className="pb-2 pr-3 text-right font-medium">Quantity</th>
             <th className="pb-2 pr-3 text-right font-medium">Value</th>
             <th className="pb-2 pr-3 text-right font-medium">Days Idle</th>
-            <th className="pb-2 pr-3 text-left font-medium">Last Movement</th>
+            <th className="pb-2 pr-3 text-left font-medium">
+              {items.length > 0 && isPurchaseAged(items[0]) ? 'Last Purchase' : 'Last Movement'}
+            </th>
             <th className="pb-2 pr-3 text-right font-medium">Consumption</th>
             <th className="pb-2 text-left font-medium">Status</th>
           </tr>
@@ -87,7 +91,13 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
                 {item.days_since_last_movement.toLocaleString('en-IN')}
               </td>
               <td className="py-2 pr-3 text-muted-foreground">
-                {item.last_movement_date ?? '-'}
+                {isNeverPurchased(item) ? (
+                  <span className="italic" title={ageHintFor(item)}>
+                    never purchased
+                  </span>
+                ) : (
+                  (item.last_movement_date ?? '-')
+                )}
                 {movementWarehouseElsewhere(item) && (
                   <span className="block text-[11px] font-medium" title={MOVEMENT_ELSEWHERE_HINT}>
                     in {movementWarehouseElsewhere(item)}
@@ -100,8 +110,9 @@ export function NonMovingItemDetailPanel({ items }: NonMovingItemDetailPanelProp
                   </span>
                 )}
                 {wasRestacked(item) && (
-                  <span className="block text-[11px] italic" title={PRODUCTION_AGE_HINT}>
-                    godown move {item.days_since_warehouse_movement?.toLocaleString('en-IN')}d ago
+                  <span className="block text-[11px] italic" title={ageHintFor(item)}>
+                    {isPurchaseAged(item) ? 'last moved' : 'godown move'}{' '}
+                    {item.days_since_warehouse_movement?.toLocaleString('en-IN')}d ago
                   </span>
                 )}
               </td>

@@ -7,6 +7,12 @@ import type { MovementStatus } from '../utils/movementStatus';
 export interface NonMovingFilters {
   age: number;
   item_group: number;
+  /**
+   * Whether a production entry counts as movement. True is the board's
+   * standing rule and how the page opens. False ages every row on its last
+   * Goods Receipt PO instead, so only a purchase resets the clock.
+   */
+  count_production: boolean;
   search?: string;
   warehouse?: string[];
   sub_group?: string[];
@@ -29,12 +35,21 @@ export type NonMovingSortCol =
 /**
  * Which rule aged the row.
  *
- * `production` is packing material: only an issue to a production order, or a
- * receipt from one, resets its clock. Being carried from one godown to another
- * does not. `any` is every other item group — days since that warehouse last
- * saw a movement of any kind.
+ * With the production rule ON — the board's default:
+ * - `production` is packing material: only an issue to a production order, or
+ *   a receipt from one, resets its clock. Being carried from one godown to
+ *   another does not.
+ * - `any` is every other item group — days since that warehouse last saw a
+ *   movement of any kind.
+ *
+ * With it OFF, nothing internal counts and every row is aged on purchases:
+ * - `grpo` — dated by the item's last Goods Receipt PO.
+ * - `none` — the item has never been bought in this company at all, so there
+ *   is no purchase to age it from and the date fell back to when the item was
+ *   created in SAP. Common, and not an error: bottles the factory blows
+ *   itself and stock that only ever arrived by transfer both land here.
  */
-export type MovementBasis = 'production' | 'any';
+export type MovementBasis = 'production' | 'any' | 'grpo' | 'none';
 
 export interface NonMovingItem {
   branch: string;
@@ -127,6 +142,8 @@ export interface ReportSummary {
 export interface NonMovingMeta {
   age_days: number;
   item_group: number;
+  /** Which clock the ages in `data` were measured on. */
+  count_production?: boolean;
   fetched_at: string;
 }
 

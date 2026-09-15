@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_NON_MOVING_AGE } from '../../constants';
+import { DEFAULT_COUNT_PRODUCTION, DEFAULT_NON_MOVING_AGE } from '../../constants';
 import type { NonMovingFilters as NonMovingFiltersType } from '../../types';
 import { NonMovingFilters } from '../NonMovingFilters';
 
@@ -11,6 +11,7 @@ const baseFilters: NonMovingFiltersType = {
   age: DEFAULT_NON_MOVING_AGE,
   item_group: 105,
   status: ['slow-moving', 'non-moving'],
+  count_production: DEFAULT_COUNT_PRODUCTION,
 };
 
 function renderFilters(warehousePreset: string[], warehouses = OIL_WAREHOUSES) {
@@ -127,6 +128,65 @@ describe('the idle-age dropdown', () => {
 
     await waitFor(() =>
       expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ age: 180 })),
+    );
+  });
+});
+
+describe('the production rule toggle', () => {
+  it('opens with the rule on — the board’s standing behaviour', () => {
+    renderFilters([]);
+
+    expect(DEFAULT_COUNT_PRODUCTION).toBe(true);
+    const toggle = screen.getByRole('switch', { name: /production counts as movement/i });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('On')).toBeTruthy();
+  });
+
+  it('reports the rule switched off, and says what the ages now mean', async () => {
+    const { onFiltersChange } = renderFilters([]);
+
+    fireEvent.click(screen.getByRole('switch', { name: /production counts as movement/i }));
+
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({ count_production: false }),
+      ),
+    );
+    // The label has to say which clock the table is on, not just that a
+    // switch moved — the same stock reads 45 days one way and 272 the other.
+    expect(screen.getByText('Aged on last GRPO')).toBeTruthy();
+  });
+
+  it('switches back on', async () => {
+    const { onFiltersChange } = renderFilters([]);
+    const toggle = screen.getByRole('switch', { name: /production counts as movement/i });
+
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(
+        (onFiltersChange.mock.calls.at(-1)?.[0] as NonMovingFiltersType).count_production,
+      ).toBe(true),
+    );
+  });
+
+  it('Reset puts the rule back on', async () => {
+    const { onFiltersChange } = renderFilters([]);
+
+    fireEvent.click(screen.getByRole('switch', { name: /production counts as movement/i }));
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({ count_production: false }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+    await waitFor(() =>
+      expect(
+        (onFiltersChange.mock.calls.at(-1)?.[0] as NonMovingFiltersType).count_production,
+      ).toBe(true),
     );
   });
 });

@@ -36,6 +36,23 @@ export const NON_MOVING_ALL_STATUSES: MovementStatus[] = ['recent', 'slow-moving
 export const NON_MOVING_PAGE_SIZE = 50;
 
 // ============================================================================
+// Production Rule
+// ============================================================================
+
+/**
+ * The page opens with the production rule ON — the board's standing rule, and
+ * the only behaviour it had before the switch existed.
+ *
+ * Switched off, nothing internal resets an item's clock: not a production
+ * issue, not a receipt from production, not a transfer. The only movement left
+ * is the item's last Goods Receipt PO, which turns Days Idle from "when was
+ * this last used" into "when did we last buy any". The two answers can be very
+ * far apart — Beverages' GLASS BOTTLE 200 MLS NEW reads 45 days on production
+ * and 272 on its last purchase.
+ */
+export const DEFAULT_COUNT_PRODUCTION = true;
+
+// ============================================================================
 // Warehouse Scope
 // ============================================================================
 

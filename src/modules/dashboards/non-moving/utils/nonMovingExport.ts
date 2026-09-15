@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 
 import type { NonMovingItem, NonMovingRow } from '../types';
-import { getMovementStatus, isProductionAged, type MovementStatus } from './movementStatus';
+import { agedOnLabel, getMovementStatus, type MovementStatus } from './movementStatus';
 
 const STATUS_LABELS: Record<MovementStatus, string> = {
   recent: 'Recently Moved',
@@ -23,12 +23,14 @@ function statusOf(days: number): string {
 }
 
 /**
- * What the Days Idle column counted from. Packing material is aged on
- * production alone, so a sheet read away from the dashboard still says which
- * clock produced the number next to it.
+ * What the Days Idle column counted from — production, any movement, the last
+ * GRPO, or nothing at all because the item was never purchased here. A sheet
+ * read away from the dashboard still says which clock produced the number next
+ * to it, which matters most once the production rule can be switched off: two
+ * exports of the same stock can disagree by hundreds of days and both be right.
  */
 function agedOn(item: { movement_basis?: string }): string {
-  return isProductionAged(item) ? 'Production' : 'Any movement';
+  return agedOnLabel(item);
 }
 
 function summaryRow(row: NonMovingRow): ExportRow {
