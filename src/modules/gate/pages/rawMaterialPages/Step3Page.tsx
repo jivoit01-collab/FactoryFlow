@@ -650,6 +650,7 @@ export default function Step3Page() {
 
     try {
       // Submit all PO receipts
+      const savedWarnings: string[] = [];
       for (const poForm of formsToSave) {
         const payload = buildPOReceiptPayload(poForm);
         if (poForm.receiptId && poForm.isReplacing) {
@@ -660,15 +661,23 @@ export default function Step3Page() {
           if (result.supplier_changed) {
             toast.warning('Heads up: the corrected PO is from a different supplier.');
           }
+          savedWarnings.push(...(result.warnings ?? []));
         } else if (poForm.receiptId) {
-          await updatePOReceipt.mutateAsync({
+          const result = await updatePOReceipt.mutateAsync({
             poReceiptId: poForm.receiptId,
             data: payload,
           });
+          savedWarnings.push(...(result.warnings ?? []));
         } else {
-          await createPOReceipt.mutateAsync(payload);
+          const result = await createPOReceipt.mutateAsync(payload);
+          savedWarnings.push(...(result.warnings ?? []));
         }
       }
+
+      // A PO line another truck has already claimed but not yet posted. The save
+      // stands — SAP still has the quantity open — but whichever GRPO posts last
+      // will be refused, and right now the PO can still be changed.
+      savedWarnings.forEach((warning) => toast.warning(warning, { duration: 12000 }));
 
       // Navigate to step 4
       if (formsToSave.length > 0) {

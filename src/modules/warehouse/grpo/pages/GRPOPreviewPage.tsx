@@ -2,6 +2,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRightLeft,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -16,7 +17,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
+import { GATE_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
+import { usePermission } from '@/core/auth/hooks/usePermission';
 import { isPmItemCode } from '@/modules/warehouse/pages/bst/bstBoxCounts';
 import {
   Badge,
@@ -48,6 +51,7 @@ import {
   POPrintButton,
   QCReportButton,
   QCStatusBadge,
+  RepointPODialog,
   useQCReportPrint,
   WarehouseSelect,
 } from '../components';
@@ -225,6 +229,9 @@ export default function GRPOPreviewPage() {
   const deleteAttachment = useDeleteGRPOAttachment(draftId ?? 0);
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  // The PO whose receipt is being moved onto a different open PO, if any. Its own
+  // PO can run out between gate-in and posting — see RepointPODialog.
+  const [repointPO, setRepointPO] = useState<PreviewPOReceipt | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null);
   const [lastPostedQCReports, setLastPostedQCReports] = useState<PrintableQCReportItem[]>([]);
@@ -237,6 +244,8 @@ export default function GRPOPreviewPage() {
   const totalAttachmentCount = (mergedForm?.attachments.length ?? 0) + savedAttachments.length;
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
+  const { hasPermission } = usePermission();
+  const canRepointPO = hasPermission(GATE_PERMISSIONS.RAW_MATERIAL.REPOINT_PO);
 
   // Separate posted and unposted POs
   const unpostedPOs = useMemo(
@@ -958,6 +967,18 @@ export default function GRPOPreviewPage() {
                           variant="ghost"
                           className="h-7 px-2 text-xs"
                         />
+                        {canRepointPO && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            title="Move this receipt onto another open PO"
+                            onClick={() => setRepointPO(po)}
+                          >
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                            Move PO
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -1901,6 +1922,17 @@ export default function GRPOPreviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Move a receipt onto another open PO when its own has run out */}
+      {repointPO && (
+        <RepointPODialog
+          po={repointPO}
+          open
+          onOpenChange={(next) => {
+            if (!next) setRepointPO(null);
+          }}
+        />
+      )}
     </div>
   );
 }

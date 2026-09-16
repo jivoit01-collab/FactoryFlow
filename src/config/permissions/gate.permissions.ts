@@ -71,6 +71,11 @@ export const GATE_PERMISSIONS = {
     COMPLETE: 'raw_material_gatein.can_complete_raw_material_entry',
     /** Receive PO */
     RECEIVE_PO: 'raw_material_gatein.can_receive_po',
+    /**
+     * Move a received PO onto another open PO — a post-QC correction for a PO
+     * that ran out between gate-in and GRPO, held apart from RECEIVE_PO.
+     */
+    REPOINT_PO: 'raw_material_gatein.can_repoint_po_receipt',
   },
 
   // ============================================
