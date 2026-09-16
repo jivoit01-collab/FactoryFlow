@@ -32,6 +32,7 @@ export default function GoodsReturnDetailPage() {
   const id = Number(entryId);
   const { data: detail, isLoading } = useGoodsReturn(id);
   const invoiceNumbers = invoiceNumbersByRef(detail?.invoice_refs ?? []);
+  const customers = distinctCustomers(detail);
 
   if (isLoading || !detail) {
     return (
@@ -90,7 +91,13 @@ export default function GoodsReturnDetailPage() {
 
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <Field label="Customer" value={detail.customer_name || detail.customer_code || '-'} />
+          {/* Every customer on the return. A return is a truckload, and a truck
+              coming back off a market run carries several distributors' bills —
+              the header names only the first of them. */}
+          <Field
+            label={customers.length > 1 ? 'Customers' : 'Customer'}
+            value={customers.join(', ') || detail.customer_name || detail.customer_code || '-'}
+          />
           {detail.basis !== 'INVOICE' && (
             <Field label={REF_NO_LABELS[detail.basis]} value={detail.customer_ref_no || '-'} />
           )}
@@ -105,7 +112,15 @@ export default function GoodsReturnDetailPage() {
           {detail.invoice_refs.length > 0 && (
             <Field
               label="Invoices"
-              value={detail.invoice_refs.map((ref) => ref.sap_invoice_doc_num).join(', ')}
+              value={detail.invoice_refs
+                .map((ref) =>
+                  // Named with its customer only where that varies, so the common
+                  // single-customer return keeps reading as a plain list of bills.
+                  customers.length > 1 && ref.customer_name
+                    ? `${ref.sap_invoice_doc_num} (${ref.customer_name})`
+                    : ref.sap_invoice_doc_num,
+                )
+                .join(', ')}
             />
           )}
           {/* One document per invoice, so this is a list. The per-invoice table
@@ -342,6 +357,9 @@ function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
   const refs = detail.invoice_refs;
   const anything = refs.some((ref) => ref.sap_gr_doc_entry !== null || ref.sap_post_error);
   if (refs.length === 0 || !anything) return null;
+  // Each document is raised on its own bill's customer, so name them when they
+  // differ — otherwise the column repeats one name down the table.
+  const mixedCustomers = distinctCustomers(detail).length > 1;
 
   return (
     <Card>
@@ -351,13 +369,14 @@ function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
         </h4>
         <p className="text-xs text-muted-foreground">
           One A/R Return per invoice — the credit note that follows is raised against the
-          invoice, and each bill carries its own place of supply.
+          invoice, and each bill carries its own customer and place of supply.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-xs uppercase text-muted-foreground">
                 <th className="px-2 py-2">Invoice</th>
+                {mixedCustomers && <th className="px-2 py-2">Customer</th>}
                 <th className="px-2 py-2">SAP Return</th>
                 <th className="px-2 py-2">Posted</th>
                 <th className="px-2 py-2">Warehouse</th>
@@ -369,6 +388,11 @@ function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
                   <td className="px-2 py-2 font-medium">
                     {ref.sap_invoice_doc_num || ref.sap_invoice_doc_entry}
                   </td>
+                  {mixedCustomers && (
+                    <td className="px-2 py-2 text-muted-foreground">
+                      {ref.customer_name || ref.customer_code || '-'}
+                    </td>
+                  )}
                   <td className="px-2 py-2">
                     {ref.sap_gr_doc_num ? (
                       <span className="font-medium">{ref.sap_gr_doc_num}</span>
@@ -413,6 +437,25 @@ function printableDocuments(detail: GoodsReturnDetail) {
   return detail.sap_gr_doc_num
     ? [{ docEntry: null, docNum: detail.sap_gr_doc_num, label: 'Print Return Note' }]
     : [];
+}
+
+/** The customers on a return, distinct, in the order their bills were added.
+ *
+ *  Falls back to the header for a debit-note or letter-pad return, which has no
+ *  bill to read one off, and for the returns booked before the customer moved
+ *  onto the bill. */
+function distinctCustomers(detail?: GoodsReturnDetail | null): string[] {
+  if (!detail) return [];
+  const names: string[] = [];
+  for (const ref of detail.invoice_refs) {
+    const name = ref.customer_name || ref.customer_code;
+    if (name && !names.includes(name)) names.push(name);
+  }
+  if (names.length === 0) {
+    const fallback = detail.customer_name || detail.customer_code;
+    if (fallback) names.push(fallback);
+  }
+  return names;
 }
 
 function Field({ label, value }: { label: string; value: string }) {

@@ -252,12 +252,6 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
               </Button>
             </div>
 
-            {detail.customer_name && (
-              <p className="text-sm text-muted-foreground">
-                Customer: <span className="font-medium text-foreground">{detail.customer_name}</span>{' '}
-                ({detail.customer_code})
-              </p>
-            )}
 
             {detail.invoice_refs.length === 0 ? (
               <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
@@ -272,6 +266,14 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
                   >
                     <div>
                       <p className="font-medium">Invoice {ref.sap_invoice_doc_num}</p>
+                      {/* The customer sits on the bill, not on the return: one
+                          truck brings back several distributors' bills, and this
+                          is where the clerk sees which bill is whose. */}
+                      {(ref.customer_name || ref.customer_code) && (
+                        <p className="text-xs text-muted-foreground">
+                          {ref.customer_name || ref.customer_code}
+                        </p>
+                      )}
                       {/* Each invoice posts its own A/R Return, so the split is
                           worth stating where the invoices are chosen. */}
                       <p className="text-xs text-muted-foreground">

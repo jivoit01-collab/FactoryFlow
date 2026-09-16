@@ -42,8 +42,11 @@ export interface GoodsReturnListItem {
   entry_no: string;
   basis: GoodsReturnBasis;
   status: GoodsReturnStatus;
+  /** The FIRST bill's customer — a return may carry several (`customer_names`). */
   customer_code: string;
   customer_name: string;
+  /** Every customer on the return, distinct, in the order the bills were added. */
+  customer_names: string[];
   /** The customer's own debit-note / letter-pad number, if they gave one. */
   customer_ref_no: string;
   vehicle_no: string;
@@ -79,6 +82,10 @@ export interface GoodsReturnInvoiceRef {
   id: number;
   sap_invoice_doc_entry: number;
   sap_invoice_doc_num: string;
+  /** The customer THIS bill was raised on. A return is a truckload, so it may
+   *  carry several distributors' bills; each posts under its own. */
+  customer_code: string;
+  customer_name: string;
   /** Null until this invoice's own return is in SAP. */
   sap_gr_doc_entry: number | null;
   sap_gr_doc_num: string;
@@ -134,8 +141,11 @@ export interface GoodsReturnDetail {
   entry_no: string;
   basis: GoodsReturnBasis;
   status: GoodsReturnStatus;
+  /** The FIRST bill's customer — a return may carry several (`customer_names`). */
   customer_code: string;
   customer_name: string;
+  /** Every customer on the return, distinct, in the order the bills were added. */
+  customer_names: string[];
   /** The customer's own debit-note / letter-pad number, if they gave one. */
   customer_ref_no: string;
   vehicle: number | null;

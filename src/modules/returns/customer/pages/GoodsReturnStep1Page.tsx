@@ -66,7 +66,16 @@ export default function GoodsReturnStep1Page() {
   const [error, setError] = useState<string | null>(null);
 
   const isInvoiceBasis = basis === 'INVOICE';
-  const derivedCustomer = addedInvoices[0];
+  // Every customer on the return, first-added first. One bill is the norm; the
+  // list exists because a truck can bring back several distributors' bills.
+  const derivedCustomers = addedInvoices.reduce<{ code: string; name: string }[]>(
+    (all, inv) => {
+      const name = inv.card_name || inv.card_code;
+      if (!name || all.some((seen) => (seen.code || seen.name) === (inv.card_code || name))) return all;
+      return [...all, { code: inv.card_code, name }];
+    },
+    [],
+  );
 
   function resetBasis(next: GoodsReturnBasis) {
     setBasis(next);
@@ -91,15 +100,10 @@ export default function GoodsReturnStep1Page() {
     setError(null);
     try {
       const result = await invoiceSearch.mutateAsync(number);
-      if (
-        addedInvoices.length > 0 &&
-        derivedCustomer &&
-        result.card_code &&
-        result.card_code !== derivedCustomer.card_code
-      ) {
-        setError('All invoices on a return must be for the same customer.');
-        return;
-      }
+      // Bills of different customers may ride one return: a return is a
+      // truckload, and a vehicle coming back off a market run carries the bills
+      // of whoever it called on. Each of them posts its own SAP A/R Return under
+      // its own customer, so there is nothing to keep them apart for.
       setAddedInvoices((prev) => [
         ...prev,
         {
@@ -289,10 +293,16 @@ export default function GoodsReturnStep1Page() {
               </Button>
             </div>
 
-            {derivedCustomer && (
+            {derivedCustomers.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Customer: <span className="font-medium text-foreground">{derivedCustomer.card_name}</span>{' '}
-                ({derivedCustomer.card_code})
+                {derivedCustomers.length === 1 ? 'Customer: ' : 'Customers: '}
+                {derivedCustomers.map((customer, index) => (
+                  <span key={customer.code || customer.name}>
+                    {index > 0 && ', '}
+                    <span className="font-medium text-foreground">{customer.name}</span>
+                    {customer.code && ` (${customer.code})`}
+                  </span>
+                ))}
               </p>
             )}
 
@@ -307,6 +317,14 @@ export default function GoodsReturnStep1Page() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Invoice {inv.doc_num}</p>
+                        {/* Named per bill, not just in the summary above: on a
+                            return carrying several distributors' bills this is
+                            the only place that says which is whose. */}
+                        {(inv.card_name || inv.card_code) && (
+                          <p className="text-xs text-muted-foreground">
+                            {inv.card_name || inv.card_code}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {inv.line_count} items · qty {inv.total_quantity}
                         </p>
