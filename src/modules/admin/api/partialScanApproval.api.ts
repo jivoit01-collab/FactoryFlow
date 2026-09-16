@@ -1,6 +1,8 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+import { buildReviewRequest, type DockingApprovalAttachment } from './dockingApproval.api';
+
 export type DockingPartialScanStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface DockingPartialScanRequest {
@@ -34,6 +36,8 @@ export interface DockingPartialScanRequest {
   reviewed_by_name: string;
   reviewed_at: string | null;
   review_notes: string;
+  /** What the approver filed with the decision. */
+  attachments: DockingApprovalAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +67,8 @@ export interface DockingPartialScanCreateRequest {
 
 export interface DockingPartialScanReviewRequest {
   notes?: string;
+  /** Evidence the approver attaches to the decision. Sent as multipart when present. */
+  attachments?: File[];
 }
 
 function buildQuery(params?: Record<string, string | number | undefined>) {
@@ -113,9 +119,11 @@ export const partialScanApprovalApi = {
     id: number,
     data: DockingPartialScanReviewRequest = {},
   ): Promise<DockingPartialScanRequest> {
+    const { body, config } = buildReviewRequest(data);
     const response = await apiClient.post<DockingPartialScanRequest>(
       API_ENDPOINTS.DOCKING_ADMIN.PARTIAL_SCAN_REQUEST_APPROVE(id),
-      data,
+      body,
+      config,
     );
     return response.data;
   },
@@ -124,9 +132,11 @@ export const partialScanApprovalApi = {
     id: number,
     data: DockingPartialScanReviewRequest,
   ): Promise<DockingPartialScanRequest> {
+    const { body, config } = buildReviewRequest(data);
     const response = await apiClient.post<DockingPartialScanRequest>(
       API_ENDPOINTS.DOCKING_ADMIN.PARTIAL_SCAN_REQUEST_REJECT(id),
-      data,
+      body,
+      config,
     );
     return response.data;
   },

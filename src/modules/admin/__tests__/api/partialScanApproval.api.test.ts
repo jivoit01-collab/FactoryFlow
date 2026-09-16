@@ -80,15 +80,36 @@ describe('partialScanApprovalApi', () => {
 
   it('approves a request', async () => {
     await partialScanApprovalApi.approve(7, { notes: 'ok' });
-    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/7/approve/', {
-      notes: 'ok',
-    });
+    // No files -> a plain JSON review, exactly as before attachments existed.
+    expect(post).toHaveBeenCalledWith(
+      '/docking-admin/partial-scan-requests/7/approve/',
+      { notes: 'ok' },
+      undefined,
+    );
   });
 
   it('rejects a request', async () => {
     await partialScanApprovalApi.reject(7, { notes: 'not now' });
-    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/7/reject/', {
-      notes: 'not now',
-    });
+    expect(post).toHaveBeenCalledWith(
+      '/docking-admin/partial-scan-requests/7/reject/',
+      { notes: 'not now' },
+      undefined,
+    );
+  });
+
+  it('sends the approver attachments as multipart', async () => {
+    // The paperwork behind the decision rides with the decision -- one repeated
+    // `attachments` key per file, which is what DRF reads a list off.
+    const mail = new File(['mail'], 'authorisation.pdf', { type: 'application/pdf' });
+    const photo = new File(['photo'], 'load.jpg', { type: 'image/jpeg' });
+
+    await partialScanApprovalApi.approve(7, { notes: 'ok', attachments: [mail, photo] });
+
+    const [url, body, config] = post.mock.calls[0] as [string, FormData, { headers: object }];
+    expect(url).toBe('/docking-admin/partial-scan-requests/7/approve/');
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('notes')).toBe('ok');
+    expect(body.getAll('attachments')).toHaveLength(2);
+    expect(config.headers).toEqual({ 'Content-Type': 'multipart/form-data' });
   });
 });

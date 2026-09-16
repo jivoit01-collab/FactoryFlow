@@ -44,6 +44,10 @@ connection (unlike box scanning, which does queue offline in the gate module).
   the approver's active company; hidden at zero or without view permission.
 - **Review note** — free text attached to an approve (optional) or reject (**required**), stored
   as `review_notes` and surfaced back to the operator.
+- **Review attachments** (`DockingApprovalAttachment`, `attachments[]` on both request types) —
+  optional files the approver files **with** the decision: the mail authorising the dispatch, a
+  signed slip, a photo of the load. Up to 5 files, 10 MB each. Picked in the review dialog
+  (`components/ReviewAttachments.tsx`), shown afterwards as links on every reviewed row.
 
 Both request types share an identical page layout, hook shape, and review dialog — the partial
 page merely adds a **Scanned** column.
@@ -63,8 +67,12 @@ page merely adds a **Scanned** column.
    only if the user `canApprove` — **Approve** / **Reject** buttons. Non-pending or
    non-approvers see "Awaiting approver" / "Reviewed".
 4. Clicking Approve or Reject opens a dialog. **Reject requires a note** (client-side guard
-   mirrors the server); Approve's note is optional.
-5. Submit calls `useApprove…`/`useReject…` → `POST …/<id>/approve|reject/ {notes}`. On success a
+   mirrors the server); Approve's note is optional. Below the note, **Add files** attaches the
+   paperwork behind the decision — the picker enforces the same 5-file / 10 MB limits as the
+   server and de-duplicates a file picked twice.
+5. Submit calls `useApprove…`/`useReject…` → `POST …/<id>/approve|reject/`. With no files that is
+   the same JSON `{notes}` body as before; with files `buildReviewRequest` switches it to
+   multipart, repeating the `attachments` key once per file. On success a
    toast fires ("Scan skip request approved", etc.) and `invalidate…Approval` refetches the
    queue **and** the `['salesDispatch']` keys (so the operator's scan page/readiness updates).
 6. On error the dialog shows the server message inline (via `getErrorMessage`) and stays open.
@@ -254,8 +262,11 @@ Operator** (request, both types).
 - `api/partialScanApproval.api.ts` / `.queries.ts` — partial equivalents.
 - `api/index.ts` — barrel export.
 - `components/DockingApprovalsBadge.tsx`, `components/PartialApprovalsBadge.tsx` — sidebar pills.
+- `components/ReviewAttachments.tsx` — `ReviewAttachmentPicker` (dialog) and
+  `ApprovalAttachmentLinks` (queue rows), shared by both approval pages.
 - `module.config.tsx` — routes, sidebar nav, permission gates, badge wiring.
-- `__tests__/api/partialScanApproval.api.test.ts` — API client tests.
+- `__tests__/api/dockingApproval.api.test.ts`, `__tests__/api/partialScanApproval.api.test.ts` —
+  API client tests (including the multipart review body).
 
 **Shared / config**
 - `src/config/permissions/admin.permissions.ts` — permission constants.

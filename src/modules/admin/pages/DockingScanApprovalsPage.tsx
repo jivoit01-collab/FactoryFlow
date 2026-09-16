@@ -12,6 +12,10 @@ import {
   useRejectDockingScanSkipRequest,
 } from '@/modules/admin/api';
 import {
+  ApprovalAttachmentLinks,
+  ReviewAttachmentPicker,
+} from '@/modules/admin/components/ReviewAttachments';
+import {
   Badge,
   Button,
   Card,
@@ -55,6 +59,7 @@ export default function DockingScanApprovalsPage() {
   const [reviewTarget, setReviewTarget] = useState<DockingScanSkipRequest | null>(null);
   const [reviewMode, setReviewMode] = useState<'approve' | 'reject'>('approve');
   const [notes, setNotes] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [reviewError, setReviewError] = useState('');
 
   const isSaving = approveRequest.isPending || rejectRequest.isPending;
@@ -63,6 +68,7 @@ export default function DockingScanApprovalsPage() {
     setReviewTarget(request);
     setReviewMode(mode);
     setNotes('');
+    setAttachments([]);
     setReviewError('');
   };
 
@@ -81,10 +87,16 @@ export default function DockingScanApprovalsPage() {
     setReviewError('');
     try {
       if (reviewMode === 'approve') {
-        await approveRequest.mutateAsync({ id: reviewTarget.id, data: { notes: trimmed } });
+        await approveRequest.mutateAsync({
+          id: reviewTarget.id,
+          data: { notes: trimmed, attachments },
+        });
         toast.success('Scan skip request approved');
       } else {
-        await rejectRequest.mutateAsync({ id: reviewTarget.id, data: { notes: trimmed } });
+        await rejectRequest.mutateAsync({
+          id: reviewTarget.id,
+          data: { notes: trimmed, attachments },
+        });
         toast.success('Scan skip request rejected');
       }
       setReviewTarget(null);
@@ -215,6 +227,10 @@ export default function DockingScanApprovalsPage() {
                             Note: {request.review_notes}
                           </div>
                         ) : null}
+                        <ApprovalAttachmentLinks
+                          attachments={request.attachments}
+                          className="max-w-[260px]"
+                        />
                       </td>
                       <td className="p-3">
                         <div className="font-medium">{request.requested_by_name || '-'}</div>
@@ -301,6 +317,12 @@ export default function DockingScanApprovalsPage() {
             />
             {reviewError ? <p className="text-sm text-destructive">{reviewError}</p> : null}
           </div>
+          <ReviewAttachmentPicker
+            files={attachments}
+            onChange={setAttachments}
+            disabled={isSaving}
+            onError={setReviewError}
+          />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               type="button"
@@ -378,6 +400,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
       {request.reviewed_by_name ? (
         <p className="mt-1 text-xs text-muted-foreground">by {request.reviewed_by_name}</p>
       ) : null}
+      <ApprovalAttachmentLinks attachments={request.attachments} />
 
       {isPending && canApprove ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
