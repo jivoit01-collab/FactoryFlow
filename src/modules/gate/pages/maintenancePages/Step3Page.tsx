@@ -792,10 +792,10 @@ export default function Step3Page() {
 
           {/* Urgency Warning for Critical/High */}
           {(formData.urgencyLevel === 'CRITICAL' || formData.urgencyLevel === 'HIGH') && (
-            <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex items-start gap-3">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 p-4 flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                   {formData.urgencyLevel === 'CRITICAL' ? 'Critical' : 'High'} Priority Item
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">

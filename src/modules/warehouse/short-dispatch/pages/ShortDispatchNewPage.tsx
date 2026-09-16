@@ -233,7 +233,7 @@ export default function ShortDispatchNewPage() {
                 <span className="font-medium">{invoice.card_name}</span> ({invoice.card_code})
               </p>
               {invoice.existing_entries.length > 0 && (
-                <div className="rounded-md border border-amber-300 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                <div className="rounded-md border border-amber-300 bg-amber-50/70 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                   <p className="font-medium">This bill has already been short once.</p>
                   <p className="mt-1 text-xs">
                     {invoice.existing_entries
@@ -293,7 +293,7 @@ export default function ShortDispatchNewPage() {
               </div>
 
               {offFloorLines.length > 0 && (
-                <p className="rounded-md border border-amber-300 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+                <p className="rounded-md border border-amber-300 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                   {offFloorLines.length} of the short items{' '}
                   {offFloorLines.length === 1 ? 'was' : 'were'} billed out of{' '}
                   {[...new Set(offFloorLines.map((line) => line.sourceWarehouse))].join(', ')}, not{' '}

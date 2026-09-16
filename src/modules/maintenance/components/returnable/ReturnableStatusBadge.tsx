@@ -34,7 +34,7 @@ export function ReturnableStatusBadge({
       </span>
       {isOverdue ? (
         <span
-          className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800"
+          className="inline-flex items-center gap-1 rounded-full border border-rose-200 dark:border-rose-500/30 bg-rose-100 dark:bg-rose-500/15 px-2 py-0.5 text-xs font-medium text-rose-800 dark:text-rose-400"
           title={`${daysOverdue} day(s) past the expected return date`}
         >
           <AlertTriangle className="h-3 w-3" />

@@ -40,7 +40,7 @@ export default function PalletPicker({
             <span className="font-mono text-xs font-medium">{p.pallet_id}</span>
             <span className="ml-2 text-sm">{p.item_name || p.item_code}</span>
           </div>
-          <Badge className="bg-gray-100 text-gray-800">{p.box_count} boxes</Badge>
+          <Badge className="bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground">{p.box_count} boxes</Badge>
         </div>
       )}
       placeholder="Search pallet by ID, item, or batch..."

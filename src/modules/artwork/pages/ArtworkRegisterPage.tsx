@@ -216,8 +216,8 @@ export default function ArtworkRegisterPage() {
       />
 
       {data && !data.sap_available && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="flex items-start gap-2 p-4 text-sm text-amber-900">
+        <Card className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="flex items-start gap-2 p-4 text-sm text-amber-900 dark:text-amber-400">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
               SAP could not be reached, so only the artwork already on file is listed — the items

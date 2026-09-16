@@ -11,9 +11,9 @@ import { useWasteTrendReport } from '../api';
 import type { AnalyticsParams } from '../types';
 
 const APPROVAL_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  PARTIALLY_APPROVED: 'bg-blue-100 text-blue-800',
-  FULLY_APPROVED: 'bg-green-100 text-green-800',
+  PENDING: 'bg-yellow-100 dark:bg-yellow-500/15 text-yellow-800 dark:text-yellow-400',
+  PARTIALLY_APPROVED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  FULLY_APPROVED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
 };
 
 function WasteTrendReportPage() {

@@ -70,11 +70,11 @@ export function ControlError({ error, fallback, onRetry }: ControlErrorProps) {
   const message = getErrorMessage(error, fallback);
 
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-500/15">
       <div className="flex items-start gap-2.5">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
             {status ? `Could not load (HTTP ${status})` : 'Could not load'}
           </p>
           <p className="mt-0.5 break-words text-sm text-amber-800 dark:text-amber-300">{message}</p>
@@ -84,7 +84,7 @@ export function ControlError({ error, fallback, onRetry }: ControlErrorProps) {
             variant="outline"
             size="sm"
             onClick={onRetry}
-            className="h-7 shrink-0 border-amber-300 bg-transparent px-2 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/40"
+            className="h-7 shrink-0 border-amber-300 bg-transparent px-2 text-amber-800 hover:bg-amber-100 dark:hover:bg-amber-500/25 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/25"
           >
             <RefreshCw className="mr-1 h-3 w-3" />
             Retry

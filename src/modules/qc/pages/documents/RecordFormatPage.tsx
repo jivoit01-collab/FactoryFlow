@@ -623,7 +623,7 @@ function FormatEditor({ templateId: id, template, filledCount }: FormatEditorPro
       {/* A form in use cannot have its rows rewritten — say so before the work
           is done, not after the save is rejected. */}
       {!isNew && filledCount > 0 && (
-        <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div className="space-y-1">
             <p className="font-medium">
@@ -641,7 +641,7 @@ function FormatEditor({ templateId: id, template, filledCount }: FormatEditorPro
       )}
 
       {problems.length > 0 && (
-        <div className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <div className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300">
           <ul className="list-inside list-disc space-y-1">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>

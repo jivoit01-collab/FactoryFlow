@@ -318,7 +318,7 @@ export default function ReturnableApprovalsPage() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="border-red-200 text-red-700 hover:bg-red-50"
+                              className="border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
                               disabled={isSaving}
                               onClick={() => openReview(pass, 'reject')}
                             >
@@ -495,7 +495,7 @@ function PassCard({ pass, canApprove, isSaving, onReview, onEdit, onOpenDetail }
             <Button
               type="button"
               variant="outline"
-              className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+              className="h-11 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
               disabled={isSaving}
               onClick={() => onReview(pass, 'reject')}
             >

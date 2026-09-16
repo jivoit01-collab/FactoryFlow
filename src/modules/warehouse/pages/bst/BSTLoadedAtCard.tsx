@@ -62,7 +62,7 @@ export function BSTLoadedAtCard({ transfer }: { transfer: BSTTransferDetail }) {
               The gate&rsquo;s work on this transfer starts here.
             </p>
             {transfer.loaded_at_edited_at && (
-              <p className="mt-2 text-xs text-amber-700">
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
                 Time corrected
                 {transfer.loaded_at_edited_by_name ? ` by ${transfer.loaded_at_edited_by_name}` : ''}{' '}
                 on {formatBstDateTime(transfer.loaded_at_edited_at)}.

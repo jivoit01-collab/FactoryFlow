@@ -108,7 +108,7 @@ export default function GoodsReturnListPage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total" value={counts.total} />
-        <StatCard label="Being Filled" value={counts.unfinished} tone="text-slate-600" />
+        <StatCard label="Being Filled" value={counts.unfinished} tone="text-slate-600 dark:text-muted-foreground" />
         <StatCard label="Awaiting Arrival" value={counts.awaiting} tone="text-amber-600" />
         <StatCard label="Arrived" value={counts.arrived} tone="text-emerald-600" />
       </div>

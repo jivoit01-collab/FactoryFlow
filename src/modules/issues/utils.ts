@@ -94,10 +94,10 @@ function parseHex(hex: string): [number, number, number] | null {
 
 /** Priority chip styling. Urgent has to be visible from across the list. */
 export const PRIORITY_STYLE: Record<IssuePriority, string> = {
-  URGENT: 'border-red-300 bg-red-50 text-red-700',
-  HIGH: 'border-orange-300 bg-orange-50 text-orange-700',
-  MEDIUM: 'border-slate-300 bg-slate-50 text-slate-600',
-  LOW: 'border-slate-200 bg-slate-50 text-slate-500',
+  URGENT: 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
+  HIGH: 'border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  MEDIUM: 'border-slate-300 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-600 dark:text-muted-foreground',
+  LOW: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-500',
 };
 
 /** Sort options offered in the list header, in the order they are shown. */

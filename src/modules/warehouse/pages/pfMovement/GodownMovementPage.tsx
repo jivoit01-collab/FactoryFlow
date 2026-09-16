@@ -184,8 +184,8 @@ export default function GodownMovementPage() {
       />
 
       {managesNothing && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 text-sm text-amber-900">
+        <Card className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-400">
             You can read the register but not add to it: you are not set as the manager of any
             godown in this company. An administrator assigns that on Admin → Warehouse
             Managers.
@@ -306,10 +306,10 @@ export default function GodownMovementPage() {
                         {movement.movement_date}
                       </Badge>
                       {!movement.is_active && (
-                        <Badge className="bg-red-100 text-xs text-red-800">Retracted</Badge>
+                        <Badge className="bg-red-100 dark:bg-red-500/15 text-xs text-red-800 dark:text-red-400">Retracted</Badge>
                       )}
                       {movement.is_dispatch && (
-                        <Badge className="bg-blue-100 text-xs text-blue-800">Dispatch</Badge>
+                        <Badge className="bg-blue-100 dark:bg-blue-500/15 text-xs text-blue-800 dark:text-blue-400">Dispatch</Badge>
                       )}
                       {movement.is_cross_company && (
                         <Badge variant="outline" className="text-xs">
@@ -349,7 +349,7 @@ export default function GodownMovementPage() {
                       </p>
                     )}
                     {!movement.is_active && movement.cancellation_reason && (
-                      <p className="mt-1 max-w-2xl text-xs text-red-700">
+                      <p className="mt-1 max-w-2xl text-xs text-red-700 dark:text-red-400">
                         Retracted: {movement.cancellation_reason}
                       </p>
                     )}

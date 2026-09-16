@@ -135,7 +135,7 @@ export function BacklogBillDetail({
 
         <div className="wall-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {bill.isStub && (
-            <p className="mb-4 rounded-xl border border-amber-600/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+            <p className="mb-4 rounded-xl border border-amber-600/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-300">
               This bill was picked onto the plan page and never filled in — no value, quantity or
               customer was entered against it. It is a real SAP document, but not freight anyone is
               waiting on.

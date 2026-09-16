@@ -307,7 +307,7 @@ export default function BSTNewPage() {
           ) : null}
 
           {fromRequest && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+        <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-3 text-sm text-indigo-900 dark:text-indigo-400">
           Starting from transfer request <strong>{fromRequest}</strong> — its posted SAP
           document is already selected below. Add a vehicle if the stock leaves the factory.
         </div>
@@ -417,7 +417,7 @@ export default function BSTNewPage() {
 
       {/* A disabled Create with no reason reads as a broken page. */}
       {unmanagedSources.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           You do not manage {unmanagedSources.join(', ')}, so this BST cannot be created.
           Remove the documents shipping out of{' '}
           {unmanagedSources.length === 1 ? 'that warehouse' : 'those warehouses'}, or ask an

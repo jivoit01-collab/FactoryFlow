@@ -75,7 +75,7 @@ function isShort(line: SapTransferApproval['lines'][number]): boolean {
 function StatusChip({ status }: { status: SapTransferApproval['status'] }) {
   if (status === 'APPROVED') {
     return (
-      <span className={`${CHIP} bg-green-100 text-green-800`}>
+      <span className={`${CHIP} bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400`}>
         <CheckCircle2 className="h-3 w-3" />
         Approved
       </span>
@@ -83,14 +83,14 @@ function StatusChip({ status }: { status: SapTransferApproval['status'] }) {
   }
   if (status === 'REJECTED') {
     return (
-      <span className={`${CHIP} bg-red-100 text-red-800`}>
+      <span className={`${CHIP} bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400`}>
         <XCircle className="h-3 w-3" />
         Rejected
       </span>
     );
   }
   return (
-    <span className={`${CHIP} bg-amber-100 text-amber-800`}>
+    <span className={`${CHIP} bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400`}>
       <Clock className="h-3 w-3" />
       Waiting
     </span>
@@ -117,11 +117,11 @@ function CopyableNumber({ value }: { value: number }) {
           // Clipboard is unavailable over plain HTTP; the number is on screen.
         }
       }}
-      className="group inline-flex items-center gap-1 font-mono text-sm font-medium tabular-nums text-green-800 hover:underline"
+      className="group inline-flex items-center gap-1 font-mono text-sm font-medium tabular-nums text-green-800 dark:text-green-400 hover:underline"
     >
       {value}
       {copied ? (
-        <Check className="h-3 w-3 text-green-700" />
+        <Check className="h-3 w-3 text-green-700 dark:text-green-400" />
       ) : (
         <Copy className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-70" />
       )}
@@ -179,7 +179,7 @@ function PersonCell({ row }: { row: SapTransferApproval }) {
       <div className="flex items-center gap-1.5 whitespace-nowrap">
         <span className="font-medium">{row.approver_code}</span>
         {row.is_mine && (
-          <span className={`${CHIP} bg-blue-100 text-blue-800`}>
+          <span className={`${CHIP} bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400`}>
             <UserCheck className="h-3 w-3" />
             you
           </span>
@@ -189,7 +189,7 @@ function PersonCell({ row }: { row: SapTransferApproval }) {
         <div className="truncate text-xs text-muted-foreground">{row.approver_name}</div>
       )}
       {row.is_mine && !row.credentials_configured && (
-        <div className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-amber-700">
+        <div className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-amber-700 dark:text-amber-400">
           <KeyRound className="h-3 w-3" />
           no password on file
         </div>
@@ -225,7 +225,7 @@ function LineTable({ row }: { row: SapTransferApproval }) {
               {line.source_stock === null ? (
                 <span className="text-muted-foreground">—</span>
               ) : isShort(line) ? (
-                <span className="inline-flex items-center gap-1 font-medium text-amber-700">
+                <span className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="h-3 w-3" />
                   {qty(line.source_stock)}
                 </span>
@@ -278,7 +278,7 @@ function DetailPanel({ row }: { row: SapTransferApproval }) {
         </p>
       )}
       {row.rejection_reason && (
-        <p className="text-xs text-red-700">
+        <p className="text-xs text-red-700 dark:text-red-400">
           <span className="font-medium">Rejected because:</span> {row.rejection_reason}
         </p>
       )}
@@ -371,7 +371,7 @@ export function SapTransferApprovalTable({
   return (
     <div className="space-y-4">
       {view === 'PENDING' ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
           SAP is holding these transfer drafts until the authorizer named on each one decides it,
           and it accepts a decision from that person only. So you can act on the{' '}
           <span className="font-medium">{mine} waiting on you</span>
@@ -396,7 +396,7 @@ export function SapTransferApprovalTable({
           )}
         </div>
       ) : view === 'APPROVED' ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
           Everything SAP has approved, newest first — decided here or in the SAP client. The number
           in green is the one to carry forward: it is read from the document SAP actually created,
           through the draft it came from. The draft&apos;s own number is not it — open drafts all
@@ -422,7 +422,7 @@ export function SapTransferApprovalTable({
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <div className="rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
           Transfers SAP rejected, newest first, with the reason the authorizer gave. Nothing moved
           and no document was created. A rejected draft can be edited in the SAP client, which opens
           a fresh approval request and puts it back in the pending queue.
@@ -430,12 +430,12 @@ export function SapTransferApprovalTable({
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
       {done && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <div className="rounded-lg border border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 p-3 text-sm text-green-800 dark:text-green-400">
           {done}
         </div>
       )}
@@ -508,7 +508,7 @@ export function SapTransferApprovalTable({
                             </div>
                             {shortLines > 0 && (
                               <div
-                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-700"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400"
                                 title="The sending warehouse does not hold this quantity"
                               >
                                 <AlertTriangle className="h-3 w-3" />

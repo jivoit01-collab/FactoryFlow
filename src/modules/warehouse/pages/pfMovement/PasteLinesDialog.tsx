@@ -206,14 +206,14 @@ export function PasteLinesDialog({
                 </Badge>
                 <Badge variant="outline">{freshPieces.toLocaleString()} pcs</Badge>
                 {problems > 0 && (
-                  <Badge className="bg-amber-100 text-amber-800">
+                  <Badge className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400">
                     {problems} row{problems === 1 ? '' : 's'} need attention
                   </Badge>
                 )}
               </div>
 
               {result.lookup_error && (
-                <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <p className="rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-400">
                   SAP could not be reached to check these codes, so none of them could be
                   resolved: {result.lookup_error}
                 </p>
@@ -258,7 +258,7 @@ export function PasteLinesDialog({
                                 </p>
                               )}
                               {line.inactive_in_sap && (
-                                <p className="text-xs text-amber-700">
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
                                   SAP has this item marked inactive
                                 </p>
                               )}
@@ -288,7 +288,7 @@ export function PasteLinesDialog({
                                 <span
                                   className={
                                     line.sap_on_hand > 0 && line.pieces > line.sap_on_hand
-                                      ? 'text-amber-700'
+                                      ? 'text-amber-700 dark:text-amber-400'
                                       : 'text-muted-foreground'
                                   }
                                 >
@@ -315,12 +315,12 @@ export function PasteLinesDialog({
               )}
 
               {problems > 0 && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
-                  <p className="flex items-center gap-2 text-xs font-medium text-amber-900">
+                <div className="rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3">
+                  <p className="flex items-center gap-2 text-xs font-medium text-amber-900 dark:text-amber-400">
                     <AlertTriangle className="h-3 w-3" />
                     These rows were not added
                   </p>
-                  <ul className="mt-2 space-y-1 text-xs text-amber-900">
+                  <ul className="mt-2 space-y-1 text-xs text-amber-900 dark:text-amber-400">
                     {result.unresolved.map((row) => (
                       <li key={`u-${row.item_code}`}>
                         <span className="font-mono">{row.item_code}</span> (qty {row.qty},
@@ -332,12 +332,12 @@ export function PasteLinesDialog({
                       <li key={`s-${row.line}`}>
                         Row {row.line} — {row.reason}
                         {row.text && (
-                          <span className="text-amber-800/70"> [{row.text}]</span>
+                          <span className="text-amber-800/70 dark:text-amber-400"> [{row.text}]</span>
                         )}
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-2 text-xs text-amber-900/80">
+                  <p className="mt-2 text-xs text-amber-900/80 dark:text-amber-400">
                     Add the rest, then enter these by hand.
                   </p>
                 </div>

@@ -129,7 +129,7 @@ function TransferTable({
                     : t.sap_to_warehouse || '—'}
                 </span>
                 {t.source_type === 'INVOICE' && (
-                  <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-700">
+                  <span className="ml-1 rounded bg-blue-50 dark:bg-blue-500/10 px-1 text-[10px] font-medium text-blue-700 dark:text-blue-400">
                     invoice
                   </span>
                 )}

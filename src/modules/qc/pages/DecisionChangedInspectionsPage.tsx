@@ -205,7 +205,7 @@ export default function DecisionChangedInspectionsPage() {
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -294,7 +294,7 @@ export default function DecisionChangedInspectionsPage() {
                         <td className="p-3 text-sm">{item.internal_lot_no || '-'}</td>
                         <td className="p-3 text-sm">{item.material_type_name || '-'}</td>
                         <td className="p-3 text-sm">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-medium text-orange-600 dark:bg-orange-500/15 dark:text-orange-400">
                             <History className="h-3 w-3" />
                             {timesChanged}×
                           </span>

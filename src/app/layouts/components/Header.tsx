@@ -28,21 +28,29 @@ interface HeaderProps {
   sidebarWidth: number;
 }
 
-/** Per-company header accent so users always know which company they're working in. */
+/**
+ * Per-company header accent so users always know which company they're working in.
+ *
+ * The wash must stay OPAQUE: the header is fixed and the page scrolls underneath
+ * it, so a translucent fill would let rows bleed through the band. Each dark hex
+ * is the flattened form of `{hue}-500/15` composited over the dark --background
+ * (#171A21) — the same tint the status chips use everywhere else, pre-blended.
+ * The chip itself can stay translucent because it sits on that opaque wash.
+ */
 const COMPANY_ACCENTS: Record<string, { wash: string; chip: string; border: string }> = {
   [COMPANY_CODES.JIVO_OIL]: {
-    wash: 'bg-amber-50 dark:bg-amber-950',
-    chip: 'bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:hover:bg-amber-800',
+    wash: 'bg-amber-50 dark:bg-[#382e1e]',
+    chip: 'bg-amber-200 text-amber-900 hover:bg-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25',
     border: 'border-b-2 border-b-amber-600 dark:border-b-amber-500',
   },
   [COMPANY_CODES.JIVO_MART]: {
-    wash: 'bg-emerald-50 dark:bg-emerald-950',
-    chip: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-300 dark:bg-emerald-900 dark:text-emerald-200 dark:hover:bg-emerald-800',
+    wash: 'bg-emerald-50 dark:bg-[#16322f]',
+    chip: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25',
     border: 'border-b-2 border-b-emerald-600 dark:border-b-emerald-500',
   },
   [COMPANY_CODES.JIVO_BEVERAGES]: {
-    wash: 'bg-blue-50 dark:bg-blue-950',
-    chip: 'bg-blue-200 text-blue-900 hover:bg-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800',
+    wash: 'bg-blue-50 dark:bg-[#1c2a41]',
+    chip: 'bg-blue-200 text-blue-900 hover:bg-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25',
     border: 'border-b-2 border-b-blue-600 dark:border-b-blue-500',
   },
 };

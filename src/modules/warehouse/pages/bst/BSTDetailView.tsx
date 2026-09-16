@@ -165,7 +165,7 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
       {isInvoice && (
-        <Badge variant="outline" className="text-blue-700">
+        <Badge variant="outline" className="text-blue-700 dark:text-blue-400">
           Invoice · cross-company
         </Badge>
       )}

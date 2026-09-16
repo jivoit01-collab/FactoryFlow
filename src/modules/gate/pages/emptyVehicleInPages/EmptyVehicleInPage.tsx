@@ -492,7 +492,7 @@ export default function EmptyVehicleInPage() {
                           <div className="flex items-center gap-2">
                             {vehicle.vehicleNo}
                             {vehicle.alreadyInside ? (
-                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                              <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400">
                                 Already inside
                               </Badge>
                             ) : null}
@@ -527,7 +527,7 @@ export default function EmptyVehicleInPage() {
                         </td>
                         <td className="p-3 text-right text-sm">
                           {vehicle.alreadyInside ? (
-                            <span className="text-xs font-medium text-amber-700">
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
                               Inside — can't start
                             </span>
                           ) : (

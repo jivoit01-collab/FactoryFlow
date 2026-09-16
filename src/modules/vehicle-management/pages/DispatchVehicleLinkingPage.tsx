@@ -755,7 +755,7 @@ export default function DispatchVehicleLinkingPage() {
       </div>
 
       {!canViewInside ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
           Showing booked trucks only — you do not have the Inside Vehicle Manager view permission,
           so trucks already inside the gate and the bills on their gate-ins are hidden. A truck that
           is at the gate still shows here as “Booked”. Ask an administrator for
@@ -804,14 +804,14 @@ export default function DispatchVehicleLinkingPage() {
                           variant="outline"
                           className={
                             card.isInside
-                              ? 'border-emerald-300 text-emerald-700'
-                              : 'border-slate-300 text-slate-600'
+                              ? 'border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                              : 'border-slate-300 dark:border-border text-slate-600 dark:text-muted-foreground'
                           }
                         >
                           {card.isInside ? 'At the gate' : 'Booked'}
                         </Badge>
                         {card.arrivalNo ? (
-                          <Badge variant="outline" className="border-blue-300 text-blue-700">
+                          <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
                             {card.arrivalNo}
                           </Badge>
                         ) : null}
@@ -1048,7 +1048,7 @@ export default function DispatchVehicleLinkingPage() {
                                     {bill.duplicate_on.length > 0 ? (
                                       <Badge
                                         variant="outline"
-                                        className="border-red-300 text-red-700"
+                                        className="border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-400"
                                         title={`Also on: ${bill.duplicate_on.join(', ')}`}
                                       >
                                         <AlertTriangle className="mr-1 h-3 w-3" />
@@ -1093,7 +1093,7 @@ export default function DispatchVehicleLinkingPage() {
                                           type="button"
                                           size="sm"
                                           variant="ghost"
-                                          className="text-red-600 hover:text-red-700"
+                                          className="text-red-600 hover:text-red-700 dark:hover:text-red-400"
                                           disabled={!bill.removable || removeBill.isPending}
                                           title={
                                             bill.removable
@@ -1264,7 +1264,7 @@ export default function DispatchVehicleLinkingPage() {
                                   type="button"
                                   size="sm"
                                   variant="ghost"
-                                  className="text-red-600 hover:text-red-700"
+                                  className="text-red-600 hover:text-red-700 dark:hover:text-red-400"
                                   disabled={
                                     bill.plan.is_vehicle_link_locked || unlinkPlan.isPending
                                   }

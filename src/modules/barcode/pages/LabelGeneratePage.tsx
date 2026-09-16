@@ -288,7 +288,7 @@ export default function LabelGeneratePage() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-medium">{pallet.pallet_id}</span>
                     {pallet.box_count === 0 && (
-                      <Badge className="bg-amber-100 text-amber-800">EMPTY</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400">EMPTY</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -344,10 +344,10 @@ export default function LabelGeneratePage() {
                     <span className="font-mono font-medium">{item.item_code}</span>
                     {item.inventory_uom && <Badge variant="secondary">{item.inventory_uom}</Badge>}
                     {item.manage_batch_numbers && (
-                      <Badge className="bg-emerald-100 text-emerald-800">Batch</Badge>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400">Batch</Badge>
                     )}
                     {item.manage_serial_numbers && (
-                      <Badge className="bg-blue-100 text-blue-800">Serial</Badge>
+                      <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">Serial</Badge>
                     )}
                   </div>
                   <div className="truncate text-sm">{item.item_name}</div>

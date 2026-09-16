@@ -818,7 +818,7 @@ export default function SalesDispatchBarcodeScanPage() {
             error || (entryError ? getErrorMessage(entryError, 'Docking details not found') : null)
           }
         />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Docking details not found</span>
@@ -902,7 +902,7 @@ export default function SalesDispatchBarcodeScanPage() {
                   Check Barcode Scans
                 </Button>
                 {pendingCount > 0 ? (
-                  <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                  <Badge className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                     Syncing {pendingCount}
                   </Badge>
@@ -1023,7 +1023,7 @@ export default function SalesDispatchBarcodeScanPage() {
       </Card>
 
       {scanLockMessage ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Lock className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{scanLockMessage}</span>
         </div>
@@ -1318,7 +1318,7 @@ function BarcodeScansDialog({
             Checking barcode module...
           </div>
         ) : errorMessage ? (
-          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="flex items-start gap-3 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-red-800 dark:text-red-400">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <p className="text-sm">{errorMessage}</p>
           </div>
@@ -1594,7 +1594,7 @@ function BillScanCard({
       ) : null}
 
       {canScan && isComplete ? (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
           <Lock className="h-4 w-4 shrink-0" />
           <span>
             All {bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes} box
@@ -1784,7 +1784,7 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
               // A short box covers the line's loose remainder, not a box slot: called
               // out so "boxes scanned" can never quietly stand in for missing pieces.
               item.looseBoxCount > 0 ? (
-                <span className="font-medium text-amber-700">
+                <span className="font-medium text-amber-700 dark:text-amber-400">
                   + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
                   {item.looseBoxCount === 1 ? '' : 'es'})
                 </span>
@@ -1841,8 +1841,8 @@ function FailedScansQueue({
 }) {
   if (failedScans.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-md border border-red-200">
-      <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+    <div className="overflow-hidden rounded-md border border-red-200 dark:border-red-500/30">
+      <div className="flex items-center gap-2 border-b border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm font-semibold text-red-700 dark:text-red-400">
         <AlertCircle className="h-4 w-4" />
         Failed scans ({failedScans.length})
       </div>
@@ -2037,7 +2037,7 @@ function BillScannedBoxes({
 
 function ScanOptionalPanel() {
   return (
-    <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 p-4 text-sky-900">
+    <div className="flex items-start gap-3 rounded-md border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 p-4 text-sky-900 dark:text-sky-400">
       <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="space-y-1">
         <p className="font-medium">Box scanning is optional</p>
@@ -2070,7 +2070,7 @@ function ScanSkipPanel({
 
   if (status === 'APPROVED' || approvedOnLoad) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-400">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">Scanning skip approved</p>
@@ -2081,7 +2081,7 @@ function ScanSkipPanel({
               : "Approved for this truck's load on another company's docking. You can continue to attachments without scanning boxes."}
           </p>
           {skipRequest?.review_notes ? (
-            <p className="text-sm text-emerald-800">Note: {skipRequest.review_notes}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">Note: {skipRequest.review_notes}</p>
           ) : null}
         </div>
       </div>
@@ -2090,7 +2090,7 @@ function ScanSkipPanel({
 
   if (status === 'PENDING') {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">Scanning skip pending approval</p>
@@ -2099,7 +2099,7 @@ function ScanSkipPanel({
             still scan boxes to proceed normally.
           </p>
           {skipRequest?.reason ? (
-            <p className="text-sm text-amber-800">Reason: {skipRequest.reason}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {skipRequest.reason}</p>
           ) : null}
         </div>
       </div>
@@ -2127,7 +2127,7 @@ function ScanSkipPanel({
               : 'Request admin approval to continue without scanning boxes for this Docking entry.'}
           </p>
           {wasRejected && skipRequest?.review_notes ? (
-            <p className="text-sm text-red-700">Reason: {skipRequest.review_notes}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">Reason: {skipRequest.review_notes}</p>
           ) : null}
         </div>
       </div>
@@ -2170,7 +2170,7 @@ function PartialScanPanel({
 
   if (approvedOnLoad) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-400">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">
@@ -2183,7 +2183,7 @@ function PartialScanPanel({
             boxes scanned so far.
           </p>
           {summary.approved.length ? (
-            <p className="text-sm text-emerald-800">Bills: {summary.approved.join(', ')}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">Bills: {summary.approved.join(', ')}</p>
           ) : null}
         </div>
       </div>
@@ -2192,7 +2192,7 @@ function PartialScanPanel({
 
   if (summary.pending.length) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">
@@ -2210,7 +2210,7 @@ function PartialScanPanel({
             You can still scan the remaining boxes to proceed normally.
           </p>
           {partialRequests[0]?.reason ? (
-            <p className="text-sm text-amber-800">Reason: {partialRequests[0].reason}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {partialRequests[0].reason}</p>
           ) : null}
         </div>
       </div>
@@ -2241,7 +2241,7 @@ function PartialScanPanel({
                 } Request admin approval to dispatch this load with a partial scan.`}
           </p>
           {wasRejected && lastReviewed?.review_notes ? (
-            <p className="text-sm text-red-700">Reason: {lastReviewed.review_notes}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">Reason: {lastReviewed.review_notes}</p>
           ) : null}
         </div>
       </div>

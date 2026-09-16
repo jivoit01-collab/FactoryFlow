@@ -129,7 +129,7 @@ export default function GoodsReturnInListPage() {
             <Truck className="mr-2 h-4 w-4" />
             Expected
             {expected.length > 0 && (
-              <Badge className="ml-2 border-0 bg-amber-100 text-amber-800">
+              <Badge className="ml-2 border-0 bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400">
                 {expected.length}
               </Badge>
             )}

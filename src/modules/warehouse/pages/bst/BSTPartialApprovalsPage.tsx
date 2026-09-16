@@ -34,12 +34,12 @@ function StatusBadge({ status }: { status: BSTPartialTransferRequest['status'] }
     );
   if (status === 'REJECTED')
     return (
-      <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+      <Badge variant="outline" className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400">
         <XCircle className="mr-1 h-3.5 w-3.5" /> Rejected
       </Badge>
     );
   return (
-    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+    <Badge variant="outline" className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
       <Clock className="mr-1 h-3.5 w-3.5" /> Pending
     </Badge>
   );
@@ -94,7 +94,7 @@ function RequestRow({ req }: { req: BSTPartialTransferRequest }) {
             <span className="font-medium tabular-nums">{req.scanned_qty}</span> of{' '}
             <span className="font-medium tabular-nums">{req.expected_qty}</span> pcs
           </span>
-          <span className={cn(short > 0 && 'text-amber-700')}>
+          <span className={cn(short > 0 && 'text-amber-700 dark:text-amber-400')}>
             <span className="text-muted-foreground">Short by:</span>{' '}
             <span className="font-medium tabular-nums">{short}</span> pcs
           </span>

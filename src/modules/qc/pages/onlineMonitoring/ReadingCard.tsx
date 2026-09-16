@@ -148,11 +148,11 @@ export function ReadingCard({ recordId, reading, specMap, editable, onClose }: P
             </span>
           </div>
           {totalOut > 0 ? (
-            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+            <Badge className="bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
               <AlertTriangle className="mr-1 h-3 w-3" /> {totalOut} out of spec
             </Badge>
           ) : (
-            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+            <Badge className="bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400">
               In spec
             </Badge>
           )}

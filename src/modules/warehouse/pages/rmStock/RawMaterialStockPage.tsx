@@ -172,8 +172,8 @@ export default function RawMaterialStockPage() {
       </DashboardHeader>
 
       {managesNothing && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 text-sm text-amber-900">
+        <Card className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-400">
             You can read the register but not change it: you are not set as the manager of any
             warehouse in this company. An administrator assigns that on Admin → Warehouse
             Managers.

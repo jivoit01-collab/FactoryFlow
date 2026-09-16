@@ -56,43 +56,43 @@ const STATUS_ORDER: AssetStatus[] = [
 const STATUS_CONFIG = {
   RUNNING: {
     label: 'Running',
-    color: 'text-emerald-700',
-    bgColor: 'bg-emerald-50 border-emerald-200',
+    color: 'text-emerald-700 dark:text-emerald-400',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30',
     icon: Activity,
     link: '/maintenance/assets?status=RUNNING',
   },
   IDLE: {
     label: 'Idle',
-    color: 'text-slate-700',
-    bgColor: 'bg-slate-50 border-slate-200',
+    color: 'text-slate-700 dark:text-muted-foreground',
+    bgColor: 'bg-slate-50 dark:bg-muted/40 border-slate-200 dark:border-border',
     icon: Clock,
     link: '/maintenance/assets?status=IDLE',
   },
   BREAKDOWN: {
     label: 'Breakdown',
-    color: 'text-rose-700',
-    bgColor: 'bg-rose-50 border-rose-200',
+    color: 'text-rose-700 dark:text-rose-400',
+    bgColor: 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30',
     icon: AlertTriangle,
     link: '/maintenance/assets?status=BREAKDOWN',
   },
   UNDER_PM: {
     label: 'Under PM',
-    color: 'text-sky-700',
-    bgColor: 'bg-sky-50 border-sky-200',
+    color: 'text-sky-700 dark:text-sky-400',
+    bgColor: 'bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/30',
     icon: Wrench,
     link: '/maintenance/assets?status=UNDER_PM',
   },
   UNDER_REPAIR: {
     label: 'Repair',
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50 border-amber-200',
+    color: 'text-amber-700 dark:text-amber-400',
+    bgColor: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30',
     icon: Wrench,
     link: '/maintenance/assets?status=UNDER_REPAIR',
   },
   RETIRED: {
     label: 'Retired',
-    color: 'text-zinc-700',
-    bgColor: 'bg-zinc-50 border-zinc-200',
+    color: 'text-zinc-700 dark:text-muted-foreground',
+    bgColor: 'bg-zinc-50 dark:bg-muted/40 border-zinc-200 dark:border-border',
     icon: Boxes,
     link: '/maintenance/assets?status=RETIRED',
   },
@@ -125,9 +125,9 @@ function workTypeLabel(value: string) {
 
 function PriorityBadge({ priority }: { priority: MaintenancePriority }) {
   const classes: Record<MaintenancePriority, string> = {
-    NORMAL: 'border-slate-200 bg-slate-50 text-slate-700',
-    HIGH: 'border-amber-200 bg-amber-50 text-amber-700',
-    CRITICAL: 'border-rose-200 bg-rose-50 text-rose-700',
+    NORMAL: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+    HIGH: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    CRITICAL: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
   };
   return (
     <Badge variant="outline" className={classes[priority]}>
@@ -495,7 +495,7 @@ export default function MaintenanceDashboardPage() {
                             <td className="px-4 py-3">{formatQty(spare.current_stock)}</td>
                             <td className="px-4 py-3">{formatQty(spare.minimum_stock)}</td>
                             <td className="px-4 py-3">
-                              <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                              <Badge variant="outline" className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400">
                                 {formatQty(spare.reorder_shortage_qty)}
                               </Badge>
                             </td>

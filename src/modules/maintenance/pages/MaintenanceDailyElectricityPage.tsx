@@ -644,7 +644,7 @@ export default function MaintenanceDailyElectricityPage() {
                         <td className="px-3 py-2">
                           {meter.name}
                           {!meter.is_active && (
-                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                            <span className="ml-2 rounded-full bg-gray-100 dark:bg-muted px-2 py-0.5 text-xs text-gray-600 dark:text-muted-foreground">
                               Inactive
                             </span>
                           )}

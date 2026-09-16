@@ -9,10 +9,10 @@ import { useVerifyRequests } from '../api';
 import type { PalletVerifyRequestStatus } from '../types';
 
 const STATUS_COLORS: Record<PalletVerifyRequestStatus, string> = {
-  OPEN: 'bg-amber-100 text-amber-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
-  RESOLVED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-gray-100 text-gray-800',
+  OPEN: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  IN_PROGRESS: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  RESOLVED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  CANCELLED: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
 };
 
 type Tab = 'ALL' | PalletVerifyRequestStatus;
@@ -72,7 +72,7 @@ export default function PalletVerifyPage() {
         <StatCard label="Open" value={counts.OPEN} tone="text-amber-600" />
         <StatCard label="In Progress" value={counts.IN_PROGRESS} tone="text-blue-600" />
         <StatCard label="Resolved" value={counts.RESOLVED} tone="text-green-600" />
-        <StatCard label="Cancelled" value={counts.CANCELLED} tone="text-gray-600" />
+        <StatCard label="Cancelled" value={counts.CANCELLED} tone="text-gray-600 dark:text-muted-foreground" />
       </div>
 
       <div className="flex flex-wrap gap-2">

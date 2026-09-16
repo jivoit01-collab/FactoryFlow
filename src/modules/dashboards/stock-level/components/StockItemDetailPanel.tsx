@@ -17,16 +17,16 @@ function StatusBadge({ status }: { status: StockItem['stock_status'] }) {
   const config = {
     healthy: {
       label: 'Healthy',
-      classes: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      classes: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
     },
-    low: { label: 'Low', classes: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+    low: { label: 'Low', classes: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' },
     critical: {
       label: 'Critical',
-      classes: 'bg-red-200 text-red-900 font-semibold dark:bg-red-900/60 dark:text-red-300',
+      classes: 'bg-red-200 text-red-900 font-semibold dark:bg-red-500/20 dark:text-red-300',
     },
     unset: {
       label: 'No Benchmark Set',
-      classes: 'bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400',
+      classes: 'bg-gray-100 text-gray-600 dark:bg-muted/40 dark:text-muted-foreground',
     },
   } as const;
   const { label, classes } = config[status];

@@ -36,7 +36,7 @@ const adminModuleCards: AdminModuleCard[] = [
     description: 'Review and approve operator requests to skip box scanning for docking entries.',
     route: '/admin/docking/scan-approvals',
     icon: <ClipboardCheck className="h-5 w-5" />,
-    color: 'text-emerald-700',
+    color: 'text-emerald-700 dark:text-emerald-400',
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_SCAN_SKIP,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_SCAN_SKIP,
@@ -47,7 +47,7 @@ const adminModuleCards: AdminModuleCard[] = [
     description: 'Review and approve requests to dispatch a docking entry with partial box scanning.',
     route: '/admin/docking/partial-dispatch-approvals',
     icon: <Truck className="h-5 w-5" />,
-    color: 'text-amber-700',
+    color: 'text-amber-700 dark:text-amber-400',
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_PARTIAL_SCAN,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
@@ -58,7 +58,7 @@ const adminModuleCards: AdminModuleCard[] = [
     description: 'Review material requests raised across departments and approve them for purchase.',
     route: '/admin/material-indent-approvals',
     icon: <ClipboardList className="h-5 w-5" />,
-    color: 'text-sky-700',
+    color: 'text-sky-700 dark:text-sky-400',
     permissions: [
       MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
       MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
@@ -70,7 +70,7 @@ const adminModuleCards: AdminModuleCard[] = [
       'Sign off on material leaving the gate for repair, exchange or job work before the gate sees it.',
     route: '/admin/returnable-approvals',
     icon: <PackageCheck className="h-5 w-5" />,
-    color: 'text-violet-700',
+    color: 'text-violet-700 dark:text-violet-400',
     permissions: [RETURNABLE_PERMISSIONS.APPROVE_GATEPASS],
   },
   {
@@ -79,7 +79,7 @@ const adminModuleCards: AdminModuleCard[] = [
       'Review requests to seal a branch transfer whose scanned quantity is short of the bill.',
     route: '/admin/bst-approvals',
     icon: <ShieldCheck className="h-5 w-5" />,
-    color: 'text-teal-700',
+    color: 'text-teal-700 dark:text-teal-400',
     permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
   },
   {
@@ -88,7 +88,7 @@ const adminModuleCards: AdminModuleCard[] = [
       'Approve customer returns flagged "coming on approval" so the goods can be received.',
     route: '/admin/goods-return-approvals',
     icon: <Undo2 className="h-5 w-5" />,
-    color: 'text-rose-700',
+    color: 'text-rose-700 dark:text-rose-400',
     permissions: [GOODS_RETURN_PERMISSIONS.APPROVE],
   },
   {
@@ -97,7 +97,7 @@ const adminModuleCards: AdminModuleCard[] = [
       'Define every cost type the factory incurs and set its rates — factory-wide, per company, per department, or for a specific value.',
     route: '/admin/cost-master',
     icon: <Coins className="h-5 w-5" />,
-    color: 'text-indigo-700',
+    color: 'text-indigo-700 dark:text-indigo-400',
     permissions: [COST_MASTER_PERMISSIONS.MANAGE],
   },
 ];

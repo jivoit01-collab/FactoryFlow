@@ -2,11 +2,11 @@ import { AlertTriangle, CheckCircle2, Circle, Clock, Play, Square } from 'lucide
 import type { LiveStatus, RunStatus } from '../types';
 
 const LIVE_STATUS_CONFIG: Record<LiveStatus, { label: string; bg: string; text: string; darkBg: string; darkText: string; icon: typeof Circle }> = {
-  DRAFT: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-800', darkBg: 'dark:bg-gray-800', darkText: 'dark:text-gray-300', icon: Circle },
-  RUNNING: { label: 'Running', bg: 'bg-green-100', text: 'text-green-800', darkBg: 'dark:bg-green-900/30', darkText: 'dark:text-green-400', icon: Play },
-  BREAKDOWN: { label: 'Breakdown', bg: 'bg-red-100', text: 'text-red-800', darkBg: 'dark:bg-red-900/30', darkText: 'dark:text-red-400', icon: AlertTriangle },
-  STOPPED: { label: 'Stopped', bg: 'bg-amber-100', text: 'text-amber-800', darkBg: 'dark:bg-amber-900/30', darkText: 'dark:text-amber-400', icon: Square },
-  COMPLETED: { label: 'Completed', bg: 'bg-blue-100', text: 'text-blue-800', darkBg: 'dark:bg-blue-900/30', darkText: 'dark:text-blue-400', icon: CheckCircle2 },
+  DRAFT: { label: 'Draft', bg: 'bg-gray-100', text: 'text-gray-800', darkBg: 'dark:bg-muted', darkText: 'dark:text-muted-foreground', icon: Circle },
+  RUNNING: { label: 'Running', bg: 'bg-green-100', text: 'text-green-800', darkBg: 'dark:bg-green-500/15', darkText: 'dark:text-green-400', icon: Play },
+  BREAKDOWN: { label: 'Breakdown', bg: 'bg-red-100', text: 'text-red-800', darkBg: 'dark:bg-red-500/15', darkText: 'dark:text-red-400', icon: AlertTriangle },
+  STOPPED: { label: 'Stopped', bg: 'bg-amber-100', text: 'text-amber-800', darkBg: 'dark:bg-amber-500/15', darkText: 'dark:text-amber-400', icon: Square },
+  COMPLETED: { label: 'Completed', bg: 'bg-blue-100', text: 'text-blue-800', darkBg: 'dark:bg-blue-500/15', darkText: 'dark:text-blue-400', icon: CheckCircle2 },
 };
 
 interface ProductionStatusBadgeProps {

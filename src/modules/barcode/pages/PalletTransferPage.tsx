@@ -213,7 +213,7 @@ export default function PalletTransferPage() {
                     <span className="text-sm">{p.item_name || p.item_code}</span>
                     <span className="text-xs text-muted-foreground">{p.batch_number}</span>
                     <span className="text-xs">{p.box_count} boxes</span>
-                    <Badge className="bg-blue-100 text-blue-800 text-xs">
+                    <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400 text-xs">
                       {p.current_warehouse}
                     </Badge>
                   </div>

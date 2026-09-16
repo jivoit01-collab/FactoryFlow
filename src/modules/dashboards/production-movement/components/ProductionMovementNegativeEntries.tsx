@@ -105,7 +105,7 @@ export function ProductionMovementNegativeEntries({
                     {numberFormatter.format(item.quantity)}
                   </td>
                   <td className="whitespace-nowrap px-5 py-3">
-                    <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                    <Badge variant="outline" className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400">
                       OUT
                     </Badge>
                     <div className="mt-1 text-xs text-muted-foreground">

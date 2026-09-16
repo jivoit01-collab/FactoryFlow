@@ -10,17 +10,17 @@ import { useLooseStock, useLooseStockPage, useLooseStockSummary } from '../api';
 import type { DismantleReason, LooseStockStatus } from '../types';
 
 const STATUS_COLORS: Record<LooseStockStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
-  REPACKED: 'bg-blue-100 text-blue-800',
-  CONSUMED: 'bg-gray-100 text-gray-800',
+  ACTIVE: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  REPACKED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  CONSUMED: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
 };
 
 const REASON_COLORS: Record<DismantleReason, string> = {
-  REPACK: 'bg-purple-100 text-purple-800',
-  SAMPLE: 'bg-cyan-100 text-cyan-800',
-  DAMAGED: 'bg-red-100 text-red-800',
-  RETURN: 'bg-amber-100 text-amber-800',
-  OTHER: 'bg-gray-100 text-gray-800',
+  REPACK: 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400',
+  SAMPLE: 'bg-cyan-100 dark:bg-cyan-500/15 text-cyan-800 dark:text-cyan-400',
+  DAMAGED: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
+  RETURN: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  OTHER: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
 };
 
 /** Expanded pool row — the dismantle records behind one item's loose total. */
@@ -138,7 +138,7 @@ function PoolView({ search }: { search: string }) {
                       <td className="p-3">
                         <div className="flex flex-wrap gap-1">
                           {pool.batches.map((b) => (
-                            <Badge key={b} className="bg-gray-100 text-gray-800 font-mono text-xs">
+                            <Badge key={b} className="bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground font-mono text-xs">
                               {b}
                             </Badge>
                           ))}

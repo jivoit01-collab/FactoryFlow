@@ -821,7 +821,7 @@ export default function GRPOPreviewPage() {
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -1043,7 +1043,7 @@ export default function GRPOPreviewPage() {
           {blockedPOs.map((po) => (
             <Card
               key={po.po_receipt_id}
-              className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10"
+              className="border-amber-300/60 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10"
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
@@ -1067,7 +1067,7 @@ export default function GRPOPreviewPage() {
                       variant="ghost"
                       className="h-7 px-2 text-xs"
                     />
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400 whitespace-nowrap">
                       <AlertCircle className="h-3 w-3" />
                       QC not passed
                     </span>
@@ -1115,7 +1115,7 @@ export default function GRPOPreviewPage() {
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">{po.po_number}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400">
                       <CheckCircle2 className="h-3 w-3" />
                       Posted (SAP #{po.sap_doc_num})
                     </span>

@@ -120,7 +120,7 @@ describe('Sheet — File Content Verification', () => {
 
     it('applies base classes including fixed z-50 and transition', () => {
       expect(source).toContain(
-        'fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out',
+        'fixed z-50 gap-4 bg-popover p-6 text-popover-foreground shadow-lg transition ease-in-out',
       );
     });
 

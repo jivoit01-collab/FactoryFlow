@@ -176,7 +176,7 @@ export default function IssuesListPage() {
       </div>
 
       {unknown.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
+        <div className="flex items-start gap-2 rounded-md border border-yellow-300 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 px-3 py-2 text-sm text-yellow-900 dark:text-yellow-400">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Ignored: <code className="font-mono">{unknown.join(' ')}</code>. Try{' '}

@@ -53,8 +53,8 @@ function formatQty(value: string | number | null | undefined) {
 
 function alertClass(severity: MaintenanceAlertSeverity) {
   return severity === 'critical'
-    ? 'border-rose-200 bg-rose-50 text-rose-800'
-    : 'border-amber-200 bg-amber-50 text-amber-800';
+    ? 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400'
+    : 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400';
 }
 
 const alertLabels: Record<MaintenanceAlertType, string> = {
@@ -184,7 +184,7 @@ export default function MaintenanceAutomationPage() {
               </div>
 
               {scanQuery.isError && (
-                <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                <div className="rounded-md border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-400">
                   No matching maintenance asset or spare found.
                 </div>
               )}

@@ -122,7 +122,7 @@ export default function QCDashboardPage() {
           )}
 
           {error && !isPermissionError && (
-            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-900/10">
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-500/10">
               <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -145,7 +145,7 @@ export default function QCDashboardPage() {
                 <CardContent className="p-5">
                   <div className="mb-4 flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-blue-50 p-2 dark:bg-blue-900/20">
+                      <div className="rounded-lg bg-blue-50 p-2 dark:bg-blue-500/10">
                         <Package className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div>
@@ -157,19 +157,19 @@ export default function QCDashboardPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-md bg-yellow-50 p-2 text-center dark:bg-yellow-900/10">
+                    <div className="rounded-md bg-yellow-50 p-2 text-center dark:bg-yellow-500/10">
                       <p className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
                         {arrivalPending}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Pending</p>
                     </div>
-                    <div className="rounded-md bg-blue-50 p-2 text-center dark:bg-blue-900/10">
+                    <div className="rounded-md bg-blue-50 p-2 text-center dark:bg-blue-500/10">
                       <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         {arrivalAwaiting}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Awaiting</p>
                     </div>
-                    <div className="rounded-md bg-green-50 p-2 text-center dark:bg-green-900/10">
+                    <div className="rounded-md bg-green-50 p-2 text-center dark:bg-green-500/10">
                       <p className="text-lg font-bold text-green-600 dark:text-green-400">
                         {countsData?.completed ?? 0}
                       </p>
@@ -188,7 +188,7 @@ export default function QCDashboardPage() {
                 <CardContent className="p-5">
                   <div className="mb-4 flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-900/20">
+                      <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-500/10">
                         <Factory className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                       </div>
                       <div>
@@ -202,25 +202,25 @@ export default function QCDashboardPage() {
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-gray-900/10">
-                      <p className="text-lg font-bold text-gray-600 dark:text-gray-400">
+                    <div className="rounded-md bg-gray-50 p-2 text-center dark:bg-muted/40">
+                      <p className="text-lg font-bold text-gray-600 dark:text-muted-foreground">
                         {prodDraft}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Draft</p>
                     </div>
-                    <div className="rounded-md bg-blue-50 p-2 text-center dark:bg-blue-900/10">
+                    <div className="rounded-md bg-blue-50 p-2 text-center dark:bg-blue-500/10">
                       <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
                         {prodSubmitted}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Submitted</p>
                     </div>
-                    <div className="rounded-md bg-green-50 p-2 text-center dark:bg-green-900/10">
+                    <div className="rounded-md bg-green-50 p-2 text-center dark:bg-green-500/10">
                       <p className="text-lg font-bold text-green-600 dark:text-green-400">
                         {prodApproved}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Approved</p>
                     </div>
-                    <div className="rounded-md bg-red-50 p-2 text-center dark:bg-red-900/10">
+                    <div className="rounded-md bg-red-50 p-2 text-center dark:bg-red-500/10">
                       <p className="text-lg font-bold text-red-600 dark:text-red-400">
                         {prodRejected}
                       </p>
@@ -239,7 +239,7 @@ export default function QCDashboardPage() {
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10">
                         <ClipboardCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                       </div>
                       <div>
@@ -253,7 +253,7 @@ export default function QCDashboardPage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    <div className="text-center p-2 rounded-md bg-amber-50 dark:bg-amber-900/10">
+                    <div className="text-center p-2 rounded-md bg-amber-50 dark:bg-amber-500/10">
                       <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
                         {submittedClearances.length}
                       </p>

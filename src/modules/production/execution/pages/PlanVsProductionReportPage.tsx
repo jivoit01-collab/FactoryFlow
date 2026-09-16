@@ -11,9 +11,9 @@ import { usePlanVsProductionReport } from '../api';
 import type { AnalyticsParams } from '../types';
 
 const STATUS_COLORS: Record<string, string> = {
-  on_track: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  behind: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  exceeded: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  on_track: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  behind: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+  exceeded: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
 };
 
 function PlanVsProductionReportPage() {

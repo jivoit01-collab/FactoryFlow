@@ -244,7 +244,7 @@ export default function DismantlePage() {
                   {palletDetail.box_count} boxes
                 </p>
               </div>
-              <Badge className="bg-blue-100 text-blue-800">{palletDetail.status}</Badge>
+              <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">{palletDetail.status}</Badge>
             </div>
 
             {/* Box selection */}
@@ -364,8 +364,8 @@ export default function DismantlePage() {
               <Badge
                 className={
                   boxDetail.status === 'ACTIVE'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-amber-100 text-amber-800'
+                    ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
+                    : 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400'
                 }
               >
                 {boxDetail.status}

@@ -68,7 +68,7 @@ export default function ReturnOutListPage() {
       />
 
       {awaitingCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
           <Truck className="h-4 w-4 shrink-0" />
           {awaitingCount} gate pass{awaitingCount === 1 ? ' is' : 'es are'} waiting to leave.
         </div>
@@ -145,7 +145,7 @@ export default function ReturnOutListPage() {
                 return (
                   <tr
                     key={pass.id}
-                    className={cn('border-t hover:bg-muted/30', isAwaiting && 'bg-amber-50/40')}
+                    className={cn('border-t hover:bg-muted/30', isAwaiting && 'bg-amber-50/40 dark:bg-amber-500/10')}
                   >
                     <td className="px-3 py-2 font-medium">{pass.pass_no}</td>
                     <td className="px-3 py-2">
@@ -158,7 +158,7 @@ export default function ReturnOutListPage() {
                     <td className="px-3 py-2">
                       {pass.material_indent_no ? (
                         <span
-                          className="inline-flex items-center whitespace-nowrap rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700"
+                          className="inline-flex items-center whitespace-nowrap rounded-full border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-400"
                           title={`Material Indent ${pass.material_indent_no}`}
                         >
                           Material Indent

@@ -55,8 +55,8 @@ export function ClearanceChecklistTable({ items, localItems, onLocalChange, read
                           onClick={() => onLocalChange?.(item.id, opt)}
                           className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors ${
                             currentResult === opt
-                              ? opt === 'YES' ? 'bg-green-100 text-green-800 border-green-300' : opt === 'NO' ? 'bg-red-100 text-red-800 border-red-300' : 'bg-gray-100 text-gray-800 border-gray-300'
-                              : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                              ? opt === 'YES' ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400 border-green-300 dark:border-green-500/30' : opt === 'NO' ? 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400 border-red-300 dark:border-red-500/30' : 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground border-gray-300 dark:border-border'
+                              : 'bg-white text-gray-500 border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-muted/40'
                           }`}
                         >
                           {CLEARANCE_RESULT_LABELS[opt]}

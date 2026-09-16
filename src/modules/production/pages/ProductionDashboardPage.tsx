@@ -71,7 +71,7 @@ const quickActions: ProductionModuleCard[] = [
     description: 'Add, edit & manage production machines',
     icon: <Cog className="h-5 w-5" />,
     route: '/production/execution/master-data',
-    color: 'text-gray-600',
+    color: 'text-gray-600 dark:text-muted-foreground',
     permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
   },
 ];

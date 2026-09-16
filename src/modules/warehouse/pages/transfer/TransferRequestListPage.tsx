@@ -392,7 +392,7 @@ export default function TransferRequestListPage() {
       ) : (
         <>
           {tab === 'in-transit' && rows.length > 0 && (
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-200">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300">
               These moves cross SAP branches, so the stock is sitting in an in-transit warehouse. It
               only lands at the destination once the receiving side finishes the BST receipt.
             </div>

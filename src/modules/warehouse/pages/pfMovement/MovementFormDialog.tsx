@@ -763,7 +763,7 @@ export function MovementFormDialog({
                     without a document — and this page exists to record what the
                     keeper says, not what SAP already believes. */}
                 {overAvailable && (
-                  <p className="text-amber-700">
+                  <p className="text-amber-700 dark:text-amber-400">
                     That is more than SAP shows in {fromWarehouse} (
                     {(pickedStock?.pieces ?? 0).toLocaleString()} {pickedItem.uom || 'pcs'}). You
                     can still record it — check the figure.
@@ -844,7 +844,7 @@ export function MovementFormDialog({
                             <span
                               className={
                                 line.sap_on_hand > 0 && line.pieces > line.sap_on_hand
-                                  ? 'text-amber-700'
+                                  ? 'text-amber-700 dark:text-amber-400'
                                   : 'text-muted-foreground'
                               }
                             >

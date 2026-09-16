@@ -262,7 +262,7 @@ export function ProductionMovementRouteFlow({
                         variant="outline"
                         className={
                           hasMovement
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                             : 'border-muted bg-muted/40 text-muted-foreground'
                         }
                       >

@@ -202,12 +202,12 @@ function RequestRow({
               </div>
             )}
             {error && (
-              <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+              <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                 {error}
               </div>
             )}
             {done && (
-              <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/20 dark:text-green-300">
+              <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300">
                 {done}
               </div>
             )}
@@ -258,7 +258,7 @@ export function SapAwaitingTransferTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
+      <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 dark:border-border dark:bg-muted/40 dark:text-muted-foreground">
         <PackageCheck className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           These transfer requests are approved, but the stock has not moved yet — an approved
@@ -316,7 +316,7 @@ export function SapAwaitingTransferTable({
       )}
 
       {rows.some((r) => r.cross_branch) && (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             A request whose warehouses sit in different SAP branches has to move in two legs through

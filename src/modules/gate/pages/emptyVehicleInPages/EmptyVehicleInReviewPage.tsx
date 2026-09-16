@@ -80,7 +80,7 @@ export default function EmptyVehicleInReviewPage() {
           title="Empty Vehicle In"
           error={error || (entryError ? getErrorMessage(entryError, 'Entry not found') : null)}
         />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Empty vehicle entry details not found</span>

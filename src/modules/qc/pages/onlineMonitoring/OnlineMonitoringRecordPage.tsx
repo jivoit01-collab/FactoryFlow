@@ -23,10 +23,10 @@ import { buildSpecMap } from './specValidation';
 import { useOnlineRecordPrint } from './useOnlineRecordPrint';
 
 const STATUS_BADGE: Record<OnlineRecordStatus, string> = {
-  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
+  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
+  APPROVED: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
 };
 
 export default function OnlineMonitoringRecordPage() {
@@ -165,7 +165,7 @@ export default function OnlineMonitoringRecordPage() {
       </Card>
 
       {record.status === 'REJECTED' && record.rejection_remarks && (
-        <div className="rounded-md border border-red-500/40 bg-red-50 p-3 text-sm dark:bg-red-900/10">
+        <div className="rounded-md border border-red-500/40 bg-red-50 p-3 text-sm dark:bg-red-500/10">
           <span className="font-medium text-red-700 dark:text-red-400">Rejected: </span>
           {record.rejection_remarks}
         </div>

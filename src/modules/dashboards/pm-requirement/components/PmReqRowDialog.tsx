@@ -190,14 +190,14 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                 row.over_purchased) && (
                 <section className="space-y-2">
                   {row.po_overdue && (
-                    <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
+                    <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
                       The earliest open order for this was due{' '}
                       {formatDay(row.po_earliest_due, true)} and has not arrived. Treating it as
                       cover means assuming a delivery that is already late.
                     </p>
                   )}
                   {row.po_due_after_plan && (
-                    <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-200">
+                    <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
                       Nothing on order is due until after this plan ends, so it does not cover this
                       month&rsquo;s production even though the quantity is on the way.
                     </p>
@@ -205,21 +205,21 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   {/* The one reading that would turn this row from a finding
                       into a non-finding, said where somebody will see it. */}
                   {row.over_purchased && row.po_due_after_plan && (
-                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                       The excess is on an order that is not due until after this plan ends, so it
                       may be next month&rsquo;s stock bought early rather than an over-buy. Check it
                       against next month&rsquo;s plan before treating it as one.
                     </p>
                   )}
                   {row.over_purchased && row.over_issued && (
-                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                    <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                       The floor has already drawn more of this than the plan called for, so the plan
                       needs nothing further and the whole open order counts as excess against it.
                       That is as likely to be a plan that is out of date as an order that is wrong.
                     </p>
                   )}
                   {row.issued_produced_qty > 0 && (
-                    <p className="rounded-lg border border-violet-300/60 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200">
+                    <p className="rounded-lg border border-violet-300/60 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
                       {formatQty(row.issued_produced_qty)} of the issued figure was made in-house
                       straight onto the floor rather than drawn from the stores
                       {row.issued_transfer_qty > 0

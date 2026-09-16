@@ -85,14 +85,14 @@ const EQUIPMENT_STATUS_OPTIONS: Array<{ value: FireEquipmentStatus; label: strin
 ];
 
 const EQUIPMENT_STATUS_CLASSES: Record<FireEquipmentStatus, string> = {
-  OK: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  NOT_OK: 'border-red-200 bg-red-50 text-red-700',
-  NEEDS_ATTENTION: 'border-amber-200 bg-amber-50 text-amber-700',
+  OK: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  NOT_OK: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
+  NEEDS_ATTENTION: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
 };
 
 const REPORT_STATUS_CLASSES: Record<FireReportStatus, string> = {
-  SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
-  REVIEWED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  SUBMITTED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  REVIEWED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
 };
 
 function today() {
@@ -663,7 +663,7 @@ function ReportDetailDialog({
             </div>
 
             {report.status === 'REVIEWED' && report.review_remarks && (
-              <div className="rounded-md border bg-emerald-50/50 p-3 text-sm">
+              <div className="rounded-md border bg-emerald-50/50 dark:bg-emerald-500/10 p-3 text-sm">
                 <span className="font-medium">Review note: </span>
                 {report.review_remarks}
               </div>
@@ -870,7 +870,7 @@ export default function MaintenanceFireReportsPage() {
                     {report.attention_items > 0 && (
                       <Badge
                         variant="outline"
-                        className="ml-2 border-amber-200 bg-amber-50 text-amber-700"
+                        className="ml-2 border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400"
                       >
                         {report.attention_items} flagged
                       </Badge>

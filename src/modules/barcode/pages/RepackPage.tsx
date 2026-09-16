@@ -303,7 +303,7 @@ export default function RepackPage() {
                         tabIndex={0}
                         className={`border-b last:border-0 cursor-pointer hover:bg-muted/30 ${
                           excluded ? 'opacity-40' : ''
-                        } ${ticked ? 'bg-blue-50' : ''}`}
+                        } ${ticked ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}
                         onClick={() => toggleSource(ls.id)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -326,7 +326,7 @@ export default function RepackPage() {
                         <td className="p-2 text-right font-bold">
                           {use > 0 ? use : '—'}
                           {use > 0 && use < Number(ls.qty) && (
-                            <Badge className="ml-2 bg-amber-100 text-amber-800">partial</Badge>
+                            <Badge className="ml-2 bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400">partial</Badge>
                           )}
                         </td>
                       </tr>

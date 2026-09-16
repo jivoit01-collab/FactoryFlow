@@ -17,11 +17,11 @@ interface FillDataAlertProps {
  */
 export function FillDataAlert({ message, buttonLabel = 'Fill Data', onFillData }: FillDataAlertProps) {
   return (
-    <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4">
+    <div className="rounded-md bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{message}</p>
+          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{message}</p>
         </div>
         <Button onClick={onFillData} size="sm" variant="outline">
           {buttonLabel}

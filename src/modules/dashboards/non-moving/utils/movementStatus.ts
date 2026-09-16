@@ -9,12 +9,12 @@ export function getMovementStatus(days: number): MovementStatus {
 export function rowAgeClasses(days: number): string {
   switch (getMovementStatus(days)) {
     case 'non-moving':
-      return 'bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50';
+      return 'bg-red-50 hover:bg-red-100 dark:bg-red-500/15 dark:hover:bg-red-500/25';
     case 'slow-moving':
-      return 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40';
+      return 'bg-yellow-50 hover:bg-yellow-100 dark:bg-yellow-500/10 dark:hover:bg-yellow-500/25';
     case 'recent':
     default:
-      return 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40';
+      return 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/25';
   }
 }
 

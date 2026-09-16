@@ -9,15 +9,15 @@ import { usePrintHistoryPage } from '../api';
 import ScanSearchButton from '../components/ScanSearchButton';
 
 const TYPE_COLORS = {
-  BOX: 'bg-blue-100 text-blue-800',
-  PALLET: 'bg-purple-100 text-purple-800',
-  BIN: 'bg-gray-100 text-gray-800',
-  WAREHOUSE: 'bg-gray-100 text-gray-800',
+  BOX: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  PALLET: 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400',
+  BIN: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
+  WAREHOUSE: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
 };
 
 const PRINT_COLORS = {
-  ORIGINAL: 'bg-green-100 text-green-800',
-  REPRINT: 'bg-amber-100 text-amber-800',
+  ORIGINAL: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  REPRINT: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
 };
 
 export default function PrintHistoryPage() {
@@ -106,13 +106,13 @@ export default function PrintHistoryPage() {
                   {logs.map((log) => (
                     <tr key={log.id} className="border-b hover:bg-muted/30">
                       <td className="p-3">
-                        <Badge className={TYPE_COLORS[log.label_type] || 'bg-gray-100'}>
+                        <Badge className={TYPE_COLORS[log.label_type] || 'bg-gray-100 dark:bg-muted'}>
                           {log.label_type}
                         </Badge>
                       </td>
                       <td className="p-3 font-mono text-xs">{log.reference_code}</td>
                       <td className="p-3">
-                        <Badge className={PRINT_COLORS[log.print_type] || 'bg-gray-100'}>
+                        <Badge className={PRINT_COLORS[log.print_type] || 'bg-gray-100 dark:bg-muted'}>
                           {log.print_type}
                         </Badge>
                       </td>

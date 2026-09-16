@@ -720,13 +720,13 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
     <div
       className={`rounded-lg border p-3 transition-colors ${
         s === 'CONFIRMED'
-          ? 'border-sky-300/60 bg-sky-50/40 dark:bg-sky-950/20'
+          ? 'border-sky-300/60 dark:border-sky-500/30 bg-sky-50/40 dark:bg-sky-500/10'
           : s === 'SCANNED'
-            ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/20'
+            ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-500/10'
             : s === 'PARTIAL'
-              ? 'border-amber-400/60 bg-amber-50/40 dark:bg-amber-950/20'
+              ? 'border-amber-400/60 bg-amber-50/40 dark:bg-amber-500/10'
               : s === 'CANCELLED'
-                ? 'border-rose-300/50 bg-rose-50/30 dark:bg-rose-950/10'
+                ? 'border-rose-300/50 dark:border-rose-500/30 bg-rose-50/30 dark:bg-rose-500/10'
                 : 'bg-card'
       }`}
     >
@@ -793,7 +793,7 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
 
       {/* SAP-item variant choice (only when the FSN maps to >1 item) */}
       {order.variants && order.variants.some((v) => v.has_choice) && order.status !== 'CONFIRMED' ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300/70 bg-amber-50/40 p-2 dark:bg-amber-950/10">
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded border border-dashed border-amber-300/70 dark:border-amber-500/30 bg-amber-50/40 p-2 dark:bg-amber-500/10">
           {order.variants
             .filter((v) => v.has_choice)
             .map((v) => (
@@ -809,9 +809,9 @@ function BoardOrderCard({ order }: { order: DispatchBoardOrder }) {
             key={idx}
             className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs ${
               it.confirmed
-                ? 'border-sky-300 bg-sky-50/60 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300'
+                ? 'border-sky-300 dark:border-sky-500/30 bg-sky-50/60 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300'
                 : it.scanned
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                  ? 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50/60 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
                   : 'text-muted-foreground'
             }`}
             title={

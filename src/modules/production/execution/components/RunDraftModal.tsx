@@ -100,25 +100,25 @@ const ACCENT: Record<
   { badge: string; badgeDone: string; title: string; spine: string; chip: string }
 > = {
   sky: {
-    badge: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
+    badge: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
     badgeDone: 'bg-sky-600 text-white',
-    title: 'text-sky-800 dark:text-sky-200',
-    spine: 'border-sky-200 dark:border-sky-900',
-    chip: 'border-sky-500 bg-sky-50 text-sky-900 ring-1 ring-sky-500 dark:bg-sky-950/60 dark:text-sky-100',
+    title: 'text-sky-800 dark:text-sky-300',
+    spine: 'border-sky-200 dark:border-sky-500/30',
+    chip: 'border-sky-500 bg-sky-50 text-sky-900 ring-1 ring-sky-500 dark:bg-sky-500/20 dark:text-sky-300',
   },
   violet: {
-    badge: 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300',
+    badge: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
     badgeDone: 'bg-violet-600 text-white',
-    title: 'text-violet-800 dark:text-violet-200',
-    spine: 'border-violet-200 dark:border-violet-900',
-    chip: 'border-violet-500 bg-violet-50 text-violet-900 ring-1 ring-violet-500 dark:bg-violet-950/60 dark:text-violet-100',
+    title: 'text-violet-800 dark:text-violet-300',
+    spine: 'border-violet-200 dark:border-violet-500/30',
+    chip: 'border-violet-500 bg-violet-50 text-violet-900 ring-1 ring-violet-500 dark:bg-violet-500/20 dark:text-violet-300',
   },
   teal: {
-    badge: 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+    badge: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
     badgeDone: 'bg-teal-600 text-white',
-    title: 'text-teal-800 dark:text-teal-200',
-    spine: 'border-teal-200 dark:border-teal-900',
-    chip: 'border-teal-500 bg-teal-50 text-teal-900 ring-1 ring-teal-500 dark:bg-teal-950/60 dark:text-teal-100',
+    title: 'text-teal-800 dark:text-teal-300',
+    spine: 'border-teal-200 dark:border-teal-500/30',
+    chip: 'border-teal-500 bg-teal-50 text-teal-900 ring-1 ring-teal-500 dark:bg-teal-500/20 dark:text-teal-300',
   },
 };
 
@@ -580,7 +580,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
                     )}
                   </div>
                 ) : (
-                  <p className="flex items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-800 dark:bg-violet-950/40 dark:text-violet-200">
+                  <p className="flex items-center gap-2 rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
                     <Settings2 className="h-4 w-4 shrink-0" />
                     This line has no presets — speed and manpower stay as they are.
                   </p>
@@ -598,7 +598,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
                       <Input
                         value={[config?.sku_code, config?.sku_name].filter(Boolean).join(' — ')}
                         readOnly
-                        className="cursor-not-allowed border-violet-200 bg-violet-50/60 dark:border-violet-900 dark:bg-violet-950/30"
+                        className="cursor-not-allowed border-violet-200 bg-violet-50/60 dark:border-violet-500/30 dark:bg-violet-500/15"
                       />
                       <p className="mt-1 text-xs text-violet-700 dark:text-violet-300">
                         Set by the {config?.config_name} configuration

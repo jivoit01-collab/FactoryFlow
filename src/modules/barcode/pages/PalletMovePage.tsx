@@ -132,7 +132,7 @@ export default function PalletMovePage() {
                   <span>
                     {palletDetail.box_count} boxes · {palletDetail.total_qty} {palletDetail.uom}
                   </span>
-                  <Badge className="bg-blue-100 text-blue-800">
+                  <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">
                     From: {palletDetail.current_warehouse}
                   </Badge>
                 </div>

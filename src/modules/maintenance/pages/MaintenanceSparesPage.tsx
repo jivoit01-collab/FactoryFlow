@@ -113,12 +113,12 @@ const EMPTY_SPARE_FORM: SpareFormState = {
 };
 
 const REQUEST_STATUS_CLASSES: Record<SpareRequestStatus, string> = {
-  REQUESTED: 'border-sky-200 bg-sky-50 text-sky-700',
-  PARTIALLY_ISSUED: 'border-amber-200 bg-amber-50 text-amber-700',
-  ISSUED: 'border-blue-200 bg-blue-50 text-blue-700',
-  PARTIALLY_CONSUMED: 'border-violet-200 bg-violet-50 text-violet-700',
-  CLOSED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  CANCELLED: 'border-slate-200 bg-slate-50 text-slate-600',
+  REQUESTED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  PARTIALLY_ISSUED: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  ISSUED: 'border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  PARTIALLY_CONSUMED: 'border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400',
+  CLOSED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  CANCELLED: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-600 dark:text-muted-foreground',
 };
 
 function decimalNumber(value: MaintenanceDecimal | null | undefined) {
@@ -788,10 +788,10 @@ export default function MaintenanceSparesPage() {
       </DashboardHeader>
 
       {canReceiveIndent && pendingReceipts.length > 0 && (
-        <Card className="border-cyan-200">
+        <Card className="border-cyan-200 dark:border-cyan-500/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <PackageCheck className="h-4 w-4 text-cyan-700" />
+              <PackageCheck className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
               Pending Receipts ({pendingReceipts.length})
             </CardTitle>
             <CardDescription>
@@ -1000,17 +1000,17 @@ export default function MaintenanceSparesPage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {spare.is_critical && (
-                            <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                            <Badge variant="outline" className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400">
                               Critical
                             </Badge>
                           )}
                           {spare.is_low_stock && (
-                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                            <Badge variant="outline" className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
                               Low
                             </Badge>
                           )}
                           {spare.is_below_minimum && (
-                            <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+                            <Badge variant="outline" className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400">
                               Minimum
                             </Badge>
                           )}

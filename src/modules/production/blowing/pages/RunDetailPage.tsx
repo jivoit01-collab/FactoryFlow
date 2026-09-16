@@ -70,11 +70,11 @@ const fmt = (v: string | number | null | undefined, digits = 2) => {
 };
 
 const WH_BADGE: Record<WarehouseApprovalStatus, string> = {
-  NOT_REQUESTED: 'bg-gray-100 text-gray-600',
-  PENDING: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  PARTIALLY_APPROVED: 'bg-blue-100 text-blue-800',
-  REJECTED: 'bg-red-100 text-red-800',
+  NOT_REQUESTED: 'bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground',
+  PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  APPROVED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  PARTIALLY_APPROVED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  REJECTED: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
 };
 const WH_LABEL: Record<WarehouseApprovalStatus, string> = {
   NOT_REQUESTED: 'WH Not Requested',
@@ -245,7 +245,7 @@ function RunDetailPage() {
         {!isCompleted && wh === 'NOT_REQUESTED' && (
           <Button
             variant="outline"
-            className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100"
+            className="border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/25"
             disabled={submitPreform.isPending}
             onClick={() => act(submitPreform.mutateAsync(undefined), 'Preform request submitted')}
           >
@@ -440,7 +440,7 @@ function RunDetailPage() {
                       )}
                     >
                       <span>
-                        <span className={cn('font-medium', makeCheaper ? 'text-green-700' : 'text-amber-700')}>
+                        <span className={cn('font-medium', makeCheaper ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400')}>
                           {makeCheaper ? 'Making is cheaper' : 'Buying is cheaper'}
                         </span>
                         <span className="block text-xs text-muted-foreground">

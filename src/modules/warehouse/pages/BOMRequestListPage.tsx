@@ -19,10 +19,10 @@ import type { BOMRequestStatus } from '../types';
 
 function StatusBadge({ status }: { status: BOMRequestStatus }) {
   const config: Record<BOMRequestStatus, { label: string; variant: string; icon: typeof Clock }> = {
-    PENDING: { label: 'Pending', variant: 'bg-amber-100 text-amber-800', icon: Clock },
-    APPROVED: { label: 'Approved', variant: 'bg-green-100 text-green-800', icon: CheckCircle2 },
-    PARTIALLY_APPROVED: { label: 'Partial', variant: 'bg-blue-100 text-blue-800', icon: AlertCircle },
-    REJECTED: { label: 'Rejected', variant: 'bg-red-100 text-red-800', icon: XCircle },
+    PENDING: { label: 'Pending', variant: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400', icon: Clock },
+    APPROVED: { label: 'Approved', variant: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400', icon: CheckCircle2 },
+    PARTIALLY_APPROVED: { label: 'Partial', variant: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400', icon: AlertCircle },
+    REJECTED: { label: 'Rejected', variant: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400', icon: XCircle },
   };
   const c = config[status];
   const Icon = c.icon;
@@ -37,9 +37,9 @@ function StatusBadge({ status }: { status: BOMRequestStatus }) {
 function IssueBadge({ status }: { status: string }) {
   if (status === 'NOT_ISSUED') return <Badge variant="outline">Not Issued</Badge>;
   if (status === 'PARTIALLY_ISSUED') {
-    return <Badge className="bg-amber-100 text-amber-800 border-0">Partial</Badge>;
+    return <Badge className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400 border-0">Partial</Badge>;
   }
-  return <Badge className="bg-green-100 text-green-800 border-0">Fully Issued</Badge>;
+  return <Badge className="bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400 border-0">Fully Issued</Badge>;
 }
 
 export default function BOMRequestListPage() {
@@ -109,7 +109,7 @@ export default function BOMRequestListPage() {
                     <p className="flex items-center gap-1.5 font-medium">
                       Run #{req.run_number}
                       {req.source === 'blowing' && (
-                        <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                        <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-500/15 dark:text-purple-300">
                           Blowing
                         </span>
                       )}

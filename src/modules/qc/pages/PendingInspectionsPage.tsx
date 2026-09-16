@@ -65,12 +65,12 @@ type MaterialFilterKey = (typeof MATERIAL_FILTERS)[number]['key'];
 
 // Status badge styling based on workflow_status
 const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
-  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  NOT_STARTED: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400',
+  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
+  SUBMITTED: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
+  QA_CHEMIST_APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
+  QAM_APPROVED: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
 };
 
 function getNavigateTo(item: InspectionListItem): string {
@@ -84,7 +84,7 @@ function getEffectiveStatusBadge(item: InspectionListItem) {
     label: WORKFLOW_STATUS_CONFIG[item.workflow_status]?.label || item.workflow_status,
     className:
       STATUS_BADGE_CLASSES[item.workflow_status] ||
-      'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+      'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
   };
 }
 
@@ -351,7 +351,7 @@ export default function PendingInspectionsPage() {
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>

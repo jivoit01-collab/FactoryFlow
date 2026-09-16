@@ -37,10 +37,10 @@ function toNum(value: unknown): number {
 // bill they're loading (a truck can be dispatching for Oil, Mart, or Beverages).
 function companyPillClass(code?: string): string {
   const c = (code ?? '').toUpperCase();
-  if (c.includes('OIL')) return 'bg-amber-100 text-amber-800 hover:bg-amber-100';
-  if (c.includes('MART')) return 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100';
-  if (c.includes('BEV')) return 'bg-violet-100 text-violet-800 hover:bg-violet-100';
-  return 'bg-slate-100 text-slate-700 hover:bg-slate-100';
+  if (c.includes('OIL')) return 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25';
+  if (c.includes('MART')) return 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/25';
+  if (c.includes('BEV')) return 'bg-violet-100 dark:bg-violet-500/15 text-violet-800 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-500/25';
+  return 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground hover:bg-slate-100 dark:hover:bg-muted';
 }
 
 export default function DispatchLoadingScanPage() {

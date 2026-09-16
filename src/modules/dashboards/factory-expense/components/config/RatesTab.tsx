@@ -176,7 +176,7 @@ function RateGroup({
       {basisMismatch && (
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-600/30 bg-amber-500/10 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             <strong>{chosen?.name}</strong> is a <strong>{chosen?.default_basis}</strong> rate
             but this tile prices on <strong>{wantsLabel}</strong>. The board honours whatever
             basis each rate row carries, so a mismatched one may read differently than you
@@ -188,7 +188,7 @@ function RateGroup({
       {group.rates.length === 0 ? (
         <div className="flex items-start gap-2.5 rounded-xl border border-amber-600/30 bg-amber-500/10 p-4 dark:border-amber-400/30 dark:bg-amber-400/10">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-          <div className="text-sm text-amber-800 dark:text-amber-200">
+          <div className="text-sm text-amber-800 dark:text-amber-300">
             <p className="font-medium">
               No rate in force — this tile shows a warning instead of a number.
             </p>

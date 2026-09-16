@@ -183,7 +183,7 @@ export default function RejectedQCReturnDashboardPage() {
       <div>
         <h3 className="mb-3 text-sm font-medium text-muted-foreground">Status Overview</h3>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20">
+          <Card className="border-green-200 bg-green-50 dark:border-green-500/30 dark:bg-green-500/10">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -248,7 +248,7 @@ export default function RejectedQCReturnDashboardPage() {
                           {formatDate(entry.values.gateOutDate)}
                         </td>
                         <td className="whitespace-nowrap p-3 text-sm">
-                          <span className="inline-flex rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                          <span className="inline-flex rounded-full bg-green-50 dark:bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
                             {getValue(entry, 'returnAction')}
                           </span>
                         </td>

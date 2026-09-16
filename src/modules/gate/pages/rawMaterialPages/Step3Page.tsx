@@ -1009,7 +1009,7 @@ function POCard({
         <div className="space-y-4">
           {/* Show locked PO message */}
           {isLockedPO && (
-            <div className="rounded-md bg-amber-50 p-4 text-sm text-amber-800 border border-amber-200">
+            <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -1022,7 +1022,7 @@ function POCard({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                    className="border-amber-300 dark:border-amber-500/30 bg-white text-amber-900 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25"
                     onClick={onReplace}
                   >
                     Replace PO

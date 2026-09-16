@@ -137,7 +137,7 @@ export default function SapIdentitiesPage() {
         }}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+      <div className="rounded-lg border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
         SAP accepts an approval decision only from the authorizer named on the request&apos;s
         current stage. A user can approve in this app when their mapped SAP account is that
         authorizer <em>and</em> its password is configured on the server. Mappings apply to the
@@ -150,7 +150,7 @@ export default function SapIdentitiesPage() {
           <CardContent className="space-y-2 p-4 text-sm">
             <div className="font-medium">Still to do in this company</div>
             {authorizersMissingMapping.length > 0 && (
-              <div className="flex items-start gap-2 text-amber-800">
+              <div className="flex items-start gap-2 text-amber-800 dark:text-amber-400">
                 <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   <strong>{authorizersMissingMapping.length}</strong> SAP authorizer
@@ -160,7 +160,7 @@ export default function SapIdentitiesPage() {
               </div>
             )}
             {authorizersMissingPassword.length > 0 && (
-              <div className="flex items-start gap-2 text-amber-800">
+              <div className="flex items-start gap-2 text-amber-800 dark:text-amber-400">
                 <KeyRound className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   <strong>{authorizersMissingPassword.length}</strong> SAP authorizer
@@ -277,14 +277,14 @@ export default function SapIdentitiesPage() {
                 onClear={() => setSelectedSapUser(null)}
               />
               {selectedSapUser?.mapped_to && (
-                <p className="flex items-center gap-1 text-xs text-red-700">
+                <p className="flex items-center gap-1 text-xs text-red-700 dark:text-red-400">
                   <AlertTriangle className="h-3 w-3" />
                   {selectedSapUser.user_code} is already {selectedSapUser.mapped_to.user_name}. One
                   SAP account belongs to one person.
                 </p>
               )}
               {selectedSapUser && !selectedSapUser.password_configured && (
-                <p className="flex items-center gap-1 text-xs text-amber-700">
+                <p className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
                   <KeyRound className="h-3 w-3" />
                   No password on file for {selectedSapUser.user_code} — the mapping saves, but they
                   cannot approve until it is added on the server.
@@ -358,7 +358,7 @@ export default function SapIdentitiesPage() {
                             on file
                           </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+                          <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
                             <KeyRound className="h-3 w-3" />
                             not configured
                           </span>

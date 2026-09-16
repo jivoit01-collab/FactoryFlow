@@ -338,7 +338,7 @@ export default function Step4Page() {
           </CardHeader>
           <CardContent>
             {grossRequired && (
-              <p className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+              <p className="mb-4 rounded-md border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-400">
                 Raw material (RM) load: record the loaded <strong>gross weight</strong> now. The
                 empty <strong>tare weight</strong> is captured later at gate-out (empty vehicle out),
                 after QC and unloading.

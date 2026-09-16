@@ -98,7 +98,7 @@ export default function PackingMaterialDashboardPage() {
       {sapError && <SAPUnavailableBanner error={sapError as ApiError} onRetry={refreshAll} />}
 
       {groupMismatch && groupMeta && (
-        <p className="flex items-start gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <p className="flex items-start gap-2 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             SAP item group {groupMeta.pm_item_group} is now called{' '}

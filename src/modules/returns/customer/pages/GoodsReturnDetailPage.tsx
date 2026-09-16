@@ -230,7 +230,7 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
 
   if (blocked) {
     return (
-      <Card className={cn('border', awaitingApproval ? 'border-amber-300' : 'border-rose-300')}>
+      <Card className={cn('border', awaitingApproval ? 'border-amber-300 dark:border-amber-500/30' : 'border-rose-300 dark:border-rose-500/30')}>
         <CardContent className="space-y-1 p-6">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <PackageCheck className="h-4 w-4" /> Confirm Receipt

@@ -40,8 +40,8 @@ describe('AuthLayout', () => {
 
   it('supports dark mode with gradient classes', () => {
     const content = readSource();
-    expect(content).toContain('dark:from-gray-900');
-    expect(content).toContain('dark:to-gray-800');
+    expect(content).toContain('dark:from-background');
+    expect(content).toContain('dark:to-muted');
   });
 
   it('renders Outlet for child route content', () => {

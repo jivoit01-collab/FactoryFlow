@@ -34,10 +34,10 @@ import type { FGReceipt, FGReceiptStatus } from '../types';
 
 function FGStatusBadge({ status }: { status: FGReceiptStatus }) {
   const config: Record<FGReceiptStatus, { label: string; cls: string; icon: typeof Clock }> = {
-    PENDING: { label: 'Pending', cls: 'bg-amber-100 text-amber-800', icon: Clock },
-    RECEIVED: { label: 'Received', cls: 'bg-blue-100 text-blue-800', icon: CheckCircle2 },
-    SAP_POSTED: { label: 'SAP Posted', cls: 'bg-green-100 text-green-800', icon: CloudUpload },
-    FAILED: { label: 'Failed', cls: 'bg-red-100 text-red-800', icon: AlertTriangle },
+    PENDING: { label: 'Pending', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400', icon: Clock },
+    RECEIVED: { label: 'Received', cls: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400', icon: CheckCircle2 },
+    SAP_POSTED: { label: 'SAP Posted', cls: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400', icon: CloudUpload },
+    FAILED: { label: 'Failed', cls: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400', icon: AlertTriangle },
   };
   const c = config[status];
   const Icon = c.icon;
@@ -213,7 +213,7 @@ export default function FGReceiptListPage() {
               </div>
 
               {actionTarget.sap_error && (
-                <div className="p-2 bg-red-50 rounded text-sm text-red-700">
+                <div className="p-2 bg-red-50 dark:bg-red-500/10 rounded text-sm text-red-700 dark:text-red-400">
                   Previous error: {actionTarget.sap_error}
                 </div>
               )}

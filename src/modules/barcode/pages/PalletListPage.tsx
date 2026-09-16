@@ -17,15 +17,15 @@ import type { PalletStatus } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
-  PARTIAL: 'bg-amber-100 text-amber-800',
-  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
-  DISPATCHED: 'bg-blue-100 text-blue-800',
-  EMPTY: 'bg-gray-100 text-gray-800',
-  INACTIVE: 'bg-gray-100 text-gray-800',
-  CLEARED: 'bg-gray-100 text-gray-800',
-  SPLIT: 'bg-blue-100 text-blue-800',
-  VOID: 'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  PARTIAL: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  INSIDE_VEHICLE: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400',
+  DISPATCHED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  EMPTY: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
+  INACTIVE: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
+  CLEARED: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
+  SPLIT: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  VOID: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
 };
 
 const formatBoxCapacity = (boxCount: number, maxBoxCount: number) => {
@@ -159,7 +159,7 @@ export default function PalletListPage() {
                       <tr
                         key={p.id}
                         className={`border-b cursor-pointer hover:bg-muted/30 ${
-                          isEmpty ? 'bg-amber-50/80' : ''
+                          isEmpty ? 'bg-amber-50/80 dark:bg-amber-500/10' : ''
                         }`}
                         onClick={() => navigate(`/barcode/pallets/${p.id}`)}
                       >

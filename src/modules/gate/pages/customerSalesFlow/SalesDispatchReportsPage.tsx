@@ -464,8 +464,8 @@ function ReportTableRow({
             className={cn(
               'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
               entry.truck_photo
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                : 'border-amber-200 bg-amber-50 text-amber-700',
+                ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                : 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
             )}
           >
             {entry.truck_photo ? 'Captured' : 'Missing'}

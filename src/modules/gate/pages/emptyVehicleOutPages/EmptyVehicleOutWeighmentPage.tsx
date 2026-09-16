@@ -171,7 +171,7 @@ export default function EmptyVehicleOutWeighmentPage() {
     return (
       <div className="space-y-6 pb-6">
         <StepHeader currentStep={2} totalSteps={2} title="Empty Vehicle Out" error={error || null} />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Vehicle details not found</span>
@@ -301,7 +301,7 @@ export default function EmptyVehicleOutWeighmentPage() {
       </Card>
 
       {sideEffectMessage && (
-        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-400">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <span>
             {sideEffectMessage} This happens when you complete the gate out.

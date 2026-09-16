@@ -12,10 +12,10 @@ import {
 } from '@/shared/components/ui';
 
 const ACTION_LABELS: Record<PFMovementAction, { label: string; cls: string }> = {
-  CREATED: { label: 'Recorded', cls: 'bg-blue-100 text-blue-800' },
-  UPDATED: { label: 'Corrected', cls: 'bg-amber-100 text-amber-800' },
-  CANCELLED: { label: 'Retracted', cls: 'bg-red-100 text-red-800' },
-  RESTORED: { label: 'Put back', cls: 'bg-green-100 text-green-800' },
+  CREATED: { label: 'Recorded', cls: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400' },
+  UPDATED: { label: 'Corrected', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400' },
+  CANCELLED: { label: 'Retracted', cls: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400' },
+  RESTORED: { label: 'Put back', cls: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400' },
 };
 
 export interface MovementHistoryDialogProps {

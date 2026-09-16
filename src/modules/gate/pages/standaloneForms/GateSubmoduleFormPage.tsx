@@ -187,7 +187,7 @@ export default function GateSubmoduleFormPage({ config }: GateSubmoduleFormPageP
       </div>
 
       {savedAt && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+        <div className="rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
           Draft saved at {savedAt}
         </div>
       )}

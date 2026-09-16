@@ -297,7 +297,7 @@ function ActiveReturn({
         {!submitted ? (
           <MpScanPanel onScan={handleScan} pending={scan.isPending} placeholder="Scan returned item" />
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-400 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-400">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Submitted. Return Note <span className="font-mono font-semibold">{r.return_note_num || '—'}</span>.

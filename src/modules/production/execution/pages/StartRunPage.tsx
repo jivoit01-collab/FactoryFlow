@@ -535,7 +535,7 @@ function StartRunPage() {
 
         {/* Line Configuration Card — only visible when a line is selected and has configs */}
         {selectedLineId && lineConfigs.length > 0 && (
-          <Card className="border-blue-200 bg-blue-50/30 dark:border-blue-900 dark:bg-blue-950/20">
+          <Card className="border-blue-200 bg-blue-50/30 dark:border-blue-500/30 dark:bg-blue-500/10">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Settings2 className="h-4 w-4 text-blue-600" />
@@ -644,7 +644,7 @@ function StartRunPage() {
 
         {/* Override — a reason for planning past a warning */}
         {(needsRemark || hasConflicts) && (
-          <Card className="border-amber-300 dark:border-amber-900">
+          <Card className="border-amber-300 dark:border-amber-500/30">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />

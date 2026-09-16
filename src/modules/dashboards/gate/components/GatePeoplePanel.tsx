@@ -90,7 +90,7 @@ export function GatePeoplePanel({
       }
     >
       {board.longStay > 0 && (
-        <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-xl border border-rose-600/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-200">
+        <div className="mx-4 mb-2 flex shrink-0 items-center gap-2 rounded-xl border border-rose-600/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-700 dark:border-rose-400/30 dark:bg-rose-400/10 dark:text-rose-300">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {count(board.longStay)} {board.longStay === 1 ? 'person has' : 'people have'} been inside
           past the long-stay limit

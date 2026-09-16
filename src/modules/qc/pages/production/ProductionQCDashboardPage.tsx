@@ -41,40 +41,40 @@ const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
 const STATUS_BADGE: Record<DisplayStatus, { label: string; className: string }> = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400',
   },
   DRAFT: {
     label: 'Draft',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+    className: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
   },
   SUBMITTED: {
     label: 'Pending Approval',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
   },
   APPROVED: {
     label: 'Approved',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    className: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
   },
   REJECTED: {
     label: 'Rejected',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
   },
 };
 
 const TYPE_BADGE: Record<string, string> = {
-  FINAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  IN_PROCESS: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400',
+  FINAL: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-400',
+  IN_PROCESS: 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400',
 };
 
 const RESULT_BADGE: Record<string, string> = {
-  PASS: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  FAIL: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+  PASS: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  FAIL: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
 };
 
 const LIVE_STATUS_BADGE: Record<string, string> = {
-  RUNNING: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  BREAKDOWN: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  STOPPED: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  RUNNING: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  BREAKDOWN: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
+  STOPPED: 'bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground',
 };
 
 function runningRunQCHint(run: ProductionQCRunningRun): string {
@@ -233,7 +233,7 @@ export default function ProductionQCDashboardPage() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 flex-shrink-0 text-yellow-600" />
           <div className="flex-1">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>

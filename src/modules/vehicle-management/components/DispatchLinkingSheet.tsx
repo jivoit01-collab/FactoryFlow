@@ -738,7 +738,7 @@ function DispatchVehicleSelect({
       />
 
       {hasUnlinkedSapVehicle && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-400">
           SAP shows vehicle <span className="font-semibold">{sapVehicleNo}</span>, but it is not
           linked to Vehicle Master yet. Add it or select the matching master vehicle before saving.
         </div>

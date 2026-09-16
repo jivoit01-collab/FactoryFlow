@@ -23,9 +23,9 @@ type ScanTone = 'complete' | 'partial' | 'none' | 'unknown';
 
 // Same tone classes as the docking detail page's scan pill.
 const SCAN_TONE_CLASSES: Record<ScanTone, string> = {
-  complete: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
-  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  none: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  complete: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  none: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
   unknown: 'bg-muted text-muted-foreground',
 };
 
@@ -63,9 +63,9 @@ export function BSTScanProgressPill({
 
 export function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
   const cfg: Record<BSTReceiveStatus, string> = {
-    PENDING: 'bg-slate-100 text-slate-700',
-    ACCEPTED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    PENDING: 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground',
+    ACCEPTED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+    REJECTED: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cfg[status]}`}>

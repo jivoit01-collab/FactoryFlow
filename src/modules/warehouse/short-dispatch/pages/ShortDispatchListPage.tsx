@@ -82,7 +82,7 @@ export default function ShortDispatchListPage() {
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard label="Total" value={counts.total} />
         <StatCard label="Today" value={counts.today} tone="text-amber-600" />
-        <StatCard label="Bills Affected" value={counts.bills} tone="text-slate-600" />
+        <StatCard label="Bills Affected" value={counts.bills} tone="text-slate-600 dark:text-muted-foreground" />
       </div>
 
       <div className="relative w-full lg:max-w-sm">
@@ -139,7 +139,7 @@ export default function ShortDispatchListPage() {
                       <td className="px-4 py-3 text-muted-foreground">{entry.warehouse_code}</td>
                       <td className="px-4 py-3">
                         {entry.sap_return_doc_num ? (
-                          <Badge className="border-0 bg-emerald-100 text-emerald-800">
+                          <Badge className="border-0 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400">
                             {entry.sap_return_doc_num}
                           </Badge>
                         ) : (

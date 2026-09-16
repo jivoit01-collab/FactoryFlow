@@ -65,7 +65,7 @@ export function DashboardError({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10',
+        'flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10',
         className,
       )}
     >

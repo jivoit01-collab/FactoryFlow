@@ -184,10 +184,10 @@ export default function ApprovalQueuePage() {
 
       {/* General Error State */}
       {error && !isPermissionError && (
-        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <CardContent className="py-6">
             <div className="flex items-start gap-4">
-              <div className="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/20">
+              <div className="p-3 rounded-full bg-yellow-100 dark:bg-yellow-500/10">
                 <AlertCircle className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="flex-1">

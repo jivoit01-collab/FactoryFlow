@@ -101,7 +101,7 @@ export default function ShortDispatchDetailPage() {
                       {line.source_warehouse_code || '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge className="border-0 bg-slate-100 text-slate-700">
+                      <Badge className="border-0 bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground">
                         {line.reason_display}
                       </Badge>
                       {line.remarks && (
@@ -131,7 +131,7 @@ function Field({ label, value, emphasis }: { label: string; value: string; empha
   return (
     <div>
       <p className="text-xs uppercase text-muted-foreground">{label}</p>
-      <p className={emphasis ? 'text-sm font-semibold text-emerald-700' : 'text-sm'}>{value}</p>
+      <p className={emphasis ? 'text-sm font-semibold text-emerald-700 dark:text-emerald-400' : 'text-sm'}>{value}</p>
     </div>
   );
 }

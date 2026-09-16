@@ -108,7 +108,7 @@ function DraftRow({
       onToggle={onToggle}
       title={row.doc_num ? `SAP ${row.doc_num}` : `draft ${row.draft_entry}`}
       chip={
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
           approved draft
         </span>
       }
@@ -175,10 +175,10 @@ function DraftRow({
                 </span>
               )}
               {line.batches_missing && (
-                <div className="text-xs text-amber-700">no batch allocated</div>
+                <div className="text-xs text-amber-700 dark:text-amber-400">no batch allocated</div>
               )}
               {line.allocation_partial && (
-                <div className="text-xs text-amber-700">
+                <div className="text-xs text-amber-700 dark:text-amber-400">
                   only {qty(line.allocated_quantity)} allocated
                 </div>
               )}
@@ -187,7 +187,7 @@ function DraftRow({
                   frontend and the API are deployed separately here: a row from
                   a backend that predates this field must not blank the page. */}
               {(line.batches_short ?? []).map((batch) => (
-                <div key={batch.batch} className="text-xs text-amber-700">
+                <div key={batch.batch} className="text-xs text-amber-700 dark:text-amber-400">
                   batch {batch.batch}: {qty(batch.in_stock)} of {qty(batch.allocated)}
                 </div>
               ))}
@@ -213,12 +213,12 @@ function DraftRow({
               </RecordWarning>
             ))}
             {error && (
-              <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
+              <div className="mb-2 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                 {error}
               </div>
             )}
             {done && (
-              <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/20 dark:text-green-300">
+              <div className="mb-2 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-800 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300">
                 {done}
               </div>
             )}
@@ -274,7 +274,7 @@ export function SapUnpostedDraftTable({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
         <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           These transfers were raised in the SAP client and approved, but never <b>added</b> — in

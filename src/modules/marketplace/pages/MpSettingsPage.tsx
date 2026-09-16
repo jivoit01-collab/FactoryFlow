@@ -85,7 +85,7 @@ export default function MpSettingsPage() {
                 automatically at confirm.
               </p>
               {deferDeliveryNote && (
-                <Badge variant="outline" className="mt-1 border-amber-300 text-amber-700">
+                <Badge variant="outline" className="mt-1 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400">
                   Delivery notes are cut in bulk
                 </Badge>
               )}

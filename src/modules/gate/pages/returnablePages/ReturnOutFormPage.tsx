@@ -179,7 +179,7 @@ export default function ReturnOutFormPage() {
       </div>
 
       {!pass.is_returnable && isAwaitingGateOut ? (
-        <div className="flex items-center gap-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
+        <div className="flex items-center gap-2 rounded-md border border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 p-3 text-sm text-orange-900 dark:text-orange-400">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Non-returnable — this material is not coming back. Gating it out closes the pass, and it
           will not appear in the Material In queue.

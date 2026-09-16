@@ -16,12 +16,12 @@ const ASSET_STATUS_LABELS: Record<AssetStatus, string> = {
 };
 
 const ASSET_STATUS_CLASSES: Record<AssetStatus, string> = {
-  RUNNING: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  IDLE: 'border-slate-200 bg-slate-50 text-slate-700',
-  BREAKDOWN: 'border-rose-200 bg-rose-50 text-rose-700',
-  UNDER_PM: 'border-sky-200 bg-sky-50 text-sky-700',
-  UNDER_REPAIR: 'border-amber-200 bg-amber-50 text-amber-700',
-  RETIRED: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+  RUNNING: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  IDLE: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+  BREAKDOWN: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  UNDER_PM: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  UNDER_REPAIR: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  RETIRED: 'border-zinc-200 dark:border-border bg-zinc-50 dark:bg-muted/40 text-zinc-700 dark:text-muted-foreground',
 };
 
 const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
@@ -39,17 +39,17 @@ const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
 };
 
 const WORK_ORDER_STATUS_CLASSES: Record<WorkOrderStatus, string> = {
-  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
-  OPEN: 'border-sky-200 bg-sky-50 text-sky-700',
-  ASSIGNED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  IN_PROGRESS: 'border-amber-200 bg-amber-50 text-amber-700',
-  WAITING_SPARE: 'border-orange-200 bg-orange-50 text-orange-700',
-  WAITING_VENDOR: 'border-purple-200 bg-purple-50 text-purple-700',
-  ON_HOLD: 'border-zinc-200 bg-zinc-50 text-zinc-700',
-  COMPLETED: 'border-teal-200 bg-teal-50 text-teal-700',
-  REOPENED: 'border-rose-200 bg-rose-50 text-rose-700',
-  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  CLOSED: 'border-neutral-200 bg-neutral-50 text-neutral-700',
+  DRAFT: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+  OPEN: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  ASSIGNED: 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  IN_PROGRESS: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  WAITING_SPARE: 'border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  WAITING_VENDOR: 'border-purple-200 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400',
+  ON_HOLD: 'border-zinc-200 dark:border-border bg-zinc-50 dark:bg-muted/40 text-zinc-700 dark:text-muted-foreground',
+  COMPLETED: 'border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400',
+  REOPENED: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  APPROVED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  CLOSED: 'border-neutral-200 dark:border-border bg-neutral-50 dark:bg-muted/40 text-neutral-700 dark:text-muted-foreground',
 };
 
 const WORK_PERMIT_STATUS_LABELS: Record<WorkPermitStatus, string> = {
@@ -64,14 +64,14 @@ const WORK_PERMIT_STATUS_LABELS: Record<WorkPermitStatus, string> = {
 };
 
 const WORK_PERMIT_STATUS_CLASSES: Record<WorkPermitStatus, string> = {
-  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
-  SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
-  APPROVED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  IN_PROGRESS: 'border-amber-200 bg-amber-50 text-amber-700',
-  COMPLETED: 'border-teal-200 bg-teal-50 text-teal-700',
-  CLOSED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700',
-  EXPIRED: 'border-red-200 bg-red-50 text-red-700',
+  DRAFT: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+  SUBMITTED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  APPROVED: 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  IN_PROGRESS: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  COMPLETED: 'border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400',
+  CLOSED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  CANCELLED: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  EXPIRED: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
 };
 
 export function getAssetStatusLabel(status: AssetStatus) {
@@ -105,9 +105,9 @@ const SAFETY_FINE_STATUS_LABELS: Record<SafetyFineStatus, string> = {
 };
 
 const SAFETY_FINE_STATUS_CLASSES: Record<SafetyFineStatus, string> = {
-  PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
-  PAID: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  WAIVED: 'border-slate-200 bg-slate-50 text-slate-700',
+  PENDING: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  PAID: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  WAIVED: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
 };
 
 export function getSafetyFineStatusLabel(status: SafetyFineStatus) {
@@ -134,18 +134,18 @@ const MATERIAL_INDENT_STATUS_LABELS: Record<MaterialIndentStatus, string> = {
 };
 
 const MATERIAL_INDENT_STATUS_CLASSES: Record<MaterialIndentStatus, string> = {
-  DRAFT: 'border-slate-200 bg-slate-50 text-slate-700',
-  SUBMITTED: 'border-sky-200 bg-sky-50 text-sky-700',
-  ISSUED: 'border-teal-200 bg-teal-50 text-teal-700',
-  PENDING_APPROVAL: 'border-amber-200 bg-amber-50 text-amber-700',
-  APPROVED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  PENDING_QUOTATION_SELECTION: 'border-amber-200 bg-amber-50 text-amber-700',
-  QUOTATION_SELECTED: 'border-blue-200 bg-blue-50 text-blue-700',
-  PURCHASED: 'border-violet-200 bg-violet-50 text-violet-700',
-  GATE_IN: 'border-cyan-200 bg-cyan-50 text-cyan-700',
-  RECEIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
-  CANCELLED: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+  DRAFT: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+  SUBMITTED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  ISSUED: 'border-teal-200 dark:border-teal-500/30 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400',
+  PENDING_APPROVAL: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  APPROVED: 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  PENDING_QUOTATION_SELECTION: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  QUOTATION_SELECTED: 'border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  PURCHASED: 'border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400',
+  GATE_IN: 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
+  RECEIVED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  REJECTED: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  CANCELLED: 'border-zinc-200 dark:border-border bg-zinc-50 dark:bg-muted/40 text-zinc-700 dark:text-muted-foreground',
 };
 
 export function getMaterialIndentStatusLabel(status: MaterialIndentStatus) {

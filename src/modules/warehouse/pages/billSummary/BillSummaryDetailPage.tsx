@@ -158,7 +158,7 @@ export default function BillSummaryDetailPage() {
         }`}
       >
         {fromSap && (
-          <Badge variant="outline" className="border-violet-400 text-violet-700">
+          <Badge variant="outline" className="border-violet-400 text-violet-700 dark:text-violet-400">
             Stamped in SAP
           </Badge>
         )}
@@ -218,7 +218,7 @@ export default function BillSummaryDetailPage() {
       {/* A sheet in the operator's hands whose posting failed is the state that
           needs chasing: the goods are moving and SAP does not know. */}
       {summary.sap_status === 'FAILED' && (
-        <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+        <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <p className="flex items-center gap-2 font-semibold">
             <AlertTriangle className="h-4 w-4" />
             {/* A cancelled sheet's SAP job is to REMOVE the stamp, so a failure
@@ -249,7 +249,7 @@ export default function BillSummaryDetailPage() {
       )}
 
       {summary.sap_status === 'POSTED' && (
-        <div className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+        <div className="space-y-1 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
           <p>
             Posted to SAP — the dispatch date and quantities are on invoice{' '}
             {summary.sap_invoice_doc_num}.
@@ -261,7 +261,7 @@ export default function BillSummaryDetailPage() {
       )}
 
       {summary.status === 'CANCELLED' && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-200">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
           <strong>Cancelled</strong>
           {summary.cancel_reason && <> — {summary.cancel_reason}</>}
           {summary.sap_status === 'NOT_POSTED' && (
@@ -285,7 +285,7 @@ export default function BillSummaryDetailPage() {
               <span className="min-w-0">
                 <strong>{line.item_code}</strong> {line.item_name}
                 {line.is_short && (
-                  <Badge variant="outline" className="ml-2 border-amber-400 text-amber-700">
+                  <Badge variant="outline" className="ml-2 border-amber-400 text-amber-700 dark:text-amber-400">
                     short
                   </Badge>
                 )}

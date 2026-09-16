@@ -175,7 +175,7 @@ export function BatchAllocationDialog({
                     </div>
                     <div
                       className={`text-sm tabular-nums ${
-                        balanced ? 'text-muted-foreground' : 'text-amber-700'
+                        balanced ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-400'
                       }`}
                     >
                       {qty(total)} of {qty(needed)} {line.uom} chosen
@@ -183,7 +183,7 @@ export function BatchAllocationDialog({
                   </div>
 
                   {line.error && (
-                    <p className="border-b bg-red-50 px-3 py-2 text-sm text-red-800">
+                    <p className="border-b bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:text-red-400">
                       {line.error}
                     </p>
                   )}
@@ -248,7 +248,7 @@ export function BatchAllocationDialog({
             })}
 
             {problems.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <ul className="space-y-1">

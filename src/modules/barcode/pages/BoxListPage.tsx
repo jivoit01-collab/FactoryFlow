@@ -12,12 +12,12 @@ import ScanSearchButton from '../components/ScanSearchButton';
 import type { BoxStatus } from '../types';
 
 const STATUS_COLORS: Record<BoxStatus, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
-  PARTIAL: 'bg-amber-100 text-amber-800',
-  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
-  DISPATCHED: 'bg-blue-100 text-blue-800',
-  DISMANTLED: 'bg-orange-100 text-orange-800',
-  VOID: 'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  PARTIAL: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  INSIDE_VEHICLE: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400',
+  DISPATCHED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  DISMANTLED: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-400',
+  VOID: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
 };
 
 export default function BoxListPage() {
@@ -76,7 +76,7 @@ export default function BoxListPage() {
           <option value="VOID">Void</option>
         </select>
         <button
-          className={`px-3 py-2 border rounded-md text-sm transition-colors ${unpalletized ? 'bg-orange-100 border-orange-300 text-orange-800' : 'hover:bg-muted'}`}
+          className={`px-3 py-2 border rounded-md text-sm transition-colors ${unpalletized ? 'bg-orange-100 dark:bg-orange-500/15 border-orange-300 dark:border-orange-500/30 text-orange-800 dark:text-orange-400' : 'hover:bg-muted'}`}
           onClick={() => setUnpalletized(!unpalletized)}
         >
           {unpalletized ? 'Showing: Unpalletized' : 'Unpalletized'}

@@ -24,19 +24,19 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'W':
       return (
-        <Badge className="border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+        <Badge className="border-amber-200 bg-amber-100 text-amber-800 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/20 dark:text-amber-300">
           Pending
         </Badge>
       );
     case 'Y':
       return (
-        <Badge className="border-green-200 bg-green-100 text-green-800 hover:bg-green-100 dark:border-green-800 dark:bg-green-950/50 dark:text-green-300">
+        <Badge className="border-green-200 bg-green-100 text-green-800 hover:bg-green-100 dark:border-green-500/30 dark:bg-green-500/20 dark:text-green-300">
           Approved
         </Badge>
       );
     case 'N':
       return (
-        <Badge className="border-red-200 bg-red-100 text-red-800 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
+        <Badge className="border-red-200 bg-red-100 text-red-800 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300">
           Rejected
         </Badge>
       );

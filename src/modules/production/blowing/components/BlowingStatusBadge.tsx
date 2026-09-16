@@ -6,11 +6,11 @@ const LIVE_STATUS_CONFIG: Record<
   LiveStatus,
   { label: string; cls: string; icon: typeof Circle }
 > = {
-  DRAFT: { label: 'Draft', cls: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300', icon: Circle },
-  RUNNING: { label: 'Running', cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: Play },
-  BREAKDOWN: { label: 'Breakdown', cls: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: AlertTriangle },
-  STOPPED: { label: 'Stopped', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', icon: Square },
-  COMPLETED: { label: 'Completed', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: CheckCircle2 },
+  DRAFT: { label: 'Draft', cls: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground', icon: Circle },
+  RUNNING: { label: 'Running', cls: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400', icon: Play },
+  BREAKDOWN: { label: 'Breakdown', cls: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400', icon: AlertTriangle },
+  STOPPED: { label: 'Stopped', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400', icon: Square },
+  COMPLETED: { label: 'Completed', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400', icon: CheckCircle2 },
 };
 
 export function BlowingStatusBadge({ status }: { status: BlowingRunStatus | LiveStatus }) {

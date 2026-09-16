@@ -161,7 +161,7 @@ function RunFormPage() {
 
         {values.date && (
           effectiveRate ? (
-            <Card className="border-blue-200 bg-blue-50/30 dark:bg-blue-950/20">
+            <Card className="border-blue-200 dark:border-blue-500/30 bg-blue-50/30 dark:bg-blue-500/10">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Settings2 className="h-4 w-4 text-blue-600" /> Rate basis

@@ -18,7 +18,7 @@ function Note({ tone, children }: { tone: 'warn' | 'info'; children: ReactNode }
       className={cn(
         'flex items-start gap-2 rounded-xl border px-4 py-3 text-sm',
         tone === 'warn'
-          ? 'border-amber-300/60 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200'
+          ? 'border-amber-300/60 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
           : 'border-border/60 bg-muted/40 text-muted-foreground',
       )}
     >

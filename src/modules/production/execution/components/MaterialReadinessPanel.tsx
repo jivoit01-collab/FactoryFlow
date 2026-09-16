@@ -55,27 +55,27 @@ const STATUS_STYLE: Record<
 > = {
   OK: {
     label: 'Ready',
-    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
     icon: CircleCheck,
   },
   TIGHT: {
     label: 'Committed elsewhere',
-    className: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+    className: 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300',
     icon: CircleAlert,
   },
   CONTESTED: {
     label: 'Claimed by another plan',
-    className: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300',
+    className: 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300',
     icon: AlertTriangle,
   },
   SHORT: {
     label: 'Short',
-    className: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
     icon: AlertTriangle,
   },
   NO_STOCK_RECORD: {
     label: 'Not in RM register',
-    className: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
     icon: AlertTriangle,
   },
   UNKNOWN: {
@@ -186,7 +186,7 @@ export function MaterialReadinessPanel({
         )}
 
         {stockError && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/15">
             <CircleHelp className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
             <div>
               <p className="font-medium">Stock could not be read from SAP</p>
@@ -257,9 +257,9 @@ export function MaterialReadinessPanel({
                       <tr
                         className={`border-b last:border-0 ${
                           status === 'SHORT' || status === 'NO_STOCK_RECORD'
-                            ? 'bg-red-50/60 dark:bg-red-950/20'
+                            ? 'bg-red-50/60 dark:bg-red-500/10'
                             : status === 'CONTESTED'
-                              ? 'bg-amber-50/60 dark:bg-amber-950/20'
+                              ? 'bg-amber-50/60 dark:bg-amber-500/10'
                               : ''
                         }`}
                       >
@@ -376,7 +376,7 @@ export function MaterialReadinessPanel({
                             <span className="text-xs text-muted-foreground">—</span>
                           ) : check.approval_required ? (
                             <>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
                                 <ClipboardCheck className="h-3 w-3" />
                                 {qty(check.approval_qty)}
                               </span>
@@ -541,7 +541,7 @@ export function MaterialReadinessPanel({
         )}
 
         {unusable.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-900 dark:bg-amber-950/40">
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs dark:border-amber-500/30 dark:bg-amber-500/15">
             <p className="font-medium">Components that cannot be scaled</p>
             <ul className="mt-1 space-y-0.5">
               {unusable.map((line) => (

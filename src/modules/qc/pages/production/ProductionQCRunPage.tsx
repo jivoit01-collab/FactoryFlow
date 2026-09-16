@@ -48,11 +48,11 @@ const WORKFLOW_BADGE: Record<
   ProductionQCWorkflowStatus | 'PENDING',
   { label: string; className: string }
 > = {
-  PENDING: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' },
-  SUBMITTED: { label: 'Submitted', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  APPROVED: { label: 'Approved', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
-  REJECTED: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
+  PENDING: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400' },
+  DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground' },
+  SUBMITTED: { label: 'Submitted', className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400' },
+  APPROVED: { label: 'Approved', className: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400' },
+  REJECTED: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400' },
 };
 
 function getWorkflowBadge(session: ProductionQCSessionListItem) {
@@ -188,10 +188,10 @@ export default function ProductionQCRunPage() {
                           <div className="flex items-center gap-3">
                             <div className={`p-1.5 rounded-full ${
                               session.overall_result === 'PASS'
-                                ? 'bg-green-100 dark:bg-green-900/20'
+                                ? 'bg-green-100 dark:bg-green-500/10'
                                 : session.overall_result === 'FAIL'
-                                  ? 'bg-red-100 dark:bg-red-900/20'
-                                  : 'bg-gray-100 dark:bg-gray-800'
+                                  ? 'bg-red-100 dark:bg-red-500/10'
+                                  : 'bg-gray-100 dark:bg-muted'
                             }`}>
                               {session.overall_result === 'PASS' ? (
                                 <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -269,10 +269,10 @@ export default function ProductionQCRunPage() {
                         <div className="flex items-center gap-3">
                           <div className={`p-1.5 rounded-full ${
                             session.overall_result === 'PASS'
-                              ? 'bg-green-100 dark:bg-green-900/20'
+                              ? 'bg-green-100 dark:bg-green-500/10'
                               : session.overall_result === 'FAIL'
-                                ? 'bg-red-100 dark:bg-red-900/20'
-                                : 'bg-gray-100 dark:bg-gray-800'
+                                ? 'bg-red-100 dark:bg-red-500/10'
+                                : 'bg-gray-100 dark:bg-muted'
                           }`}>
                             {session.overall_result === 'PASS' ? (
                               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />

@@ -149,7 +149,7 @@ export default function MaintenanceReturnablePage() {
           title="Overdue"
           value={counts.overdue}
           icon={AlertTriangle}
-          className={counts.overdue > 0 ? 'border-rose-200' : undefined}
+          className={counts.overdue > 0 ? 'border-rose-200 dark:border-rose-500/30' : undefined}
           onClick={() => updateFilters({ overdueOnly: !filters.overdueOnly })}
         />
       </div>

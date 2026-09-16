@@ -195,7 +195,7 @@ export default function DispatchLoadingPrepScanPage() {
                     <div className="space-y-3 border-t px-4 pb-4 pt-3">
                       {error ? (
                         <div className="space-y-2">
-                          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                          <p className="rounded-md bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">
                             {error}
                           </p>
                           <Button size="sm" variant="outline" onClick={() => retry(bill)}>

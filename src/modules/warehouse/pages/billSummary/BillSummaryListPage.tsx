@@ -28,9 +28,9 @@ import {
 const DEFAULT_PAGE_SIZE = 25;
 
 const STATUS_STYLE: Record<string, string> = {
-  GENERATED: 'bg-sky-100 text-sky-800',
-  PICKED: 'bg-emerald-100 text-emerald-800',
-  CANCELLED: 'bg-rose-100 text-rose-800',
+  GENERATED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-400',
+  PICKED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  CANCELLED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -189,7 +189,7 @@ export default function BillSummaryListPage() {
       </Card>
 
       {includeSap && sapError && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           {getErrorMessage(sapError, 'Could not read the SAP-stamped dispatches.')}
         </p>
       )}
@@ -239,19 +239,19 @@ export default function BillSummaryListPage() {
                 {/* Which flow produced it. The row behaves the same either way,
                     but "no sheet was ever issued for this one" is worth seeing. */}
                 {row.source === 'SAP' && (
-                  <Badge variant="outline" className="border-violet-400 text-violet-700">
+                  <Badge variant="outline" className="border-violet-400 text-violet-700 dark:text-violet-400">
                     Stamped in SAP
                   </Badge>
                 )}
                 {/* A picked sheet whose SAP write failed is the case that needs
                     chasing, so it is called out rather than folded into status. */}
                 {row.sap_status === 'FAILED' && (
-                  <Badge variant="outline" className="border-amber-400 text-amber-700">
+                  <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="mr-1 h-3 w-3" /> Not in SAP
                   </Badge>
                 )}
                 {row.sap_status === 'POSTED' && (
-                  <Badge variant="outline" className="border-emerald-400 text-emerald-700">
+                  <Badge variant="outline" className="border-emerald-400 text-emerald-700 dark:text-emerald-400">
                     In SAP
                   </Badge>
                 )}

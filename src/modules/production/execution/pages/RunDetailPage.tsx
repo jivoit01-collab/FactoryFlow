@@ -77,11 +77,11 @@ import type { MachineBreakdown, ProductionSegment } from '../types';
 
 function WarehouseApprovalBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
-    NOT_REQUESTED: { label: 'Not Requested', cls: 'bg-gray-100 text-gray-600' },
-    PENDING: { label: 'WH Pending', cls: 'bg-amber-100 text-amber-800' },
-    APPROVED: { label: 'WH Approved', cls: 'bg-green-100 text-green-800' },
-    PARTIALLY_APPROVED: { label: 'WH Partial', cls: 'bg-blue-100 text-blue-800' },
-    REJECTED: { label: 'WH Rejected', cls: 'bg-red-100 text-red-800' },
+    NOT_REQUESTED: { label: 'Not Requested', cls: 'bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground' },
+    PENDING: { label: 'WH Pending', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400' },
+    APPROVED: { label: 'WH Approved', cls: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400' },
+    PARTIALLY_APPROVED: { label: 'WH Partial', cls: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400' },
+    REJECTED: { label: 'WH Rejected', cls: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400' },
   };
   const c = config[status] ?? config.NOT_REQUESTED;
   return (
@@ -580,7 +580,7 @@ function RunDetailPage() {
           {!isCompleted && run.warehouse_approval_status === 'NOT_REQUESTED' && (
             <Button
               variant="outline" size="sm"
-              className="border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:text-orange-800"
+              className="border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/25 hover:text-orange-800 dark:hover:text-orange-400"
               disabled={createBOMRequest.isPending}
               onClick={async () => {
                 const qty = parseFloat(run.required_qty || '0');
@@ -604,7 +604,7 @@ function RunDetailPage() {
           {!isCompleted && canReRequestShortfall && (
             <Button
               variant="outline" size="sm"
-              className="border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+              className="border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/25 hover:text-blue-800 dark:hover:text-blue-400"
               disabled={reRequestBOM.isPending}
               title="Re-raise a warehouse request for the items that were not fully approved"
               onClick={async () => {
@@ -624,8 +624,8 @@ function RunDetailPage() {
             size="sm"
             className={
               hasClearedClearance
-                ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800'
-                : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800'
+                ? 'border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/25 hover:text-green-800 dark:hover:text-green-400'
+                : 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
             }
             title={`Line Clearance: ${clearanceStatusText}`}
             onClick={() =>

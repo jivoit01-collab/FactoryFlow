@@ -602,7 +602,7 @@ function IndentDetailDialog({
                           <span className="tabular-nums">{Number(issuedFor(item))}</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700">
+                      <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700 dark:text-amber-400">
                         {Number(shortfallFor(item)) || '—'}
                       </td>
                     </tr>
@@ -660,7 +660,7 @@ function IndentDetailDialog({
             )}
 
             {indent.status === 'RECEIVED' && (
-              <div className="rounded-md border bg-emerald-50/60 p-3">
+              <div className="rounded-md border bg-emerald-50/60 dark:bg-emerald-500/10 p-3">
                 <span className="font-medium">Received into Store / Spares</span>
                 {indent.received_by_name && ` by ${indent.received_by_name}`} — purchased items
                 added to stock.
@@ -678,13 +678,13 @@ function IndentDetailDialog({
               </div>
             )}
             {indent.status === 'REJECTED' && indent.decision_remarks && (
-              <div className="rounded-md border bg-rose-50/60 p-3">
+              <div className="rounded-md border bg-rose-50/60 dark:bg-rose-500/10 p-3">
                 <span className="font-medium">Rejected: </span>
                 {indent.decision_remarks}
               </div>
             )}
             {indent.status === 'PURCHASED' && (
-              <div className="rounded-md border bg-emerald-50/60 p-3">
+              <div className="rounded-md border bg-emerald-50/60 dark:bg-emerald-500/10 p-3">
                 <span className="font-medium">Purchased</span>
                 {indent.purchased_by_name && ` by ${indent.purchased_by_name}`}
                 {indent.purchase_remarks && ` — ${indent.purchase_remarks}`}

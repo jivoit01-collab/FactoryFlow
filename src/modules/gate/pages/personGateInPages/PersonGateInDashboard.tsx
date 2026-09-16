@@ -79,7 +79,7 @@ export default function PersonGateInDashboard() {
         <>
           {/* Current Status */}
           <Card
-            className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 cursor-pointer hover:shadow-md transition-shadow"
+            className="bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate('/gate/visitor-labour/inside')}
           >
             <CardContent className="p-4">
@@ -94,7 +94,7 @@ export default function PersonGateInDashboard() {
                   {dashboard?.current.total_inside ?? 0}
                 </span>
               </div>
-              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-800 flex items-center justify-between text-sm text-muted-foreground">
+              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-500/30 flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <span>
                     <span className="font-semibold text-purple-600 dark:text-purple-400">

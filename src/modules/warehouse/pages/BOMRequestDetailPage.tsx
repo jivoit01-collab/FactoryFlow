@@ -138,9 +138,9 @@ function LineRow({
               variant="outline"
               className={
                 line.status === 'APPROVED'
-                  ? 'bg-green-50 text-green-700 border-green-200'
+                  ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30'
                   : line.status === 'REJECTED'
-                    ? 'bg-red-50 text-red-700 border-red-200'
+                    ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30'
                     : ''
               }
             >
@@ -297,10 +297,10 @@ export default function BOMRequestDetailPage() {
       </div>
 
       {detail.rejection_reason && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-red-800">Rejection Reason</p>
-            <p className="text-sm text-red-700">{detail.rejection_reason}</p>
+            <p className="text-sm font-medium text-red-800 dark:text-red-400">Rejection Reason</p>
+            <p className="text-sm text-red-700 dark:text-red-400">{detail.rejection_reason}</p>
           </CardContent>
         </Card>
       )}

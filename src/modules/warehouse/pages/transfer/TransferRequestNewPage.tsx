@@ -287,7 +287,7 @@ export default function TransferRequestNewPage() {
                   {line.item_code && available !== undefined && (
                     <p
                       className={`pl-1 text-xs tabular-nums ${
-                        overRequested ? 'text-amber-700' : 'text-muted-foreground'
+                        overRequested ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
                       }`}
                     >
                       {available < 0 ? (
@@ -321,7 +321,7 @@ export default function TransferRequestNewPage() {
       </Card>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           {error}
         </div>
       )}

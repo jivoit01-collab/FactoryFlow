@@ -193,7 +193,7 @@ export default function PmRequirementDashboardPage() {
       {/* A plan that is not there is said so, never shown as an empty table:
           no rows and no message reads as "the plan needs no packaging". */}
       {noPlan && (
-        <p className="rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <p className="rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           SAP has no production plan for this company, or the one selected has been deleted.
           Planners author it in SAP as a sales forecast (OFCT); once one exists it appears in the
           picker above.

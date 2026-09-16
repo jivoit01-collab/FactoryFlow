@@ -69,15 +69,15 @@ const STATUS_FILTER_OPTIONS: { value: TruckDispatchStatus; label: string }[] = [
 ];
 
 const STATUS_CLASS: Record<TruckDispatchStatus, string> = {
-  DISPATCHED: 'border-blue-300 bg-blue-50 text-blue-700',
-  IN_TRANSIT: 'border-indigo-300 bg-indigo-50 text-indigo-700',
-  REACHED_DESTINATION: 'border-cyan-300 bg-cyan-50 text-cyan-700',
-  UNLOADING: 'border-amber-300 bg-amber-50 text-amber-700',
-  DELIVERED: 'border-emerald-300 bg-emerald-50 text-emerald-700',
-  PARTIALLY_DELIVERED: 'border-orange-300 bg-orange-50 text-orange-700',
-  RETURNED: 'border-red-300 bg-red-50 text-red-700',
-  DELAYED: 'border-yellow-300 bg-yellow-50 text-yellow-700',
-  CLOSED: 'border-gray-300 bg-gray-100 text-gray-700',
+  DISPATCHED: 'border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  IN_TRANSIT: 'border-indigo-300 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  REACHED_DESTINATION: 'border-cyan-300 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
+  UNLOADING: 'border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  DELIVERED: 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  PARTIALLY_DELIVERED: 'border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  RETURNED: 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
+  DELAYED: 'border-yellow-300 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  CLOSED: 'border-gray-300 dark:border-border bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground',
 };
 
 function StatusBadge({ status, label }: { status: TruckDispatchStatus; label: string }) {
@@ -214,7 +214,7 @@ export default function DispatchTrackingPage() {
       </div>
 
       {lateTrucks.length > 0 ? (
-        <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="flex items-center gap-3 rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-400">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <span className="font-medium">
             {lateTrucks.length} truck{lateTrucks.length === 1 ? '' : 's'} overdue — the expected reach
@@ -264,7 +264,7 @@ export default function DispatchTrackingPage() {
                   <Truck className="h-5 w-5 text-blue-600" />
                   {selected.vehicle_number || '-'}
                   {selected.arrival_no ? (
-                    <Badge variant="outline" className="border-blue-300 text-blue-700">
+                    <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
                       {selected.arrival_no}
                     </Badge>
                   ) : null}
@@ -333,7 +333,7 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
         }
       }}
       className={`cursor-pointer transition-colors hover:bg-muted/40 ${
-        truck.is_late ? 'border-red-300 bg-red-50/40' : ''
+        truck.is_late ? 'border-red-300 dark:border-red-500/30 bg-red-50/40 dark:bg-red-500/10' : ''
       }`}
     >
       <CardContent className="flex items-start gap-3 p-4">
@@ -342,7 +342,7 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{truck.vehicle_number || '-'}</span>
             {truck.arrival_no ? (
-              <Badge variant="outline" className="border-blue-300 text-blue-700">
+              <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
                 {truck.arrival_no}
               </Badge>
             ) : null}
@@ -627,7 +627,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
             </div>
           ) : null}
           {isPartial ? (
-            <div className="flex flex-col gap-2 rounded-md border border-orange-200 bg-orange-50/50 p-3">
+            <div className="flex flex-col gap-2 rounded-md border border-orange-200 dark:border-orange-500/30 bg-orange-50/50 dark:bg-orange-500/10 p-3">
               <div>
                 <p className="text-xs font-medium">What came back?</p>
                 <p className="text-[11px] text-muted-foreground">
@@ -649,7 +649,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                       return Number(split?.delivered || 0) > 0 || Number(split?.returned || 0) > 0;
                     }).length;
                     return (
-                      <div key={bill.id} className="rounded border border-orange-200 bg-white">
+                      <div key={bill.id} className="rounded border border-orange-200 dark:border-orange-500/30 bg-white">
                         <button
                           type="button"
                           aria-expanded={open}
@@ -669,7 +669,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                           </span>
                           <span className="ml-auto shrink-0 text-muted-foreground">
                             {filled > 0 ? (
-                              <span className="font-medium text-orange-700">
+                              <span className="font-medium text-orange-700 dark:text-orange-400">
                                 {filled} item{filled === 1 ? '' : 's'} short
                               </span>
                             ) : (
@@ -678,7 +678,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                           </span>
                         </button>
                         {open ? (
-                          <div className="overflow-x-auto border-t border-orange-100 px-2 pb-2">
+                          <div className="overflow-x-auto border-t border-orange-100 dark:border-orange-500/30 px-2 pb-2">
                             <table className="w-full min-w-[460px] text-xs">
                               <thead>
                                 <tr className="text-left text-muted-foreground">
@@ -831,7 +831,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                     {update.partial_lines.map((line) => (
                       <div
                         key={line.id}
-                        className="overflow-x-auto rounded border border-orange-100 bg-orange-50/40"
+                        className="overflow-x-auto rounded border border-orange-100 dark:border-orange-500/30 bg-orange-50/40 dark:bg-orange-500/10"
                       >
                         <div className="flex flex-wrap items-baseline gap-2 px-2 py-1">
                           <span className="text-xs font-medium">{line.sap_doc_num || '—'}</span>
@@ -840,7 +840,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                           </span>
                           <span className="ml-auto text-xs text-muted-foreground">
                             {line.qty_delivered} delivered ·{' '}
-                            <span className="font-medium text-orange-700">
+                            <span className="font-medium text-orange-700 dark:text-orange-400">
                               {line.qty_returned} returned
                             </span>
                           </span>
@@ -856,7 +856,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                           </thead>
                           <tbody>
                             {line.items.map((item) => (
-                              <tr key={item.id} className="border-t border-orange-100">
+                              <tr key={item.id} className="border-t border-orange-100 dark:border-orange-500/30">
                                 <td className="px-2 py-1">
                                   <span className="font-medium">{item.item_code}</span>
                                   <span className="block truncate text-muted-foreground">
@@ -867,7 +867,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                                   {item.quantity} {item.uom}
                                 </td>
                                 <td className="px-2 py-1 text-right">{item.qty_delivered}</td>
-                                <td className="px-2 py-1 text-right font-medium text-orange-700">
+                                <td className="px-2 py-1 text-right font-medium text-orange-700 dark:text-orange-400">
                                   {item.qty_returned}
                                 </td>
                               </tr>

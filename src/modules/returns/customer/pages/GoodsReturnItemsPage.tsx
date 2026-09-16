@@ -180,7 +180,7 @@ function ItemsForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
           nothing" instead of "nobody said who they are". Say which it is, and
           where to fix it. */}
       {!isInvoiceBasis && !detail.customer_code && (
-        <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20">
+        <Card className="border-amber-500/60 bg-amber-50/60 dark:bg-amber-500/10">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
             <p className="text-sm">
               This return has no SAP customer code, so there is no purchase history to pick items

@@ -10,22 +10,22 @@
 
 export const CHART = {
   /** The cream sheet the chart is printed on. */
-  sheet: 'bg-[#faf8f4] dark:bg-slate-900/50 border-[#e7e0d4] dark:border-slate-800',
+  sheet: 'bg-[#faf8f4] dark:bg-card border-[#e7e0d4] dark:border-border',
   /** "Organizational structure" above the plant name. */
   eyebrow: 'text-[#a9761a] dark:text-amber-400',
   /** The rule under the masthead. */
-  rule: 'border-[#123f35] dark:border-slate-300',
+  rule: 'border-[#123f35] dark:border-emerald-500/40',
   /** The dark band carrying the column headings. */
   headerBand: 'bg-[#123f35] text-white dark:bg-[#0c2b24]',
   /** The department rail down the left. */
-  departmentCell: 'bg-[#e6f0ec] dark:bg-emerald-950/40',
-  departmentName: 'text-[#123f35] dark:text-emerald-200',
+  departmentCell: 'bg-[#e6f0ec] dark:bg-emerald-500/15',
+  departmentName: 'text-[#123f35] dark:text-emerald-300',
   /** Every other section row, so the eye can track across five columns. */
-  stripe: 'bg-[#f6f2ea] dark:bg-slate-900/40',
+  stripe: 'bg-[#f6f2ea] dark:bg-muted/40',
   /** Whoever leads the section. */
   leader: 'text-[#a9761a] dark:text-amber-300',
   /** L2 and L3 — read as plain text, not as chips. */
-  people: 'text-[#2f3a36] dark:text-slate-300',
+  people: 'text-[#2f3a36] dark:text-foreground',
   /** Borders inside the table. */
-  line: 'border-[#e7e0d4] dark:border-slate-800',
+  line: 'border-[#e7e0d4] dark:border-border',
 } as const;

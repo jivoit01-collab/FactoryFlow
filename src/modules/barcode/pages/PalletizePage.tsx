@@ -273,8 +273,8 @@ export default function PalletizePage() {
                     <Badge
                       className={
                         box.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-amber-100 text-amber-800'
+                          ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
+                          : 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400'
                       }
                     >
                       {box.status}
@@ -318,11 +318,11 @@ export default function PalletizePage() {
                 <div className="flex items-center justify-between w-full">
                   <div>
                     <span className="font-mono text-xs font-medium">{pallet.pallet_id}</span>
-                    <Badge className="ml-2 bg-blue-100 text-blue-800">
+                    <Badge className="ml-2 bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">
                       {pallet.current_warehouse}
                     </Badge>
                     {pallet.box_count === 0 && (
-                      <Badge className="ml-2 bg-gray-100 text-gray-800">Empty</Badge>
+                      <Badge className="ml-2 bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground">Empty</Badge>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
@@ -353,7 +353,7 @@ export default function PalletizePage() {
               take the pallet&apos;s warehouse and bin.
             </p>
 
-            <div className="p-3 bg-blue-50 rounded-lg text-sm">
+            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-sm">
               <strong>Assign:</strong> {selectedBoxes.length} boxes, {selectedQty}{' '}
               {contextBox?.uom}
               <br />

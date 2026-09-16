@@ -60,9 +60,9 @@ export default function RecordFillGrid({
 
     const className = cn(
       'h-8 w-full min-w-[7rem] text-sm',
-      outOfSpec && 'border-red-400 bg-red-50 font-semibold text-red-700',
-      inSpec && 'border-green-300 bg-green-50/60',
-      isDirty && 'border-amber-400 bg-amber-50',
+      outOfSpec && 'border-red-400 bg-red-50 dark:bg-red-500/10 font-semibold text-red-700 dark:text-red-400',
+      inSpec && 'border-green-300 dark:border-green-500/30 bg-green-50/60',
+      isDirty && 'border-amber-400 bg-amber-50 dark:bg-amber-500/10',
     );
 
     // A CHOICE cell is a suggestion list, not a closed set: the printed

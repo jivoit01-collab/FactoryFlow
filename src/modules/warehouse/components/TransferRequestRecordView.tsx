@@ -148,13 +148,13 @@ export function TransferRequestRecordView({
       )}
 
       {r.status === 'REJECTED' && r.rejection_reason && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           <strong>Rejected:</strong> {r.rejection_reason}
         </div>
       )}
 
       {r.posting_status === 'FAILED' && r.posting_error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -166,7 +166,7 @@ export function TransferRequestRecordView({
       )}
 
       {r.awaits_second_leg && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+        <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-3 text-sm text-indigo-900 dark:text-indigo-400">
           <div className="flex items-start gap-2">
             <Truck className="mt-0.5 h-4 w-4 shrink-0" />
             <div>

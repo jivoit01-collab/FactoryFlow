@@ -199,12 +199,12 @@ export function ARInvoiceDetailSheet({
             ) : null}
 
             {posting.error_message ? (
-              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/40 dark:bg-orange-900/20 dark:text-orange-300">
+              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
                 <span className="font-medium">Error:</span> {posting.error_message}
               </div>
             ) : null}
             {posting.approval_remarks ? (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                 <span className="font-medium">Approver remarks:</span> {posting.approval_remarks}
               </div>
             ) : null}

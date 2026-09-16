@@ -20,10 +20,10 @@ import type { PalletVerifyRequestStatus } from '../types';
 import { toastBarcodeError } from '../utils/errors';
 
 const STATUS_COLORS: Record<PalletVerifyRequestStatus, string> = {
-  OPEN: 'bg-amber-100 text-amber-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
-  RESOLVED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-gray-100 text-gray-800',
+  OPEN: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  IN_PROGRESS: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  RESOLVED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+  CANCELLED: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
 };
 
 const CLOSED = new Set<PalletVerifyRequestStatus>(['RESOLVED', 'CANCELLED']);

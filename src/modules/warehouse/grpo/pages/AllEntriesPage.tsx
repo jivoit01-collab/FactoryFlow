@@ -52,10 +52,10 @@ const PHASE_FILTERS = ['ALL', 'GATE', 'QC', 'DONE'] as const;
 export type PhaseFilter = (typeof PHASE_FILTERS)[number];
 
 const PHASE_PILL_CLASSES: Record<EntryPhase, string> = {
-  GATE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  QC: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  DONE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  CANCELLED: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+  GATE: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
+  QC: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-400',
+  DONE: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  CANCELLED: 'bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground',
 };
 
 const PHASE_LABEL: Record<EntryPhase, string> = {
@@ -166,7 +166,7 @@ export default function AllEntriesPage({
       )}
 
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -402,13 +402,13 @@ function BillQCCard({
   const billStatus = po.is_posted
     ? {
         label: 'Posted',
-        cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+        cls: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
       }
     : po.is_ready_for_grpo
       ? { label: 'Ready to post', cls: 'bg-primary/10 text-primary' }
       : {
           label: 'Awaiting QC',
-          cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+          cls: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400',
         };
 
   return (

@@ -760,7 +760,7 @@ function WorkPermitDetailDialog({
             </div>
 
             {permit.status === 'EXPIRED' && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
+              <div className="rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-red-700 dark:text-red-400">
                 This permit expired
                 {permit.expired_at ? ` on ${new Date(permit.expired_at).toLocaleString()}` : ''}
                 {' '}before the work was completed. Renew it to continue the job.

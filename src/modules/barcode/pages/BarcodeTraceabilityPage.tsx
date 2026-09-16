@@ -93,8 +93,8 @@ export default function BarcodeTraceabilityPage() {
                 <Badge
                   className={
                     trace.dispatch_status === 'DISPATCHED'
-                      ? 'bg-purple-100 text-purple-800'
-                      : 'bg-green-100 text-green-800'
+                      ? 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400'
+                      : 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
                   }
                 >
                   {trace.dispatch_status}

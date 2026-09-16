@@ -32,7 +32,7 @@ const vehicleManagementCards: VehicleManagementCard[] = [
     description: 'Maintain transporter contacts, mobile numbers, and GST details.',
     route: '/vehicle-management/transporters',
     icon: <UsersRound className="h-5 w-5" />,
-    color: 'text-cyan-700',
+    color: 'text-cyan-700 dark:text-cyan-400',
     permissions: [
       VEHICLE_MANAGEMENT_PERMISSIONS.VIEW,
       VEHICLE_MANAGEMENT_PERMISSIONS.MANAGE_TRANSPORTERS,
@@ -54,7 +54,7 @@ const vehicleManagementCards: VehicleManagementCard[] = [
     description: 'Review gate vehicle-entry records across movement types and statuses.',
     route: '/vehicle-management/entries',
     icon: <ClipboardList className="h-5 w-5" />,
-    color: 'text-amber-700',
+    color: 'text-amber-700 dark:text-amber-400',
     permissions: [VEHICLE_MANAGEMENT_PERMISSIONS.VIEW],
   },
 ];

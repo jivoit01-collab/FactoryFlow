@@ -196,7 +196,7 @@ export function RecordActions({
 /** A warning the record carries — SAP will refuse the post until it is dealt with. */
 export function RecordWarning({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+    <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
       {children}
     </div>
   );

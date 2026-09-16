@@ -34,13 +34,13 @@ export function PlanConflictsPanel({ conflicts, checked }: PlanConflictsPanelPro
   })).filter((group) => group.items.length > 0);
 
   return (
-    <Card className={conflicts.length > 0 ? 'border-amber-300 dark:border-amber-900' : undefined}>
+    <Card className={conflicts.length > 0 ? 'border-amber-300 dark:border-amber-500/30' : undefined}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarClock className="h-4 w-4 text-muted-foreground" />
           Clashes with other plans
           {conflicts.length > 0 ? (
-            <Badge className="bg-amber-100 text-amber-900 border-0 text-xs font-normal dark:bg-amber-950 dark:text-amber-300">
+            <Badge className="bg-amber-100 text-amber-900 border-0 text-xs font-normal dark:bg-amber-500/15 dark:text-amber-300">
               {conflicts.length} to review
             </Badge>
           ) : (

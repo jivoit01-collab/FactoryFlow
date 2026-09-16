@@ -27,16 +27,16 @@ type StatusFilterKey = keyof typeof STATUS_FILTERS;
 const getStatusBadgeClass = (status: GRPOStatus) => {
   switch (status) {
     case GRPO_STATUS.POSTED:
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      return 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400';
     case GRPO_STATUS.FAILED:
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      return 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400';
     case GRPO_STATUS.PARTIALLY_POSTED:
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400';
     case GRPO_STATUS.DRAFT:
-      return 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300';
+      return 'bg-slate-100 text-slate-700 dark:bg-muted/40 dark:text-muted-foreground';
     case GRPO_STATUS.PENDING:
     default:
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400';
   }
 };
 
@@ -206,7 +206,7 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>

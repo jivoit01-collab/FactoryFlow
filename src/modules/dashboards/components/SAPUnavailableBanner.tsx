@@ -16,7 +16,7 @@ export function SAPUnavailableBanner({ error, onRetry }: SAPUnavailableBannerPro
     : 'Failed to load data from SAP. The SAP system returned an unexpected response.';
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
+    <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/15">
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="flex-1">
         <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
