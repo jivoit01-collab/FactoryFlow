@@ -237,7 +237,10 @@ export function useReturnWarehouses(enabled = true) {
 export function useReceiveGoodsReturn(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (warehouseCode?: string) => goodsReturnApi.receive(id, warehouseCode),
+    mutationFn: (input?: string | { warehouseCode?: string; groups?: number[][] }) =>
+      typeof input === 'string' || input === undefined
+        ? goodsReturnApi.receive(id, input)
+        : goodsReturnApi.receive(id, input.warehouseCode, input.groups),
     onSuccess: (data) => {
       qc.setQueryData(goodsReturnKeys.detail(id), data);
       qc.invalidateQueries({ queryKey: goodsReturnKeys.all });

@@ -242,6 +242,20 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     retry ? detail.sap_return_warehouse : '',
   );
   const owed = detail.invoice_refs.filter((ref) => ref.sap_gr_doc_entry === null);
+  // Which return note each bill goes on, keyed by invoice-ref id. One per bill to
+  // begin with, which is what every return posted before the choice existed; the
+  // operator combines them by pointing two bills at the same note.
+  const [noteOf, setNoteOf] = useState<Record<number, number>>(() =>
+    Object.fromEntries(owed.map((ref, index) => [ref.id, index + 1])),
+  );
+  const canGroup = owed.length > 1;
+  // Only the notes actually in use, renumbered so the operator never sees a gap
+  // left by emptying one.
+  const notes = canGroup
+    ? Array.from(new Set(owed.map((ref) => noteOf[ref.id] ?? 1)))
+        .sort((a, b) => a - b)
+        .map((note) => owed.filter((ref) => (noteOf[ref.id] ?? 1) === note))
+    : owed.map((ref) => [ref]);
 
   if (blocked) {
     return (
@@ -268,14 +282,29 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     const confirmed = await confirmSapPost({
       title: 'Receive this return and post it to SAP?',
       details: [
-        { label: 'Creates', value: 'One A/R Return per source invoice' },
+        {
+          label: 'Creates',
+          value:
+            notes.length === 1
+              ? 'One A/R Return'
+              : `${notes.length} A/R Returns, one per return note`,
+        },
+        // Spelt out bill by bill: this is the last point at which a wrong
+        // grouping can be stopped, and a posted return cannot be withdrawn.
+        ...notes.map((note, index) => ({
+          label: `Note ${index + 1}`,
+          value: note.map((ref) => ref.sap_invoice_doc_num).join(' + '),
+        })),
         { label: 'Goods go back into', value: warehouseCode },
       ],
       confirmLabel: 'Receive and post',
     });
     if (!confirmed) return;
     try {
-      const updated = await receive.mutateAsync(warehouseCode);
+      const updated = await receive.mutateAsync({
+        warehouseCode,
+        groups: canGroup ? notes.map((note) => note.map((ref) => ref.id)) : undefined,
+      });
       // `detail` is only set when SAP refused some of the return's invoices; the
       // rest posted and stand, so this is a warning, not a failure.
       if (updated.detail) {
@@ -310,9 +339,56 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
               }. The documents it accepted stand — a posted return cannot be withdrawn — so this
                retries only the refused ones, into the same warehouse.`
             : `The vehicle is marked in at the gate. Confirm the goods physically arrived — this
-               posts one A/R Return per invoice to SAP and brings the stock into the warehouse
-               below.`}
+               posts an A/R Return to SAP for each return note below and brings the stock into
+               the warehouse chosen here.`}
         </p>
+
+        {canGroup && (
+          <div className="space-y-2">
+            <Label>Return Notes</Label>
+            <p className="text-xs text-muted-foreground">
+              One A/R Return is posted per note. Put two bills on the same note to return them
+              on one document — they must be the same customer and the same delivery address,
+              and an item on both is added up into a single line.
+            </p>
+            <div className="space-y-2 rounded-md border p-3">
+              {owed.map((ref) => (
+                <div key={ref.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium">Invoice {ref.sap_invoice_doc_num}</p>
+                    {(ref.customer_name || ref.customer_code) && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {ref.customer_name || ref.customer_code}
+                      </p>
+                    )}
+                  </div>
+                  <select
+                    value={noteOf[ref.id] ?? 1}
+                    onChange={(event) =>
+                      setNoteOf((prev) => ({ ...prev, [ref.id]: Number(event.target.value) }))
+                    }
+                    className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    {/* As many notes as there are bills — enough for one each, which
+                        is the most notes this return can ever need. */}
+                    {owed.map((_, index) => (
+                      <option key={index} value={index + 1}>
+                        Note {index + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {notes.length === 1
+                ? 'All bills on one return note — 1 A/R Return will be posted.'
+                : `${notes.length} return notes — ${notes
+                    .map((note) => note.map((ref) => ref.sap_invoice_doc_num).join('+'))
+                    .join(', ')}`}
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2 sm:max-w-sm">
           <Label>Goods-Return Warehouse *</Label>
@@ -423,16 +499,24 @@ function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
  *  A debit-note or letter-pad return has no invoice ref to hang its document on,
  *  so the header's own number is the only one there is. */
 function printableDocuments(detail: GoodsReturnDetail) {
-  const fromInvoices = detail.invoice_refs
-    .filter((ref) => ref.sap_gr_doc_entry !== null)
-    .map((ref) => ({
-      docEntry: ref.sap_gr_doc_entry,
-      docNum: ref.sap_gr_doc_num,
-      label:
-        detail.invoice_refs.length > 1
-          ? `Print Return Note (Inv ${ref.sap_invoice_doc_num || ref.sap_invoice_doc_entry})`
-          : 'Print Return Note',
-    }));
+  // One button per DOCUMENT, not per bill: bills combined onto one return note
+  // share a doc entry, and a button each would print the same sheet twice.
+  const byDocument = new Map<number, string[]>();
+  for (const ref of detail.invoice_refs) {
+    if (ref.sap_gr_doc_entry === null) continue;
+    const bills = byDocument.get(ref.sap_gr_doc_entry) ?? [];
+    bills.push(String(ref.sap_invoice_doc_num || ref.sap_invoice_doc_entry));
+    byDocument.set(ref.sap_gr_doc_entry, bills);
+  }
+  const fromInvoices = [...byDocument.entries()].map(([docEntry, bills]) => ({
+    docEntry,
+    docNum:
+      detail.invoice_refs.find((ref) => ref.sap_gr_doc_entry === docEntry)?.sap_gr_doc_num ?? '',
+    label:
+      byDocument.size > 1
+        ? `Print Return Note (Inv ${bills.join(' + ')})`
+        : 'Print Return Note',
+  }));
   if (fromInvoices.length > 0) return fromInvoices;
   return detail.sap_gr_doc_num
     ? [{ docEntry: null, docNum: detail.sap_gr_doc_num, label: 'Print Return Note' }]

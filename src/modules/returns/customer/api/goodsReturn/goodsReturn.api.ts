@@ -474,10 +474,18 @@ export const goodsReturnApi = {
    *  refused — the documents it did accept cannot be withdrawn, so they stand and
    *  the record returned already carries them.
    */
-  async receive(id: number, warehouseCode?: string): Promise<GoodsReturnReceiveResult> {
+  /** `groups` is one list of invoice-ref ids per return note. Omit it for the
+   *  default — a note per bill — which is what every return posted before the
+   *  choice existed. The server validates it as a partition of the bills still
+   *  owing a document. */
+  async receive(
+    id: number,
+    warehouseCode?: string,
+    groups?: number[][],
+  ): Promise<GoodsReturnReceiveResult> {
     const response = await apiClient.post<GoodsReturnReceiveResult>(
       API_ENDPOINTS.GOODS_RETURN.RECEIVE(id),
-      { warehouse_code: warehouseCode ?? '' },
+      { warehouse_code: warehouseCode ?? '', ...(groups ? { groups } : {}) },
     );
     return response.data;
   },
