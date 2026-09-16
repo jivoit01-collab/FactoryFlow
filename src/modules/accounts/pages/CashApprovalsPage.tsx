@@ -1,17 +1,11 @@
-import { Check, ClipboardList, Loader2, RotateCcw, X } from 'lucide-react';
+import { Check, ClipboardList, Loader2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { BunchStatus, CashBunch } from '@/modules/accounts/api';
-import {
-  useApproveCashBunch,
-  useCashBunch,
-  useCashBunches,
-  useRejectCashBunch,
-  useResendCashBunch,
-} from '@/modules/accounts/api';
+import type { EntryApprovalStatus } from '@/modules/accounts/api';
+import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -19,104 +13,115 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
 import { formatDateTimeShort, formatNumber, getErrorMessage } from '@/shared/utils';
 
-const ALL = 'ALL';
-
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
-const STATUS_TONE: Record<BunchStatus, string> = {
+const STATE_LABEL: Record<EntryApprovalStatus, string> = {
+  UNSENT: 'Not sent',
+  PENDING: 'Awaiting approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
+const STATE_TONE: Record<EntryApprovalStatus, string> = {
+  UNSENT: 'bg-muted text-muted-foreground',
   PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
   APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
   REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
 };
 
 /**
- * Cash approvals — the other half of the sheet's Bunch column.
+ * Cash approvals — the payments waiting on somebody.
  *
- * A custodian ticks a day or two of vouchers on the register and sends them as
- * one bunch. This is where that bunch is read and decided on: approve it, or
- * send it back with a reason.
+ * Entries, not bunches. A bunch is the bundle of paper vouchers walked to the
+ * office together, and bundling them is not a decision about them; it used to
+ * be the only route to approval, which meant a payment typed on Tuesday waited
+ * on a batch that went on Friday.
  *
- * Approving stamps who and when, which is what the paper sheet's "Sign Date"
- * becomes — the app has no signature. Rejecting unfreezes the entries so the
- * custodian can put them right and send the same bunch, under its own number,
- * back up. A bunch is decided as a whole; there is no approving half of one,
- * because half a bundle of vouchers is not a thing anybody walks anywhere.
+ * Approving freezes the entry for good and is what makes it count as spent at
+ * the top of the register. Rejecting must say why, and unfreezes it so the
+ * custodian can put it right and send it again.
+ *
+ * Several can be decided at once, because that is how a stack of vouchers is
+ * actually gone through — but each carries its own verdict, so approving nine
+ * of ten leaves the tenth exactly where it was.
  */
 export default function CashApprovalsPage() {
   const { hasPermission } = usePermission();
   const canApprove = hasPermission(CASH_BOOK_PERMISSIONS.APPROVE);
-  const canManage = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
 
-  const [status, setStatus] = useState<BunchStatus | typeof ALL>('PENDING');
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [state, setState] = useState<EntryApprovalStatus>('PENDING');
+  const [selected, setSelected] = useState<number[]>([]);
 
-  const { data: bunches = [], isLoading } = useCashBunches(
-    status === ALL ? undefined : status,
+  const { data, isLoading } = useApprovalQueue(state);
+  const decide = useDecideEntries();
+
+  const rows = useMemo(() => data?.results ?? [], [data]);
+  const counts = data?.counts;
+  const deciding = state === 'PENDING' && canApprove;
+
+  // Scoped to what is on screen: a selection surviving a state change would
+  // let somebody decide entries they never looked at.
+  const chosen = useMemo(
+    () => selected.filter((id) => rows.some((row) => row.id === id)),
+    [selected, rows],
   );
-  const { data: detail, isLoading: detailLoading } = useCashBunch(openId);
+  const chosenTotal = rows
+    .filter((row) => chosen.includes(row.id))
+    .reduce((sum, row) => sum + Number(row.amount), 0);
 
-  const approve = useApproveCashBunch();
-  const reject = useRejectCashBunch();
-  const resend = useResendCashBunch();
-  const busy = approve.isPending || reject.isPending || resend.isPending;
+  function changeState(next: EntryApprovalStatus) {
+    setState(next);
+    setSelected([]);
+  }
 
-  const pendingCount = useMemo(
-    () => bunches.filter((bunch) => bunch.status === 'PENDING').length,
-    [bunches],
-  );
+  function toggle(id: number) {
+    setSelected((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  }
 
-  async function handleApprove(bunch: CashBunch) {
+  async function approve() {
+    if (chosen.length === 0) return;
     const ok = await confirmDialog({
-      title: `Approve bunch ${bunch.number}?`,
-      description: `${bunch.entry_count} ${bunch.entry_count === 1 ? 'entry' : 'entries'}, ${money(bunch.total_out)} out and ${money(bunch.total_in)} in. Approving stamps your name and the time against every one of them, and they can no longer be corrected.`,
+      title: `Approve ${chosen.length} ${chosen.length === 1 ? 'payment' : 'payments'}?`,
+      description: `${money(chosenTotal)} in total. Your name and the time go against each one, they can no longer be corrected, and they start counting as spent at the top of the register.`,
       confirmLabel: 'Approve',
     });
     if (!ok) return;
     try {
-      await approve.mutateAsync({ id: bunch.id });
-      toast.success(`Bunch ${bunch.number} approved`);
+      await decide.mutateAsync({ ids: chosen, approve: true });
+      setSelected([]);
+      toast.success(`${chosen.length} approved`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'That bunch could not be approved.'));
+      toast.error(getErrorMessage(err, 'Those could not be approved.'));
     }
   }
 
-  async function handleReject(bunch: CashBunch) {
+  async function reject() {
+    if (chosen.length === 0) return;
     const note = await promptDialog({
-      title: `Send bunch ${bunch.number} back?`,
+      title: `Send ${chosen.length} ${chosen.length === 1 ? 'payment' : 'payments'} back?`,
       description:
-        'Its entries unfreeze so the custodian can correct them and send the same bunch again.',
-      label: 'What is wrong with it?',
-      placeholder: 'Bill number missing on the freight voucher',
+        'They unfreeze so the custodian can correct them and send them again. The reason goes against every one you have ticked.',
+      label: 'What is wrong with them?',
+      placeholder: 'Bill number missing',
       confirmLabel: 'Reject',
       destructive: true,
       required: true,
     });
     if (note === null) return;
     try {
-      await reject.mutateAsync({ id: bunch.id, note });
-      toast.success(`Bunch ${bunch.number} sent back`);
+      await decide.mutateAsync({ ids: chosen, approve: false, note });
+      setSelected([]);
+      toast.success(`${chosen.length} sent back`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'That bunch could not be rejected.'));
-    }
-  }
-
-  async function handleResend(bunch: CashBunch) {
-    const ok = await confirmDialog({
-      title: `Send bunch ${bunch.number} up again?`,
-      description: `It goes back for approval under the same number. Make sure "${bunch.decision_note}" has been dealt with first.`,
-      confirmLabel: 'Send again',
-    });
-    if (!ok) return;
-    try {
-      await resend.mutateAsync({ id: bunch.id });
-      toast.success(`Bunch ${bunch.number} sent for approval`);
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'That bunch could not be sent again.'));
+      toast.error(getErrorMessage(err, 'Those could not be rejected.'));
     }
   }
 
@@ -124,189 +129,176 @@ export default function CashApprovalsPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Cash Approvals"
-        description="Bunches of vouchers sent up from the cash book"
+        description="Payments from the cash book waiting on a decision"
       >
-        <div className="space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
           <NativeSelect
-            aria-label="Filter bunches by state"
-            className="w-[200px]"
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as BunchStatus | typeof ALL);
-              setOpenId(null);
-            }}
+            aria-label="Which entries to show"
+            className="w-[210px]"
+            value={state}
+            onChange={(e) => changeState(e.target.value as EntryApprovalStatus)}
           >
-            <SelectOption value="PENDING">Awaiting approval</SelectOption>
-            <SelectOption value="APPROVED">Approved</SelectOption>
-            <SelectOption value="REJECTED">Rejected</SelectOption>
-            <SelectOption value={ALL}>Every bunch</SelectOption>
+            <SelectOption value="PENDING">
+              Awaiting approval{counts ? ` (${counts.PENDING})` : ''}
+            </SelectOption>
+            <SelectOption value="UNSENT">
+              Not sent{counts ? ` (${counts.UNSENT})` : ''}
+            </SelectOption>
+            <SelectOption value="APPROVED">
+              Approved{counts ? ` (${counts.APPROVED})` : ''}
+            </SelectOption>
+            <SelectOption value="REJECTED">
+              Rejected{counts ? ` (${counts.REJECTED})` : ''}
+            </SelectOption>
           </NativeSelect>
+
+          {deciding && chosen.length > 0 && (
+            <>
+              <Button onClick={approve} disabled={decide.isPending}>
+                {decide.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-2 h-4 w-4" />
+                )}
+                Approve {chosen.length}
+              </Button>
+              <Button variant="outline" onClick={reject} disabled={decide.isPending}>
+                <X className="mr-2 h-4 w-4" /> Reject
+              </Button>
+            </>
+          )}
         </div>
       </DashboardHeader>
 
-      {status !== 'PENDING' && pendingCount > 0 && (
-        <p className="text-sm text-muted-foreground">
-          {pendingCount} {pendingCount === 1 ? 'bunch is' : 'bunches are'} still waiting to be
-          decided.
-        </p>
-      )}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">{STATE_LABEL[state]}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">{money(data?.total ?? 0)}</p>
+            <p className="text-xs text-muted-foreground">
+              {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
+            </p>
+          </CardContent>
+        </Card>
+        {chosen.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">Ticked</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums">{money(chosenTotal)}</p>
+              <p className="text-xs text-muted-foreground">{chosen.length} selected</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading the bunches…
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
         </div>
-      ) : bunches.length === 0 ? (
+      ) : rows.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ClipboardList className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {status === 'PENDING'
+              {state === 'PENDING'
                 ? 'Nothing is waiting for a decision.'
-                : 'No bunch in that state.'}
+                : `No entry is ${STATE_LABEL[state].toLowerCase()}.`}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {bunches.map((bunch) => {
-            const isOpen = openId === bunch.id;
-            return (
-              <Card key={bunch.id}>
-                <CardContent className="space-y-3 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold">Bunch {bunch.number}</p>
-                        <Badge variant="outline" className={`text-xs ${STATUS_TONE[bunch.status]}`}>
-                          {bunch.status_label}
-                        </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {bunch.entry_count} {bunch.entry_count === 1 ? 'entry' : 'entries'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Sent {formatDateTimeShort(bunch.sent_at)}
-                        {bunch.sent_by_name ? ` by ${bunch.sent_by_name}` : ''}
-                        {bunch.decided_at && (
-                          <>
-                            {' · '}
-                            {bunch.status === 'APPROVED' ? 'Approved' : 'Rejected'}{' '}
-                            {formatDateTimeShort(bunch.decided_at)}
-                            {bunch.decided_by_name ? ` by ${bunch.decided_by_name}` : ''}
-                          </>
-                        )}
-                      </p>
-                      {bunch.remarks && <p className="mt-1 text-sm">{bunch.remarks}</p>}
-                      {bunch.decision_note && (
-                        <p className="mt-1 text-sm text-rose-700 dark:text-rose-400">{bunch.decision_note}</p>
+        <div className="rounded-md border">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-left">
+                  {deciding && (
+                    <th className="w-10 px-3 py-2">
+                      <Checkbox
+                        aria-label="Select every entry shown"
+                        checked={rows.length > 0 && chosen.length === rows.length}
+                        onCheckedChange={(checked) =>
+                          setSelected(checked === true ? rows.map((row) => row.id) : [])
+                        }
+                      />
+                    </th>
+                  )}
+                  <th className="px-3 py-2">Date</th>
+                  <th className="px-3 py-2">Branch</th>
+                  <th className="px-3 py-2">G/L head</th>
+                  <th className="px-3 py-2">Detail</th>
+                  <th className="px-3 py-2">Advance</th>
+                  <th className="px-3 py-2 text-right">Amount</th>
+                  <th className="px-3 py-2">State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-b align-top hover:bg-muted/40">
+                    {deciding && (
+                      <td className="px-3 py-2">
+                        <Checkbox
+                          aria-label={`Select entry ${row.id}`}
+                          checked={chosen.includes(row.id)}
+                          onCheckedChange={() => toggle(row.id)}
+                        />
+                      </td>
+                    )}
+                    <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
+                    <td className="px-3 py-2">{row.branch_name ?? '—'}</td>
+                    <td className="px-3 py-2">
+                      {row.gl_account_code ? (
+                        <>
+                          <p className="font-mono text-xs">{row.gl_account_code}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {row.gl_account_name}
+                          </p>
+                        </>
+                      ) : (
+                        '—'
                       )}
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-xl font-bold tabular-nums text-rose-700 dark:text-rose-400">
-                        {money(bunch.total_out)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">out of the box</p>
-                      {Number(bunch.total_in) > 0 && (
-                        <p className="text-sm tabular-nums text-emerald-700 dark:text-emerald-400">
-                          {money(bunch.total_in)} in
+                    </td>
+                    <td className="max-w-[360px] px-3 py-2">
+                      {row.detail}
+                      {row.approval_note && (
+                        <p className="mt-1 text-xs text-rose-700 dark:text-rose-400">
+                          {row.approval_note}
                         </p>
                       )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setOpenId(isOpen ? null : bunch.id)}
-                    >
-                      {isOpen ? 'Hide entries' : 'Show entries'}
-                    </Button>
-
-                    {canApprove && bunch.status === 'PENDING' && (
-                      <>
-                        <Button size="sm" onClick={() => handleApprove(bunch)} disabled={busy}>
-                          <Check className="mr-2 h-4 w-4" /> Approve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleReject(bunch)}
-                          disabled={busy}
-                        >
-                          <X className="mr-2 h-4 w-4" /> Reject
-                        </Button>
-                      </>
-                    )}
-
-                    {canManage && bunch.status === 'REJECTED' && (
-                      <Button size="sm" onClick={() => handleResend(bunch)} disabled={busy}>
-                        <RotateCcw className="mr-2 h-4 w-4" /> Send again
-                      </Button>
-                    )}
-                  </div>
-
-                  {isOpen && (
-                    <div className="overflow-x-auto rounded-md border">
-                      {detailLoading || detail?.id !== bunch.id ? (
-                        <div className="flex items-center justify-center py-6 text-muted-foreground">
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the entries…
-                        </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.advance_holder_name ? (
+                        <Badge variant="outline" className="text-[10px]">
+                          {row.advance_holder_name}
+                        </Badge>
                       ) : (
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b bg-muted/40 text-left">
-                              <th className="px-3 py-2">Date</th>
-                              <th className="px-3 py-2">Branch</th>
-                              <th className="px-3 py-2">G/L head</th>
-                              <th className="px-3 py-2">Item</th>
-                              <th className="px-3 py-2">Detail</th>
-                              <th className="px-3 py-2 text-right">Out</th>
-                              <th className="px-3 py-2 text-right">In</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detail.entries.map((row) => (
-                              <tr
-                                key={row.id}
-                                className={`border-b align-top ${
-                                  row.is_active ? '' : 'text-muted-foreground line-through'
-                                }`}
-                              >
-                                <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
-                                <td className="px-3 py-2">{row.branch_name ?? '—'}</td>
-                                <td className="px-3 py-2">
-                                  {row.gl_account_code ? (
-                                    <>
-                                      <p className="font-mono text-xs">{row.gl_account_code}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {row.gl_account_name}
-                                      </p>
-                                    </>
-                                  ) : (
-                                    '—'
-                                  )}
-                                </td>
-                                <td className="px-3 py-2">{row.item || '—'}</td>
-                                <td className="max-w-[340px] px-3 py-2">{row.detail}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">
-                                  {row.direction === 'OUT' ? money(row.amount) : ''}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums">
-                                  {row.direction === 'IN' ? money(row.amount) : ''}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        <span className="text-xs text-muted-foreground">From the box</span>
                       )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      {money(row.amount)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] ${STATE_TONE[row.approval_status]}`}
+                      >
+                        {row.approval_label}
+                      </Badge>
+                      {row.approval_decided_at && (
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {formatDateTimeShort(row.approval_decided_at)}
+                          {row.approval_decided_by_name
+                            ? ` · ${row.approval_decided_by_name}`
+                            : ''}
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Loader2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Loader2, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -114,6 +114,7 @@ export function CashEntryDialog({
     // actually has, and naming anybody else would create one out of nothing.
   } = useCashPeople(holderSearch, true);
   const saving = record.isPending || update.isPending;
+  const sendable = isPayment && !isCorrection;
 
   const problem = useMemo(() => {
     if (!entryDate) return 'Pick the date the money moved.';
@@ -124,7 +125,7 @@ export function CashEntryDialog({
     return null;
   }, [entryDate, amount, detail, isPayment, branch, glCode]);
 
-  async function submit() {
+  async function submit(sendForApproval = false) {
     if (problem) {
       toast.error(problem);
       return;
@@ -141,6 +142,9 @@ export function CashEntryDialog({
       branch: isPayment ? Number(branch) : null,
       atm_account: !isPayment && atmAccount ? Number(atmAccount) : null,
       advance_holder: isPayment ? holderId : null,
+      // Only a payment is ever approved, and only on the way in -- a
+      // correction goes back through the register.
+      send_for_approval: sendForApproval && isPayment,
       gl_account_code: isPayment ? glCode : '',
       gl_account_name: isPayment ? glName : '',
     };
@@ -151,7 +155,13 @@ export function CashEntryDialog({
         toast.success('Entry corrected');
       } else {
         await record.mutateAsync(payload);
-        toast.success(direction === 'IN' ? 'Cash receipt recorded' : 'Payment recorded');
+        toast.success(
+          direction === 'IN'
+            ? 'Cash receipt recorded'
+            : sendForApproval
+              ? 'Payment recorded and sent for approval'
+              : 'Payment recorded',
+        );
       }
       onOpenChange(false);
     } catch (err) {
@@ -365,7 +375,11 @@ export function CashEntryDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving || problem != null}>
+          <Button
+            variant={sendable ? 'outline' : 'default'}
+            onClick={() => submit(false)}
+            disabled={saving || problem != null}
+          >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : direction === 'IN' ? (
@@ -375,6 +389,20 @@ export function CashEntryDialog({
             )}
             {isCorrection ? 'Save correction' : 'Record entry'}
           </Button>
+          {/* A payment can go up for approval from the form it was typed on,
+              rather than being found again on the register and ticked. Not
+              offered on a receipt (nobody approves money arriving) nor on a
+              correction (the entry is already in the queue's hands). */}
+          {sendable && (
+            <Button onClick={() => submit(true)} disabled={saving || problem != null}>
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Record &amp; send for approval
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

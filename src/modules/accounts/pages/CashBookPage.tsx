@@ -12,14 +12,19 @@ import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { CashDirection, CashEntry, EntryApprovalStatus } from '@/modules/accounts/api';
+import type {
+  CashDirection,
+  CashEntry,
+  CashReconciliation,
+  EntryApprovalStatus,
+} from '@/modules/accounts/api';
 import {
   useCancelCashEntry,
   useCashBookOptions,
   useCashEntries,
-  useSendForApproval,
+  useSendEntriesForApproval,
 } from '@/modules/accounts/api';
-import { confirmDialog, promptDialog } from '@/shared/components';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import {
@@ -42,6 +47,16 @@ const ALL = 'ALL';
 const DEFAULT_PAGE_SIZE = 50;
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
+
+/** Shown until the first response lands, so the six cards never flash empty. */
+const EMPTY_RECONCILIATION: CashReconciliation = {
+  cash_in: '0',
+  cash_out: '0',
+  awaiting_approval: '0',
+  cash_in_hand: '0',
+  advance_given: '0',
+  difference: '0',
+};
 
 /** Colour per approval state. Same vocabulary on the approvals screen. */
 const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
@@ -104,9 +119,13 @@ export default function CashBookPage() {
   const { data, isLoading } = useCashEntries(params);
   const { data: options } = useCashBookOptions();
   const cancel = useCancelCashEntry();
-  const send = useSendForApproval();
+  const send = useSendEntriesForApproval();
 
   const rows = useMemo(() => data?.results ?? [], [data]);
+  // Always the whole book, never the filter: a reconciliation of part of a
+  // book proves nothing.
+  const recon = data?.reconciliation ?? EMPTY_RECONCILIATION;
+  const settled = Number(recon.difference) === 0;
   const branches = options?.branches ?? [];
 
   /** Only a live, unsent entry can join a bunch. */
@@ -163,19 +182,19 @@ export default function CashBookPage() {
 
   async function handleSend() {
     if (chosen.length === 0) return;
-    const remarks = await promptDialog({
+    const ok = await confirmDialog({
       title: `Send ${chosen.length} ${chosen.length === 1 ? 'entry' : 'entries'} for approval?`,
       description:
-        'They are bundled into one bunch and freeze until the approver decides. A rejected bunch unfreezes so you can correct it and send it again.',
-      label: 'Note for the approver (optional)',
-      confirmLabel: 'Send bunch',
-      required: false,
+        'Each one goes up on its own and freezes until the approver decides. A rejected entry unfreezes so you can correct it and send it again.',
+      confirmLabel: 'Send',
     });
-    if (remarks === null) return;
+    if (!ok) return;
     try {
-      const bunch = await send.mutateAsync({ entry_ids: chosen, remarks });
+      await send.mutateAsync(chosen);
       setSelected([]);
-      toast.success(`Bunch ${bunch.number} sent for approval`);
+      toast.success(
+        `${chosen.length} ${chosen.length === 1 ? 'entry' : 'entries'} sent for approval`,
+      );
     } catch (err) {
       toast.error(getErrorMessage(err, 'Those entries could not be sent.'));
     }
@@ -199,41 +218,71 @@ export default function CashBookPage() {
         )}
       </DashboardHeader>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* The six figures read as one sum, left to right: everything that came
+          in, less what has been agreed, less what is still waiting to be,
+          less what is in the box, less what is out with people -- and nothing
+          left over. The last card is the proof, not a number to act on. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Cash in</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+              {money(recon.cash_in)}
+            </p>
+            <p className="text-xs text-muted-foreground">Everything that arrived</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Cash out</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-rose-700 dark:text-rose-400">
+              {money(recon.cash_out)}
+            </p>
+            <p className="text-xs text-muted-foreground">Approved spending only</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Pending approval</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
+              {money(recon.awaiting_approval)}
+            </p>
+            <p className="text-xs text-muted-foreground">Spent, not yet agreed</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-4">
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Wallet className="h-4 w-4" /> Cash in hand
             </p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{money(data?.balance ?? 0)}</p>
-            <p className="text-xs text-muted-foreground">The whole book, not the filter</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Cash in (filtered)</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-              {money(data?.totals.cash_in ?? 0)}
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              {money(recon.cash_in_hand)}
             </p>
+            <p className="text-xs text-muted-foreground">The notes in the box</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Cash out (filtered)</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700 dark:text-rose-400">
-              {money(data?.totals.cash_out ?? 0)}
+            <p className="text-sm text-muted-foreground">Advance given</p>
+            <p className="mt-1 text-xl font-bold tabular-nums">
+              {money(recon.advance_given)}
             </p>
+            <p className="text-xs text-muted-foreground">Out with people</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={settled ? '' : 'border-rose-400 dark:border-rose-500/40'}>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Entries shown</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{data?.count ?? 0}</p>
-            {sendable.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {sendable.length} on this page not yet sent
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">Difference</p>
+            <p
+              className={`mt-1 text-xl font-bold tabular-nums ${
+                settled ? 'text-muted-foreground' : 'text-rose-700 dark:text-rose-400'
+              }`}
+            >
+              {money(recon.difference)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {settled ? 'The book adds up' : 'The book does not add up'}
+            </p>
           </CardContent>
         </Card>
       </div>

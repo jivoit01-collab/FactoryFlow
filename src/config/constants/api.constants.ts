@@ -1772,6 +1772,11 @@ export const API_ENDPOINTS = {
     BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
+    // Approval belongs to the entry; a bunch is only the bundle of paper
+    // it was carried over in. DECIDE takes ?reject=true to send back.
+    ENTRIES_SEND: '/cash-book/entries/send-for-approval/',
+    ENTRIES_DECIDE: '/cash-book/entries/decide/',
+    APPROVALS: '/cash-book/approvals/',
     BUNCHES: '/cash-book/bunches/',
     BUNCH_DETAIL: (bunchId: number) => `/cash-book/bunches/${bunchId}/`,
     BUNCH_APPROVE: (bunchId: number) => `/cash-book/bunches/${bunchId}/approve/`,

@@ -6,6 +6,7 @@ import {
   type BunchStatus,
   cashBookApi,
   type CashEntryListParams,
+  type EntryApprovalStatus,
   type RecordEntryPayload,
   type SendForApprovalPayload,
   type UpdateEntryPayload,
@@ -27,6 +28,7 @@ export const CASH_BOOK_QUERY_KEYS = {
   advanceHolders: () => [...CASH_BOOK_QUERY_KEYS.all, 'advance-holders'] as const,
   advanceStatement: (id: number) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id] as const,
+  approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
   people: (search: string, holdingOnly: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'people', search, holdingOnly] as const,
   bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
@@ -187,6 +189,24 @@ export function useCashPeople(search = '', holdingOnly = false) {
     queryFn: () => cashBookApi.people(search, holdingOnly),
     staleTime: 5 * 60 * 1000,
   });
+}
+
+/** The entries waiting on somebody. Entries, not bunches. */
+export function useApprovalQueue(state: EntryApprovalStatus = 'PENDING') {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.approvals(state),
+    queryFn: () => cashBookApi.approvalQueue(state),
+  });
+}
+
+export function useSendEntriesForApproval() {
+  return useCashBookMutation((entryIds: number[]) => cashBookApi.sendForApproval(entryIds));
+}
+
+export function useDecideEntries() {
+  return useCashBookMutation((vars: { ids: number[]; approve: boolean; note?: string }) =>
+    cashBookApi.decideEntries(vars.ids, vars.approve, vars.note ?? ''),
+  );
 }
 
 export function useCreateAtmAccount() {

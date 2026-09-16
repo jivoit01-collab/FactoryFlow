@@ -135,6 +135,11 @@ export interface CashEntry {
   balance_after: string;
   bunch: CashBunchSummary | null;
   approval_status: EntryApprovalStatus;
+  approval_label: string;
+  approval_sent_at: string | null;
+  approval_decided_at: string | null;
+  approval_decided_by_name: string | null;
+  approval_note: string;
   /** True while the entry sits with an approver, or has been approved. */
   is_locked: boolean;
   /** False for a cancelled entry, which is out of the balance but still read. */
@@ -142,6 +147,25 @@ export interface CashEntry {
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * The six figures the register heads itself with.
+ *
+ * Read down them and every rupee that came in is accounted for:
+ * `cash_in − cash_out − awaiting_approval − cash_in_hand − advance_given`
+ * comes to nothing left over. It is a proof the book adds up, not a count of
+ * the drawer — nothing here has seen the actual notes.
+ */
+export interface CashReconciliation {
+  cash_in: string;
+  /** Payments somebody has agreed. An unapproved one is not spent yet. */
+  cash_out: string;
+  awaiting_approval: string;
+  /** The notes that should be in the box: the book's balance less advances. */
+  cash_in_hand: string;
+  advance_given: string;
+  difference: string;
 }
 
 export interface CashTotals {
@@ -162,6 +186,7 @@ export interface CashEntryPage {
   /** The book's balance, not the filtered set's. Sent on every page. */
   balance: string;
   totals: CashTotals;
+  reconciliation: CashReconciliation;
 }
 
 export interface CashBookOptions {
@@ -183,8 +208,16 @@ export interface CashBookOptions {
 export interface CashBookSummary {
   balance: string;
   filtered: CashTotals;
-  pending_bunches: number;
+  reconciliation: CashReconciliation;
+  awaiting_approval: number;
   unsent_entries: number;
+}
+
+export interface ApprovalQueue {
+  state: EntryApprovalStatus;
+  results: CashEntry[];
+  total: string;
+  counts: Record<EntryApprovalStatus, number>;
 }
 
 /** One SAP account, straight out of the chart of accounts. */
@@ -241,6 +274,8 @@ export interface RecordEntryPayload {
   gl_account_name?: string;
   item?: string;
   detail: string;
+  /** Sent the moment it is saved, rather than found again on the register. */
+  send_for_approval?: boolean;
 }
 
 export type UpdateEntryPayload = Partial<RecordEntryPayload>;
@@ -273,6 +308,36 @@ export interface BranchPayload {
 }
 
 export const cashBookApi = {
+  // --- approval, which belongs to the entry ---------------------------
+  async sendForApproval(entryIds: number[]): Promise<CashEntry[]> {
+    const { data } = await apiClient.post<CashEntry[]>(
+      API_ENDPOINTS.CASH_BOOK.ENTRIES_SEND,
+      { entry_ids: entryIds },
+    );
+    return data;
+  },
+
+  async decideEntries(
+    entryIds: number[],
+    approve: boolean,
+    note = '',
+  ): Promise<CashEntry[]> {
+    const { data } = await apiClient.post<CashEntry[]>(
+      API_ENDPOINTS.CASH_BOOK.ENTRIES_DECIDE,
+      { entry_ids: entryIds, note },
+      { params: approve ? {} : { reject: 'true' } },
+    );
+    return data;
+  },
+
+  async approvalQueue(state: EntryApprovalStatus = 'PENDING'): Promise<ApprovalQueue> {
+    const { data } = await apiClient.get<ApprovalQueue>(
+      API_ENDPOINTS.CASH_BOOK.APPROVALS,
+      { params: { state } },
+    );
+    return data;
+  },
+
   // --- the card -------------------------------------------------------
   async atmAccounts(includeClosed = false): Promise<AtmAccount[]> {
     const { data } = await apiClient.get<AtmAccount[]>(API_ENDPOINTS.CASH_BOOK.ATM, {
