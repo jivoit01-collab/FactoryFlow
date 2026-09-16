@@ -18,6 +18,8 @@
 import { RefreshCw, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth/hooks/usePermission';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Input } from '@/shared/components/ui';
 
@@ -35,8 +37,7 @@ const TABS: { key: CreditNoteApprovalStatus; label: string }[] = [
   { key: 'REJECTED', label: 'Rejected' },
 ];
 
-const FAMILIES: { key: CreditNoteFamily | 'ALL'; label: string; hint: string }[] = [
-  { key: 'ALL', label: 'All', hint: 'Customer and vendor credit notes' },
+const FAMILIES: { key: CreditNoteFamily; label: string; hint: string }[] = [
   { key: 'AR', label: 'A/R — customer', hint: 'A customer is credited' },
   { key: 'AP', label: 'A/P — vendor', hint: 'A vendor is debited' },
 ];
@@ -81,6 +82,25 @@ function matches(row: CreditNoteApproval, needle: string): boolean {
 }
 
 export default function CreditNoteApprovalPage() {
+  const { hasPermission } = usePermission();
+  /**
+   * Only the families this user holds. The server narrows the queue regardless
+   * — asking for A/P without the permission returns an empty list, not an
+   * error — so this exists to stop the page offering a filter that could only
+   * ever come back empty, not as the access control itself.
+   */
+  const families = useMemo(
+    () =>
+      FAMILIES.filter(({ key }) =>
+        hasPermission(
+          key === 'AR'
+            ? WAREHOUSE_PERMISSIONS.VIEW_AR_CREDIT_NOTE_APPROVAL
+            : WAREHOUSE_PERMISSIONS.VIEW_AP_CREDIT_NOTE_APPROVAL,
+        ),
+      ),
+    [hasPermission],
+  );
+
   const [tab, setTab] = useState<CreditNoteApprovalStatus>('PENDING');
   const [family, setFamily] = useState<CreditNoteFamily | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
@@ -155,23 +175,29 @@ export default function CreditNoteApprovalPage() {
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {FAMILIES.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              title={f.hint}
-              onClick={() => setFamily(f.key)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                family === f.key
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:bg-muted'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {/* One family granted means there is nothing to filter — the queue is
+            already only that family, and a lone chip reads as a broken toggle. */}
+        {families.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {[{ key: 'ALL' as const, label: 'All', hint: 'Customer and vendor credit notes' }, ...families].map(
+              (f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  title={f.hint}
+                  onClick={() => setFamily(f.key)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    family === f.key
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ),
+            )}
+          </div>
+        )}
       </div>
 
       <CreditNoteApprovalTable

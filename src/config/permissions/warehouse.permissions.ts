@@ -79,10 +79,17 @@ export const WAREHOUSE_PERMISSIONS = {
   // touch a warehouse. Approving is further gated SAP-side: it accepts a
   // decision only from the one authorizer it named on the current stage, which
   // the user must be mapped to (Admin → SAP Identities).
-  /** Read the SAP credit-note approval queue */
-  VIEW_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_credit_note_approval',
-  /** Approve or reject a SAP credit note */
-  APPROVE_CREDIT_NOTE: 'warehouse.can_approve_credit_note',
+  // Scoped per family and enforced server-side, not just filtered in the UI:
+  // the list, the badge and the decision endpoint all narrow to the families
+  // the caller holds, so an A/R-only user never receives an A/P row.
+  /** Read the SAP A/R (customer) credit-note queue */
+  VIEW_AR_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_ar_credit_note_approval',
+  /** Approve or reject a SAP A/R (customer) credit note */
+  APPROVE_AR_CREDIT_NOTE: 'warehouse.can_approve_ar_credit_note',
+  /** Read the SAP A/P (vendor) credit-note queue */
+  VIEW_AP_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_ap_credit_note_approval',
+  /** Approve or reject a SAP A/P (vendor) credit note */
+  APPROVE_AP_CREDIT_NOTE: 'warehouse.can_approve_ap_credit_note',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';
