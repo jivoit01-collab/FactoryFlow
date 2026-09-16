@@ -1303,6 +1303,13 @@ export const API_ENDPOINTS = {
     SAP_TRANSFER_APPROVAL_STATUS: (wddCode: number) =>
       `/warehouse/sap-transfer-approvals/${wddCode}/status/`,
 
+    // The same SAP queue on credit-note drafts (A/R + A/P). Raised in the SAP
+    // client, invisible outside it until they appear here.
+    CREDIT_NOTE_APPROVALS: '/warehouse/credit-note-approvals/',
+    CREDIT_NOTE_APPROVAL_PENDING_COUNT: '/warehouse/credit-note-approvals/pending-count/',
+    CREDIT_NOTE_APPROVAL_STATUS: (wddCode: number) =>
+      `/warehouse/credit-note-approvals/${wddCode}/status/`,
+
     // Approving a transfer REQUEST clears the request; these move the stock
     // against it, in as many parts as it takes.
     SAP_TRANSFER_AWAITING: '/warehouse/sap-transfer-requests/awaiting/',

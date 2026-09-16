@@ -14,6 +14,10 @@ import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.config';
+import {
+  creditNoteApprovalNavChildren,
+  creditNoteApprovalRoutes,
+} from './credit-note-approval/module.config';
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
@@ -250,6 +254,8 @@ export const warehouseModuleConfig: ModuleConfig = {
     ...grpoRoutes,
     // Invoice Approval submodule route (/warehouse/invoice-approval)
     ...invoiceApprovalRoutes,
+    // Credit Note Approval submodule route (/warehouse/credit-note-approval)
+    ...creditNoteApprovalRoutes,
     // A/R invoice submodule route (/warehouse/ar-invoices)
     ...arInvoiceRoutes,
     // Short Dispatch submodule routes (/warehouse/short-dispatch/*)
@@ -276,6 +282,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE,
+        WAREHOUSE_PERMISSIONS.VIEW_CREDIT_NOTE_APPROVAL,
         AR_INVOICE_PERMISSIONS.VIEW,
         ...SHORT_DISPATCH_ACCESS,
         // A floor picker may hold only the bill-summary permissions; without
@@ -336,6 +343,9 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...grpoNavChildren,
         // Invoice Approval submodule — nested under the Warehouse group
         ...invoiceApprovalNavChildren,
+        // Credit Note Approval submodule — SAP's queue on credit-note drafts,
+        // directly under the invoice queue it is the mirror image of.
+        ...creditNoteApprovalNavChildren,
         // A/R invoice submodule — nested under the Warehouse group
         ...arInvoiceNavChildren,
       ],

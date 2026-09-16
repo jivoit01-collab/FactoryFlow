@@ -72,6 +72,17 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_PF_MOVEMENT: 'warehouse.can_view_pf_movement',
   /** Declare what is leaving your floor (godown keeper) */
   RECORD_PF_MOVEMENT: 'warehouse.can_record_pf_movement',
+
+  // SAP's own approval queue on credit-note drafts (A/R + A/P). Separate from
+  // the transfer permissions because it is a different queue for different
+  // people — a credit note is a finance document, and the service ones never
+  // touch a warehouse. Approving is further gated SAP-side: it accepts a
+  // decision only from the one authorizer it named on the current stage, which
+  // the user must be mapped to (Admin → SAP Identities).
+  /** Read the SAP credit-note approval queue */
+  VIEW_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_credit_note_approval',
+  /** Approve or reject a SAP credit note */
+  APPROVE_CREDIT_NOTE: 'warehouse.can_approve_credit_note',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';
