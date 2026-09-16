@@ -653,7 +653,16 @@ function OilTile({
                 </span>
               ))}
             </div>
-            {!rated && <p className="ops-note">{oil.no_capacity_reason}</p>}
+            {/* `no_capacity_reason` is deliberately NOT printed here.
+                Unconfigured, it reads "set EXIM_DB_NAME, EXIM_DB_HOST, …" —
+                server environment variables on a factory wall, which is noise
+                to everyone standing in front of it and actionable by nobody:
+                whoever can set them reads the log, where the reader already
+                puts it. The tile still refuses to look like a rated farm at
+                zero — the track is hatched rather than empty and the corner
+                says "no tank rating yet", which is the board's rule about an
+                absent source honoured without the paragraph. The field stays in
+                the payload for the API's other readers. */}
             {openable && (
               <p className="adm-open-hint">
                 {tankCount} tanks

@@ -46,7 +46,22 @@
 
 .ops-board {
   /* The scoped root unit. Identical maths to the design's :root font-size. */
-  --u: clamp(7px, min(0.833vw, 1.481vh), 26px);
+  /*
+   * The ceiling used to be the wall's real problem.
+   *
+   * It stops the unit growing, and on a large screen the unit WANTS to be
+   * bigger than it: at 4K the height term asks for about 26px and the old cap
+   * held it at 22. Everything sized in `--u` then froze — the people column,
+   * the type, the bar chart's reserved headroom — while the columns and rows
+   * measured in `fr` kept growing with the panel. The board came apart along
+   * exactly that seam: a rail too narrow for its own figures next to tiles with
+   * space to spare.
+   *
+   * Raised so the board keeps scaling on the screens it is actually hung on. No
+   * ordinary display is anywhere near it — a 1080p panel resolves this to about
+   * 13px — so nothing below a very large screen renders differently.
+   */
+  --u: clamp(7px, min(0.833vw, 1.481vh), 34px);
 
   --ink: #0e1726;
   --ink-2: #586675;
@@ -401,7 +416,24 @@
 .ops-band {
   position: relative;
   display: grid;
-  grid-template-columns: calc(2.5 * var(--u)) 1fr calc(12.4 * var(--u));
+  /*
+   * Rail, tiles, people — and which of them gives way matters.
+   *
+   * The people column was a FIXED width and the tile column a plain `1fr`,
+   * which sounds like the tiles yield first but does not behave like it: `1fr`
+   * refuses to go below its content's minimum, so on a narrow band the tiles
+   * held their size and the fixed column was the one squeezed. What went first
+   * was the headcount inside it, which sits at the right-hand edge.
+   *
+   * `minmax(0, 1fr)` lets the tiles genuinely shrink — they are built to, every
+   * figure inside them already clips or ellipses — and the people column gets a
+   * floor it cannot be pushed below plus a little room to grow into. The board
+   * reflows instead of amputating its own right-hand edge.
+   */
+  grid-template-columns:
+    calc(2.5 * var(--u))
+    minmax(0, 1fr)
+    minmax(calc(13 * var(--u)), calc(15.5 * var(--u)));
   gap: calc(0.6 * var(--u));
   padding: calc(0.6 * var(--u));
   border-radius: calc(1 * var(--u));
@@ -682,7 +714,25 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /*
+   * `safe center` — centred while it fits, top-aligned the moment it does not.
+   *
+   * Plain `center` was still a collision waiting to happen. Stretching the box
+   * (above) stopped it sizing to its content, but centring OVERFLOW still
+   * pushes half of it out of the top, and the top is where the tile's own
+   * headline is. `safe` is the alignment keyword for exactly this: it falls
+   * back to `start` whenever the content would overflow, so what does not fit
+   * is clipped at the BOTTOM — the day names, which is a legible loss — and
+   * never printed through the figure above.
+   *
+   * This is what still put the wastage chart's day figures through "₹6.2k
+   * packing material" on the wall after the bars themselves were made
+   * shrinkable: a bar chart's labels are absolutely placed inside padding that
+   * cannot compress, so in a squeezed row the block overflows however small the
+   * bars get. Making the overflow go downward is the guarantee; the sizing
+   * rules below are what stop it overflowing at all.
+   */
+  justify-content: safe center;
   overflow: hidden;
   padding-bottom: calc(0.2 * var(--u));
 }
@@ -847,7 +897,14 @@
   height: calc(4.7 * var(--u));
   /* Never taller than the row it was handed. */
   max-height: 100%;
-  min-height: calc(2.6 * var(--u));
+  /*
+   * No `min-height`. One was set here and it was the remaining hole: a minimum
+   * beats a maximum in CSS, so in a squeezed row the chart stayed tall and
+   * overflowed anyway — which is the whole failure this was meant to end. The
+   * reservation above is already an effective floor, because a border-box
+   * element cannot be shorter than its own padding; below that the columns just
+   * get short, which states the shape honestly at any size.
+   */
   flex: 0 1 auto;
   padding-top: calc(1.5 * var(--u));
 }
@@ -1040,6 +1097,9 @@
 .ops-people {
   /* The positioning context its left edge is painted against. */
   position: relative;
+  /* A grid item's default minimum is its content, which would push this column
+     past the floor the band gives it. */
+  min-width: 0;
   border-radius: calc(0.75 * var(--u));
   overflow: hidden;
   /* The same wash as a tile — the strip is one of the band's cards and must
@@ -1063,14 +1123,20 @@
   font-size: calc(1 * var(--u));
   font-weight: 600;
   color: var(--ink-2);
+  min-width: 0;
+  /* "On shift" may be shortened; the total beside it may not. */
+  white-space: nowrap;
+  overflow: hidden;
 }
 .ops-pcap b {
   margin-left: auto;
+  flex: 0 0 auto;
   font-size: calc(1.05 * var(--u));
   font-weight: 700;
   color: var(--ink);
 }
 .ops-pcap svg {
+  flex: 0 0 auto;
   width: calc(1.05 * var(--u));
   height: calc(1.05 * var(--u));
   stroke: var(--d1);
@@ -1088,7 +1154,18 @@
   display: flex;
   align-items: baseline;
   gap: calc(0.5 * var(--u));
+  min-width: 0;
 }
+/*
+ * The role's name gives way; its number does not.
+ *
+ * This row is a name pushed left and a headcount pushed right. Neither could
+ * shrink, so a narrow rail pushed the headcount past the edge and the panel's
+ * `overflow: hidden` removed it — leaving "Employees" over "₹3.7k a day" with
+ * no count at all, which reads as a section with nobody in it rather than as a
+ * column too narrow to print the figure. The name is the half that survives
+ * being shortened; the number is the half the panel exists for.
+ */
 .ops-prole .k {
   font-size: calc(1.05 * var(--u));
   color: var(--ink-2);
@@ -1096,6 +1173,14 @@
   display: inline-flex;
   align-items: center;
   gap: calc(0.35 * var(--u));
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The dot keeps its size whatever happens to the name beside it. */
+.ops-prole .k::before {
+  flex: 0 0 auto;
 }
 .ops-prole .k::before {
   content: '';
@@ -1106,6 +1191,9 @@
 }
 .ops-prole .n {
   margin-left: auto;
+  /* Never shrinks, never wraps — see the note on `.k` above. */
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-size: calc(1.85 * var(--u));
   font-weight: 700;
   letter-spacing: -0.04em;

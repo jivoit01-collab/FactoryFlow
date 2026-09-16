@@ -42,7 +42,9 @@
    * coefficient sits between the two: 1.34vh.
    */
   container-type: inline-size;
-  --u: clamp(6px, min(0.833cqw, 1.34vh), 24px);
+  /* Ceiling raised with the others — see ops-board.css for why a cap that
+     binds on a large screen is what pulls the board apart. */
+  --u: clamp(6px, min(0.833cqw, 1.34vh), 32px);
 }
 
 /* Three bands, and the last is taller: it carries the action centre, which is
@@ -503,10 +505,10 @@
  */
 .admin-board.ops-board:fullscreen,
 .admin-board.ops-board:-webkit-full-screen {
-  --u: clamp(6px, min(0.833vw, 1.34vh), 24px);
+  --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
 }
 
 /* The same wall, reached through the carousel — see `ops-board.css`. */
 .ops-wall .admin-board.ops-board {
-  --u: clamp(6px, min(0.833vw, 1.34vh), 24px);
+  --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
 }
