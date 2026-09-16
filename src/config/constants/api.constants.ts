@@ -1706,6 +1706,18 @@ export const API_ENDPOINTS = {
     SUMMARY: '/cash-book/summary/',
     GL_ACCOUNTS: '/cash-book/gl-accounts/',
     BRANCHES: '/cash-book/branches/',
+    // The imprest card the cash is drawn off. A withdrawal is not an
+    // endpoint here -- it is a cash-in entry naming the card.
+    ATM: '/cash-book/atm/',
+    ATM_DETAIL: (accountId: number) => `/cash-book/atm/${accountId}/`,
+    ATM_RECEIPTS: (accountId: number) => `/cash-book/atm/${accountId}/receipts/`,
+    ATM_RECEIPT_DETAIL: (receiptId: number) => `/cash-book/atm/receipts/${receiptId}/`,
+    // Cash out with somebody who has not yet said what it went on.
+    ADVANCES: '/cash-book/advances/',
+    ADVANCE_DETAIL: (entryId: number) => `/cash-book/advances/${entryId}/`,
+    ADVANCE_HOLDERS: '/cash-book/advances/holders/',
+    ADVANCE_STATEMENT: (personId: number) => `/cash-book/advances/holders/${personId}/`,
+    PEOPLE: '/cash-book/people/',
     BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,

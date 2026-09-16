@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type AdvanceDirection,
   type BranchPayload,
   type BunchStatus,
   cashBookApi,
@@ -20,6 +21,13 @@ export const CASH_BOOK_QUERY_KEYS = {
   glAccounts: (search: string) => [...CASH_BOOK_QUERY_KEYS.all, 'gl-accounts', search] as const,
   branches: (includeRetired: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'branches', includeRetired] as const,
+  atmAccounts: (includeClosed: boolean) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'atm', includeClosed] as const,
+  atmStatement: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'atm', 'statement', id] as const,
+  advanceHolders: () => [...CASH_BOOK_QUERY_KEYS.all, 'advance-holders'] as const,
+  advanceStatement: (id: number) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id] as const,
+  people: (search: string) => [...CASH_BOOK_QUERY_KEYS.all, 'people', search] as const,
   bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
   bunch: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'bunch', id] as const,
 };
@@ -133,6 +141,81 @@ export function useUpdateCashBranch() {
 
 export function useRetireCashBranch() {
   return useCashBookMutation((id: number) => cashBookApi.retireBranch(id));
+}
+
+
+export function useAtmAccounts(includeClosed = false) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.atmAccounts(includeClosed),
+    queryFn: () => cashBookApi.atmAccounts(includeClosed),
+  });
+}
+
+export function useAtmStatement(accountId: number | null) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.atmStatement(accountId ?? 0),
+    queryFn: () => cashBookApi.atmStatement(accountId as number),
+    enabled: accountId != null,
+  });
+}
+
+export function useAdvanceHolders() {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.advanceHolders(),
+    queryFn: () => cashBookApi.advanceHolders(),
+  });
+}
+
+export function useAdvanceStatement(personId: number | null) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.advanceStatement(personId ?? 0),
+    queryFn: () => cashBookApi.advanceStatement(personId as number),
+    enabled: personId != null,
+  });
+}
+
+/** Who an advance may be given to. Searched on the server — it is the staff list. */
+export function useCashPeople(search = '') {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.people(search),
+    queryFn: () => cashBookApi.people(search),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateAtmAccount() {
+  return useCashBookMutation((payload: { name: string; opening_balance?: string }) =>
+    cashBookApi.createAtmAccount(payload),
+  );
+}
+
+export function useAddAtmCash() {
+  return useCashBookMutation(
+    (vars: {
+      accountId: number;
+      payload: { received_on: string; amount: string; detail?: string };
+    }) => cashBookApi.addAtmCash(vars.accountId, vars.payload),
+  );
+}
+
+export function useCancelAtmReceipt() {
+  return useCashBookMutation((id: number) => cashBookApi.cancelAtmReceipt(id));
+}
+
+export function useRecordAdvance() {
+  return useCashBookMutation(
+    (payload: {
+      person: number;
+      entry_date: string;
+      direction: AdvanceDirection;
+      amount: string;
+      detail?: string;
+    }) => cashBookApi.recordAdvance(payload),
+  );
+}
+
+export function useCancelAdvance() {
+  return useCashBookMutation((id: number) => cashBookApi.cancelAdvance(id));
 }
 
 export function useApproveCashBunch() {

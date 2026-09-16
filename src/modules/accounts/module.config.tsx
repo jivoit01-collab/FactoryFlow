@@ -1,10 +1,12 @@
 /**
  * Accounts module — the factory's cash box.
  *
- * Three pages. **Cash Book** is the register itself: every receipt and payment
- * in the order it was written down, with the running balance beside it, and
- * the tick-and-send that bundles vouchers for approval. **Cash Approvals** is
- * where those bunches are decided on. **Branches** configures the short list
+ * Five pages, following the money. **ATM** is the imprest card the cash is
+ * drawn off. **Cash Book** is the register: every receipt and payment in the
+ * order it was written down, with the running balance beside it, and the
+ * tick-and-send that bundles vouchers for approval. **Advances** is cash out
+ * with somebody who has not yet said what it went on. **Cash Approvals** is
+ * where the bunches are decided on, and **Branches** configures the short list
  * every payment is filed under -- Oil, Beverage, Water, Common.
  *
  * The sidebar hides the whole module from anyone without a `cash_book.*`
@@ -13,7 +15,14 @@
  * is narrowed further: it is for the approver, and for the custodian chasing
  * or re-sending a bunch.
  */
-import { Building2, ClipboardCheck, IndianRupee, Wallet } from 'lucide-react';
+import {
+  Building2,
+  ClipboardCheck,
+  CreditCard,
+  HandCoins,
+  IndianRupee,
+  Wallet,
+} from 'lucide-react';
 
 import {
   CASH_BOOK_ACCESS,
@@ -27,6 +36,8 @@ import type { ModuleConfig } from '@/core/types';
 const CashBookPage = lazy(() => import('./pages/CashBookPage'));
 const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
 const CashBranchSettingsPage = lazy(() => import('./pages/CashBranchSettingsPage'));
+const AtmPage = lazy(() => import('./pages/AtmPage'));
+const AdvancesPage = lazy(() => import('./pages/AdvancesPage'));
 
 export const accountsModuleConfig: ModuleConfig = {
   name: 'accounts',
@@ -37,6 +48,20 @@ export const accountsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: CASH_BOOK_ACCESS,
       breadcrumb: { label: 'Cash Book' },
+    },
+    {
+      path: '/accounts/atm',
+      element: <AtmPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'ATM' },
+    },
+    {
+      path: '/accounts/advances',
+      element: <AdvancesPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Advances' },
     },
     {
       path: '/accounts/cash-approvals',
@@ -69,6 +94,18 @@ export const accountsModuleConfig: ModuleConfig = {
           path: '/accounts/cash-book',
           title: 'Cash Book',
           icon: Wallet,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/atm',
+          title: 'ATM',
+          icon: CreditCard,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/advances',
+          title: 'Advances',
+          icon: HandCoins,
           permissions: CASH_BOOK_ACCESS,
         },
         {

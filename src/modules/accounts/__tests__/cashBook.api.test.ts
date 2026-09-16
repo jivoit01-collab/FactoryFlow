@@ -123,6 +123,65 @@ describe('cashBookApi', () => {
     expect(patch.mock.calls[0][1]).toEqual({ name: 'Beverage' });
   });
 
+  it('records a receipt against the card it was drawn off', async () => {
+    await cashBookApi.record({
+      entry_date: '2026-06-04',
+      direction: 'IN',
+      amount: '50000.00',
+      atm_account: 2,
+      detail: 'Cash receive by ATM card',
+    });
+    expect(post.mock.calls[0][1]).toMatchObject({ direction: 'IN', atm_account: 2 });
+  });
+
+  it('records a payment against the advance it clears', async () => {
+    await cashBookApi.record({
+      entry_date: '2026-06-06',
+      direction: 'OUT',
+      amount: '3400.00',
+      branch: 1,
+      advance_holder: 7,
+      gl_account_code: '5670002',
+      detail: 'Unloading charge',
+    });
+    expect(post.mock.calls[0][1]).toMatchObject({ direction: 'OUT', advance_holder: 7 });
+  });
+
+  it('asks only for the cards in use unless closed ones are wanted', async () => {
+    await cashBookApi.atmAccounts();
+    expect(get.mock.calls[0][0]).toBe('/cash-book/atm/');
+    expect(get.mock.calls[0][1]).toEqual({ params: {} });
+
+    await cashBookApi.atmAccounts(true);
+    expect(get.mock.calls[1][1]).toEqual({ params: { include_closed: 'true' } });
+  });
+
+  it('adds cash onto a named card', async () => {
+    await cashBookApi.addAtmCash(2, { received_on: '2026-06-04', amount: '100000.00' });
+    expect(post.mock.calls[0][0]).toBe('/cash-book/atm/2/receipts/');
+    expect(post.mock.calls[0][1]).toEqual({
+      received_on: '2026-06-04',
+      amount: '100000.00',
+    });
+  });
+
+  it('hands an advance over against a person', async () => {
+    await cashBookApi.recordAdvance({
+      person: 7,
+      entry_date: '2026-06-04',
+      direction: 'GIVEN',
+      amount: '15000.00',
+      detail: 'Bunty ji ko deye',
+    });
+    expect(post.mock.calls[0][0]).toBe('/cash-book/advances/');
+    expect(post.mock.calls[0][1]).toMatchObject({ person: 7, direction: 'GIVEN' });
+  });
+
+  it('reads one person ledger by their id', async () => {
+    await cashBookApi.advanceStatement(7);
+    expect(get.mock.calls[0][0]).toBe('/cash-book/advances/holders/7/');
+  });
+
   it('omits remarks on a resend so the bunch keeps the ones it has', async () => {
     await cashBookApi.resend(7);
     expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/7/resend/');

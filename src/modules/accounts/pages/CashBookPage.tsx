@@ -391,6 +391,7 @@ export default function CashBookPage() {
                   <th className="px-3 py-2">Bunch</th>
                   <th className="px-3 py-2">Branch</th>
                   <th className="px-3 py-2">G/L head</th>
+                  <th className="px-3 py-2">Source / advance</th>
                   <th className="px-3 py-2">Item</th>
                   <th className="px-3 py-2">Detail</th>
                   <th className="px-3 py-2 text-right">Out</th>
@@ -435,6 +436,21 @@ export default function CashBookPage() {
                           </>
                         ) : (
                           '—'
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.atm_account_name && (
+                          <span className="text-xs">{row.atm_account_name}</span>
+                        )}
+                        {row.advance_holder_name && (
+                          <Badge variant="outline" className="bg-amber-100 text-[10px] text-amber-900">
+                            {row.advance_holder_name}
+                          </Badge>
+                        )}
+                        {!row.atm_account_name && !row.advance_holder_name && (
+                          <span className="text-xs text-muted-foreground">
+                            {row.direction === 'IN' ? 'Not from a card' : 'From the box'}
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-2">{row.item || '—'}</td>

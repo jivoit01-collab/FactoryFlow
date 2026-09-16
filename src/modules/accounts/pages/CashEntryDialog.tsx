@@ -2,9 +2,16 @@ import { ArrowDownLeft, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import type { CashDirection, CashEntry, GLAccount } from '@/modules/accounts/api';
+import type {
+  CashDirection,
+  CashEntry,
+  CashPerson,
+  GLAccount,
+} from '@/modules/accounts/api';
 import {
+  useAtmAccounts,
   useCashBookOptions,
+  useCashPeople,
   useGLAccounts,
   useRecordCashEntry,
   useUpdateCashEntry,
@@ -77,6 +84,14 @@ export function CashEntryDialog({
   const [item, setItem] = useState(entry?.item ?? '');
   const [detail, setDetail] = useState(entry?.detail ?? '');
   const [glSearch, setGlSearch] = useState('');
+  // A receipt says which card it came off; a payment says whose advance it
+  // clears. Never both -- the server refuses the crossover.
+  const [atmAccount, setAtmAccount] = useState(
+    entry?.atm_account ? String(entry.atm_account) : '',
+  );
+  const [holderId, setHolderId] = useState<number | null>(entry?.advance_holder ?? null);
+  const [holderName, setHolderName] = useState(entry?.advance_holder_name ?? '');
+  const [holderSearch, setHolderSearch] = useState('');
   // No reset effect: the page mounts this dialog only while it is open, so
   // the initialisers above run afresh on every open and a cancelled edit
   // cannot leak into the next one.
@@ -91,6 +106,12 @@ export function CashEntryDialog({
   } = useGLAccounts(glSearch, open && isPayment);
 
   const branches = options?.branches ?? [];
+  const { data: cards = [] } = useAtmAccounts();
+  const {
+    data: people = [],
+    isLoading: peopleLoading,
+    isError: peopleError,
+  } = useCashPeople(holderSearch);
   const saving = record.isPending || update.isPending;
 
   const problem = useMemo(() => {
@@ -117,6 +138,8 @@ export function CashEntryDialog({
       // Sent as nulls/blanks on a receipt so a correction that turns a payment
       // into one actually clears what the payment held.
       branch: isPayment ? Number(branch) : null,
+      atm_account: !isPayment && atmAccount ? Number(atmAccount) : null,
+      advance_holder: isPayment ? holderId : null,
       gl_account_code: isPayment ? glCode : '',
       gl_account_name: isPayment ? glName : '',
     };
@@ -234,6 +257,61 @@ export function CashEntryDialog({
                 notFoundText="No account matches that"
                 errorText="SAP could not be reached, so accounts cannot be searched right now."
               />
+            </div>
+          )}
+
+          {!isPayment && (
+            <div className="space-y-1">
+              <Label htmlFor="cash-atm">Drawn off</Label>
+              <NativeSelect
+                id="cash-atm"
+                value={atmAccount}
+                onChange={(e) => setAtmAccount(e.target.value)}
+              >
+                <SelectOption value="">Not from a card</SelectOption>
+                {cards.map((card) => (
+                  <SelectOption key={card.id} value={String(card.id)}>
+                    {card.name}
+                  </SelectOption>
+                ))}
+              </NativeSelect>
+              <p className="text-xs text-muted-foreground">
+                Naming the card takes this off its balance. Leave it blank for cash from
+                anywhere else — handed over by a director, say.
+              </p>
+            </div>
+          )}
+
+          {isPayment && (
+            <div className="space-y-1">
+              <SearchableSelect<CashPerson>
+                inputId="cash-advance-holder"
+                label="Spent out of an advance"
+                value={holderName}
+                items={people}
+                isLoading={peopleLoading}
+                isError={peopleError}
+                placeholder="Nobody — paid from the cash box"
+                getItemKey={(person) => person.id}
+                getItemLabel={(person) => person.name}
+                onSearchChange={setHolderSearch}
+                onItemSelect={(person) => {
+                  setHolderId(person.id);
+                  setHolderName(person.name);
+                }}
+                onClear={() => {
+                  setHolderId(null);
+                  setHolderName('');
+                }}
+                loadingText="Loading people…"
+                emptyText="Type to search"
+                notFoundText="Nobody matches that"
+                errorText="The people list could not be loaded."
+              />
+              <p className="text-xs text-muted-foreground">
+                Naming somebody clears this much of what they are holding. Leave it blank
+                when the money came straight out of the box.
+              </p>
             </div>
           )}
 

@@ -15,6 +15,78 @@ export interface CashBunchSummary {
   decided_at: string | null;
 }
 
+
+/** Somebody who can hold an advance: anyone with a login to this company. */
+export interface CashPerson {
+  id: number;
+  name: string;
+  email: string;
+}
+
+/** The imprest debit card the factory draws its cash off. */
+export interface AtmAccount {
+  id: number;
+  name: string;
+  opening_balance: string;
+  is_active: boolean;
+  /** Opening, plus what was paid on, less what was drawn off. */
+  balance: string;
+}
+
+/**
+ * One line of a card statement or a person's advance ledger.
+ *
+ * `kind` is RECEIPT/WITHDRAWAL on a card, and GIVEN/RETURNED/EXPLAINED on a
+ * person. `cash_entry_id` is set when the movement is a cash book row — a
+ * withdrawal, or an expense that cleared part of an advance.
+ */
+export interface LedgerMovement {
+  kind: string;
+  id: number;
+  date: string;
+  amount: string;
+  signed: string;
+  balance_after: string;
+  detail: string;
+  cash_entry_id: number | null;
+}
+
+export interface AtmStatement {
+  account: AtmAccount;
+  movements: LedgerMovement[];
+}
+
+export type AdvanceDirection = 'GIVEN' | 'RETURNED';
+
+export interface AdvanceEntry {
+  id: number;
+  person: number;
+  person_name: string | null;
+  entry_date: string;
+  direction: AdvanceDirection;
+  direction_label: string;
+  amount: string;
+  detail: string;
+  is_active: boolean;
+}
+
+export interface AdvanceHolder {
+  person: CashPerson;
+  /** What they are still holding and have not explained. Can go negative. */
+  balance: string;
+}
+
+export interface AdvanceHolderList {
+  holders: AdvanceHolder[];
+  total_outstanding: string;
+}
+
+export interface AdvanceStatement {
+  person: CashPerson;
+  balance: string;
+  movements: LedgerMovement[];
+}
+
 /**
  * One branch of the business a payment can be filed under.
  *
@@ -48,6 +120,12 @@ export interface CashEntry {
   amount: string;
   branch: number | null;
   branch_name: string | null;
+  /** On a receipt: the card it was drawn off. */
+  atm_account: number | null;
+  atm_account_name: string | null;
+  /** On a payment: whose advance it cleared. */
+  advance_holder: number | null;
+  advance_holder_name: string | null;
   gl_account_code: string;
   gl_account_name: string;
   item: string;
@@ -154,6 +232,8 @@ export interface RecordEntryPayload {
   direction: CashDirection;
   amount: string;
   branch?: number | null;
+  atm_account?: number | null;
+  advance_holder?: number | null;
   gl_account_code?: string;
   /** Sent with the code; only used if SAP is down when the entry is saved. */
   gl_account_name?: string;
@@ -191,6 +271,82 @@ export interface BranchPayload {
 }
 
 export const cashBookApi = {
+  // --- the card -------------------------------------------------------
+  async atmAccounts(includeClosed = false): Promise<AtmAccount[]> {
+    const { data } = await apiClient.get<AtmAccount[]>(API_ENDPOINTS.CASH_BOOK.ATM, {
+      params: includeClosed ? { include_closed: 'true' } : {},
+    });
+    return data;
+  },
+
+  async atmStatement(accountId: number): Promise<AtmStatement> {
+    const { data } = await apiClient.get<AtmStatement>(
+      API_ENDPOINTS.CASH_BOOK.ATM_DETAIL(accountId),
+    );
+    return data;
+  },
+
+  async createAtmAccount(payload: {
+    name: string;
+    opening_balance?: string;
+  }): Promise<AtmAccount> {
+    const { data } = await apiClient.post<AtmAccount>(API_ENDPOINTS.CASH_BOOK.ATM, payload);
+    return data;
+  },
+
+  /** Money paid onto the card. The ATM screen's one write. */
+  async addAtmCash(
+    accountId: number,
+    payload: { received_on: string; amount: string; detail?: string },
+  ): Promise<void> {
+    await apiClient.post(API_ENDPOINTS.CASH_BOOK.ATM_RECEIPTS(accountId), payload);
+  },
+
+  async cancelAtmReceipt(receiptId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ATM_RECEIPT_DETAIL(receiptId));
+  },
+
+  // --- advances -------------------------------------------------------
+  async advanceHolders(): Promise<AdvanceHolderList> {
+    const { data } = await apiClient.get<AdvanceHolderList>(
+      API_ENDPOINTS.CASH_BOOK.ADVANCE_HOLDERS,
+    );
+    return data;
+  },
+
+  async advanceStatement(personId: number): Promise<AdvanceStatement> {
+    const { data } = await apiClient.get<AdvanceStatement>(
+      API_ENDPOINTS.CASH_BOOK.ADVANCE_STATEMENT(personId),
+    );
+    return data;
+  },
+
+  /** Hand cash over, or take it back. Neither touches the cash book. */
+  async recordAdvance(payload: {
+    person: number;
+    entry_date: string;
+    direction: AdvanceDirection;
+    amount: string;
+    detail?: string;
+  }): Promise<AdvanceEntry> {
+    const { data } = await apiClient.post<AdvanceEntry>(
+      API_ENDPOINTS.CASH_BOOK.ADVANCES,
+      payload,
+    );
+    return data;
+  },
+
+  async cancelAdvance(entryId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ADVANCE_DETAIL(entryId));
+  },
+
+  async people(search = ''): Promise<CashPerson[]> {
+    const { data } = await apiClient.get<CashPerson[]>(API_ENDPOINTS.CASH_BOOK.PEOPLE, {
+      params: search ? { search } : {},
+    });
+    return data;
+  },
+
   /**
    * The branch list. `includeRetired` is for the settings page — the entry
    * form only ever wants the active ones, which `options()` already carries.
