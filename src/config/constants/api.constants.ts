@@ -647,6 +647,12 @@ export const API_ENDPOINTS = {
     ACCESS: '/sap-reports/access/',
     ACCESS_DETAIL: (id: number) => `/sap-reports/access/${id}/`,
   },
+  // One number, looked up in every company's SAP and in this app at once.
+  UNIVERSAL_SEARCH: {
+    SEARCH: '/universal-search/search/',
+    DOCUMENT: '/universal-search/document/',
+    ITEM_STOCK: '/universal-search/item-stock/',
+  },
   GOODS_RETURN: {
     LIST: '/goods-return/',
     CREATE: '/goods-return/',

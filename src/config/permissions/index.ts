@@ -65,6 +65,14 @@ export {
   type SapReportsPermission,
 } from './sap-reports.permissions';
 
+// Universal Search (one number, looked up across SAP and this app)
+export {
+  UNIVERSAL_SEARCH_ACCESS,
+  UNIVERSAL_SEARCH_MODULE_PREFIX,
+  UNIVERSAL_SEARCH_PERMISSIONS,
+  type UniversalSearchPermission,
+} from './universal-search.permissions';
+
 // Production Module
 export {
   BLOWING_MODULE_PREFIX,

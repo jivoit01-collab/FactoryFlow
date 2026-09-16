@@ -8,6 +8,7 @@ import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { NotificationBell } from '@/core/notifications';
+import { UniversalSearchButton } from '@/modules/universal-search';
 import {
   Button,
   DropdownMenu,
@@ -97,6 +98,10 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* One number, looked up in every company's SAP and in this app at
+            once. Ctrl+K opens it from any screen. */}
+        <UniversalSearchButton />
+
         {/* Report a problem with the screen you are on. The current path rides
             along so the issue says where to look without anyone asking. */}
         {canReportIssue && (
