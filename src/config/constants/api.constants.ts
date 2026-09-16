@@ -1627,6 +1627,19 @@ export const API_ENDPOINTS = {
     CHART: '/org-chart/chart/',
   },
 
+  // Request Labour -- what each department needs on the NEXT day's shifts.
+  // The list call returns BOTH shifts for a date; the page switches between
+  // them locally, so changing shift never costs a round trip.
+  LABOUR_REQUEST: {
+    DAY: (date: string) => `/labour-request/?date=${date}`,
+    RAISE: '/labour-request/raise/',
+    DETAIL: (requestId: number) => `/labour-request/${requestId}/`,
+    AUDIT: (requestId: number) => `/labour-request/${requestId}/audit/`,
+    RESTORE: (requestId: number) => `/labour-request/${requestId}/restore/`,
+    DECISION: (requestId: number) => `/labour-request/${requestId}/decision/`,
+    REOPEN: (requestId: number) => `/labour-request/${requestId}/reopen/`,
+  },
+
   // Employee hierarchy & compensation. Everything is keyed by employee id
   // rather than employee code: codes are edited when somebody was entered
   // wrong, and a URL that changes under you is worse than one that is pretty.

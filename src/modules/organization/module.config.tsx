@@ -1,9 +1,16 @@
 /**
- * Organization module — the department ownership chart.
+ * Organization module — the department ownership chart and next-day labour.
  *
- * One page: who owns each function and who backs them up. It is gated on its
- * own `org_chart.*` permissions rather than a module prefix, so granting the
- * read right is all it takes to open the chart.
+ * Two pages, each gated on its own permissions rather than on a module prefix,
+ * so granting one read right is all it takes to open that one page:
+ *
+ *   /organization                 — who owns each function and who backs them up
+ *                                   (`org_chart.*`)
+ *   /organization/request-labour  — what each department needs on the next day's
+ *                                   shifts (`labour_request.*`)
+ *
+ * The two share nothing but the department as a subject; a user may hold either
+ * without the other.
  *
  * The route lives here; the sidebar entry that reaches it lives in the
  * Organisation module (`employees/module.config.tsx`), which opens on this
@@ -11,11 +18,12 @@
  * (departments and their owners) and the employee screens are another (real
  * people), and only the navigation joins them.
  */
-import { ORG_CHART_ACCESS } from '@/config/permissions';
+import { LABOUR_REQUEST_ACCESS, ORG_CHART_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 const DepartmentOwnershipPage = lazy(() => import('./pages/DepartmentOwnershipPage'));
+const RequestLabourPage = lazy(() => import('./pages/RequestLabourPage'));
 
 export const organizationModuleConfig: ModuleConfig = {
   name: 'organization',
@@ -26,6 +34,13 @@ export const organizationModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: ORG_CHART_ACCESS,
       breadcrumb: { label: 'Organisation' },
+    },
+    {
+      path: '/organization/request-labour',
+      element: <RequestLabourPage />,
+      layout: 'main',
+      permissions: LABOUR_REQUEST_ACCESS,
+      breadcrumb: { label: 'Request labour' },
     },
   ],
   // No sidebar entry of its own: the chart is what the Organisation module

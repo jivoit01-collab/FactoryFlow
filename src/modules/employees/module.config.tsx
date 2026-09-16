@@ -2,10 +2,12 @@
  * Organisation module — the directory, the reporting tree, and compensation.
  *
  * The sidebar calls it "Organisation" and it opens on the department ownership
- * chart at `/organization`, which is registered by its own module; everything
- * below the first submenu entry is the employee screens, which keep their
- * `/employees/*` paths. The name is the only thing shared — nothing was moved,
- * so a bookmark, a deep link or a printed URL still lands where it did.
+ * chart at `/organization`, which is registered by its own module, alongside
+ * Request Labour (`/organization/request-labour`) -- what each department needs
+ * on the next day's shifts. Everything below those two is the employee screens,
+ * which keep their `/employees/*` paths. The name is the only thing shared —
+ * nothing was moved, so a bookmark, a deep link or a printed URL still lands
+ * where it did.
  *
  * Seven screens, gated on their own `employee_hierarchy.*` permissions rather
  * than on a module prefix, because the permissions here are not a ladder: the
@@ -24,12 +26,21 @@
  * static segment above a dynamic one, so `/employees/chart` is never read as an
  * employee id.
  */
-import { Building2, HardHat, Network, Table2, Users, Wallet } from 'lucide-react';
+import {
+  Building2,
+  ClipboardList,
+  HardHat,
+  Network,
+  Table2,
+  Users,
+  Wallet,
+} from 'lucide-react';
 
 import {
   EMPLOYEE_ACCESS,
   EMPLOYEE_REPORTS_ACCESS,
   EMPLOYEE_STRUCTURE_ACCESS,
+  LABOUR_REQUEST_ACCESS,
   ORG_CHART_ACCESS,
   SALARY_ACCESS,
 } from '@/config/permissions';
@@ -50,7 +61,11 @@ const LabourPresencePage = lazy(() => import('./pages/LabourPresencePage'));
  * well as a header, so it has to be visible to somebody who holds only one
  * side of that.
  */
-const ORGANISATION_ACCESS: readonly string[] = [...ORG_CHART_ACCESS, ...EMPLOYEE_ACCESS];
+const ORGANISATION_ACCESS: readonly string[] = [
+  ...ORG_CHART_ACCESS,
+  ...EMPLOYEE_ACCESS,
+  ...LABOUR_REQUEST_ACCESS,
+];
 
 export const employeesModuleConfig: ModuleConfig = {
   name: 'employees',
@@ -118,6 +133,12 @@ export const employeesModuleConfig: ModuleConfig = {
           title: 'Ownership chart',
           icon: Table2,
           permissions: ORG_CHART_ACCESS,
+        },
+        {
+          path: '/organization/request-labour',
+          title: 'Request labour',
+          icon: ClipboardList,
+          permissions: LABOUR_REQUEST_ACCESS,
         },
         {
           path: '/employees',

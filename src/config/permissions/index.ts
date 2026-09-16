@@ -28,6 +28,14 @@ export {
   type LabourPermission,
 } from './labour.permissions';
 
+// Request Labour (Organisation module; backed by the `labour_request` Django app)
+export {
+  LABOUR_REQUEST_ACCESS,
+  LABOUR_REQUEST_MODULE_PREFIX,
+  LABOUR_REQUEST_PERMISSIONS,
+  type LabourRequestPermission,
+} from './labour-request.permissions';
+
 // Quality Control Module
 export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions';
 
