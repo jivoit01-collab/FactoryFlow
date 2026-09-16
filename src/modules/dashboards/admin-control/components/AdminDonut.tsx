@@ -24,10 +24,11 @@ export interface AdminDonutProps {
   /**
    * A caveat printed under the legend.
    *
-   * The electricity line counts the mains as well as the sub-meters that
-   * measure the same supply, so it knowingly runs about 3x the metered bill.
-   * That is a deliberate, recorded decision rather than a fault — but a reader
-   * comparing this donut with an electricity bill has to be told.
+   * The electricity line reads Jivo Oil's meters only, but it counts the mains
+   * as well as the sub-meters that measure the same supply, and a meter shared
+   * with Beverages counts in full — so it knowingly runs well above the metered
+   * bill. That is a deliberate, recorded decision rather than a fault — but a
+   * reader comparing this donut with an electricity bill has to be told.
    */
   note?: string;
 }
@@ -128,7 +129,8 @@ export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
                   : pctRough(slice.share_pct)}
               </span>
               {/* The count behind the money, under it rather than beside it:
-                  a rupee figure is not checkable by eye, and "1,045 gated in"
+                  a rupee figure is not checkable by eye, and "629 across 4 of
+                  5 departments"
                   is the thing a reader can argue with. Spans the row so the
                   four money columns stay aligned. */}
               {slice.detail && <small className="adm-ldet">{slice.detail}</small>}
