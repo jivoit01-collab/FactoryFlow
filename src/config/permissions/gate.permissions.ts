@@ -126,9 +126,9 @@ export const GATE_PERMISSIONS = {
   /**
    * Letting a dispatch truck in after the evening cutoff (5 PM by default).
    *
-   * Only the approver's side has rights: anyone who can start an empty-vehicle
-   * gate-in can *ask* for a late one to be allowed — raising the question is not
-   * the privilege, answering it is.
+   * Only the approver's side has rights of its own. Asking is dispatch's job and
+   * rides on the Vehicle Linking right they already hold — raising the question is not
+   * the privilege, answering it is. The gate holds neither: it reads the answer.
    */
   LATE_DISPATCH_GATE_IN: {
     /** See the queue of trucks waiting to be let in late (Admin) */

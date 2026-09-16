@@ -41,7 +41,11 @@ const STATUS_TABS: { value: StatusFilter; label: string }[] = [
 type ReviewMode = 'approve' | 'reject';
 
 /**
- * Trucks waiting at the gate to be let in for dispatch after the evening cutoff.
+ * Trucks dispatch wants let in to load after the evening cutoff.
+ *
+ * Raised from Dispatch > Vehicle Linking, normally while the truck is still on the
+ * road -- so these are usually decisions about tonight rather than about a driver
+ * already standing outside. Until one is approved the gate cannot start the entry.
  *
  * Read across every company the approver belongs to: the gate is one physical
  * place, and a truck's request is filed under whichever company's bills it is
@@ -112,8 +116,8 @@ export default function LateDispatchApprovalsPage() {
           Late Dispatch Gate-In Approvals
         </h2>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Trucks that reached the gate to load after the evening cutoff. Approving lets the
-          gate start the empty-vehicle entry for that truck; rejecting keeps it outside.
+          Trucks dispatch wants to load after the evening cutoff. Approving lets the gate
+          start the empty-vehicle entry for that truck; rejecting keeps it outside.
         </p>
       </div>
 
@@ -218,7 +222,7 @@ export default function LateDispatchApprovalsPage() {
                       <td className="whitespace-nowrap p-3">
                         <div>{request.gate_in_date}</div>
                         <div className="text-xs text-muted-foreground">
-                          {formatTime(request.in_time)}
+                          {formatArrival(request.in_time)}
                         </div>
                       </td>
                       <td className="p-3">
@@ -381,7 +385,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
             {request.vehicle_no || `#${request.vehicle}`}
           </div>
           <div className="text-xs text-muted-foreground">
-            {request.gate_in_date} · {formatTime(request.in_time)}
+            {request.gate_in_date} · {formatArrival(request.in_time)}
             {request.company_name ? ` · ${request.company_name}` : ''}
           </div>
         </div>
@@ -459,8 +463,15 @@ function StatusBadge({ status }: { status: LateDispatchApprovalStatus }) {
   );
 }
 
-function formatTime(value?: string | null) {
-  return value ? value.slice(0, 5) : '-';
+/**
+ * The arrival hour, which a request does not have until it is used.
+ *
+ * Dispatch raises these before the truck reaches the gate, so there is no arrival
+ * to show while the decision is still open -- saying so beats a bare dash, which
+ * reads as missing data rather than as "it has not happened yet".
+ */
+function formatArrival(value?: string | null) {
+  return value ? `In at ${value.slice(0, 5)}` : 'Not arrived yet';
 }
 
 function formatTimestamp(value?: string | null) {

@@ -47,7 +47,7 @@ import {
   type ExpectedDispatchVehicle,
   formatDispatchNumber,
 } from './emptyVehicleInDispatch';
-import { LateDispatchApprovalDialog } from './LateDispatchApprovalDialog';
+import { LateDispatchBlockedDialog } from './LateDispatchBlockedDialog';
 
 export default function EmptyVehicleInPage() {
   const navigate = useNavigate();
@@ -57,7 +57,7 @@ export default function EmptyVehicleInPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'inside'>('all');
   const expectedDispatchRef = useRef<HTMLElement>(null);
   // The truck whose "Start Entry" click ran into the evening cutoff, with the
-  // server's verdict on it. Both are cleared when the warning is dismissed.
+  // server's verdict on it. Both are cleared when the notice is dismissed.
   const [lateVehicle, setLateVehicle] = useState<ExpectedDispatchVehicle | null>(null);
   const [lateStatus, setLateStatus] = useState<LateDispatchVehicleStatus | null>(null);
   const [checkingVehicleId, setCheckingVehicleId] = useState<number | null>(null);
@@ -191,11 +191,15 @@ export default function EmptyVehicleInPage() {
    * Start a gate-in for an expected dispatch vehicle — unless the evening cutoff
    * stands in the way.
    *
-   * The cutoff is server configuration and the approval may already exist, so the
-   * board asks the server rather than reading a clock of its own; the check runs on
-   * the click (one call) instead of once per listed vehicle. A check that fails
-   * outright lets the click through: the create endpoint enforces the same rule, so
-   * the truck still cannot get in, and a flaky lookup should not strand the gate.
+   * The cutoff is server configuration and dispatch's approval may already be in
+   * hand, so the board asks the server rather than reading a clock of its own; the
+   * check runs on the click (one call) instead of once per listed vehicle. Being
+   * stopped here is the end of the road for the gate: only dispatch can ask for the
+   * truck to be let in, so the notice names them rather than offering a button.
+   *
+   * A check that fails outright lets the click through: the gate-in endpoint
+   * enforces the same rule and refuses on submit, so the truck still cannot get in,
+   * and a flaky lookup should not strand the gate.
    */
   const startEntryForExpectedVehicle = async (vehicle: ExpectedDispatchVehicle) => {
     const href =
@@ -657,9 +661,7 @@ export default function EmptyVehicleInPage() {
         )}
       </section>
 
-      <LateDispatchApprovalDialog
-        // Keyed on the truck so each warning opens with a fresh, empty form.
-        key={lateVehicle?.vehicleId ?? 'none'}
+      <LateDispatchBlockedDialog
         vehicle={lateVehicle}
         status={lateStatus}
         onClose={closeLateDialog}

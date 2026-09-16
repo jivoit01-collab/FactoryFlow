@@ -5,8 +5,8 @@ export type LateDispatchApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /**
  * A request to gate a dispatch truck in after the evening cutoff (5 PM by
- * default). Raised from the Empty Vehicle In board, decided from
- * Admin > Late Dispatch Gate-In Approvals.
+ * default). Raised by dispatch from Dispatch > Vehicle Linking, decided from
+ * Admin > Late Dispatch Gate-In Approvals, and spent by the gate-in it allows.
  */
 export interface LateDispatchApproval {
   id: number;
@@ -17,7 +17,8 @@ export interface LateDispatchApproval {
   vehicle_no: string;
   transporter_name: string;
   gate_in_date: string;
-  in_time: string;
+  /** Null until the gate spends the approval; then the hour the truck came in. */
+  in_time: string | null;
   /** Comma-separated SAP invoice numbers the truck is booked to carry. */
   bill_doc_nums: string;
   customer_names: string;
@@ -39,9 +40,13 @@ export interface LateDispatchApproval {
 }
 
 /**
- * Where one truck stands against the cutoff right now. The gate asks for this the
- * moment "Start Entry" is clicked: `requires_approval` is the whole decision, so
- * the cutoff rule stays on the server and is never re-implemented here.
+ * Where one truck stands against the cutoff right now.
+ *
+ * Read by both sides. The gate asks the moment "Start Entry" is clicked and reads
+ * `requires_approval` -- the whole decision, so the cutoff rule stays on the
+ * server and is never re-implemented here. Vehicle Linking asks per expected truck
+ * and reads `approval`, because dispatch asks in the afternoon while `is_late` is
+ * still false.
  */
 export interface LateDispatchVehicleStatus {
   vehicle: number;
@@ -58,14 +63,14 @@ export type LateDispatchApprovalListParams = {
   status?: LateDispatchApprovalStatus;
   vehicle?: number;
   gate_in_date?: string;
-  /** The gate is one place for every company — span them all. */
+  /** A request is filed under whichever company's bills the truck carries. */
   all_companies?: boolean;
 };
 
 export interface LateDispatchApprovalCreateRequest {
   vehicle_id: number;
-  gate_in_date: string;
-  in_time: string;
+  /** The day the truck is expected. Omitted, the server takes today. */
+  gate_in_date?: string;
   reason: string;
 }
 

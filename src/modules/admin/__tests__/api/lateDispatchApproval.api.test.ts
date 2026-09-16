@@ -37,7 +37,7 @@ describe('lateDispatchApprovalApi', () => {
     expect(status.requires_approval).toBe(true);
   });
 
-  it('omits the date when the gate means today', async () => {
+  it('omits the date when the caller means today', async () => {
     await lateDispatchApprovalApi.byVehicle(12);
     expect(get).toHaveBeenCalledWith('/gate-core/late-dispatch-approvals/by-vehicle/12/');
   });
@@ -46,11 +46,21 @@ describe('lateDispatchApprovalApi', () => {
     const payload = {
       vehicle_id: 12,
       gate_in_date: '2026-09-16',
-      in_time: '18:30',
       reason: 'Held up at the previous delivery.',
     };
     await lateDispatchApprovalApi.create(payload);
     expect(post).toHaveBeenCalledWith('/gate-core/late-dispatch-approvals/', payload);
+  });
+
+  it('carries no arrival time: dispatch asks before the truck turns up', async () => {
+    await lateDispatchApprovalApi.create({
+      vehicle_id: 12,
+      reason: 'Loading slot slipped.',
+    });
+    expect(post).toHaveBeenCalledWith('/gate-core/late-dispatch-approvals/', {
+      vehicle_id: 12,
+      reason: 'Loading slot slipped.',
+    });
   });
 
   it('approves and rejects through their own endpoints', async () => {
