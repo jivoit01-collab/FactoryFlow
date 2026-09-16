@@ -8,10 +8,9 @@ export { copyToClipboard } from '@/shared/utils';
  * Turn report rows into what a spreadsheet expects on the clipboard: one line
  * per row, a tab between cells, and nothing else.
  *
- * No header line, no quoting, no thousands separators. The rows are meant to
- * land inside a sheet the user has already built — their own headings, their
- * own formulas — so anything we add here is something they have to delete, and
- * a formatted "1,23,456.00" pastes as text rather than as a number.
+ * `includeHeaders` puts the column labels on the first line, so the block
+ * names its own columns once it lands. No quoting and no thousands separators
+ * either way: a formatted "1,23,456.00" pastes as text rather than a number.
  */
 export function buildClipboardText(
   rows: SapReportCell[][],

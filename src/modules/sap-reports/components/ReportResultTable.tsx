@@ -165,10 +165,13 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
     const chosen = selected.size ? sorted.filter(({ index }) => selected.has(index)) : sorted;
     if (!chosen.length) return;
 
+    // The column headings lead, so the pasted block names its own columns
+    // instead of arriving as a bare grid the user has to label by hand.
     const copied = await copyToClipboard(
       buildClipboardText(
         chosen.map(({ row }) => row),
         columns,
+        { includeHeaders: true },
       ),
     );
     if (!copied) {

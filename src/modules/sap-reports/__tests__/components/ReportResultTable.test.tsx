@@ -69,20 +69,24 @@ describe('ReportResultTable copying', () => {
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(copiedGrid()).toEqual([
+      ['Doc No.', 'Customer', 'Total'],
       ['1001', 'ACME TRADERS', '1234.5'],
       ['1002', 'BHARAT OIL', '90'],
       ['1003', 'CHANDNI STORES', '7'],
     ]);
   });
 
-  it('copies only the ticked rows, headings left out', async () => {
+  it('copies only the ticked rows, under the headings', async () => {
     renderTable();
 
     fireEvent.click(screen.getByLabelText('Select row 2'));
     fireEvent.click(screen.getByRole('button', { name: /copy 1 selected/i }));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect(copiedGrid()).toEqual([['1002', 'BHARAT OIL', '90']]);
+    expect(copiedGrid()).toEqual([
+      ['Doc No.', 'Customer', 'Total'],
+      ['1002', 'BHARAT OIL', '90'],
+    ]);
   });
 
   it('copies what the search left, in the order the sort put it', async () => {
@@ -94,7 +98,7 @@ describe('ReportResultTable copying', () => {
     fireEvent.click(screen.getByRole('button', { name: /copy 3 rows/i }));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect(copiedGrid().map((row) => row[0])).toEqual(['1003', '1002', '1001']);
+    expect(copiedGrid().map((row) => row[0])).toEqual(['Doc No.', '1003', '1002', '1001']);
   });
 
   it('ticks every shown row from the header', async () => {
@@ -105,6 +109,7 @@ describe('ReportResultTable copying', () => {
     fireEvent.click(screen.getByRole('button', { name: /copy 3 selected/i }));
 
     await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
-    expect(copiedGrid()).toHaveLength(3);
+    // Three rows plus the heading line.
+    expect(copiedGrid()).toHaveLength(4);
   });
 });
