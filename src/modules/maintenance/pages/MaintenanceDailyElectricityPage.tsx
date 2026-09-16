@@ -71,6 +71,9 @@ const EMPTY_METER_FORM = {
   // Companies the meter feeds — several for a shared meter, one for a meter on
   // its own supply (Jivo Mart), none if it is not attributed yet.
   company_codes: [] as CompanyCode[],
+  // A main meter is the supply the others are drawn from — read beside the
+  // register, never added into it.
+  is_main: false,
 };
 
 export default function MaintenanceDailyElectricityPage() {
@@ -117,15 +120,24 @@ export default function MaintenanceDailyElectricityPage() {
 
   const activeMeters = useMemo(() => meters.filter((m) => m.is_active), [meters]);
 
-  const totals = useMemo(() => {
+  // The main meters are the incoming supply; every other meter measures a
+  // slice of that same electricity. So the two are never added together — the
+  // mains are listed and totalled on their own, and the register's total is
+  // the sub-meters alone.
+  const mainReadings = useMemo(() => readings.filter((r) => r.meter_is_main), [readings]);
+  const subReadings = useMemo(() => readings.filter((r) => !r.meter_is_main), [readings]);
+
+  const sumReadings = (rows: DailyElectricityReading[]) => {
     let units = 0;
     let cost = 0;
-    for (const r of readings) {
+    for (const r of rows) {
       units += parseFloat(r.units_consumed || '0');
       cost += parseFloat(r.total_cost || '0');
     }
     return { units, cost };
-  }, [readings]);
+  };
+  const totals = useMemo(() => sumReadings(subReadings), [subReadings]);
+  const mainTotals = useMemo(() => sumReadings(mainReadings), [mainReadings]);
 
   const selectedMeter = readingForm.meter
     ? meters.find((m) => m.id === Number(readingForm.meter))
@@ -242,6 +254,7 @@ export default function MaintenanceDailyElectricityPage() {
       location: meter.location,
       multiplying_factor: meter.multiplying_factor,
       company_codes: meter.company_codes ?? [],
+      is_main: meter.is_main,
     });
   };
 
@@ -257,6 +270,7 @@ export default function MaintenanceDailyElectricityPage() {
       multiplying_factor:
         meterForm.multiplying_factor === '' ? undefined : meterForm.multiplying_factor,
       company_codes: meterForm.company_codes,
+      is_main: meterForm.is_main,
     };
     try {
       if (editingMeter) {
@@ -293,6 +307,98 @@ export default function MaintenanceDailyElectricityPage() {
       toast.error('Failed to update meter');
     }
   };
+
+  // One markup for both halves of the split: the mains and the sub-meters are
+  // the same register, read apart only so the same electricity is not added twice.
+  const readingsTable = (rows: DailyElectricityReading[]) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50 text-left">
+            <th className="px-3 py-2 font-medium">Date</th>
+            <th className="px-3 py-2 font-medium">Meter</th>
+            <th className="px-3 py-2 font-medium">Company</th>
+            <th className="px-3 py-2 font-medium text-right">Opening</th>
+            <th className="px-3 py-2 font-medium text-right">Closing</th>
+            <th className="px-3 py-2 font-medium text-right">MF</th>
+            <th className="px-3 py-2 font-medium text-right">Units</th>
+            <th className="px-3 py-2 font-medium text-right">Rate</th>
+            <th className="px-3 py-2 font-medium text-right">Cost</th>
+            <th className="px-3 py-2 font-medium">Entered By</th>
+            <th className="px-3 py-2 font-medium">Remarks</th>
+            {canRowAction && <th className="px-3 py-2" />}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((reading) => (
+            <tr key={reading.id} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
+              <td className="px-3 py-2">
+                {reading.meter_name}
+                {reading.meter_is_main && (
+                  <span
+                    className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                    title="Main meter — the incoming supply, not added to the total"
+                  >
+                    Main
+                  </span>
+                )}
+              </td>
+              <td className="px-3 py-2">
+                {reading.meter_companies_display || (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
+              <td className="px-3 py-2 text-right">{reading.opening_reading}</td>
+              <td className="px-3 py-2 text-right">{reading.closing_reading}</td>
+              <td className="px-3 py-2 text-right">
+                ×{trimFactor(reading.multiplying_factor)}
+              </td>
+              <td
+                className="px-3 py-2 text-right font-medium"
+                title={`Dial ${reading.dial_difference} × MF ${trimFactor(
+                  reading.multiplying_factor,
+                )}`}
+              >
+                {reading.units_consumed}
+              </td>
+              <td className="px-3 py-2 text-right">{reading.rate_per_unit}</td>
+              <td className="px-3 py-2 text-right">{reading.total_cost}</td>
+              <td className="px-3 py-2">{reading.created_by_name}</td>
+              <td className="max-w-[240px] truncate px-3 py-2" title={reading.remarks}>
+                {reading.remarks}
+              </td>
+              {canRowAction && (
+                <td className="whitespace-nowrap px-3 py-2 text-right">
+                  {canEditReading && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Edit ${reading.date} reading for ${reading.meter_name}`}
+                      onClick={() => openEditReading(reading)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canDeleteReading && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Delete ${reading.date} reading for ${reading.meter_name}`}
+                      onClick={() => removeReading(reading)}
+                      disabled={deleteReading.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -367,13 +473,30 @@ export default function MaintenanceDailyElectricityPage() {
               ))}
             </NativeSelect>
           </div>
-          <div className="ml-auto flex items-center gap-6 text-sm">
+          <div className="ml-auto flex flex-wrap items-center gap-6 text-sm">
+            {mainReadings.length > 0 && (
+              <div
+                className="rounded-md border border-dashed px-3 py-1"
+                title="Incoming supply — read on its own, not added to the total"
+              >
+                <span className="text-muted-foreground">Main Meters: </span>
+                <span className="font-semibold">{mainTotals.units.toLocaleString()}</span>
+                <span className="text-muted-foreground"> units · </span>
+                <span className="font-semibold">
+                  ₹{mainTotals.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
             <div>
-              <span className="text-muted-foreground">Total Units: </span>
+              <span className="text-muted-foreground">
+                {mainReadings.length > 0 ? 'Sub-meter Units: ' : 'Total Units: '}
+              </span>
               <span className="font-semibold">{totals.units.toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-muted-foreground">Total Cost: </span>
+              <span className="text-muted-foreground">
+                {mainReadings.length > 0 ? 'Sub-meter Cost: ' : 'Total Cost: '}
+              </span>
               <span className="font-semibold">
                 ₹{totals.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </span>
@@ -382,97 +505,65 @@ export default function MaintenanceDailyElectricityPage() {
         </CardContent>
       </Card>
 
-      {/* Readings table */}
+      {/* Main meters — the incoming supply, reported apart from the total */}
+      {mainReadings.length > 0 && (
+        <Card>
+          <CardContent className="p-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Main Meters — Incoming Supply</p>
+                <p className="text-xs text-muted-foreground">
+                  Every other meter draws off this supply, so these readings are shown here
+                  and left out of the sub-meter total below.
+                </p>
+              </div>
+              <div className="flex items-center gap-6 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Units: </span>
+                  <span className="font-semibold">{mainTotals.units.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cost: </span>
+                  <span className="font-semibold">
+                    ₹{mainTotals.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {readingsTable(mainReadings)}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Readings table — sub-meters, the ones that add up */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading readings...</div>
-          ) : readings.length === 0 ? (
+          ) : subReadings.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-10 text-muted-foreground">
               <Zap className="mb-2 h-8 w-8" />
-              <p>No readings in this period.</p>
+              <p>
+                {mainReadings.length > 0
+                  ? 'No sub-meter readings in this period.'
+                  : 'No readings in this period.'}
+              </p>
               {canManageMeters && meters.length === 0 && (
                 <p className="mt-1 text-sm">Add your meters first via the Meters button.</p>
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50 text-left">
-                    <th className="px-3 py-2 font-medium">Date</th>
-                    <th className="px-3 py-2 font-medium">Meter</th>
-                    <th className="px-3 py-2 font-medium">Company</th>
-                    <th className="px-3 py-2 font-medium text-right">Opening</th>
-                    <th className="px-3 py-2 font-medium text-right">Closing</th>
-                    <th className="px-3 py-2 font-medium text-right">MF</th>
-                    <th className="px-3 py-2 font-medium text-right">Units</th>
-                    <th className="px-3 py-2 font-medium text-right">Rate</th>
-                    <th className="px-3 py-2 font-medium text-right">Cost</th>
-                    <th className="px-3 py-2 font-medium">Entered By</th>
-                    <th className="px-3 py-2 font-medium">Remarks</th>
-                    {canRowAction && <th className="px-3 py-2" />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {readings.map((reading) => (
-                    <tr key={reading.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
-                      <td className="px-3 py-2">{reading.meter_name}</td>
-                      <td className="px-3 py-2">
-                        {reading.meter_companies_display || (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-right">{reading.opening_reading}</td>
-                      <td className="px-3 py-2 text-right">{reading.closing_reading}</td>
-                      <td className="px-3 py-2 text-right">
-                        ×{trimFactor(reading.multiplying_factor)}
-                      </td>
-                      <td
-                        className="px-3 py-2 text-right font-medium"
-                        title={`Dial ${reading.dial_difference} × MF ${trimFactor(
-                          reading.multiplying_factor,
-                        )}`}
-                      >
-                        {reading.units_consumed}
-                      </td>
-                      <td className="px-3 py-2 text-right">{reading.rate_per_unit}</td>
-                      <td className="px-3 py-2 text-right">{reading.total_cost}</td>
-                      <td className="px-3 py-2">{reading.created_by_name}</td>
-                      <td className="max-w-[240px] truncate px-3 py-2" title={reading.remarks}>
-                        {reading.remarks}
-                      </td>
-                      {canRowAction && (
-                        <td className="whitespace-nowrap px-3 py-2 text-right">
-                          {canEditReading && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`Edit ${reading.date} reading for ${reading.meter_name}`}
-                              onClick={() => openEditReading(reading)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {canDeleteReading && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label={`Delete ${reading.date} reading for ${reading.meter_name}`}
-                              onClick={() => removeReading(reading)}
-                              disabled={deleteReading.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {mainReadings.length > 0 && (
+                <div className="border-b bg-muted/30 px-4 py-3">
+                  <p className="text-sm font-medium">Sub-Meters</p>
+                  <p className="text-xs text-muted-foreground">
+                    These are the readings that add up to the register total.
+                  </p>
+                </div>
+              )}
+              {readingsTable(subReadings)}
+            </>
           )}
         </CardContent>
       </Card>
@@ -497,6 +588,7 @@ export default function MaintenanceDailyElectricityPage() {
                   <SelectOption key={meter.id} value={String(meter.id)}>
                     {meter.name}
                     {meter.meter_number ? ` (${meter.meter_number})` : ''}
+                    {meter.is_main ? ' — Main' : ''}
                   </SelectOption>
                 ))}
               </NativeSelect>
@@ -643,6 +735,14 @@ export default function MaintenanceDailyElectricityPage() {
                       <tr key={meter.id} className="border-b last:border-0">
                         <td className="px-3 py-2">
                           {meter.name}
+                          {meter.is_main && (
+                            <span
+                              className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+                              title="Main meter — the incoming supply the others draw from"
+                            >
+                              Main
+                            </span>
+                          )}
                           {!meter.is_active && (
                             <span className="ml-2 rounded-full bg-gray-100 dark:bg-muted px-2 py-0.5 text-xs text-gray-600 dark:text-muted-foreground">
                               Inactive
@@ -734,6 +834,24 @@ export default function MaintenanceDailyElectricityPage() {
                     The factor the grid gave the factory for this meter — each day&apos;s dial
                     difference is multiplied by it to get the billed units. Leave blank (or 1) if
                     the dial reads true.
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <Checkbox
+                      id="meter-is-main"
+                      checked={meterForm.is_main}
+                      onCheckedChange={(checked) =>
+                        setMeterForm((p) => ({ ...p, is_main: checked === true }))
+                      }
+                    />
+                    Main (incoming supply) meter
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Tick this for the meters the supply comes in on. Every other meter measures
+                    a part of that same electricity, so a main meter is listed and totalled on
+                    its own and left out of the register total — adding it would count the same
+                    units twice.
                   </p>
                 </div>
               </div>

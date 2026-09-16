@@ -13,6 +13,9 @@ export interface ElectricityMeter {
   // attributed to any company yet.
   company_codes: CompanyCode[];
   companies_display: string;
+  // A main meter is the incoming supply every other meter draws from, so the
+  // register reports it on its own and leaves it out of the total.
+  is_main: boolean;
   // Read-only: resolved from the admin Cost Master (value "meter:<name>").
   rate_per_unit: string;
   // Grid multiplying factor: the dial difference is multiplied by it to get the
@@ -32,6 +35,7 @@ export interface ElectricityMeterPayload {
   meter_number?: string;
   location?: string;
   company_codes?: CompanyCode[];
+  is_main?: boolean;
   // ₹/unit is not writable here — it is set on the admin Cost Master page.
   multiplying_factor?: string;
   is_active?: boolean;
@@ -43,12 +47,15 @@ export interface ElectricityMeterFilters {
   // Keeps only meters tagged with this company (shared meters match each of
   // theirs); untagged meters drop out.
   company?: CompanyCode | 'ALL';
+  is_main?: boolean;
 }
 
 export interface DailyElectricityReading {
   id: number;
   meter: number;
   meter_name: string;
+  // Mirrors the meter's flag: main-meter readings are totalled separately.
+  meter_is_main: boolean;
   meter_companies_display: string;
   date: string;
   opening_reading: string;
@@ -86,6 +93,8 @@ export interface DailyElectricityReadingFilters {
   date_to?: string;
   meter?: number | 'ALL';
   company?: CompanyCode | 'ALL';
+  // Ask for one side of the main/sub split; omit to get both.
+  is_main?: boolean;
 }
 
 export interface DailyWastageLog {
