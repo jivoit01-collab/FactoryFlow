@@ -1,3 +1,5 @@
+import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../../admin-control/constants';
 import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
@@ -31,16 +33,29 @@ export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [
   {
     key: 'admin',
     label: 'Admin Control',
-    permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+    // The carousel right is accepted here because the board's single read
+    // accepts it too (admin_board/views.py). A display login sees this slide.
+    permissions: [...ADMIN_BOARD_VIEW_PERMISSIONS, DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL],
     path: '/dashboards/admin-control',
   },
   {
     key: 'plant',
     label: 'Plant Control',
-    permissions: PLANT_BOARD_VIEW_PERMISSIONS,
+    // Likewise — plant_board/views.py accepts it on the board read, and only
+    // there; the settings views still need the board's own rights.
+    permissions: [...PLANT_BOARD_VIEW_PERMISSIONS, DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL],
     path: '/dashboards/plant-board',
   },
   {
+    // NOT offered to a carousel-only login, and this is the one place that
+    // decision is enforced rather than described. This board reads roughly
+    // fifteen endpoints straight from the browser — stock, dispatch, WMS, GRPO,
+    // factory expense, the employee roll — each gated on its own operational
+    // right. Honouring the carousel right across all of them would make the
+    // "one permission" a key into six modules, which is wider than the group it
+    // replaced and far harder to audit. So a display login rotates two boards,
+    // and this slide waits for the board to get a composed read of its own like
+    // the two above.
     key: 'logistics',
     label: 'Logistics Control',
     permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
@@ -51,20 +66,22 @@ export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [
 /**
  * Who may open the carousel.
  *
- * The union of the three boards' gates rather than a right of its own, for the
- * same reason each of those boards mints none: a dedicated permission would
- * have to be created as a row on the live database and added to every group
- * before anybody could open the screen, and it would buy nothing — the carousel
- * shows exactly what its three slides show, and each slide re-checks its own
- * gate before it is included.
+ * Its own right FIRST, then the three boards' gates. The right exists so that an
+ * unattended wall screen can hold exactly one permission, open exactly this
+ * page and reach nothing else — every other entry in this list also opens the
+ * operational report behind it, which is precisely what a display login must
+ * not have.
  *
- * The consequence is worth stating plainly: holding ANY one of these opens the
- * carousel, and the viewer then sees whichever slides their rights cover. A
- * login holding only the stock right gets Admin and Plant and never sees the
- * Logistics slide at all.
+ * The boards' own rights stay because a person who already reads all three
+ * should not need a new grant to watch them rotate.
+ *
+ * Holding ANY one of these opens the page, and the viewer then sees whichever
+ * slides their rights cover: a display login gets Admin and Plant, a stock-only
+ * login gets the same two, and only the boards' own rights bring Logistics.
  */
 export const BOARD_CAROUSEL_VIEW_PERMISSIONS: readonly string[] = [
   ...new Set([
+    DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL,
     ...ADMIN_BOARD_VIEW_PERMISSIONS,
     ...PLANT_BOARD_VIEW_PERMISSIONS,
     ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
@@ -95,6 +112,38 @@ export const TICK_MS = 250;
 /** Chrome hides after this long without a pointer. A wall has no pointer. */
 export const CHROME_IDLE_MS = 4_000;
 
+/**
+ * How much of each edge the screen is eating, as a percentage.
+ *
+ * WHAT THIS IS FOR — TV OVERSCAN, WHICH IS NOT A CSS PROBLEM
+ * Most televisions crop the picture they are sent, typically two to five
+ * percent off every edge, and show the rest stretched to fill the panel. A
+ * browser knows nothing about it: the page is laid out for the full 1920 the TV
+ * claims, and the outer band of it is simply never displayed. On these boards
+ * that costs the workforce rail on the right — the counts sit at its right edge
+ * — and a sliver of every other edge.
+ *
+ * THE BETTER FIX IS ON THE TELEVISION. Every brand has a setting that turns it
+ * off, variously "Just Scan", "Screen Fit", "Pixel-to-pixel", "Full Pixel" or
+ * "1:1", usually under picture size or aspect. Use it where you can: it costs
+ * nothing and keeps the full resolution.
+ *
+ * This is for the screens where that setting cannot be found or does not exist.
+ * The board is laid out at the full viewport and then SCALED to fit inside what
+ * the panel actually shows — scaled, not padded, because these boards size
+ * themselves in `vh` and would happily lay out for a height they no longer
+ * have, which is the very bug that clipped the plant board's fourth band.
+ *
+ * Off by default: it gives up real screen area, so a correctly configured
+ * display must never pay for it.
+ */
+export const OVERSCAN_CHOICES: readonly number[] = [0, 2, 3, 4, 5];
+
+export const DEFAULT_OVERSCAN_PERCENT = 0;
+
 /** Where the reader's dwell choice and pause survive a reload. */
 export const DWELL_STORAGE_KEY = 'board-carousel-dwell-seconds';
 export const PAUSED_STORAGE_KEY = 'board-carousel-paused';
+// Per-screen, and deliberately so: overscan is a property of the television in
+// front of you, not of the account signed into it.
+export const OVERSCAN_STORAGE_KEY = 'board-carousel-overscan';

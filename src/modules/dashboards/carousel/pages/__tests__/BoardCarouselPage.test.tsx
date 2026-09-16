@@ -2,10 +2,12 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../../../admin-control/constants';
 import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../../../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../../plant-board/constants';
-import { DEFAULT_DWELL_SECONDS } from '../../constants';
+import { DEFAULT_DWELL_SECONDS, OVERSCAN_STORAGE_KEY } from '../../constants';
 
 /*
  * The three boards are stubbed.
@@ -136,6 +138,72 @@ describe('BoardCarouselPage', () => {
     const wall = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
     await screen.findByText('admin board');
     expect(wall.container.querySelector('.bcx')).toHaveClass('ops-wall');
+  });
+
+  /*
+   * The display login: one permission, and what it is allowed to see.
+   *
+   * `admin_board.can_view_board_carousel` is honoured by the Admin and Plant
+   * board reads, which each compose their whole board behind one endpoint. It is
+   * deliberately NOT honoured by Logistics, which fans out to roughly fifteen
+   * operational endpoints — so that slide must not appear, or the wall would
+   * show a board of empty cards and 403s.
+   */
+  it('rotates Admin and Plant, but not Logistics, for a display login', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderCarousel([DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL]);
+
+    expect(await screen.findByText('admin board')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Plant Control/ })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Logistics Control/ })).not.toBeInTheDocument();
+
+    await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
+    await waitFor(() => expect(screen.getByText('plant board')).toBeInTheDocument());
+
+    // And back round to Admin — a rotation of two, not a dead end.
+    await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
+    await waitFor(() => expect(screen.getByText('admin board')).toBeInTheDocument());
+  });
+
+  /*
+   * Overscan compensation, for a television that crops the picture it is sent.
+   *
+   * The two halves that matter: a screen that never asked for it gets NO
+   * transform at all (not a scale of 1 — a transform would re-root the boards'
+   * fixed-position drill panels on a display that had nothing wrong with it),
+   * and a screen that did asks for the inset off BOTH edges.
+   */
+  describe('shrink to fit', () => {
+    it('applies no transform when nobody asked for it', async () => {
+      const { container } = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+      await screen.findByText('admin board');
+
+      expect(container.querySelector('.bcx')).toHaveAttribute('data-fit', 'off');
+    });
+
+    it('scales by twice the inset, because both edges are lost', async () => {
+      window.localStorage.setItem(OVERSCAN_STORAGE_KEY, '3');
+
+      const { container } = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+      await screen.findByText('admin board');
+
+      const shell = container.querySelector('.bcx') as HTMLElement;
+      expect(shell).toHaveAttribute('data-fit', 'on');
+      // 3% off the left AND 3% off the right leaves 94%, not 97%.
+      expect(shell.style.getPropertyValue('--bcx-fit')).toBe('0.94');
+      expect(shell.style.getPropertyValue('--bcx-pad')).toBe('3%');
+    });
+
+    it('ignores a stored value that is not on the menu', async () => {
+      // A hand-edited 40 would shrink the board to a stamp on a screen nobody
+      // is standing at to undo it.
+      window.localStorage.setItem(OVERSCAN_STORAGE_KEY, '40');
+
+      const { container } = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+      await screen.findByText('admin board');
+
+      expect(container.querySelector('.bcx')).toHaveAttribute('data-fit', 'off');
+    });
   });
 
   it('says so rather than showing a blank wall when no board is readable', () => {

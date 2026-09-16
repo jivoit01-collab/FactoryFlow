@@ -31,6 +31,21 @@ export const DASHBOARDS_PERMISSIONS = {
   VIEW_FACTORY_EXPENSE: 'factory_expense.can_view_factory_expense',
   CONFIGURE_FACTORY_EXPENSE: 'factory_expense.can_configure_factory_expense',
   VIEW_BUDGET_APPROVALS: 'budget_approvals.can_view_budget_approvals',
+  /**
+   * The board carousel's own right — the one permission a wall SCREEN holds.
+   *
+   * Minted by `admin_board` migration 0001 and honoured by the Admin and Plant
+   * board reads in addition to their own rights, so a login holding only this
+   * opens the carousel and reaches nothing else in the product. Every other
+   * right here also opens the operational report behind it, which is exactly
+   * what a display login must not have.
+   *
+   * It does NOT open the Logistics slide: that board reads its feeds directly
+   * from a dozen operational endpoints rather than through one composed read,
+   * so a carousel-only viewer rotates Admin and Plant. See
+   * `admin_board/carousel.py`.
+   */
+  VIEW_BOARD_CAROUSEL: 'admin_board.can_view_board_carousel',
 } as const;
 
 export type DashboardsPermission =

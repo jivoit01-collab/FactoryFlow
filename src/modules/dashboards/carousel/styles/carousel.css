@@ -48,6 +48,36 @@
   min-width: 0;
 }
 
+/*
+ * SHRINK TO FIT A TELEVISION THAT CROPS WHAT IT IS SENT.
+ *
+ * See `OVERSCAN_CHOICES` for what overscan is and why the real cure is the TV's
+ * own picture setting. Where that cannot be reached, the board is drawn at the
+ * full viewport and then scaled down into the part of it the panel actually
+ * displays.
+ *
+ * SCALED, NOT PADDED, and the distinction is the whole reason this works. Every
+ * board here sizes itself in `vh` — the plant board's four bands divide the
+ * VIEWPORT exactly. Pad the box and the board lays out for a height it no
+ * longer has and pushes its last band off the bottom, which is precisely the
+ * bug the carousel's floating strip exists to avoid. A transform changes no
+ * layout at all: the board still believes it has the whole screen, and every
+ * proportion inside it is preserved.
+ *
+ * Applied only when it has been asked for — see `data-fit` on the page for why
+ * a scale of 1 is not the same as no transform.
+ */
+.bcx[data-fit='on'] .bcx-stage {
+  transform: scale(var(--bcx-fit, 1));
+  transform-origin: center center;
+}
+
+/* The controls move inside the same safe area, or the setting would rescue the
+   board and leave its own strip being eaten. */
+.bcx[data-fit='on'] .bcx-strip {
+  inset: var(--bcx-pad, 0) var(--bcx-pad, 0) auto;
+}
+
 /* ───────── the strip ───────── */
 
 .bcx-strip {

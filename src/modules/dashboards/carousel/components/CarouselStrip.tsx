@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import type { CarouselSlide } from '../constants';
-import { DWELL_CHOICES } from '../constants';
+import { DWELL_CHOICES, OVERSCAN_CHOICES } from '../constants';
 
 /**
  * Icons, drawn inline.
@@ -82,6 +82,8 @@ export interface CarouselStripProps {
   remaining: number;
   paused: boolean;
   dwellSeconds: number;
+  /** How much of each edge the television is eating, as a percentage. */
+  overscanPercent: number;
   visible: boolean;
   isFullscreen: boolean;
   onGoTo: (index: number) => void;
@@ -89,6 +91,7 @@ export interface CarouselStripProps {
   onNext: () => void;
   onTogglePaused: () => void;
   onDwellChange: (seconds: number) => void;
+  onOverscanChange: (percent: number) => void;
   onToggleFullscreen: () => void;
 }
 
@@ -116,6 +119,7 @@ export function CarouselStrip({
   remaining,
   paused,
   dwellSeconds,
+  overscanPercent,
   visible,
   isFullscreen,
   onGoTo,
@@ -123,6 +127,7 @@ export function CarouselStrip({
   onNext,
   onTogglePaused,
   onDwellChange,
+  onOverscanChange,
   onToggleFullscreen,
 }: CarouselStripProps) {
   const current = slides[index];
@@ -207,6 +212,25 @@ export function CarouselStrip({
               {DWELL_CHOICES.map((seconds) => (
                 <option key={seconds} value={seconds}>
                   {seconds < 60 ? `${seconds}s` : `${seconds / 60} min`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Overscan compensation. Sits here rather than in a settings page
+              because the person who needs it is standing in front of the
+              television, watching the edge of the board disappear, and there is
+              no way to judge the right amount except by looking. */}
+          <label className="bcx-dwell">
+            <span className="bcx-sr">Shrink to fit the screen</span>
+            <select
+              value={overscanPercent}
+              onChange={(event) => onOverscanChange(Number(event.target.value))}
+              title="Shrink the board, for a television that crops the picture it is sent"
+            >
+              {OVERSCAN_CHOICES.map((percent) => (
+                <option key={percent} value={percent}>
+                  {percent === 0 ? 'Fit: full' : `Fit: −${percent}%`}
                 </option>
               ))}
             </select>

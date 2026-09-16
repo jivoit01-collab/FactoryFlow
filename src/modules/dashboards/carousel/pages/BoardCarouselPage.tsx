@@ -11,7 +11,7 @@ import { BoardEmbedProvider } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { CarouselStrip } from '../components';
 import { CAROUSEL_SLIDES } from '../constants';
-import { useBoardRotation, useIdleChrome } from '../hooks';
+import { useBoardRotation, useIdleChrome, useOverscan } from '../hooks';
 
 /**
  * The three boards, split out of the main bundle.
@@ -83,6 +83,8 @@ export default function BoardCarouselPage() {
 
   const rotation = useBoardRotation(slides.length);
   const { visible } = useIdleChrome(rotation.paused);
+  // Only ever set on a television that crops what it is sent; see useOverscan.
+  const overscan = useOverscan();
 
   const { next, previous, togglePaused, goTo } = rotation;
 
@@ -161,6 +163,17 @@ export default function BoardCarouselPage() {
       ref={shellRef}
       className={`bcx ops-board${isFullscreen ? ' ops-wall' : ''}`}
       data-fullscreen={isFullscreen ? 'yes' : 'no'}
+      /* `off` skips the transform entirely rather than applying a scale of 1:
+         any transform makes this element the containing block for the boards'
+         `position: fixed` drill panels, and a correctly configured screen must
+         not have its behaviour changed by a setting it never turned on. */
+      data-fit={overscan.percent > 0 ? 'on' : 'off'}
+      style={
+        {
+          '--bcx-fit': overscan.scale,
+          '--bcx-pad': `${overscan.percent}%`,
+        } as React.CSSProperties
+      }
     >
       <CarouselStrip
         slides={slides}
@@ -169,6 +182,7 @@ export default function BoardCarouselPage() {
         remaining={rotation.remaining}
         paused={rotation.paused}
         dwellSeconds={rotation.dwellSeconds}
+        overscanPercent={overscan.percent}
         visible={visible}
         isFullscreen={isFullscreen}
         onGoTo={rotation.goTo}
@@ -176,6 +190,7 @@ export default function BoardCarouselPage() {
         onNext={rotation.next}
         onTogglePaused={rotation.togglePaused}
         onDwellChange={rotation.setDwellSeconds}
+        onOverscanChange={overscan.setPercent}
         onToggleFullscreen={toggle}
       />
 

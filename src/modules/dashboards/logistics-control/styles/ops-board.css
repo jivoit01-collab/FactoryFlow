@@ -818,13 +818,38 @@
   }
 }
 
+/*
+ * The columns, and the room reserved above them for their labels.
+ *
+ * TWO THINGS HERE ARE LOAD-BEARING, and both were too tight.
+ *
+ * 1. THE HEADROOM. `.ops-bval` is absolutely placed above its column, so the
+ *    padding is the only thing holding it inside this box. It needs its own
+ *    line (0.82u at line-height 1) plus its 0.15u margin — 0.97u against a
+ *    1.1u reservation, a margin of 0.13u. At a wall's unit size that is a
+ *    couple of pixels, and a rupee glyph whose line box rounds up by more than
+ *    that puts the day's figure through the tile's own headline. Reserved
+ *    generously now: the cost is a slightly shorter column, which misstates
+ *    nothing because every column is scaled against the same box.
+ *
+ * 2. THE HEIGHT WAS RIGID. A fixed height cannot give anything back, and the
+ *    row beneath it is `minmax(0, 1fr)` — a row that shrinks to nothing when
+ *    the value above it wraps to a second line, which the plant board allows
+ *    precisely so a unit is never clipped. The bars then had more height than
+ *    the row and spilled. `max-height: 100%` with shrink lets them give up the
+ *    space instead; the percentage heights inside stay honest because they are
+ *    a share of whatever this box ends up being.
+ */
 .ops-bars {
   display: flex;
   align-items: flex-end;
   gap: calc(0.55 * var(--u));
-  /* Room above the tallest bar for its label, which is absolutely placed. */
-  height: calc(4.4 * var(--u));
-  padding-top: calc(1.1 * var(--u));
+  height: calc(4.7 * var(--u));
+  /* Never taller than the row it was handed. */
+  max-height: 100%;
+  min-height: calc(2.6 * var(--u));
+  flex: 0 1 auto;
+  padding-top: calc(1.5 * var(--u));
 }
 .ops-bars > div {
   position: relative;
@@ -870,8 +895,11 @@
 .ops-bars .ops-now i {
   background: linear-gradient(180deg, var(--d2), var(--d1));
 }
+/* The day names never shrink — a bar chart whose axis has been squeezed out
+   says nothing at all. They are the last thing to go, not the first. */
 .ops-blab {
   display: flex;
+  flex: 0 0 auto;
   gap: calc(0.5 * var(--u));
   margin-top: calc(0.42 * var(--u));
 }
