@@ -20,7 +20,6 @@ import { SearchableSelect } from '@/shared/components';
 import {
   Button,
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -174,7 +173,13 @@ export function CashEntryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="space-y-4">
+        {/* A plain box, not DialogBody. DialogBody is the scroll area of a
+            TALL dialog, and its overflow clips the person picker's list --
+            which is an absolutely positioned div, not a portal, so it is
+            trapped inside whatever scrolls. That produced two nested
+            scrollbars and a list cut off after two names. This dialog is
+            short enough not to need an inner scroller at all. */}
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
               <Label htmlFor="cash-direction">Direction</Label>
@@ -342,7 +347,7 @@ export function CashEntryDialog({
               Who was paid, what for, and any bill or party reference.
             </p>
           </div>
-        </DialogBody>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>

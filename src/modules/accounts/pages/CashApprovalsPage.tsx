@@ -29,9 +29,9 @@ const ALL = 'ALL';
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
 const STATUS_TONE: Record<BunchStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-900',
-  APPROVED: 'bg-emerald-100 text-emerald-900',
-  REJECTED: 'bg-rose-100 text-rose-900',
+  PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
+  APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
+  REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
 };
 
 /**
@@ -198,17 +198,17 @@ export default function CashApprovalsPage() {
                       </p>
                       {bunch.remarks && <p className="mt-1 text-sm">{bunch.remarks}</p>}
                       {bunch.decision_note && (
-                        <p className="mt-1 text-sm text-rose-700">{bunch.decision_note}</p>
+                        <p className="mt-1 text-sm text-rose-700 dark:text-rose-400">{bunch.decision_note}</p>
                       )}
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xl font-bold tabular-nums text-rose-700">
+                      <p className="text-xl font-bold tabular-nums text-rose-700 dark:text-rose-400">
                         {money(bunch.total_out)}
                       </p>
                       <p className="text-xs text-muted-foreground">out of the box</p>
                       {Number(bunch.total_in) > 0 && (
-                        <p className="text-sm tabular-nums text-emerald-700">
+                        <p className="text-sm tabular-nums text-emerald-700 dark:text-emerald-400">
                           {money(bunch.total_in)} in
                         </p>
                       )}

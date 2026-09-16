@@ -121,8 +121,8 @@ export default function CashBranchSettingsPage() {
       </DashboardHeader>
 
       {!canManage && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 text-sm text-amber-900">
+        <Card className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-400">
             You can see the branch list but not change it. Changing it needs the Cash Book
             Administrator role.
           </CardContent>
@@ -214,7 +214,7 @@ export default function CashBranchSettingsPage() {
                     </td>
                     <td className="px-3 py-2">
                       {branch.is_active ? (
-                        <Badge variant="outline" className="bg-emerald-100 text-emerald-900">
+                        <Badge variant="outline" className="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400">
                           In use
                         </Badge>
                       ) : (

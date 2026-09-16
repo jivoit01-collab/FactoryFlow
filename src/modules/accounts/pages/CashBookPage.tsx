@@ -46,9 +46,9 @@ const money = (value: string | number) => formatNumber(Number(value ?? 0));
 /** Colour per approval state. Same vocabulary on the approvals screen. */
 const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
   UNSENT: 'bg-muted text-muted-foreground',
-  PENDING: 'bg-amber-100 text-amber-900',
-  APPROVED: 'bg-emerald-100 text-emerald-900',
-  REJECTED: 'bg-rose-100 text-rose-900',
+  PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
+  APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
+  REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
 };
 
 /**
@@ -212,7 +212,7 @@ export default function CashBookPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Cash in (filtered)</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700">
+            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
               {money(data?.totals.cash_in ?? 0)}
             </p>
           </CardContent>
@@ -220,7 +220,7 @@ export default function CashBookPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Cash out (filtered)</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700">
+            <p className="mt-1 text-2xl font-bold tabular-nums text-rose-700 dark:text-rose-400">
               {money(data?.totals.cash_out ?? 0)}
             </p>
           </CardContent>
@@ -443,7 +443,7 @@ export default function CashBookPage() {
                           <span className="text-xs">{row.atm_account_name}</span>
                         )}
                         {row.advance_holder_name && (
-                          <Badge variant="outline" className="bg-amber-100 text-[10px] text-amber-900">
+                          <Badge variant="outline" className="bg-amber-100 dark:bg-amber-500/15 text-[10px] text-amber-900 dark:text-amber-400">
                             {row.advance_holder_name}
                           </Badge>
                         )}

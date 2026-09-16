@@ -17,7 +17,6 @@ import {
   Card,
   CardContent,
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -167,8 +166,8 @@ export default function AtmPage() {
                               variant="outline"
                               className={
                                 paidOn
-                                  ? 'bg-emerald-100 text-emerald-900'
-                                  : 'bg-amber-100 text-amber-900'
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400'
+                                  : 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400'
                               }
                             >
                               {paidOn ? 'Paid on' : 'Withdrawn'}
@@ -251,7 +250,7 @@ function AddCashDialog({
             with Cash in.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody className="space-y-4">
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="atm-date">Date</Label>
@@ -285,7 +284,7 @@ function AddCashDialog({
               onChange={(e) => setDetail(e.target.value)}
             />
           </div>
-        </DialogBody>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={add.isPending}>
             Cancel
@@ -338,7 +337,7 @@ function AddCardDialog({
             Name it the way the office does, holder and all.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-1">
             <Label htmlFor="card-name">Name</Label>
             <Input
@@ -362,7 +361,7 @@ function AddCardDialog({
               What was on the card the day this register started.
             </p>
           </div>
-        </DialogBody>
+        </div>
         <DialogFooter>
           <Button
             variant="outline"

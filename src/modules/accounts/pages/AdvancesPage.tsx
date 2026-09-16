@@ -19,7 +19,6 @@ import {
   Card,
   CardContent,
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -43,9 +42,9 @@ const MOVEMENT_LABEL: Record<string, string> = {
 };
 
 const MOVEMENT_TONE: Record<string, string> = {
-  GIVEN: 'bg-amber-100 text-amber-900',
-  RETURNED: 'bg-sky-100 text-sky-900',
-  EXPLAINED: 'bg-emerald-100 text-emerald-900',
+  GIVEN: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
+  RETURNED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-900 dark:text-sky-400',
+  EXPLAINED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
 };
 
 /**
@@ -162,7 +161,7 @@ export default function AdvancesPage() {
                       <span
                         className={`shrink-0 tabular-nums ${
                           balance < 0
-                            ? 'text-sky-700'
+                            ? 'text-sky-700 dark:text-sky-400'
                             : balance === 0
                               ? 'text-muted-foreground'
                               : 'font-medium'
@@ -185,7 +184,7 @@ export default function AdvancesPage() {
                   Holding{' '}
                   <span className="font-semibold tabular-nums">{money(selected.balance)}</span>
                   {Number(selected.balance) < 0 && (
-                    <span className="ml-2 text-sky-700">— the factory owes them</span>
+                    <span className="ml-2 text-sky-700 dark:text-sky-400">— the factory owes them</span>
                   )}
                 </p>
               )}
@@ -310,7 +309,13 @@ function AdvanceDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogBody className="space-y-4">
+        {/* A plain box, not DialogBody. DialogBody is the scroll area of a
+            TALL dialog, and its overflow clips the person picker's list --
+            which is an absolutely positioned div, not a portal, so it is
+            trapped inside whatever scrolls. That produced two nested
+            scrollbars and a list cut off after two names. This dialog is
+            short enough not to need an inner scroller at all. */}
+        <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1">
               <Label htmlFor="advance-direction">Movement</Label>
@@ -382,7 +387,7 @@ function AdvanceDialog({
               onChange={(e) => setDetail(e.target.value)}
             />
           </div>
-        </DialogBody>
+        </div>
 
         <DialogFooter>
           <Button
