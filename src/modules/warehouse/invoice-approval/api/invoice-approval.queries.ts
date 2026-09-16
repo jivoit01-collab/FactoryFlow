@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 
 import type { InvoiceSource, InvoiceStatus, StatusUpdateRequest } from '../types';
 import { invoiceApprovalApi } from './invoice-approval.api';
@@ -46,13 +47,39 @@ export function useInvoiceAudit(source: InvoiceSource, id: number | null) {
   });
 }
 
+/** How often the badge re-polls while the approver is actually on the page. */
+export const PENDING_COUNT_POLL_ON_PAGE_MS = 2 * 60 * 1000;
+/** …and while they are anywhere else. See {@link pendingCountPollMs}. */
+export const PENDING_COUNT_POLL_OFF_PAGE_MS = 10 * 60 * 1000;
+
+const INVOICE_APPROVAL_PATH = '/warehouse/invoice-approval';
+
+/**
+ * How often the pending-count badge should re-poll from the page at `pathname`.
+ *
+ * The badge lives in the sidebar, so it is mounted on *every* page of the app
+ * for every user who can view invoices. Polling it at the on-page rate from
+ * everywhere meant a continuous background load on OMS whether or not anyone
+ * ever opened the approvals page — and OMS rate-limits us on a quota all of
+ * those users share, so that background traffic was spending the budget the
+ * approvers' own page loads needed. Away from the page the badge only has to be
+ * roughly right, so it polls far less often.
+ */
+export function pendingCountPollMs(pathname: string): number {
+  return pathname.startsWith(INVOICE_APPROVAL_PATH)
+    ? PENDING_COUNT_POLL_ON_PAGE_MS
+    : PENDING_COUNT_POLL_OFF_PAGE_MS;
+}
+
 export function usePendingCount(source: InvoiceSource, warehouse: string) {
+  const { pathname } = useLocation();
+
   return useQuery({
     queryKey: INVOICE_APPROVAL_QUERY_KEYS.pendingCount(source, warehouse),
     queryFn: () => invoiceApprovalApi.getPendingCount(source, warehouse),
     enabled: !!warehouse,
     staleTime: 60 * 1000,
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: pendingCountPollMs(pathname),
   });
 }
 
