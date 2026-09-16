@@ -128,6 +128,13 @@ export const API_ENDPOINTS = {
     INSIDE_VEHICLE_REMOVE_BILL: '/gate-core/inside-dispatch-vehicles/remove-bill/',
     INSIDE_VEHICLE_MOVE_BILL: '/gate-core/inside-dispatch-vehicles/move-bill/',
     INSIDE_VEHICLE_UNLINK_ALL: '/gate-core/inside-dispatch-vehicles/unlink-all/',
+    LATE_DISPATCH_APPROVALS: '/gate-core/late-dispatch-approvals/',
+    LATE_DISPATCH_APPROVAL_BY_VEHICLE: (vehicleId: number) =>
+      `/gate-core/late-dispatch-approvals/by-vehicle/${vehicleId}/`,
+    LATE_DISPATCH_APPROVAL_APPROVE: (id: number) =>
+      `/gate-core/late-dispatch-approvals/${id}/approve/`,
+    LATE_DISPATCH_APPROVAL_REJECT: (id: number) =>
+      `/gate-core/late-dispatch-approvals/${id}/reject/`,
     ARRIVALS_EXPECTED: '/gate-core/arrivals/expected/',
     ARRIVALS: '/gate-core/arrivals/',
     ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,

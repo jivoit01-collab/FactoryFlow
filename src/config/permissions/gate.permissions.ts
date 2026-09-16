@@ -123,6 +123,20 @@ export const GATE_PERMISSIONS = {
     CREATE: 'person_gatein.can_view_dashboard',
   },
 
+  /**
+   * Letting a dispatch truck in after the evening cutoff (5 PM by default).
+   *
+   * Only the approver's side has rights: anyone who can start an empty-vehicle
+   * gate-in can *ask* for a late one to be allowed — raising the question is not
+   * the privilege, answering it is.
+   */
+  LATE_DISPATCH_GATE_IN: {
+    /** See the queue of trucks waiting to be let in late (Admin) */
+    VIEW: 'gate_core.can_view_late_dispatch_gate_in',
+    /** Approve or reject a late dispatch gate-in */
+    APPROVE: 'gate_core.can_approve_late_dispatch_gate_in',
+  },
+
   BST_OUT: {
     // Dedicated BST gate permission (warehouse BSTTransfer model), so gate staff
     // can be granted just the gate-out step without any other gate/dashboard access.
@@ -389,6 +403,7 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.REJECTED_QC_RETURN)[keyof typeof GATE_PERMISSIONS.REJECTED_QC_RETURN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT]
+  | (typeof GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN)[keyof typeof GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN]
   | (typeof GATE_PERMISSIONS.BST_OUT)[keyof typeof GATE_PERMISSIONS.BST_OUT]
   | (typeof GATE_PERMISSIONS.BST_IN)[keyof typeof GATE_PERMISSIONS.BST_IN]
   | (typeof GATE_PERMISSIONS.BST_RETURN)[keyof typeof GATE_PERMISSIONS.BST_RETURN]
