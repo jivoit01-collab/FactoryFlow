@@ -25,7 +25,7 @@ vi.mock('@/modules/dashboards/logistics-control/pages/LogisticsControlDashboardP
   default: () => <div>logistics board</div>,
 }));
 
-const held = vi.hoisted(() => ({ permissions: [] as string[] }));
+const held = vi.hoisted(() => ({ permissions: [] as string[], fullscreen: false }));
 
 vi.mock('@/core/auth/hooks/usePermission', () => ({
   usePermission: () => ({
@@ -34,10 +34,10 @@ vi.mock('@/core/auth/hooks/usePermission', () => ({
   }),
 }));
 
-// Fullscreen is a browser grant jsdom does not make; the carousel only needs the
-// hook not to throw.
+// Fullscreen is a browser grant jsdom does not make, so the state is faked —
+// what matters below is what the page does with it, not that it was granted.
 vi.mock('@/modules/dashboards/dispatch/hooks', () => ({
-  useFullscreen: () => ({ isFullscreen: false, toggle: vi.fn() }),
+  useFullscreen: () => ({ isFullscreen: held.fullscreen, toggle: vi.fn() }),
 }));
 
 const { default: BoardCarouselPage } = await import('../BoardCarouselPage');
@@ -67,6 +67,7 @@ function renderCarousel(permissions: string[]) {
 describe('BoardCarouselPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    held.fullscreen = false;
   });
 
   afterEach(() => {
@@ -114,6 +115,27 @@ describe('BoardCarouselPage', () => {
     await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
 
     await waitFor(() => expect(screen.getByText('logistics board')).toBeInTheDocument());
+  });
+
+  /*
+   * The regression this pins: the browser promotes the CAROUSEL SHELL, not the
+   * board inside it, so each board's own `:fullscreen` rules never match and it
+   * keeps the relaxed, growing layout meant for a scrolling shell. On the plant
+   * board that put a fourth band's worth of height into one screen and clipped
+   * the Shifting band off the bottom. `ops-wall` is how the board's stylesheet
+   * is told it is on a wall regardless; out of fullscreen it must be absent,
+   * because there the relaxed layout is the correct one.
+   */
+  it('tells the board it is on a wall only while fullscreen', async () => {
+    const { container, unmount } = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+    await screen.findByText('admin board');
+    expect(container.querySelector('.bcx')).not.toHaveClass('ops-wall');
+    unmount();
+
+    held.fullscreen = true;
+    const wall = renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+    await screen.findByText('admin board');
+    expect(wall.container.querySelector('.bcx')).toHaveClass('ops-wall');
   });
 
   it('says so rather than showing a blank wall when no board is readable', () => {

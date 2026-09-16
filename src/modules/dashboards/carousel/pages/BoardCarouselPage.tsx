@@ -102,8 +102,7 @@ export default function BoardCarouselPage() {
       const target = event.target as HTMLElement | null;
       if (
         target &&
-        (target.isContentEditable ||
-          ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       ) {
         return;
       }
@@ -138,9 +137,8 @@ export default function BoardCarouselPage() {
         <div className="bcx-empty">
           <b>No boards to show</b>
           <p>
-            This rotation carries the Admin, Plant and Logistics control boards, and your
-            account holds the rights to none of them. Nothing is shown rather than an
-            empty board.
+            This rotation carries the Admin, Plant and Logistics control boards, and your account
+            holds the rights to none of them. Nothing is shown rather than an empty board.
           </p>
         </div>
       </div>
@@ -148,7 +146,22 @@ export default function BoardCarouselPage() {
   }
 
   return (
-    <div ref={shellRef} className="bcx ops-board" data-fullscreen={isFullscreen ? 'yes' : 'no'}>
+    /*
+     * `ops-wall` while fullscreen, and only then.
+     *
+     * The browser promotes THIS element, not the board inside it, so the
+     * board's own `:fullscreen` rules never match and it would keep the
+     * relaxed, growing layout it uses inside the app shell — four bands sized
+     * for more than the screen, with the last one clipped off the bottom. This
+     * class is how each board's stylesheet restores its wall geometry; see
+     * `ops-board.css`. Out of fullscreen it must NOT be set: the board is then
+     * genuinely in a scrolling shell and the relaxed layout is the right one.
+     */
+    <div
+      ref={shellRef}
+      className={`bcx ops-board${isFullscreen ? ' ops-wall' : ''}`}
+      data-fullscreen={isFullscreen ? 'yes' : 'no'}
+    >
       <CarouselStrip
         slides={slides}
         index={rotation.index}

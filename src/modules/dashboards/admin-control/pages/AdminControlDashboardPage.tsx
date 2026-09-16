@@ -214,7 +214,6 @@ export default function AdminControlDashboardPage() {
                     slices={cost.slices}
                     total={cost.total}
                     period={meta ? shortWindow(meta.period.from, meta.period.to) : ''}
-                    note={cost.electricity_note}
                   />
                 )
               }
@@ -508,13 +507,11 @@ function PmTile({ pm, loading }: { pm: AdminPmStorage | null; loading: boolean }
     <OpsGroup
       className="adm-has-corner"
       name="Total PM storage"
-      sub={
-        pm
-          ? // Pallets, because that is the unit the floor figure is actually
-            // built from — pieces alone cannot be checked against a building.
-            `${whole(pm.pallets)} pallets · ${whole(pm.total_pieces)} pieces`
-          : ''
-      }
+      // No subtitle: the meter under the figure already names the filled and
+      // free floor, which is what the pallet count was standing in for. The row
+      // still renders (OpsGroup always draws it) so this tile's figure keeps
+      // the same baseline as its neighbours'.
+      sub=""
       value={headline.value}
       unit={headline.unit}
       loading={loading}
@@ -577,6 +574,21 @@ function OilTile({
   // and then shows an empty room is worse than one that does not invite it.
   const openable = (oil?.tank_rows?.length ?? 0) > 0;
 
+  // EMPTY, not used. Space used is the same fact read the other way round, but
+  // the question an owner asks a tank farm is "how much more will it take" —
+  // and 24.5% empty is the number that answers it without arithmetic.
+  const emptyPct = rated ? Math.round((100 - (oil?.used_pct ?? 0)) * 10) / 10 : null;
+  const freeTons =
+    oil?.capacity_tons != null && oil?.total_tons != null
+      ? Math.round((oil.capacity_tons - oil.total_tons) * 10) / 10
+      : null;
+
+  // The headline counts the fixed tanks; the totes are real oil but sit outside
+  // the tank-farm percentage, so the tile says both counts rather than one
+  // number that matches neither.
+  const tankCount = (oil?.by_type?.TANK?.vessels ?? 0) || (oil?.tank_rows?.length ?? 0);
+  const toteCount = (oil?.tank_rows?.length ?? 0) - tankCount;
+
   return (
     <OpsGroup
       className="adm-has-corner"
@@ -585,9 +597,15 @@ function OilTile({
       onOpen={openable ? onOpen : undefined}
       name="Oil storage"
       tag={oil ? { label: `loose oil, ${oil.warehouse}`, tone: 'neut' } : undefined}
-      // Says the basis out loud because it DIFFERS from the FG tile beside it:
-      // tanks are stocked by volume, so there is no case weight to apply.
-      sub={oil ? `${whole(oil.total_litres)} litres in tank · 1,000 L = 1 T` : ''}
+      // No subtitle once the farm is rated: the key under the bar already
+      // carries what it holds, and the line here was saying it a second time.
+      // The row itself still renders (OpsGroup always draws it), so this tile's
+      // figure stays on the same baseline as its neighbours'.
+      //
+      // Unrated is the exception — with no capacity to state, the litres and
+      // the 1,000 L = 1 T rule are the only basis a reader has, and this tile's
+      // basis DIFFERS from the finished-goods tiles beside it.
+      sub={oil && !rated ? `${whole(oil.total_litres)} litres in tank · 1,000 L = 1 T` : ''}
       value={tons(oil?.total_tons)}
       unit="tonnes"
       loading={loading}
@@ -595,8 +613,8 @@ function OilTile({
       corner={
         oil && (
           <AdminCorner
-            label="Space used"
-            value={rated ? pct(oil.used_pct) : NO_VALUE}
+            label="Empty"
+            value={emptyPct != null ? pct(emptyPct) : NO_VALUE}
             note={rated ? undefined : 'no tank rating yet'}
           />
         )
@@ -611,6 +629,20 @@ function OilTile({
             ) : (
               <div className="ops-meter adm-unknown" />
             )}
+            {/* Free and rated only. What is FILLED is the tile's own headline
+                figure two lines up, and a key that repeats the number above it
+                spends a line saying nothing — these two are the pair the bar
+                cannot show on its own. */}
+            {rated && (
+              <div className="ops-mkey">
+                <span className="ops-k-light">
+                  Free <b>{tons(freeTons)} T</b>
+                </span>
+                <span className="ops-k-mute">
+                  Rated <b>{tons(oil.capacity_tons)} T</b>
+                </span>
+              </div>
+            )}
             <div className="ops-mkey">
               {top.map((row, index) => (
                 <span
@@ -624,7 +656,8 @@ function OilTile({
             {!rated && <p className="ops-note">{oil.no_capacity_reason}</p>}
             {openable && (
               <p className="adm-open-hint">
-                {oil.tank_rows.length} vessels — open the tank farm →
+                {tankCount} tanks
+                {toteCount > 0 && ` + ${toteCount} totes`} — open the tank farm →
               </p>
             )}
           </div>

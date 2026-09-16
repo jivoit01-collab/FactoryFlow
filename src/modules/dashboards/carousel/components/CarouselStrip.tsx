@@ -96,15 +96,18 @@ export interface CarouselStripProps {
  * The carousel's own chrome: which board is up, how long it has left, and the
  * four things a person standing at the screen might want to do about it.
  *
- * Deliberately one thin row. The boards below are designed as a full viewport
- * with nothing under the fold, so every pixel this strip takes is a pixel of
- * factory taken off the wall — hence the dots rather than tabs, the countdown
- * rather than a second clock (the board carries one), and no heading at all:
- * the board names itself in its own topbar a few pixels below.
+ * It takes NO height from the board. The boards below are designed as a full
+ * viewport with nothing under the fold and size themselves in `vh`, so chrome
+ * that occupied a row would push their last band off the bottom edge — see the
+ * note at the head of `carousel.css`. So this floats over the board's own
+ * header instead, and earns that by being one row: dots rather than tabs, a
+ * countdown rather than a second clock (the board carries one), and no heading
+ * at all, since the board names itself underneath.
  *
- * The progress line spans the full width beneath the strip and stays drawn even
- * while the rest has faded out. On a wall it is the only thing that says the
- * screen is a rotation rather than a board that happens to have changed.
+ * The progress line is pinned to the screen's top edge, above the row, and
+ * stays drawn even when the rest has faded out. On a wall it is the only thing
+ * that says the screen is a rotation rather than a board that happens to have
+ * changed.
  */
 export function CarouselStrip({
   slides,
@@ -126,6 +129,13 @@ export function CarouselStrip({
 
   return (
     <div className="bcx-strip" data-visible={visible ? 'yes' : 'no'}>
+      {/* First, so it sits on the screen's very top edge — and outside the
+          fading row on purpose, because it is what tells a wall this screen is
+          a rotation at all. See the component note. */}
+      <div className="bcx-progress" data-paused={paused ? 'yes' : 'no'}>
+        <i style={{ width: `${Math.round(progress * 100)}%` }} />
+      </div>
+
       <div className="bcx-row">
         <div className="bcx-state" data-paused={paused ? 'yes' : 'no'}>
           <i />
@@ -224,11 +234,6 @@ export function CarouselStrip({
             <FullscreenIcon exit={isFullscreen} />
           </button>
         </div>
-      </div>
-
-      {/* Outside the fading row on purpose — see the component note. */}
-      <div className="bcx-progress" data-paused={paused ? 'yes' : 'no'}>
-        <i style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
     </div>
   );

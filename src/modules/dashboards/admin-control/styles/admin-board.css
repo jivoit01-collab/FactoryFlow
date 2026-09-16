@@ -505,3 +505,8 @@
 .admin-board.ops-board:-webkit-full-screen {
   --u: clamp(6px, min(0.833vw, 1.34vh), 24px);
 }
+
+/* The same wall, reached through the carousel — see `ops-board.css`. */
+.ops-wall .admin-board.ops-board {
+  --u: clamp(6px, min(0.833vw, 1.34vh), 24px);
+}

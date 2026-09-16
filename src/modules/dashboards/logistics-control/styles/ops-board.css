@@ -71,14 +71,31 @@
   height: 100%;
   min-height: 0;
   color: var(--ink);
-  font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family:
+    'Archivo',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(calc(58 * var(--u)) calc(32 * var(--u)) at 0% -6%, rgba(6, 182, 212, 0.14), transparent 60%),
-    radial-gradient(calc(56 * var(--u)) calc(32 * var(--u)) at 100% 4%, rgba(139, 92, 246, 0.13), transparent 58%),
-    radial-gradient(calc(62 * var(--u)) calc(38 * var(--u)) at 84% 108%, rgba(59, 130, 246, 0.14), transparent 60%),
+    radial-gradient(
+      calc(58 * var(--u)) calc(32 * var(--u)) at 0% -6%,
+      rgba(6, 182, 212, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(
+      calc(56 * var(--u)) calc(32 * var(--u)) at 100% 4%,
+      rgba(139, 92, 246, 0.13),
+      transparent 58%
+    ),
+    radial-gradient(
+      calc(62 * var(--u)) calc(38 * var(--u)) at 84% 108%,
+      rgba(59, 130, 246, 0.14),
+      transparent 60%
+    ),
     #f4f6fa;
 }
 
@@ -105,6 +122,32 @@
 .ops-board:-webkit-full-screen {
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
+}
+
+/*
+ * ON A WALL, BUT NOT THE FULLSCREEN ELEMENT — `.ops-wall`
+ *
+ * The board carousel rotates these boards inside its own shell, and it is the
+ * SHELL the browser promotes to fullscreen, not the board. So `:fullscreen`
+ * never matches the board, and every rule above that restores the designed
+ * wall geometry silently fails to apply: the board keeps the relaxed, growing
+ * layout it uses inside the app shell, overflows the screen it was given, and
+ * loses its last band under the bottom edge.
+ *
+ * `.ops-wall` is the marker for exactly that case — put on an ancestor by
+ * whoever owns the fullscreen element. Each board repeats its own fullscreen
+ * block against this selector, next to the `:fullscreen` one, rather than
+ * joining the two selector lists: a browser that does not understand
+ * `:-webkit-full-screen` drops the whole list it appears in, and the wall
+ * rules are the ones that must not be dropped.
+ *
+ * The carousel also lays its controls OVER the board rather than above it, so
+ * that the box these `vh` units are measured against really is the screen.
+ * Both halves are needed; either alone still clips.
+ */
+.ops-wall .ops-board {
+  height: 100%;
   overflow: hidden;
 }
 
@@ -318,7 +361,9 @@
 }
 .ops-fs:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--hair), 0 0 0 calc(0.18 * var(--u)) rgba(59, 130, 246, 0.45);
+  box-shadow:
+    inset 0 0 0 1px var(--hair),
+    0 0 0 calc(0.18 * var(--u)) rgba(59, 130, 246, 0.45);
 }
 .ops-fs svg {
   width: calc(1.15 * var(--u));
@@ -504,7 +549,7 @@
     0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14),
     /* A hairline in the band's hue rather than a grey one, so the card's edge
        reads as part of its band instead of as a generic border. */
-      inset 0 0 0 1px var(--tint1);
+    inset 0 0 0 1px var(--tint1);
 }
 
 /*
@@ -816,7 +861,8 @@
 .ops-bars i {
   display: block;
   width: 100%;
-  border-radius: calc(0.28 * var(--u)) calc(0.28 * var(--u)) calc(0.12 * var(--u)) calc(0.12 * var(--u));
+  border-radius: calc(0.28 * var(--u)) calc(0.28 * var(--u)) calc(0.12 * var(--u))
+    calc(0.12 * var(--u));
   background: var(--d3);
   transform-origin: bottom center;
   animation: ops-growY 0.85s cubic-bezier(0.2, 0.8, 0.25, 1) both;
