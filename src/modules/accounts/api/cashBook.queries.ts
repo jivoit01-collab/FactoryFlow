@@ -27,7 +27,8 @@ export const CASH_BOOK_QUERY_KEYS = {
   advanceHolders: () => [...CASH_BOOK_QUERY_KEYS.all, 'advance-holders'] as const,
   advanceStatement: (id: number) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id] as const,
-  people: (search: string) => [...CASH_BOOK_QUERY_KEYS.all, 'people', search] as const,
+  people: (search: string, holdingOnly: boolean) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'people', search, holdingOnly] as const,
   bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
   bunch: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'bunch', id] as const,
 };
@@ -174,11 +175,16 @@ export function useAdvanceStatement(personId: number | null) {
   });
 }
 
-/** Who an advance may be given to. Searched on the server — it is the staff list. */
-export function useCashPeople(search = '') {
+/**
+ * Who may be picked as a person. Searched on the server — it is the staff list.
+ *
+ * `holdingOnly` is the difference between "who may be given an advance"
+ * (anybody) and "whose advance is this settling" (only people holding one).
+ */
+export function useCashPeople(search = '', holdingOnly = false) {
   return useQuery({
-    queryKey: CASH_BOOK_QUERY_KEYS.people(search),
-    queryFn: () => cashBookApi.people(search),
+    queryKey: CASH_BOOK_QUERY_KEYS.people(search, holdingOnly),
+    queryFn: () => cashBookApi.people(search, holdingOnly),
     staleTime: 5 * 60 * 1000,
   });
 }

@@ -31,7 +31,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { formatNumber, getErrorMessage } from '@/shared/utils';
 
 export interface CashEntryDialogProps {
   open: boolean;
@@ -110,7 +110,9 @@ export function CashEntryDialog({
     data: people = [],
     isLoading: peopleLoading,
     isError: peopleError,
-  } = useCashPeople(holderSearch);
+    // Only people holding a float: a payment clears an advance somebody
+    // actually has, and naming anybody else would create one out of nothing.
+  } = useCashPeople(holderSearch, true);
   const saving = record.isPending || update.isPending;
 
   const problem = useMemo(() => {
@@ -299,6 +301,16 @@ export function CashEntryDialog({
                 placeholder="Nobody — paid from the cash box"
                 getItemKey={(person) => person.id}
                 getItemLabel={(person) => person.name}
+                renderItem={(person) => (
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <span className="min-w-0 truncate">{person.name}</span>
+                    {person.balance != null && (
+                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                        holding {formatNumber(Number(person.balance))}
+                      </span>
+                    )}
+                  </div>
+                )}
                 onSearchChange={setHolderSearch}
                 onItemSelect={(person) => {
                   setHolderId(person.id);
@@ -309,8 +321,8 @@ export function CashEntryDialog({
                   setHolderName('');
                 }}
                 loadingText="Loading people…"
-                emptyText="Type to search"
-                notFoundText="Nobody matches that"
+                emptyText="Nobody is holding an advance"
+                notFoundText="Nobody holding an advance matches that"
                 errorText="The people list could not be loaded."
               />
               <p className="text-xs text-muted-foreground">

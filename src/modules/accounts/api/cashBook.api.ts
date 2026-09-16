@@ -21,6 +21,8 @@ export interface CashPerson {
   id: number;
   name: string;
   email: string;
+  /** What they are holding. Only filled in when the list was asked for holders. */
+  balance: string | null;
 }
 
 /** The imprest debit card the factory draws its cash off. */
@@ -340,9 +342,19 @@ export const cashBookApi = {
     await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ADVANCE_DETAIL(entryId));
   },
 
-  async people(search = ''): Promise<CashPerson[]> {
+  /**
+   * Who may be picked as a person.
+   *
+   * `holdingOnly` narrows to people who have been given an advance, which is
+   * who a return can come from and whose advance a payment can clear. Without
+   * it, everybody — the list a new advance may be given to.
+   */
+  async people(search = '', holdingOnly = false): Promise<CashPerson[]> {
     const { data } = await apiClient.get<CashPerson[]>(API_ENDPOINTS.CASH_BOOK.PEOPLE, {
-      params: search ? { search } : {},
+      params: {
+        ...(search ? { search } : {}),
+        ...(holdingOnly ? { holding: 'true' } : {}),
+      },
     });
     return data;
   },

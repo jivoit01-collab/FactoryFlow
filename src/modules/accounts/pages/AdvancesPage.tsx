@@ -268,8 +268,19 @@ function AdvanceDialog({
   const [detail, setDetail] = useState('');
   const [search, setSearch] = useState('');
 
-  const { data: people = [], isLoading, isError } = useCashPeople(search);
   const giving = direction === 'GIVEN';
+  // Giving cash out may go to anybody. Taking it back can only come from
+  // somebody who has some — offering the whole directory here would let a
+  // return be recorded against a person who never took one.
+  const { data: people = [], isLoading, isError } = useCashPeople(search, !giving);
+
+  function changeDirection(next: AdvanceDirection) {
+    setDirection(next);
+    // The two lists are different, so a name picked under one may not be on
+    // the other. Clearing is honest; leaving it looks chosen but is stale.
+    setPersonId(null);
+    setPersonName('');
+  }
 
   async function submit() {
     if (personId == null) {
@@ -322,7 +333,7 @@ function AdvanceDialog({
               <NativeSelect
                 id="advance-direction"
                 value={direction}
-                onChange={(e) => setDirection(e.target.value as AdvanceDirection)}
+                onChange={(e) => changeDirection(e.target.value as AdvanceDirection)}
               >
                 <SelectOption value="GIVEN">Advance given</SelectOption>
                 <SelectOption value="RETURNED">Cash returned</SelectOption>
@@ -359,9 +370,19 @@ function AdvanceDialog({
             items={people}
             isLoading={isLoading}
             isError={isError}
-            placeholder="Search people…"
+            placeholder={giving ? 'Search people…' : 'Search people holding cash…'}
             getItemKey={(person) => person.id}
             getItemLabel={(person) => person.name}
+            renderItem={(person) => (
+              <div className="flex w-full items-center justify-between gap-3">
+                <span className="min-w-0 truncate">{person.name}</span>
+                {person.balance != null && (
+                  <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                    holding {money(person.balance)}
+                  </span>
+                )}
+              </div>
+            )}
             onSearchChange={setSearch}
             onItemSelect={(person) => {
               setPersonId(person.id);
@@ -372,8 +393,10 @@ function AdvanceDialog({
               setPersonName('');
             }}
             loadingText="Loading people…"
-            emptyText="Type to search"
-            notFoundText="Nobody matches that"
+            emptyText={giving ? 'Type to search' : 'Nobody is holding cash'}
+            notFoundText={
+              giving ? 'Nobody matches that' : 'Nobody holding cash matches that'
+            }
             errorText="The people list could not be loaded."
           />
 
