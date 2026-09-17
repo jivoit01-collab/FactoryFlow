@@ -1208,7 +1208,10 @@ function POCard({
                         <tr key={item.line_num} className="border-t">
                           <td className="p-3 text-sm">{item.po_item_code}</td>
                           <td className="p-3 text-sm">{item.item_name}</td>
-                          <td className="p-3 text-sm text-right">{item.rate > 0 ? item.rate.toFixed(2) : '-'}</td>
+                          {/* PO rates carry four decimals in SAP (POR1.Price); rounding to two
+                              here showed a different number than the PO for per-litre and
+                              per-kg lines. */}
+                          <td className="p-3 text-sm text-right">{item.rate > 0 ? item.rate.toFixed(4) : '-'}</td>
                           <td className="p-3 text-sm">{item.ordered_qty}</td>
                           <td className="p-3 text-sm text-muted-foreground">
                             {item.received_qty > 0 ? item.received_qty : '-'}
