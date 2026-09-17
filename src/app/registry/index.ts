@@ -4,6 +4,7 @@ import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
 import { adminModuleConfig } from '@/modules/admin/module.config';
+import { attendanceModuleConfig } from '@/modules/attendance/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
 import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
@@ -64,6 +65,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // Reference, not a workflow: the department ownership chart lives near the
   // bottom with the other look-it-up pages.
   organizationModuleConfig,
+  // Attendance sits immediately above the directory: same people, read daily
+  // rather than looked up. Its permissions are separate from the directory's,
+  // so gate supervisors can see who turned up without seeing the org tree.
+  attendanceModuleConfig,
   // The people themselves — the directory, the reporting tree and compensation.
   // Sits next to the ownership chart: same subject, but real employees, real
   // salaries and its own access control.

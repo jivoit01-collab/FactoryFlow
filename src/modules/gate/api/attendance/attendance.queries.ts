@@ -4,11 +4,10 @@ import {
   attendanceApi,
   type AttendanceRecordFilters,
   type CreateAttendanceRequest,
-  type CreateEmployeeRequest,
   type EmployeeFilters,
 } from './attendance.api';
 
-// ===== Employees (config) =====
+// ===== Employees (read-only; maintained in the Employees module) =====
 
 export function useAttendanceEmployees(filters?: EmployeeFilters, enabled: boolean = true) {
   return useQuery({
@@ -19,36 +18,8 @@ export function useAttendanceEmployees(filters?: EmployeeFilters, enabled: boole
   });
 }
 
-export function useCreateAttendanceEmployee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: CreateEmployeeRequest) => attendanceApi.createEmployee(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendanceEmployees'] });
-    },
-  });
-}
 
-export function useUpdateAttendanceEmployee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: CreateEmployeeRequest }) =>
-      attendanceApi.updateEmployee(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendanceEmployees'] });
-    },
-  });
-}
 
-export function useDeleteAttendanceEmployee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => attendanceApi.deleteEmployee(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attendanceEmployees'] });
-    },
-  });
-}
 
 // ===== Attendance records =====
 

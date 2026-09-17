@@ -1457,6 +1457,29 @@ export const API_ENDPOINTS = {
   // DESIGNATION, STATUS, PROMOTE) instead of riding along on a PATCH, because
   // each one takes a reason and each one does more than write a column --
   // moving a manager carries their whole team.
+  // Attendance — the punch-machine daily sheet, its overrides, and the manual
+  // photographed marks kept for when the machine itself is down.
+  ATTENDANCE: {
+    DAILY: '/attendance/daily/',
+    DAILY_DETAIL: (id: number) => `/attendance/daily/${id}/`,
+    /** Change a status away from the machine's. Requires a reason. */
+    OVERRIDE: (id: number) => `/attendance/daily/${id}/override/`,
+    /** Drop the correction and go back to what the machine said. */
+    REVERT: (id: number) => `/attendance/daily/${id}/revert/`,
+    /** Every change ever made to that day. */
+    HISTORY: (id: number) => `/attendance/daily/${id}/history/`,
+    SUMMARY: '/attendance/daily/summary/',
+    /** The status and reason-code vocabulary, so the client never hardcodes it. */
+    REASONS: '/attendance/daily/reasons/',
+    /** Is the punch database reachable, and how fresh is the sync? */
+    SOURCE_STATUS: '/attendance/daily/source_status/',
+    SYNC: '/attendance/daily/sync/',
+    EXPORT: '/attendance/daily/export/',
+    EMPLOYEES: '/attendance/employees/',
+    RECORDS: '/attendance/records/',
+    RECORDS_EXPORT: '/attendance/records/export/',
+  },
+
   EMPLOYEE_HIERARCHY: {
     META: '/employee-hierarchy/meta/',
     TREE: '/employee-hierarchy/tree/',

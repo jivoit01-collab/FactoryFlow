@@ -26,8 +26,10 @@ export function EmployeeSelect({
 }: EmployeeSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // The endpoint already serves only employees still in service -- the
+  // directory's employment_status decides that now, not a local is_active flag.
   const { data: employees = [], isLoading, isError } = useAttendanceEmployees(
-    { is_active: true },
+    undefined,
     isDropdownOpen && !disabled,
   );
 
@@ -44,18 +46,18 @@ export function EmployeeSelect({
       required={required}
       inputId="employee-select"
       getItemKey={(e) => e.id}
-      getItemLabel={(e) => e.name}
+      getItemLabel={(e) => e.full_name}
       filterFn={(e, search) => {
         const lower = search.toLowerCase();
         return (
-          e.name.toLowerCase().includes(lower) ||
+          e.full_name.toLowerCase().includes(lower) ||
           e.employee_code.toLowerCase().includes(lower) ||
           (e.department_name?.toLowerCase().includes(lower) ?? false)
         );
       }}
       renderItem={(employee) => (
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{employee.name}</span>
+          <span className="text-sm font-medium">{employee.full_name}</span>
           <span className="text-xs text-muted-foreground">
             {employee.employee_code}
             {employee.department_name ? ` · ${employee.department_name}` : ''}

@@ -25,6 +25,17 @@ export {
   type DailyTasksPermission,
 } from './daily-tasks.permissions';
 
+// Attendance Module (punch-machine daily sheet + manual overrides)
+export {
+  ATTENDANCE_ACCESS,
+  ATTENDANCE_MARK_ACCESS,
+  ATTENDANCE_MODULE_PREFIX,
+  ATTENDANCE_OVERRIDE_ACCESS,
+  ATTENDANCE_PERMISSIONS,
+  ATTENDANCE_SYNC_ACCESS,
+  type AttendancePermission,
+} from './attendance.permissions';
+
 // Gate Module
 export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
 

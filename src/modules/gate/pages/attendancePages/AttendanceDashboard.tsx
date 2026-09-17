@@ -85,7 +85,7 @@ export default function AttendanceDashboard() {
       result.push({
         employeeId,
         code: detail?.employee_code ?? '-',
-        name: detail?.name ?? '-',
+        name: detail?.full_name ?? '-',
         department: detail?.department_name ?? '-',
         records: sorted,
         firstIn: ins[0] ?? null,

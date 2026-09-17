@@ -95,7 +95,6 @@ const ContractorLaboursPage = lazy(() => import('./pages/personGateInPages/Contr
 // Attendance (manual employee attendance fallback — dashboard-only, not in sidebar)
 const AttendanceDashboard = lazy(() => import('./pages/attendancePages/AttendanceDashboard'));
 const NewAttendancePage = lazy(() => import('./pages/attendancePages/NewAttendancePage'));
-const AttendanceEmployeesPage = lazy(() => import('./pages/attendancePages/EmployeesPage'));
 
 // Standalone gate form pages
 const RejectedQCReturnDashboardPage = lazy(
@@ -746,13 +745,6 @@ export const gateModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.ATTENDANCE.CREATE],
       breadcrumb: { label: 'Mark Attendance' },
-    },
-    {
-      path: '/gate/attendance/employees',
-      element: <AttendanceEmployeesPage />,
-      layout: 'main',
-      permissions: [GATE_PERMISSIONS.ATTENDANCE.VIEW_EMPLOYEE],
-      breadcrumb: { label: 'Employees' },
     },
 
     // New standalone gate submodule forms

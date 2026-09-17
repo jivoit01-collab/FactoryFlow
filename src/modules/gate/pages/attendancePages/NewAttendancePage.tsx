@@ -90,7 +90,7 @@ export default function NewAttendancePage() {
         photo: photo!,
       });
       toast.success(
-        `${direction === 'IN' ? 'In' : 'Out'} marked for ${employee!.name}`,
+        `${direction === 'IN' ? 'In' : 'Out'} marked for ${employee!.full_name}`,
       );
       navigate('/gate/attendance');
     } catch (error: unknown) {
@@ -108,7 +108,7 @@ export default function NewAttendancePage() {
       if (err.message && !fieldErrors.general) fieldErrors.general = err.message;
       setApiErrors(fieldErrors);
       toast.error(
-        fieldErrors.general || `${employee!.name} may already be marked for this date`,
+        fieldErrors.general || `${employee!.full_name} may already be marked for this date`,
       );
     }
   };

@@ -2,21 +2,24 @@ import { apiClient } from '@/core/api';
 
 // ===== Types =====
 
+/**
+ * The directory entry, served from `employee_hierarchy.Employee`.
+ *
+ * This module used to keep its own parallel employee master. Two masters for
+ * one workforce meant somebody could exist for attendance and not for HR — and
+ * the punch machines key on the JWPL code the HR directory holds, so a person
+ * missing from it simply never matched their own punches. The master is gone;
+ * this endpoint is read-only now, and employees are maintained in Employees.
+ */
 export interface AttendanceEmployee {
   id: number;
   employee_code: string;
-  name: string;
-  department: number;
-  department_name?: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface CreateEmployeeRequest {
-  employee_code: string;
-  name: string;
-  department: number;
-  is_active?: boolean;
+  full_name: string;
+  department: number | null;
+  department_name?: string | null;
+  designation_name?: string | null;
+  sap_segment?: string;
+  employment_status: string;
 }
 
 export type AttendanceDirection = 'IN' | 'OUT';
@@ -46,7 +49,6 @@ export interface CreateAttendanceRequest {
 export interface EmployeeFilters {
   search?: string;
   department?: number;
-  is_active?: boolean;
 }
 
 export interface AttendanceRecordFilters {
@@ -69,37 +71,17 @@ export interface AttendanceExportFilters {
 // ===== Service =====
 
 export const attendanceApi = {
-  // ----- Employees (config) -----
+  // ----- Employees (read-only; maintained in the Employees module) -----
   getEmployees: async (filters?: EmployeeFilters): Promise<AttendanceEmployee[]> => {
     const params: Record<string, string | number> = {};
     if (filters?.search) params.search = filters.search;
     if (filters?.department) params.department = filters.department;
-    if (filters?.is_active !== undefined) params.is_active = String(filters.is_active);
     const response = await apiClient.get<AttendanceEmployee[]>('/attendance/employees/', {
       params,
     });
     return response.data;
   },
 
-  createEmployee: async (data: CreateEmployeeRequest): Promise<AttendanceEmployee> => {
-    const response = await apiClient.post<AttendanceEmployee>('/attendance/employees/', data);
-    return response.data;
-  },
-
-  updateEmployee: async (
-    id: number,
-    data: CreateEmployeeRequest,
-  ): Promise<AttendanceEmployee> => {
-    const response = await apiClient.put<AttendanceEmployee>(
-      `/attendance/employees/${id}/`,
-      data,
-    );
-    return response.data;
-  },
-
-  deleteEmployee: async (id: number): Promise<void> => {
-    await apiClient.delete(`/attendance/employees/${id}/`);
-  },
 
   // ----- Attendance records -----
   getRecords: async (filters?: AttendanceRecordFilters): Promise<AttendanceRecord[]> => {
