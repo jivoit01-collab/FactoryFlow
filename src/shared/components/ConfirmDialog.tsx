@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Textarea,
 } from '@/shared/components/ui';
 
 /**
@@ -50,6 +51,12 @@ export interface PromptDialogOptions extends ConfirmDialogOptions {
   defaultValue?: string;
   /** Confirm stays disabled until the field is non-empty (default true). */
   required?: boolean;
+  /**
+   * Renders a textarea instead of a single-line input, for a value that is a
+   * sentence rather than a word — a rejection reason the requester will read.
+   * Enter then makes a new line, so confirming is the button's job alone.
+   */
+  multiline?: boolean;
 }
 
 type DialogRequest = { id: number } & (
@@ -158,19 +165,30 @@ function ConfirmDialogRequest({ request }: { request: DialogRequest }) {
                 {required && <span className="text-red-500"> *</span>}
               </label>
             )}
-            <Input
-              id="confirm-dialog-input"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              placeholder={request.options.placeholder}
-              autoFocus
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  confirm();
-                }
-              }}
-            />
+            {request.options.multiline ? (
+              <Textarea
+                id="confirm-dialog-input"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder={request.options.placeholder}
+                rows={3}
+                autoFocus
+              />
+            ) : (
+              <Input
+                id="confirm-dialog-input"
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder={request.options.placeholder}
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    confirm();
+                  }
+                }}
+              />
+            )}
           </div>
         )}
 
