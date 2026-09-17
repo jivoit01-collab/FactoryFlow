@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Loader2, Mail, Package, X } from 'lucide-react';
+import { Download, Loader2, Mail, Package, Undo2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -95,17 +95,29 @@ export default function BunchesPage() {
     }
   }
 
+  /**
+   * Record that a batch has gone, or take that back.
+   *
+   * Both directions ask first. Sending is not a big red button, but it is the
+   * thing that fixes the contents -- and the only clue that it happened is a
+   * badge in another column, which is no help to somebody who clicked it not
+   * knowing what it was for.
+   */
   async function toggleSent(bunch: CashBunch) {
-    if (bunch.is_sent) {
-      const ok = await confirmDialog({
-        title: `Mark bunch ${bunch.number} as not sent?`,
-        description:
-          'Its vouchers become changeable again. Use this when the batch was ticked by mistake, not when a real one comes back.',
-        confirmLabel: 'Mark unsent',
-        destructive: true,
-      });
-      if (!ok) return;
-    }
+    const ok = bunch.is_sent
+      ? await confirmDialog({
+          title: `Mark bunch ${bunch.number} as not sent?`,
+          description:
+            'Its vouchers become changeable again, so one can be taken out. Use this when the batch was ticked by mistake -- not when a real one comes back from head office.',
+          confirmLabel: 'Mark unsent',
+          destructive: true,
+        })
+      : await confirmDialog({
+          title: `Mark bunch ${bunch.number} as sent to head office?`,
+          description: `This records that its ${bunch.entry_count} vouchers, ${money(bunch.total)} in all, have been mailed. The contents are fixed once it is sent -- no voucher can be taken out of it after that, though you can mark it unsent again if you tick this by mistake.`,
+          confirmLabel: 'Mark sent',
+        });
+    if (!ok) return;
     try {
       await markSent.mutateAsync({ id: bunch.id, sent: !bunch.is_sent });
       toast.success(
@@ -264,39 +276,45 @@ export default function BunchesPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex gap-1">
+                      {/* Spelled out rather than left as icons. An envelope
+                          and a tick look like they might explain themselves;
+                          they do not, and one of them changes the batch. */}
+                      <div className="flex flex-wrap gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => download(bunch)}
                           disabled={downloading === bunch.id}
-                          aria-label={`Download bunch ${bunch.number}`}
                         >
                           {downloading === bunch.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
-                            <Download className="h-4 w-4" />
+                            <Download className="mr-2 h-4 w-4" />
                           )}
+                          Download
                         </Button>
-                        {canManage && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleSent(bunch)}
-                            disabled={markSent.isPending}
-                            aria-label={
-                              bunch.is_sent
-                                ? `Mark bunch ${bunch.number} unsent`
-                                : `Mark bunch ${bunch.number} sent`
-                            }
-                          >
-                            {bunch.is_sent ? (
-                              <CheckCircle2 className="h-4 w-4" />
-                            ) : (
-                              <Mail className="h-4 w-4" />
-                            )}
-                          </Button>
-                        )}
+                        {canManage &&
+                          (bunch.is_sent ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSent(bunch)}
+                              disabled={markSent.isPending}
+                            >
+                              <Undo2 className="mr-2 h-4 w-4" />
+                              Mark unsent
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleSent(bunch)}
+                              disabled={markSent.isPending}
+                            >
+                              <Mail className="mr-2 h-4 w-4" />
+                              Mark sent
+                            </Button>
+                          ))}
                       </div>
                     </td>
                   </tr>
@@ -348,9 +366,9 @@ export default function BunchesPage() {
                             size="sm"
                             onClick={() => pullOut(entry.id, entry.amount)}
                             disabled={removeEntry.isPending}
-                            aria-label="Take this voucher out of the batch"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="mr-2 h-4 w-4" />
+                            Take out
                           </Button>
                         </td>
                       )}
