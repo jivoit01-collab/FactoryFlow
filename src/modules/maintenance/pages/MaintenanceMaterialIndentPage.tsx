@@ -71,6 +71,14 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Render a stored timestamp as a local YYYY-MM-DD date, matching the posting-date column. */
+function asLocalDate(value: string | null | undefined) {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '-';
+  return parsed.toLocaleDateString('en-CA');
+}
+
 interface ItemDraft {
   particulars: string;
   specification: string;
@@ -1168,11 +1176,16 @@ export default function MaintenanceMaterialIndentPage() {
       </Card>
 
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[960px] text-sm">
+        <table className="w-full min-w-[1060px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Indent No</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Posting Date
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                Approval Date
+              </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Purpose</th>
               <th className="px-4 py-3 text-right font-medium text-muted-foreground">Items</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -1185,13 +1198,13 @@ export default function MaintenanceMaterialIndentPage() {
           <tbody>
             {indentsQuery.isLoading ? (
               <tr>
-                <td colSpan={7} className="h-28 px-4 py-3 text-center text-muted-foreground">
+                <td colSpan={8} className="h-28 px-4 py-3 text-center text-muted-foreground">
                   Loading indents…
                 </td>
               </tr>
             ) : indents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="h-28 px-4 py-3 text-center text-muted-foreground">
+                <td colSpan={8} className="h-28 px-4 py-3 text-center text-muted-foreground">
                   <CalendarDays className="mx-auto mb-2 h-5 w-5" />
                   No material indents found.
                 </td>
@@ -1201,6 +1214,7 @@ export default function MaintenanceMaterialIndentPage() {
                 <tr key={indent.id} className="border-b last:border-b-0 hover:bg-muted/40">
                   <td className="px-4 py-3 font-medium">{indent.indent_no}</td>
                   <td className="px-4 py-3">{indent.indent_date}</td>
+                  <td className="px-4 py-3">{asLocalDate(indent.approved_at)}</td>
                   <td className="px-4 py-3">{indent.purpose || '-'}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{indent.total_items}</td>
                   <td className="px-4 py-3">
