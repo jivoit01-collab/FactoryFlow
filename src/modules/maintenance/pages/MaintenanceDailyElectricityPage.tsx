@@ -16,6 +16,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -122,6 +123,10 @@ export default function MaintenanceDailyElectricityPage() {
   const [readingForm, setReadingForm] = useState(EMPTY_READING_FORM);
   const [editingMeter, setEditingMeter] = useState<ElectricityMeter | null>(null);
   const [meterForm, setMeterForm] = useState(EMPTY_METER_FORM);
+  // The master list and the add/edit form are two modals, the form stacked on
+  // top of the list: the list only lists, and a meter is only ever edited in a
+  // dialog of its own.
+  const [meterFormOpen, setMeterFormOpen] = useState(false);
 
   const activeMeters = useMemo(() => meters.filter((m) => m.is_active), [meters]);
 
@@ -285,6 +290,18 @@ export default function MaintenanceDailyElectricityPage() {
     }
   };
 
+  const closeMeterForm = () => {
+    setMeterFormOpen(false);
+    setEditingMeter(null);
+    setMeterForm(EMPTY_METER_FORM);
+  };
+
+  const openAddMeter = () => {
+    setEditingMeter(null);
+    setMeterForm(EMPTY_METER_FORM);
+    setMeterFormOpen(true);
+  };
+
   const openEditMeter = (meter: ElectricityMeter) => {
     setEditingMeter(meter);
     setMeterForm({
@@ -297,6 +314,7 @@ export default function MaintenanceDailyElectricityPage() {
       supply_source: (meter.supply_source || 'GRID') as SupplySource,
       counts_as_supply: meter.counts_as_supply,
     });
+    setMeterFormOpen(true);
   };
 
   const submitMeter = async () => {
@@ -325,8 +343,7 @@ export default function MaintenanceDailyElectricityPage() {
         await createMeter.mutateAsync(payload);
         toast.success('Meter added');
       }
-      setEditingMeter(null);
-      setMeterForm(EMPTY_METER_FORM);
+      closeMeterForm();
     } catch {
       /* interceptor handles (e.g. duplicate name) */
     }
@@ -457,7 +474,7 @@ export default function MaintenanceDailyElectricityPage() {
         {(canManageMeters || canAddReading) && (
           <div className="flex gap-2">
             {canManageMeters && (
-              <Button variant="outline" onClick={() => { setEditingMeter(null); setMeterForm(EMPTY_METER_FORM); setDialog('meters'); }}>
+              <Button variant="outline" onClick={() => { closeMeterForm(); setDialog('meters'); }}>
                 <Gauge className="h-4 w-4 mr-1" /> Meters
               </Button>
             )}
@@ -794,20 +811,29 @@ export default function MaintenanceDailyElectricityPage() {
 
       {/* Meter master dialog */}
       <Dialog open={dialog === 'meters'} onOpenChange={(open) => { if (!open) setDialog(null); }}>
-        {/* The meter list and the add/edit form together run past the bottom of
-            the screen — more so since a main meter names its supply — so the
-            body scrolls and the title stays put. */}
-        <DialogContent className="grid max-h-[90vh] max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        {/* The master list only lists: a long meter list is what this dialog is
+            for, so the body scrolls and the title stays put, and adding or
+            editing one opens a dialog of its own on top of it. */}
+        <DialogContent className="grid max-h-[90vh] max-w-3xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Electricity Meters</DialogTitle>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                Every meter the factory reads — edit one to change its factor, supply or the
+                companies it feeds.
+              </p>
+              <Button size="sm" onClick={openAddMeter}>
+                <Plus className="h-4 w-4 mr-1" /> New Meter
+              </Button>
+            </div>
+            <div className="overflow-y-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
               {metersLoading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
               ) : meters.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No meters yet — add the first one below.
+                  No meters yet — add the first one with “New Meter”.
                 </div>
               ) : (
                 <table className="w-full text-sm">
@@ -889,173 +915,171 @@ export default function MaintenanceDailyElectricityPage() {
                 </table>
               )}
             </div>
-
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
-              <p className="mb-3 text-sm font-medium">
-                {editingMeter ? `Edit: ${editingMeter.name}` : 'Add Meter'}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="meter-name">Name</Label>
-                  <Input
-                    id="meter-name"
-                    value={meterForm.name}
-                    onChange={(e) => setMeterForm((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g. Main Incomer"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="meter-number">Meter No.</Label>
-                  <Input
-                    id="meter-number"
-                    value={meterForm.meter_number}
-                    onChange={(e) => setMeterForm((p) => ({ ...p, meter_number: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="meter-location">Location</Label>
-                  <Input
-                    id="meter-location"
-                    value={meterForm.location}
-                    onChange={(e) => setMeterForm((p) => ({ ...p, location: e.target.value }))}
-                  />
-                </div>
-                <div className="flex items-end pb-2 text-xs text-muted-foreground">
-                  ₹/unit is set on the{' '}
-                  <Link to="/admin/cost-master" className="mx-1 text-primary underline">
-                    Cost Master
-                  </Link>{' '}
-                  (value “meter:&lt;name&gt;”).
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="meter-factor">Multiplying Factor (MF)</Label>
-                  <Input
-                    id="meter-factor"
-                    type="number"
-                    step="0.0001"
-                    min="0.0001"
-                    value={meterForm.multiplying_factor}
-                    onChange={(e) =>
-                      setMeterForm((p) => ({ ...p, multiplying_factor: e.target.value }))
-                    }
-                    placeholder="1"
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    The factor the grid gave the factory for this meter — each day&apos;s dial
-                    difference is multiplied by it to get the billed units. Leave blank (or 1) if
-                    the dial reads true.
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <Checkbox
-                      id="meter-is-main"
-                      checked={meterForm.is_main}
-                      onCheckedChange={(checked) =>
-                        setMeterForm((p) => ({ ...p, is_main: checked === true }))
-                      }
-                    />
-                    Main (incoming supply) meter
-                  </label>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Tick this for the meters a supply comes in on. Every other meter measures
-                    a part of that same electricity, so a main meter is listed and totalled on
-                    its own and left out of the register total — adding it would count the same
-                    units twice.
-                  </p>
-                </div>
-                {meterForm.is_main && (
-                  <>
-                    <div>
-                      <Label htmlFor="meter-supply-source">Supply</Label>
-                      <NativeSelect
-                        id="meter-supply-source"
-                        value={meterForm.supply_source}
-                        onChange={(e) =>
-                          setMeterForm((p) => ({
-                            ...p,
-                            supply_source: e.target.value as SupplySource,
-                          }))
-                        }
-                      >
-                        {SUPPLY_SOURCE_LIST.map((source) => (
-                          <SelectOption key={source} value={source}>
-                            {SUPPLY_SOURCE_LABELS[source]}
-                          </SelectOption>
-                        ))}
-                      </NativeSelect>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Which supply this meter measures. The plant swaps between them — on a
-                        day the grid is out the DG carries the load, and the register has to
-                        say so rather than show a grid meter that stopped moving.
-                      </p>
-                    </div>
-                    <div className="flex flex-col justify-end">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <Checkbox
-                          id="meter-counts-as-supply"
-                          checked={meterForm.counts_as_supply}
-                          onCheckedChange={(checked) =>
-                            setMeterForm((p) => ({ ...p, counts_as_supply: checked === true }))
-                          }
-                        />
-                        Counts toward total supply
-                      </label>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Untick a meter that measures a supply another meter already counts —
-                        KVAH is the grid&apos;s KWH as apparent energy, so counting both would
-                        double the grid.
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-              <fieldset className="mt-3">
-                {/* A legend, not a Label: the heading names the group, each
-                    checkbox carries its own label. */}
-                <legend className="text-sm font-medium leading-none">Companies served</legend>
-                <div className="mt-1 flex flex-wrap items-center gap-4">
-                  {COMPANY_CODE_LIST.map((code) => (
-                    <label key={code} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        id={`meter-company-${code}`}
-                        checked={meterForm.company_codes.includes(code)}
-                        onCheckedChange={() => toggleMeterCompany(code)}
-                      />
-                      {COMPANY_LABELS[code]}
-                    </label>
-                  ))}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Tick every company this meter feeds — a shared meter can serve both Jivo Oil
-                  and Jivo Beverages. Jivo Mart runs on its own supply, so its meters are tagged
-                  Mart alone.
-                </p>
-              </fieldset>
-              <div className="mt-3 flex justify-end gap-2">
-                {editingMeter && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setEditingMeter(null);
-                      setMeterForm(EMPTY_METER_FORM);
-                    }}
-                  >
-                    Cancel Edit
-                  </Button>
-                )}
-                <Button
-                  onClick={submitMeter}
-                  disabled={createMeter.isPending || updateMeter.isPending}
-                >
-                  {(createMeter.isPending || updateMeter.isPending) && (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  )}
-                  {editingMeter ? 'Save Meter' : 'Add Meter'}
-                </Button>
-              </div>
-            </div>
           </DialogBody>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add / Edit Meter — stacked on top of the master list, so the list
+          stays where it was and comes back as soon as this closes. */}
+      <Dialog open={meterFormOpen} onOpenChange={(open) => { if (!open) closeMeterForm(); }}>
+        <DialogContent className="grid max-h-[90vh] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{editingMeter ? `Edit: ${editingMeter.name}` : 'Add Meter'}</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="meter-name">Name</Label>
+                <Input
+                  id="meter-name"
+                  value={meterForm.name}
+                  onChange={(e) => setMeterForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Main Incomer"
+                />
+              </div>
+              <div>
+                <Label htmlFor="meter-number">Meter No.</Label>
+                <Input
+                  id="meter-number"
+                  value={meterForm.meter_number}
+                  onChange={(e) => setMeterForm((p) => ({ ...p, meter_number: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="meter-location">Location</Label>
+                <Input
+                  id="meter-location"
+                  value={meterForm.location}
+                  onChange={(e) => setMeterForm((p) => ({ ...p, location: e.target.value }))}
+                />
+              </div>
+              <div className="flex items-end pb-2 text-xs text-muted-foreground">
+                ₹/unit is set on the{' '}
+                <Link to="/admin/cost-master" className="mx-1 text-primary underline">
+                  Cost Master
+                </Link>{' '}
+                (value “meter:&lt;name&gt;”).
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="meter-factor">Multiplying Factor (MF)</Label>
+                <Input
+                  id="meter-factor"
+                  type="number"
+                  step="0.0001"
+                  min="0.0001"
+                  value={meterForm.multiplying_factor}
+                  onChange={(e) =>
+                    setMeterForm((p) => ({ ...p, multiplying_factor: e.target.value }))
+                  }
+                  placeholder="1"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The factor the grid gave the factory for this meter — each day&apos;s dial
+                  difference is multiplied by it to get the billed units. Leave blank (or 1) if
+                  the dial reads true.
+                </p>
+              </div>
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    id="meter-is-main"
+                    checked={meterForm.is_main}
+                    onCheckedChange={(checked) =>
+                      setMeterForm((p) => ({ ...p, is_main: checked === true }))
+                    }
+                  />
+                  Main (incoming supply) meter
+                </label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tick this for the meters a supply comes in on. Every other meter measures
+                  a part of that same electricity, so a main meter is listed and totalled on
+                  its own and left out of the register total — adding it would count the same
+                  units twice.
+                </p>
+              </div>
+              {meterForm.is_main && (
+                <>
+                  <div>
+                    <Label htmlFor="meter-supply-source">Supply</Label>
+                    <NativeSelect
+                      id="meter-supply-source"
+                      value={meterForm.supply_source}
+                      onChange={(e) =>
+                        setMeterForm((p) => ({
+                          ...p,
+                          supply_source: e.target.value as SupplySource,
+                        }))
+                      }
+                    >
+                      {SUPPLY_SOURCE_LIST.map((source) => (
+                        <SelectOption key={source} value={source}>
+                          {SUPPLY_SOURCE_LABELS[source]}
+                        </SelectOption>
+                      ))}
+                    </NativeSelect>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Which supply this meter measures. The plant swaps between them — on a
+                      day the grid is out the DG carries the load, and the register has to
+                      say so rather than show a grid meter that stopped moving.
+                    </p>
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <label className="flex items-center gap-2 text-sm font-medium">
+                      <Checkbox
+                        id="meter-counts-as-supply"
+                        checked={meterForm.counts_as_supply}
+                        onCheckedChange={(checked) =>
+                          setMeterForm((p) => ({ ...p, counts_as_supply: checked === true }))
+                        }
+                      />
+                      Counts toward total supply
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Untick a meter that measures a supply another meter already counts —
+                      KVAH is the grid&apos;s KWH as apparent energy, so counting both would
+                      double the grid.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            <fieldset>
+              {/* A legend, not a Label: the heading names the group, each
+                  checkbox carries its own label. */}
+              <legend className="text-sm font-medium leading-none">Companies served</legend>
+              <div className="mt-1 flex flex-wrap items-center gap-4">
+                {COMPANY_CODE_LIST.map((code) => (
+                  <label key={code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`meter-company-${code}`}
+                      checked={meterForm.company_codes.includes(code)}
+                      onCheckedChange={() => toggleMeterCompany(code)}
+                    />
+                    {COMPANY_LABELS[code]}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tick every company this meter feeds — a shared meter can serve both Jivo Oil
+                and Jivo Beverages. Jivo Mart runs on its own supply, so its meters are tagged
+                Mart alone.
+              </p>
+            </fieldset>
+          </DialogBody>
+          <DialogFooter className="gap-2 pt-4">
+            <Button variant="outline" onClick={closeMeterForm}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitMeter}
+              disabled={createMeter.isPending || updateMeter.isPending}
+            >
+              {(createMeter.isPending || updateMeter.isPending) && (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              )}
+              {editingMeter ? 'Save Meter' : 'Add Meter'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

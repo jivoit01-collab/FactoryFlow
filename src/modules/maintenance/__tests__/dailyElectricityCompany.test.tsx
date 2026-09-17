@@ -106,6 +106,7 @@ describe('Daily Electricity — company attribution', () => {
     // The master list flags a meter nobody has attributed yet.
     expect(screen.getByText('Not set')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: /^new meter$/i }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Utility Incomer' } });
     fireEvent.click(screen.getByRole('checkbox', { name: /jivo oil/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /jivo beverages/i }));

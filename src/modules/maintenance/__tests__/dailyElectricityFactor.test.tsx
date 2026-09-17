@@ -62,8 +62,9 @@ vi.mock('@/core/auth/hooks/usePermission', () => ({
 }));
 
 // "Meter" and the MF field exist both in the filter bar and in the dialogs, so
-// dialog queries are scoped.
-const dialog = () => within(screen.getByRole('dialog'));
+// dialog queries are scoped. The meter form opens stacked on the master list,
+// so the topmost dialog is the one being read.
+const dialog = () => within(screen.getAllByRole('dialog').at(-1) as HTMLElement);
 
 describe('Daily Electricity — multiplying factor', () => {
   it('shows the factor next to the billed units', () => {
@@ -96,9 +97,22 @@ describe('Daily Electricity — multiplying factor', () => {
     });
   });
 
+  it('holds the meter form back until the list opens one', () => {
+    render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: /^meters$/i }));
+
+    // The master list lists; nothing is being edited yet.
+    expect(dialog().queryByLabelText('Name')).not.toBeInTheDocument();
+
+    fireEvent.click(dialog().getByRole('button', { name: /edit meter ht incomer/i }));
+    expect(dialog().getByLabelText('Name')).toHaveValue('HT Incomer');
+    expect(dialog().getByLabelText('Multiplying Factor (MF)')).toHaveValue(40);
+  });
+
   it('sends the factor set on a new meter', async () => {
     render(<MemoryRouter><MaintenanceDailyElectricityPage /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /^meters$/i }));
+    fireEvent.click(dialog().getByRole('button', { name: /^new meter$/i }));
 
     fireEvent.change(dialog().getByLabelText('Name'), { target: { value: 'LT Incomer' } });
     fireEvent.change(dialog().getByLabelText('Multiplying Factor (MF)'), {

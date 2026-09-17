@@ -133,7 +133,9 @@ vi.mock('@/core/auth/hooks/usePermission', () => ({
   }),
 }));
 
-const dialog = () => within(screen.getByRole('dialog'));
+// The meter form opens as a second dialog on top of the master list, so the
+// topmost one is what a meter query is scoped to.
+const dialog = () => within(screen.getAllByRole('dialog').at(-1) as HTMLElement);
 
 describe('Daily Electricity — main meters', () => {
   it('totals the sub-meters alone and reports the mains beside them', () => {
@@ -195,6 +197,8 @@ describe('Daily Electricity — main meters', () => {
     fireEvent.click(dialog().getByRole('button', { name: /edit meter production floor oil/i }));
     expect(dialog().queryByLabelText(/^supply$/i)).not.toBeInTheDocument();
 
+    // Back to the list, then on to the main meter.
+    fireEvent.click(dialog().getByRole('button', { name: /^cancel$/i }));
     fireEvent.click(dialog().getByRole('button', { name: /edit meter dg-1/i }));
     const source = dialog().getByLabelText(/^supply$/i) as HTMLSelectElement;
     expect(source.value).toBe('DG');
