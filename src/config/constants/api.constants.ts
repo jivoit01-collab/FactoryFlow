@@ -1772,6 +1772,8 @@ export const API_ENDPOINTS = {
     BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
+    // What one column of the register holds, for its filter drop-down.
+    ENTRY_COLUMNS: '/cash-book/entries/columns/',
     // Approval belongs to the entry, and a payment joins the queue as soon
     // as it is recorded -- so there is nothing to send, only to decide.
     // DECIDE takes ?reject=true to send one back.

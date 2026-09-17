@@ -6,6 +6,7 @@ import {
   type BunchStatus,
   cashBookApi,
   type CashEntryListParams,
+  type ColumnFilters,
   type EntryApprovalStatus,
   type RecordEntryPayload,
   type SendForApprovalPayload,
@@ -29,6 +30,8 @@ export const CASH_BOOK_QUERY_KEYS = {
   advanceStatement: (id: number) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id] as const,
   approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
+  columnValues: (column: string, filters: ColumnFilters, includeCancelled: boolean) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
   people: (search: string, holdingOnly: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'people', search, holdingOnly] as const,
   bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
@@ -47,6 +50,27 @@ export function useCashBookOptions() {
     queryKey: CASH_BOOK_QUERY_KEYS.options(),
     queryFn: () => cashBookApi.options(),
     staleTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * The values behind one column's filter button.
+ *
+ * `enabled` is the caller's: the list is only fetched when the drop-down is
+ * actually opened, so a page with twelve filterable columns makes no requests
+ * until somebody uses one.
+ */
+export function useColumnValues(
+  column: string,
+  filters: ColumnFilters,
+  includeCancelled: boolean,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.columnValues(column, filters, includeCancelled),
+    queryFn: () => cashBookApi.columnValues(column, filters, includeCancelled),
+    enabled,
+    staleTime: 60 * 1000,
   });
 }
 

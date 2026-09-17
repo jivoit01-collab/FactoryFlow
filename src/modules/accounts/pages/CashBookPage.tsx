@@ -15,14 +15,15 @@ import type {
   CashDirection,
   CashEntry,
   CashReconciliation,
+  ColumnFilters,
   EntryApprovalStatus,
 } from '@/modules/accounts/api';
 import {
   useCancelCashEntry,
-  useCashBookOptions,
   useCashEntries,
+  useColumnValues,
 } from '@/modules/accounts/api';
-import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
 import {
   type SortState,
   toSortParam,
@@ -36,17 +37,11 @@ import {
   Card,
   CardContent,
   Checkbox,
-  Input,
-  Label,
-  NativeSelect,
-  SelectOption,
 } from '@/shared/components/ui';
-import { useDebounce } from '@/shared/hooks';
 import { formatNumber, getErrorMessage } from '@/shared/utils';
 
 import { CashEntryDialog } from './CashEntryDialog';
 
-const ALL = 'ALL';
 const DEFAULT_PAGE_SIZE = 50;
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
@@ -91,15 +86,11 @@ export default function CashBookPage() {
   const { hasPermission } = usePermission();
   const canManage = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
 
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [direction, setDirection] = useState<CashDirection | typeof ALL>(ALL);
-  const [branch, setBranch] = useState<string>(ALL);
-  const [approval, setApproval] = useState<EntryApprovalStatus | typeof ALL>(ALL);
   const [includeCancelled, setIncludeCancelled] = useState(false);
-  const [searchInput, setSearchInput] = useState('');
-  const [minAmount, setMinAmount] = useState('');
-  const [maxAmount, setMaxAmount] = useState('');
+  // One entry per column that is filtering. Empty means the column is not.
+  const [filters, setFilters] = useState<ColumnFilters>({});
+  // Which drop-down is open, so only that column's values are fetched.
+  const [openColumn, setOpenColumn] = useState<string | null>(null);
   // Newest first, which is the order the book is written in.
   const [sort, setSort] = useState<SortState>({ key: 'recorded', direction: 'desc' });
   const [page, setPage] = useState(1);
@@ -109,36 +100,62 @@ export default function CashBookPage() {
   const [editing, setEditing] = useState<CashEntry | null>(null);
   const [newDirection, setNewDirection] = useState<CashDirection>('OUT');
 
-  const search = useDebounce(searchInput);
-  // Debounced like the search box: an amount is typed a digit at a time,
-  // and 1, 14, 140 are three different queries nobody asked for.
-  const debouncedMin = useDebounce(minAmount);
-  const debouncedMax = useDebounce(maxAmount);
   const params = {
-    ...(dateFrom ? { dateFrom } : {}),
-    ...(dateTo ? { dateTo } : {}),
-    ...(direction === ALL ? {} : { direction }),
-    ...(branch === ALL ? {} : { branch: Number(branch) }),
-    ...(approval === ALL ? {} : { approvalStatus: approval }),
     ...(includeCancelled ? { includeCancelled: true } : {}),
-    ...(search.trim() ? { search: search.trim() } : {}),
-    ...(debouncedMin.trim() ? { minAmount: debouncedMin.trim() } : {}),
-    ...(debouncedMax.trim() ? { maxAmount: debouncedMax.trim() } : {}),
     sort: toSortParam(sort),
+    filters,
     page,
     pageSize,
   };
 
   const { data, isLoading } = useCashEntries(params);
-  const { data: options } = useCashBookOptions();
   const cancel = useCancelCashEntry();
+
+  // Only the open drop-down fetches, so twelve filterable columns cost nothing
+  // until one is used. Its own ticks are left out of the query, which is what
+  // lets a filter still offer the values it is currently hiding.
+  const { data: columnValues, isLoading: valuesLoading } = useColumnValues(
+    openColumn ?? '',
+    Object.fromEntries(Object.entries(filters).filter(([key]) => key !== openColumn)),
+    includeCancelled,
+    openColumn !== null,
+  );
 
   const rows = useMemo(() => data?.results ?? [], [data]);
   // Always the whole book, never the filter: a reconciliation of part of a
   // book proves nothing.
   const recon = data?.reconciliation ?? EMPTY_RECONCILIATION;
   const settled = Number(recon.difference) === 0;
-  const branches = options?.branches ?? [];
+
+  const filteredColumns = Object.entries(filters)
+    .filter(([, values]) => values.length > 0)
+    .map(([column]) => column);
+
+  function setColumn(column: string, values: string[]) {
+    setFilters((current) => ({ ...current, [column]: values }));
+    setPage(1);
+  }
+
+  function clearFilters() {
+    setFilters({});
+    setPage(1);
+  }
+
+  /** The props every column header needs, so the table below stays readable. */
+  function column(key: string, label: string, align: 'left' | 'right' = 'left') {
+    return {
+      label,
+      columnKey: key,
+      sort,
+      onSort: sortBy,
+      selected: filters[key] ?? [],
+      onSelect: (values: string[]) => setColumn(key, values),
+      values: openColumn === key ? (columnValues?.values ?? []) : [],
+      isLoading: openColumn === key && valuesLoading,
+      onOpen: () => setOpenColumn(key),
+      align,
+    };
+  }
 
   function resetPage() {
     setPage(1);
@@ -270,133 +287,11 @@ export default function CashBookPage() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <Label htmlFor="cash-from">From</Label>
-          <Input
-            id="cash-from"
-            type="date"
-            className="w-[160px]"
-            value={dateFrom}
-            onChange={(e) => {
-              setDateFrom(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-to">To</Label>
-          <Input
-            id="cash-to"
-            type="date"
-            className="w-[160px]"
-            value={dateTo}
-            onChange={(e) => {
-              setDateTo(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-filter-direction">Direction</Label>
-          <NativeSelect
-            id="cash-filter-direction"
-            className="w-[150px]"
-            value={direction}
-            onChange={(e) => {
-              setDirection(e.target.value as CashDirection | typeof ALL);
-              resetPage();
-            }}
-          >
-            <SelectOption value={ALL}>In and out</SelectOption>
-            <SelectOption value="OUT">Out only</SelectOption>
-            <SelectOption value="IN">In only</SelectOption>
-          </NativeSelect>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-filter-branch">Branch</Label>
-          <NativeSelect
-            id="cash-filter-branch"
-            className="w-[180px]"
-            value={branch}
-            onChange={(e) => {
-              setBranch(e.target.value);
-              resetPage();
-            }}
-          >
-            <SelectOption value={ALL}>Every branch</SelectOption>
-            {branches.map((row) => (
-              <SelectOption key={row.id} value={String(row.id)}>
-                {row.name}
-              </SelectOption>
-            ))}
-          </NativeSelect>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-filter-approval">Approval</Label>
-          <NativeSelect
-            id="cash-filter-approval"
-            className="w-[170px]"
-            value={approval}
-            onChange={(e) => {
-              setApproval(e.target.value as EntryApprovalStatus | typeof ALL);
-              resetPage();
-            }}
-          >
-            <SelectOption value={ALL}>Any state</SelectOption>
-            <SelectOption value="PENDING">Awaiting approval</SelectOption>
-            <SelectOption value="APPROVED">Approved</SelectOption>
-            <SelectOption value="REJECTED">Rejected</SelectOption>
-            <SelectOption value="NOT_REQUIRED">Receipts</SelectOption>
-          </NativeSelect>
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-search">Search</Label>
-          <Input
-            id="cash-search"
-            className="w-[260px]"
-            placeholder="Detail, item or G/L head…"
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-min">Amount from</Label>
-          <Input
-            id="cash-min"
-            type="number"
-            min="0"
-            step="0.01"
-            className="w-[130px]"
-            placeholder="0.00"
-            value={minAmount}
-            onChange={(e) => {
-              setMinAmount(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="cash-max">Amount to</Label>
-          <Input
-            id="cash-max"
-            type="number"
-            min="0"
-            step="0.01"
-            className="w-[130px]"
-            placeholder="Any"
-            value={maxAmount}
-            onChange={(e) => {
-              setMaxAmount(e.target.value);
-              resetPage();
-            }}
-          />
-        </div>
-
-        <label className="flex items-center gap-2 pb-2 text-sm">
+      {/* No filter bar. Every column carries its own filter button, the way a
+          spreadsheet does -- see ColumnFilter. The only control left here is
+          the one that is not about a column's values. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex items-center gap-2 text-sm">
           <Checkbox
             checked={includeCancelled}
             onCheckedChange={(checked) => {
@@ -407,7 +302,18 @@ export default function CashBookPage() {
           Show cancelled
         </label>
 
+        {filteredColumns.length > 0 && (
+          <>
+            <span className="text-sm text-muted-foreground">
+              Filtered by {filteredColumns.join(', ')}
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </>
+        )}
       </div>
+
 
       {!balanceReadsAsRunning && (
         <p className="text-xs text-muted-foreground">
@@ -426,9 +332,9 @@ export default function CashBookPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Wallet className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {data?.count === 0 && !search && direction === ALL && !dateFrom
+              {filteredColumns.length === 0
                 ? 'Nothing in the book yet. Start by recording the cash that came into the box.'
-                : 'No entry matches those filters.'}
+                : 'No entry matches those column filters.'}
             </p>
           </CardContent>
         </Card>
@@ -438,35 +344,18 @@ export default function CashBookPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
-                  <SortHeader label="Date" sortKey="date" sort={sort} onSort={sortBy} />
-                  <th className="px-3 py-2">Bunch</th>
-                  <SortHeader label="Branch" sortKey="branch" sort={sort} onSort={sortBy} />
-                  <SortHeader label="G/L head" sortKey="gl" sort={sort} onSort={sortBy} />
-                  <th className="px-3 py-2">Source / advance</th>
-                  <SortHeader label="Item" sortKey="item" sort={sort} onSort={sortBy} />
-                  <th className="px-3 py-2">Detail</th>
-                  <SortHeader
-                    label="Amount"
-                    sortKey="amount"
-                    sort={sort}
-                    onSort={sortBy}
-                    align="right"
-                  />
+                  <ColumnFilter {...column('date', 'Date')} />
+                  <ColumnFilter {...column('bunch', 'Bunch')} />
+                  <ColumnFilter {...column('branch', 'Branch')} />
+                  <ColumnFilter {...column('gl', 'G/L head')} />
+                  <ColumnFilter {...column('source', 'Source')} />
+                  <ColumnFilter {...column('advance', 'Advance')} />
+                  <ColumnFilter {...column('item', 'Item')} />
+                  <ColumnFilter {...column('detail', 'Detail')} />
+                  <ColumnFilter {...column('amount', 'Amount', 'right')} />
                   <th className="px-3 py-2 text-right">In</th>
-                  <SortHeader
-                    label="Balance"
-                    sortKey="balance"
-                    sort={sort}
-                    onSort={sortBy}
-                    align="right"
-                  />
-                  <SortHeader
-                    label="Approval"
-                    sortKey="approval"
-                    sort={sort}
-                    onSort={sortBy}
-                  />
-                  {canManage && <th className="px-3 py-2">Actions</th>}
+                  <ColumnFilter {...column('balance', 'Balance', 'right')} />
+                  <ColumnFilter {...column('approval', 'Approval')} />
                 </tr>
               </thead>
               <tbody>
@@ -495,19 +384,23 @@ export default function CashBookPage() {
                           '—'
                         )}
                       </td>
-                      <td className="px-3 py-2">
-                        {row.atm_account_name && (
-                          <span className="text-xs">{row.atm_account_name}</span>
+                      <td className="px-3 py-2 text-xs">
+                        {row.atm_account_name ?? (
+                          <span className="text-muted-foreground">
+                            {row.direction === 'IN' ? '—' : 'From the box'}
+                          </span>
                         )}
-                        {row.advance_holder_name && (
-                          <Badge variant="outline" className="bg-amber-100 dark:bg-amber-500/15 text-[10px] text-amber-900 dark:text-amber-400">
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.advance_holder_name ? (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-100 text-[10px] text-amber-900 dark:bg-amber-500/15 dark:text-amber-400"
+                          >
                             {row.advance_holder_name}
                           </Badge>
-                        )}
-                        {!row.atm_account_name && !row.advance_holder_name && (
-                          <span className="text-xs text-muted-foreground">
-                            {row.direction === 'IN' ? 'Not from a card' : 'From the box'}
-                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </td>
                       <td className="px-3 py-2">{row.item || '—'}</td>

@@ -203,8 +203,8 @@ export interface CashBookOptions {
   approval_statuses: { value: EntryApprovalStatus; label: string }[];
   balance: string;
   gl_account_search_limit: number;
-  /** What the register may be ordered by. */
-  entry_sorts: string[];
+  /** The register's columns, each filterable and sortable. */
+  entry_columns: string[];
   /** Whether this user keeps the book. Decided by the server. */
   can_manage: boolean;
   /** Whether this user decides on bunches. Decided by the server. */
@@ -256,22 +256,35 @@ export interface CashBunchDetail extends CashBunch {
   entries: CashEntry[];
 }
 
+/**
+ * One column's ticked values, keyed by column name.
+ *
+ * An empty or missing list means that column is not filtering — nothing
+ * ticked is "show everything", not "show nothing".
+ */
+export type ColumnFilters = Record<string, string[]>;
+
 export interface CashEntryListParams {
-  dateFrom?: string;
-  dateTo?: string;
-  direction?: CashDirection;
-  branch?: number;
-  glAccountCode?: string;
-  bunch?: number;
-  approvalStatus?: EntryApprovalStatus;
-  search?: string;
   includeCancelled?: boolean;
-  minAmount?: string;
-  maxAmount?: string;
   /** `amount` / `-amount`. The register is paged, so the server sorts it. */
   sort?: string;
+  filters?: ColumnFilters;
   page?: number;
   pageSize?: number;
+}
+
+export interface ColumnValue {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface ColumnValues {
+  column: string;
+  values: ColumnValue[];
+  /** True when the column holds more distinct values than the list can carry. */
+  truncated: boolean;
+  total: number;
 }
 
 export interface RecordEntryPayload {
@@ -295,20 +308,25 @@ export interface SendForApprovalPayload {
   remarks?: string;
 }
 
+/**
+ * Column filters go up as `f_branch=Oil|Common`.
+ *
+ * A pipe rather than a comma: commas appear inside G/L names and all over a
+ * detail line, and would split a value in half.
+ */
+function columnParams(filters?: ColumnFilters) {
+  const out: Record<string, string> = {};
+  for (const [column, values] of Object.entries(filters ?? {})) {
+    if (values.length > 0) out[`f_${column}`] = values.join('|');
+  }
+  return out;
+}
+
 function listParams(params?: CashEntryListParams) {
   return {
-    ...(params?.dateFrom ? { date_from: params.dateFrom } : {}),
-    ...(params?.dateTo ? { date_to: params.dateTo } : {}),
-    ...(params?.direction ? { direction: params.direction } : {}),
-    ...(params?.branch ? { branch: params.branch } : {}),
-    ...(params?.glAccountCode ? { gl_account_code: params.glAccountCode } : {}),
-    ...(params?.bunch ? { bunch: params.bunch } : {}),
-    ...(params?.approvalStatus ? { approval_status: params.approvalStatus } : {}),
-    ...(params?.search ? { search: params.search } : {}),
     ...(params?.includeCancelled ? { include_cancelled: 'true' } : {}),
-    ...(params?.minAmount ? { min_amount: params.minAmount } : {}),
-    ...(params?.maxAmount ? { max_amount: params.maxAmount } : {}),
     ...(params?.sort ? { sort: params.sort } : {}),
+    ...columnParams(params?.filters),
     ...(params?.page ? { page: params.page } : {}),
     ...(params?.pageSize ? { page_size: params.pageSize } : {}),
   };
@@ -459,6 +477,25 @@ export const cashBookApi = {
   /** Retires rather than deletes: entries already filed under it keep it. */
   async retireBranch(branchId: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.CASH_BOOK.BRANCH_DETAIL(branchId));
+  },
+
+  /** What one column holds, for its filter drop-down. */
+  async columnValues(
+    column: string,
+    filters?: ColumnFilters,
+    includeCancelled = false,
+  ): Promise<ColumnValues> {
+    const { data } = await apiClient.get<ColumnValues>(
+      API_ENDPOINTS.CASH_BOOK.ENTRY_COLUMNS,
+      {
+        params: {
+          column,
+          ...columnParams(filters),
+          ...(includeCancelled ? { include_cancelled: 'true' } : {}),
+        },
+      },
+    );
+    return data;
   },
 
   async options(): Promise<CashBookOptions> {

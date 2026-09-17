@@ -30,33 +30,39 @@ describe('cashBookApi', () => {
     expect(get.mock.calls[0][1]).toEqual({ params: {} });
   });
 
-  it('translates every screen control into its query parameter', async () => {
+  it('sends each column filter as f_<column>, pipe separated', async () => {
     await cashBookApi.entries({
-      dateFrom: '2026-06-01',
-      dateTo: '2026-06-30',
-      direction: 'OUT',
-      branch: 3,
-      glAccountCode: '5630004',
-      approvalStatus: 'UNSENT',
-      search: 'refreshment',
       includeCancelled: true,
+      sort: '-amount',
+      filters: { branch: ['Oil', 'Common'], approval: ['PENDING'] },
       page: 2,
       pageSize: 100,
     });
 
     expect(get.mock.calls[0][1]).toEqual({
       params: {
-        date_from: '2026-06-01',
-        date_to: '2026-06-30',
-        direction: 'OUT',
-        branch: 3,
-        gl_account_code: '5630004',
-        approval_status: 'UNSENT',
-        search: 'refreshment',
         include_cancelled: 'true',
+        sort: '-amount',
+        f_branch: 'Oil|Common',
+        f_approval: 'PENDING',
         page: 2,
         page_size: 100,
       },
+    });
+  });
+
+  it('leaves a column out entirely when nothing is ticked', async () => {
+    // Nothing ticked means "show everything", not "show nothing" -- sending
+    // an empty filter would ask the server to match no values at all.
+    await cashBookApi.entries({ filters: { branch: [] } });
+    expect(get.mock.calls[0][1]).toEqual({ params: {} });
+  });
+
+  it('asks for one column values list at a time', async () => {
+    await cashBookApi.columnValues('branch', { approval: ['PENDING'] });
+    expect(get.mock.calls[0][0]).toBe('/cash-book/entries/columns/');
+    expect(get.mock.calls[0][1]).toEqual({
+      params: { column: 'branch', f_approval: 'PENDING' },
     });
   });
 

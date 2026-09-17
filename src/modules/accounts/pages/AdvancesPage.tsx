@@ -11,11 +11,8 @@ import {
   useCashPeople,
   useRecordAdvance,
 } from '@/modules/accounts/api';
-import { SortHeader } from '@/modules/accounts/components/SortHeader';
-import {
-  type SortState,
-  useClientSort,
-} from '@/modules/accounts/components/sorting';
+import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
+import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
 import { SearchableSelect } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -73,12 +70,7 @@ export default function AdvancesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [direction, setDirection] = useState<AdvanceDirection>('GIVEN');
   const [personSearch, setPersonSearch] = useState('');
-  const [kind, setKind] = useState('ALL');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [minAmount, setMinAmount] = useState('');
-  const [ledgerSearch, setLedgerSearch] = useState('');
-  const [sort, setSort] = useState<SortState>({ key: 'date', direction: 'asc' });
+
 
   const { data, isLoading } = useAdvanceHolders();
   const allHolders = useMemo(() => data?.holders ?? [], [data]);
@@ -95,40 +87,31 @@ export default function AdvancesPage() {
 
   const { data: statement, isLoading: statementLoading } = useAdvanceStatement(activeId);
 
-  // The ledger arrives whole, so it is narrowed and ordered here.
-  const movements = useMemo(
-    () =>
-      (statement?.movements ?? []).filter((row) => {
-        if (kind !== 'ALL' && row.kind !== kind) return false;
-        if (dateFrom && row.date < dateFrom) return false;
-        if (dateTo && row.date > dateTo) return false;
-        if (minAmount && Number(row.amount) < Number(minAmount)) return false;
-        if (
-          ledgerSearch &&
-          !row.detail.toLowerCase().includes(ledgerSearch.toLowerCase())
-        ) {
-          return false;
-        }
-        return true;
-      }),
-    [statement, kind, dateFrom, dateTo, minAmount, ledgerSearch],
+  // The ledger arrives whole, so its column filters are built from the rows
+  // themselves rather than asked for.
+  const {
+    rows: sorted,
+    column,
+    filteredColumns,
+    clearFilters,
+  } = useLocalColumns(
+    statement?.movements ?? [],
+    {
+      date: { value: (row) => row.date },
+      kind: { value: (row) => MOVEMENT_LABEL[row.kind] ?? row.kind },
+      detail: { value: (row) => row.detail },
+      amount: {
+        value: (row) => money(row.amount),
+        sortValue: (row) => Number(row.amount),
+      },
+      balance: {
+        value: (row) => money(row.balance_after),
+        sortValue: (row) => Number(row.balance_after),
+      },
+    },
+    { key: 'date', direction: 'asc' },
   );
-
-  const sorted = useClientSort(movements, sort, (row, key) =>
-    key === 'amount'
-      ? Number(row.amount)
-      : key === 'balance'
-        ? Number(row.balance_after)
-        : key === 'kind'
-          ? row.kind
-          : row.date,
-  );
-  const ledgerFiltering =
-    kind !== 'ALL' ||
-    dateFrom !== '' ||
-    dateTo !== '' ||
-    minAmount !== '' ||
-    ledgerSearch !== '';
+  const ledgerFiltering = filteredColumns.length > 0;
 
   function open(which: AdvanceDirection) {
     setDirection(which);
@@ -240,6 +223,11 @@ export default function AdvancesPage() {
           <div className="rounded-md border">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
               <p className="font-medium">{selected?.person.name ?? 'Ledger'}</p>
+              {ledgerFiltering && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
               {selected && (
                 <p className="text-sm">
                   Holding{' '}
@@ -249,66 +237,6 @@ export default function AdvancesPage() {
                   )}
                 </p>
               )}
-            </div>
-
-            <div className="flex flex-wrap items-end gap-3 border-b px-3 py-2">
-              <div className="space-y-1">
-                <Label htmlFor="adv-kind">Movement</Label>
-                <NativeSelect
-                  id="adv-kind"
-                  className="w-[150px]"
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value)}
-                >
-                  <SelectOption value="ALL">Everything</SelectOption>
-                  <SelectOption value="GIVEN">Given</SelectOption>
-                  <SelectOption value="RETURNED">Returned</SelectOption>
-                  <SelectOption value="EXPLAINED">Explained</SelectOption>
-                </NativeSelect>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="adv-from">From</Label>
-                <Input
-                  id="adv-from"
-                  type="date"
-                  className="w-[150px]"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="adv-to">To</Label>
-                <Input
-                  id="adv-to"
-                  type="date"
-                  className="w-[150px]"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="adv-min">Amount from</Label>
-                <Input
-                  id="adv-min"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-[120px]"
-                  placeholder="0.00"
-                  value={minAmount}
-                  onChange={(e) => setMinAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="adv-search">Search</Label>
-                <Input
-                  id="adv-search"
-                  className="w-[220px]"
-                  placeholder="Detail…"
-                  value={ledgerSearch}
-                  onChange={(e) => setLedgerSearch(e.target.value)}
-                />
-              </div>
             </div>
 
             {statementLoading ? (
@@ -326,24 +254,12 @@ export default function AdvancesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <SortHeader label="Date" sortKey="date" sort={sort} onSort={setSort} />
-                      <SortHeader label="Movement" sortKey="kind" sort={sort} onSort={setSort} />
-                      <th className="px-3 py-2">Detail</th>
-                      <SortHeader
-                        label="Amount"
-                        sortKey="amount"
-                        sort={sort}
-                        onSort={setSort}
-                        align="right"
-                      />
+                      <ColumnFilter {...column('date', 'Date')} />
+                      <ColumnFilter {...column('kind', 'Movement')} />
+                      <ColumnFilter {...column('detail', 'Detail')} />
+                      <ColumnFilter {...column('amount', 'Taken', 'right')} />
                       <th className="px-3 py-2 text-right">Cleared</th>
-                      <SortHeader
-                        label="Holding"
-                        sortKey="balance"
-                        sort={sort}
-                        onSort={setSort}
-                        align="right"
-                      />
+                      <ColumnFilter {...column('balance', 'Holding', 'right')} />
                     </tr>
                   </thead>
                   <tbody>
