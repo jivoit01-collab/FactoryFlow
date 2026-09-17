@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/core/auth';
 
@@ -22,6 +22,7 @@ export const DISPATCH_PLANS_QUERY_KEYS = {
         date_from: filters.date_from,
         date_to: filters.date_to,
         booking_status: filters.booking_status,
+        booking_statuses: filters.booking_statuses,
         search: filters.search,
         branch: filters.branch,
         limit: filters.limit,
@@ -43,7 +44,17 @@ function sapRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 2;
 }
 
-export function useDispatchBills(filters: DispatchPlanFilters) {
+/**
+ * `keepPrevious` holds the last window's bills on screen while a new one is
+ * read. Opt in where the filters are the user's to change mid-session: a fresh
+ * date range is a new cache key, and without it the board empties itself the
+ * moment someone touches the window -- booked bills vanishing off truck cards
+ * for the length of a SAP read.
+ */
+export function useDispatchBills(
+  filters: DispatchPlanFilters,
+  { keepPrevious = false }: { keepPrevious?: boolean } = {},
+) {
   const { currentCompany } = useAuth();
 
   return useQuery({
@@ -52,6 +63,7 @@ export function useDispatchBills(filters: DispatchPlanFilters) {
     staleTime: DISPATCH_PLAN_STALE_TIME,
     retry: sapRetry,
     enabled: !!filters.date_from && !!filters.date_to,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 }
 

@@ -16,6 +16,16 @@ import type {
 
 const EP = API_ENDPOINTS.DISPATCH_PLANS;
 
+/**
+ * Ceiling for the bills feed alone, in place of the 30s the client gives every
+ * other call. Cross-company this is one SAP read per company over a whole date
+ * window, and on a busy day it genuinely outruns 30s -- at which point the
+ * browser abandons a response the server is still assembling and the screen
+ * shows a timeout for a query that was working. A ceiling, not a target: the
+ * feed is meant to come back in a few seconds.
+ */
+const BILLS_REQUEST_TIMEOUT_MS = 90_000;
+
 const NULLABLE_VALUE_FIELDS = new Set<keyof DispatchPlanUpdatePayload>([
   'invoice_weight',
   'invoice_amount',
@@ -38,6 +48,7 @@ export const dispatchPlansApi = {
   async getBills(filters: DispatchPlanFilters): Promise<DispatchPlansResponse> {
     const response = await apiClient.get<DispatchPlansResponse>(EP.BILLS, {
       params: buildParams(filters),
+      timeout: BILLS_REQUEST_TIMEOUT_MS,
     });
     return response.data;
   },
@@ -165,6 +176,9 @@ function buildParams(filters: DispatchPlanFilters): Record<string, string> {
   };
   if (filters.booking_status && filters.booking_status !== 'all') {
     params.booking_status = filters.booking_status;
+  }
+  if (filters.booking_statuses?.length) {
+    params.booking_statuses = filters.booking_statuses.join(',');
   }
   if (filters.search) params.search = filters.search;
   if (filters.branch) params.branch = filters.branch;

@@ -21,7 +21,7 @@ import { usePermission } from '@/core/auth/hooks/usePermission';
 import { type LateDispatchApproval, useLateDispatchApprovals } from '@/modules/admin/api';
 import { useDispatchBills, useLookupDispatchBill } from '@/modules/dashboards/dispatch-plans/api';
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
-import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
+import type { DispatchBill, DispatchPlanFilters } from '@/modules/dashboards/dispatch-plans/types';
 import {
   type InsideDispatchVehicle,
   type InsideVehicleBill,
@@ -67,9 +67,26 @@ import {
 import type { DispatchVehicleLinkPayload } from '../types';
 import { invoiceFieldsFromBill } from '../utils/dispatchLinkPayload';
 
-/** How far the one shared SAP bills read reaches. */
+/** How far the one shared SAP bills read reaches by default. The operator can
+ *  widen it on the page -- a bill invoiced months ago can still be the one
+ *  going out today, and outside the window it is missing from its truck card. */
 const BILL_LOOKBACK_DAYS = 60;
 const BILL_LOOKAHEAD_DAYS = 30;
+
+/** The date range the board reads SAP bills over, as `yyyy-MM-dd` strings. */
+type BillWindow = { from: string; to: string };
+
+function defaultBillWindow(): BillWindow {
+  return {
+    from: format(subDays(new Date(), BILL_LOOKBACK_DAYS), 'yyyy-MM-dd'),
+    to: format(addDays(new Date(), BILL_LOOKAHEAD_DAYS), 'yyyy-MM-dd'),
+  };
+}
+
+/** Both ends present, and in order. Plain string compare: ISO dates sort by date. */
+function isUsableBillWindow(window: BillWindow) {
+  return !!window.from && !!window.to && window.from <= window.to;
+}
 
 function compact(value: string | null | undefined, fallback = '-') {
   return value?.trim() || fallback;
@@ -393,18 +410,44 @@ export default function DispatchVehicleLinkingPage() {
   const [approvalTarget, setApprovalTarget] = useState<LateDispatchApprovalTarget | null>(null);
 
   const vehiclesQuery = useInsideDispatchVehicles({ enabled: canViewInside });
+
+  // The window the bills feed covers. `windowDraft` is what the two date boxes
+  // hold; `billWindow` is the last pair worth reading SAP over, so a half-typed
+  // date never empties the board or fires a doomed request.
+  const [startingWindow] = useState(defaultBillWindow);
+  const [windowDraft, setWindowDraft] = useState<BillWindow>(startingWindow);
+  const [billWindow, setBillWindow] = useState<BillWindow>(startingWindow);
+  const changeWindow = (patch: Partial<BillWindow>) => {
+    const next = { ...windowDraft, ...patch };
+    setWindowDraft(next);
+    if (isUsableBillWindow(next)) setBillWindow(next);
+  };
+  const isWindowDefault =
+    windowDraft.from === startingWindow.from && windowDraft.to === startingWindow.to;
+
   // One cross-company SAP read serves every list on the page: the booked trucks,
   // the gate-in pickers, and the linking picker.
-  const billFilters = useMemo(
+  //
+  // Only live bills are asked for. Every list here drops the dispatched and
+  // cancelled ones anyway -- a truck card shows PENDING and BOOKED bills, and
+  // both pickers offer nothing else -- but over a two-month window those are
+  // the bulk of the feed, and fetching them made this one call a multi-megabyte
+  // response the browser spent longer parsing than the server spent building.
+  // Narrowing it here is not a display filter; it is the difference between a
+  // feed that arrives and one that times out.
+  const billFilters = useMemo<DispatchPlanFilters>(
     () => ({
-      date_from: format(subDays(new Date(), BILL_LOOKBACK_DAYS), 'yyyy-MM-dd'),
-      date_to: format(addDays(new Date(), BILL_LOOKAHEAD_DAYS), 'yyyy-MM-dd'),
+      date_from: billWindow.from,
+      date_to: billWindow.to,
+      booking_statuses: ['PENDING', 'BOOKED'],
       limit: 2000,
       all_companies: true,
     }),
-    [],
+    [billWindow],
   );
-  const billsQuery = useDispatchBills(billFilters);
+  // Widening the window is the operator's move, so hold the bills already on
+  // screen while the wider read runs rather than blanking the board.
+  const billsQuery = useDispatchBills(billFilters, { keepPrevious: true });
 
   // Every late gate-in request raised for today, in one call rather than one per
   // expected truck. Cross-company for the same reason the bills feed is: a truck's
@@ -737,7 +780,13 @@ export default function DispatchVehicleLinkingPage() {
   };
   const confirmCopy = getConfirmCopy(pendingConfirm);
 
-  const isLoading = (canViewInside && vehiclesQuery.isLoading) || billsQuery.isLoading;
+  // The board renders as soon as the trucks land. The bills feed is a
+  // cross-company SAP read and an order of magnitude slower, and waiting on it
+  // too left "Loading trucks..." on screen for half a minute -- then a client
+  // timeout -- over trucks that had arrived in milliseconds. Wait only when
+  // there is nothing at all to show yet: without the inside view, the feed is
+  // the only source of trucks there is.
+  const isLoading = canViewInside ? vehiclesQuery.isLoading : billsQuery.isLoading;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -802,6 +851,67 @@ export default function DispatchVehicleLinkingPage() {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="grid gap-1.5">
+          <Label htmlFor="bill-window-from" className="text-xs text-muted-foreground">
+            Bills from
+          </Label>
+          <Input
+            id="bill-window-from"
+            type="date"
+            value={windowDraft.from}
+            onChange={(event) => changeWindow({ from: event.target.value })}
+            className="w-full sm:w-44"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="bill-window-to" className="text-xs text-muted-foreground">
+            Bills to
+          </Label>
+          <Input
+            id="bill-window-to"
+            type="date"
+            value={windowDraft.to}
+            onChange={(event) => changeWindow({ to: event.target.value })}
+            className="w-full sm:w-44"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setWindowDraft(startingWindow);
+            setBillWindow(startingWindow);
+          }}
+          disabled={isWindowDefault}
+        >
+          Reset
+        </Button>
+        <p className="text-xs text-muted-foreground sm:min-w-[16rem] sm:flex-1">
+          Invoice dates this board reads from SAP — the bills booked onto the trucks below and both
+          bill pickers come from it. For an old bill going out today, move the window to around its
+          invoice date: a read returns a bounded number of bills, newest first, so simply reaching
+          further back drops the oldest end (you will be told when that happens). Booked and pending
+          bills only, whatever the window.
+        </p>
+      </div>
+
+      {billsQuery.data?.meta?.window_truncated ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          This window holds more bills than one read returns, and SAP is read newest-first — so the{' '}
+          <strong>oldest</strong> bills in it are missing. To reach an old bill, move both dates to
+          around its own invoice date rather than reaching further back from today.
+        </div>
+      ) : null}
+
+      {!isUsableBillWindow(windowDraft) ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+          Enter both dates, with “from” on or before “to”. Still showing {billWindow.from} to{' '}
+          {billWindow.to}.
+        </div>
+      ) : null}
+
       {!canViewInside ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
           Showing booked trucks only — you do not have the Inside Vehicle Manager view permission,
@@ -820,6 +930,18 @@ export default function DispatchVehicleLinkingPage() {
       {billsQuery.isError ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load dispatch bills. Booked trucks and the bill pickers are unavailable.
+        </div>
+      ) : null}
+
+      {!isLoading && billsQuery.isLoading ? (
+        <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+          Still loading dispatch bills — trucks that are only booked, the bills booked onto the
+          trucks below, and the bill pickers will fill in a moment.
+        </div>
+      ) : billsQuery.isPlaceholderData && billsQuery.isFetching ? (
+        <div className="rounded-md border bg-muted/50 p-4 text-sm text-muted-foreground">
+          Reading {billWindow.from} to {billWindow.to} from SAP — the bills below are the previous
+          window until it lands.
         </div>
       ) : null}
 

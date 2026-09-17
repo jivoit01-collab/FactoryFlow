@@ -29,6 +29,10 @@ export interface DispatchPlanFilters {
   date_from: string;
   date_to: string;
   booking_status?: DispatchPlanStatus | 'all';
+  /** Several statuses at once — `booking_status` can only name one. Sent
+   *  comma-separated; a screen that renders only live bills asks for
+   *  `['PENDING', 'BOOKED']` and is spared the dispatched and cancelled ones. */
+  booking_statuses?: DispatchPlanStatus[];
   search?: string;
   branch?: string;
   limit?: number;
@@ -194,6 +198,10 @@ export interface DispatchPlansMeta {
   total_litres: number;
   total_boxes: number;
   fetched_at: string;
+  /** The window held more bills than the read was allowed to return. SAP is
+   *  queried newest-first, so what is missing is the OLDEST end of the range —
+   *  narrow the window around the dates you actually want. */
+  window_truncated?: boolean;
 }
 
 /** Where the returned page sits in the full filtered set. */
