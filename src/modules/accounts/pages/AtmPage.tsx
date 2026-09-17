@@ -1,5 +1,5 @@
 import { ArrowDownLeft, CreditCard, Loader2, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
@@ -10,6 +10,11 @@ import {
   useAtmStatement,
   useCreateAtmAccount,
 } from '@/modules/accounts/api';
+import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import {
+  type SortState,
+  useClientSort,
+} from '@/modules/accounts/components/sorting';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -24,6 +29,8 @@ import {
   DialogTitle,
   Input,
   Label,
+  NativeSelect,
+  SelectOption,
   Textarea,
 } from '@/shared/components/ui';
 import { formatNumber, getErrorMessage } from '@/shared/utils';
@@ -51,6 +58,12 @@ export default function AtmPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [kind, setKind] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'date', direction: 'asc' });
 
   const { data: accounts = [], isLoading } = useAtmAccounts();
 
@@ -61,6 +74,31 @@ export default function AtmPage() {
   const { data: statement, isLoading: statementLoading } = useAtmStatement(activeId);
 
   const selected = accounts.find((account) => account.id === activeId) ?? null;
+
+  // The statement arrives whole, so it is narrowed and ordered here.
+  const movements = useMemo(() => {
+    const rows = (statement?.movements ?? []).filter((row) => {
+      if (kind !== 'ALL' && row.kind !== kind) return false;
+      if (dateFrom && row.date < dateFrom) return false;
+      if (dateTo && row.date > dateTo) return false;
+      if (minAmount && Number(row.amount) < Number(minAmount)) return false;
+      if (search && !row.detail.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+    return rows;
+  }, [statement, kind, dateFrom, dateTo, minAmount, search]);
+
+  const sorted = useClientSort(movements, sort, (row, key) =>
+    key === 'amount'
+      ? Number(row.amount)
+      : key === 'balance'
+        ? Number(row.balance_after)
+        : key === 'kind'
+          ? row.kind
+          : row.date,
+  );
+  const filtering =
+    kind !== 'ALL' || dateFrom !== '' || dateTo !== '' || minAmount !== '' || search !== '';
 
   return (
     <div className="space-y-6">
@@ -129,8 +167,9 @@ export default function AtmPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
               <p className="font-medium">{selected?.name ?? 'Statement'}</p>
               <p className="text-sm text-muted-foreground">
-                Withdrawals appear here from the cash book — record them as Cash in, naming
-                this card.
+                {filtering
+                  ? `${sorted.length} of ${statement?.movements.length ?? 0} movements`
+                  : 'Withdrawals appear here from the cash book — record them as Cash in, naming this card.'}
               </p>
             </div>
 
@@ -143,20 +182,97 @@ export default function AtmPage() {
                 Nothing on this card yet.
               </p>
             ) : (
+              <>
+            <div className="flex flex-wrap items-end gap-3 border-b px-3 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="atm-kind">Movement</Label>
+                <NativeSelect
+                  id="atm-kind"
+                  className="w-[150px]"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                >
+                  <SelectOption value="ALL">On and off</SelectOption>
+                  <SelectOption value="RECEIPT">Paid on</SelectOption>
+                  <SelectOption value="WITHDRAWAL">Withdrawn</SelectOption>
+                </NativeSelect>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="atm-from">From</Label>
+                <Input
+                  id="atm-from"
+                  type="date"
+                  className="w-[150px]"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="atm-to">To</Label>
+                <Input
+                  id="atm-to"
+                  type="date"
+                  className="w-[150px]"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="atm-min">Amount from</Label>
+                <Input
+                  id="atm-min"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-[120px]"
+                  placeholder="0.00"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="atm-search">Search</Label>
+                <Input
+                  id="atm-search"
+                  className="w-[220px]"
+                  placeholder="Detail…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+              {sorted.length === 0 ? (
+                <p className="px-3 py-10 text-center text-muted-foreground">
+                  No movement matches those filters.
+                </p>
+              ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Movement</th>
+                      <SortHeader label="Date" sortKey="date" sort={sort} onSort={setSort} />
+                      <SortHeader label="Movement" sortKey="kind" sort={sort} onSort={setSort} />
                       <th className="px-3 py-2">Detail</th>
-                      <th className="px-3 py-2 text-right">Paid on</th>
+                      <SortHeader
+                        label="Amount"
+                        sortKey="amount"
+                        sort={sort}
+                        onSort={setSort}
+                        align="right"
+                      />
                       <th className="px-3 py-2 text-right">Drawn off</th>
-                      <th className="px-3 py-2 text-right">Balance</th>
+                      <SortHeader
+                        label="Balance"
+                        sortKey="balance"
+                        sort={sort}
+                        onSort={setSort}
+                        align="right"
+                      />
                     </tr>
                   </thead>
                   <tbody>
-                    {statement.movements.map((row) => {
+                    {sorted.map((row) => {
                       const paidOn = row.kind === 'RECEIPT';
                       return (
                         <tr key={`${row.kind}-${row.id}`} className="border-b hover:bg-muted/40">
@@ -189,6 +305,8 @@ export default function AtmPage() {
                   </tbody>
                 </table>
               </div>
+              )}
+              </>
             )}
           </div>
         </>

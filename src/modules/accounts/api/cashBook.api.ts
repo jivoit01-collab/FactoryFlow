@@ -203,6 +203,8 @@ export interface CashBookOptions {
   approval_statuses: { value: EntryApprovalStatus; label: string }[];
   balance: string;
   gl_account_search_limit: number;
+  /** What the register may be ordered by. */
+  entry_sorts: string[];
   /** Whether this user keeps the book. Decided by the server. */
   can_manage: boolean;
   /** Whether this user decides on bunches. Decided by the server. */
@@ -264,6 +266,10 @@ export interface CashEntryListParams {
   approvalStatus?: EntryApprovalStatus;
   search?: string;
   includeCancelled?: boolean;
+  minAmount?: string;
+  maxAmount?: string;
+  /** `amount` / `-amount`. The register is paged, so the server sorts it. */
+  sort?: string;
   page?: number;
   pageSize?: number;
 }
@@ -300,6 +306,9 @@ function listParams(params?: CashEntryListParams) {
     ...(params?.approvalStatus ? { approval_status: params.approvalStatus } : {}),
     ...(params?.search ? { search: params.search } : {}),
     ...(params?.includeCancelled ? { include_cancelled: 'true' } : {}),
+    ...(params?.minAmount ? { min_amount: params.minAmount } : {}),
+    ...(params?.maxAmount ? { max_amount: params.maxAmount } : {}),
+    ...(params?.sort ? { sort: params.sort } : {}),
     ...(params?.page ? { page: params.page } : {}),
     ...(params?.pageSize ? { page_size: params.pageSize } : {}),
   };

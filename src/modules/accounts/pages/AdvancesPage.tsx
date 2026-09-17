@@ -11,6 +11,11 @@ import {
   useCashPeople,
   useRecordAdvance,
 } from '@/modules/accounts/api';
+import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import {
+  type SortState,
+  useClientSort,
+} from '@/modules/accounts/components/sorting';
 import { SearchableSelect } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -67,9 +72,21 @@ export default function AdvancesPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [direction, setDirection] = useState<AdvanceDirection>('GIVEN');
+  const [personSearch, setPersonSearch] = useState('');
+  const [kind, setKind] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'date', direction: 'asc' });
 
   const { data, isLoading } = useAdvanceHolders();
-  const holders = useMemo(() => data?.holders ?? [], [data]);
+  const allHolders = useMemo(() => data?.holders ?? [], [data]);
+  const holders = useMemo(() => {
+    const needle = personSearch.trim().toLowerCase();
+    if (!needle) return allHolders;
+    return allHolders.filter((row) => row.person.name.toLowerCase().includes(needle));
+  }, [allHolders, personSearch]);
 
   // Derived, not synced: the page lands on whoever is holding the most until
   // somebody picks another, and never re-renders to get there.
@@ -77,6 +94,41 @@ export default function AdvancesPage() {
   const selected = holders.find((row) => row.person.id === activeId) ?? null;
 
   const { data: statement, isLoading: statementLoading } = useAdvanceStatement(activeId);
+
+  // The ledger arrives whole, so it is narrowed and ordered here.
+  const movements = useMemo(
+    () =>
+      (statement?.movements ?? []).filter((row) => {
+        if (kind !== 'ALL' && row.kind !== kind) return false;
+        if (dateFrom && row.date < dateFrom) return false;
+        if (dateTo && row.date > dateTo) return false;
+        if (minAmount && Number(row.amount) < Number(minAmount)) return false;
+        if (
+          ledgerSearch &&
+          !row.detail.toLowerCase().includes(ledgerSearch.toLowerCase())
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [statement, kind, dateFrom, dateTo, minAmount, ledgerSearch],
+  );
+
+  const sorted = useClientSort(movements, sort, (row, key) =>
+    key === 'amount'
+      ? Number(row.amount)
+      : key === 'balance'
+        ? Number(row.balance_after)
+        : key === 'kind'
+          ? row.kind
+          : row.date,
+  );
+  const ledgerFiltering =
+    kind !== 'ALL' ||
+    dateFrom !== '' ||
+    dateTo !== '' ||
+    minAmount !== '' ||
+    ledgerSearch !== '';
 
   function open(which: AdvanceDirection) {
     setDirection(which);
@@ -144,7 +196,16 @@ export default function AdvancesPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
           <div className="rounded-md border">
-            <p className="border-b bg-muted/40 px-3 py-2 font-medium">Who is holding what</p>
+            <div className="space-y-2 border-b bg-muted/40 px-3 py-2">
+              <p className="font-medium">Who is holding what</p>
+              <Input
+                aria-label="Search people"
+                className="h-8"
+                placeholder="Search people…"
+                value={personSearch}
+                onChange={(e) => setPersonSearch(e.target.value)}
+              />
+            </div>
             <ul>
               {holders.map((row) => {
                 const balance = Number(row.balance);
@@ -190,29 +251,103 @@ export default function AdvancesPage() {
               )}
             </div>
 
+            <div className="flex flex-wrap items-end gap-3 border-b px-3 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="adv-kind">Movement</Label>
+                <NativeSelect
+                  id="adv-kind"
+                  className="w-[150px]"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                >
+                  <SelectOption value="ALL">Everything</SelectOption>
+                  <SelectOption value="GIVEN">Given</SelectOption>
+                  <SelectOption value="RETURNED">Returned</SelectOption>
+                  <SelectOption value="EXPLAINED">Explained</SelectOption>
+                </NativeSelect>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adv-from">From</Label>
+                <Input
+                  id="adv-from"
+                  type="date"
+                  className="w-[150px]"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adv-to">To</Label>
+                <Input
+                  id="adv-to"
+                  type="date"
+                  className="w-[150px]"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adv-min">Amount from</Label>
+                <Input
+                  id="adv-min"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-[120px]"
+                  placeholder="0.00"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="adv-search">Search</Label>
+                <Input
+                  id="adv-search"
+                  className="w-[220px]"
+                  placeholder="Detail…"
+                  value={ledgerSearch}
+                  onChange={(e) => setLedgerSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
             {statementLoading ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the ledger…
               </div>
-            ) : !statement || statement.movements.length === 0 ? (
+            ) : sorted.length === 0 ? (
               <p className="px-3 py-10 text-center text-muted-foreground">
-                Nothing on this ledger yet.
+                {ledgerFiltering
+                  ? 'No movement matches those filters.'
+                  : 'Nothing on this ledger yet.'}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Movement</th>
+                      <SortHeader label="Date" sortKey="date" sort={sort} onSort={setSort} />
+                      <SortHeader label="Movement" sortKey="kind" sort={sort} onSort={setSort} />
                       <th className="px-3 py-2">Detail</th>
-                      <th className="px-3 py-2 text-right">Taken</th>
+                      <SortHeader
+                        label="Amount"
+                        sortKey="amount"
+                        sort={sort}
+                        onSort={setSort}
+                        align="right"
+                      />
                       <th className="px-3 py-2 text-right">Cleared</th>
-                      <th className="px-3 py-2 text-right">Holding</th>
+                      <SortHeader
+                        label="Holding"
+                        sortKey="balance"
+                        sort={sort}
+                        onSort={setSort}
+                        align="right"
+                      />
                     </tr>
                   </thead>
                   <tbody>
-                    {statement.movements.map((row) => {
+                    {sorted.map((row) => {
                       const taken = row.kind === 'GIVEN';
                       return (
                         <tr key={`${row.kind}-${row.id}`} className="border-b hover:bg-muted/40">

@@ -22,6 +22,11 @@ import {
   useCashBookOptions,
   useCashEntries,
 } from '@/modules/accounts/api';
+import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import {
+  type SortState,
+  toSortParam,
+} from '@/modules/accounts/components/sorting';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
@@ -93,6 +98,10 @@ export default function CashBookPage() {
   const [approval, setApproval] = useState<EntryApprovalStatus | typeof ALL>(ALL);
   const [includeCancelled, setIncludeCancelled] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  // Newest first, which is the order the book is written in.
+  const [sort, setSort] = useState<SortState>({ key: 'recorded', direction: 'desc' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
@@ -101,6 +110,10 @@ export default function CashBookPage() {
   const [newDirection, setNewDirection] = useState<CashDirection>('OUT');
 
   const search = useDebounce(searchInput);
+  // Debounced like the search box: an amount is typed a digit at a time,
+  // and 1, 14, 140 are three different queries nobody asked for.
+  const debouncedMin = useDebounce(minAmount);
+  const debouncedMax = useDebounce(maxAmount);
   const params = {
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
@@ -109,6 +122,9 @@ export default function CashBookPage() {
     ...(approval === ALL ? {} : { approvalStatus: approval }),
     ...(includeCancelled ? { includeCancelled: true } : {}),
     ...(search.trim() ? { search: search.trim() } : {}),
+    ...(debouncedMin.trim() ? { minAmount: debouncedMin.trim() } : {}),
+    ...(debouncedMax.trim() ? { maxAmount: debouncedMax.trim() } : {}),
+    sort: toSortParam(sort),
     page,
     pageSize,
   };
@@ -127,6 +143,17 @@ export default function CashBookPage() {
   function resetPage() {
     setPage(1);
   }
+
+  function sortBy(next: SortState) {
+    setSort(next);
+    setPage(1);
+  }
+
+  // The Balance column is the book's running total, built in the order entries
+  // were recorded. Sorted any other way the figures are still each entry's own
+  // balance, but they no longer read down the column as a running total -- so
+  // the page says so rather than letting it look broken.
+  const balanceReadsAsRunning = sort.key === 'recorded' || sort.key === 'date';
 
   function openNew(which: CashDirection) {
     setEditing(null);
@@ -336,6 +363,39 @@ export default function CashBookPage() {
             }}
           />
         </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-min">Amount from</Label>
+          <Input
+            id="cash-min"
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-[130px]"
+            placeholder="0.00"
+            value={minAmount}
+            onChange={(e) => {
+              setMinAmount(e.target.value);
+              resetPage();
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="cash-max">Amount to</Label>
+          <Input
+            id="cash-max"
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-[130px]"
+            placeholder="Any"
+            value={maxAmount}
+            onChange={(e) => {
+              setMaxAmount(e.target.value);
+              resetPage();
+            }}
+          />
+        </div>
+
         <label className="flex items-center gap-2 pb-2 text-sm">
           <Checkbox
             checked={includeCancelled}
@@ -348,6 +408,14 @@ export default function CashBookPage() {
         </label>
 
       </div>
+
+      {!balanceReadsAsRunning && (
+        <p className="text-xs text-muted-foreground">
+          Sorted by {sort.key}. Each row still shows the balance the box held at that
+          entry, but the Balance column no longer reads down as a running total — sort by
+          date or recording order to get that back.
+        </p>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -370,17 +438,34 @@ export default function CashBookPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
-                  <th className="px-3 py-2">Date</th>
+                  <SortHeader label="Date" sortKey="date" sort={sort} onSort={sortBy} />
                   <th className="px-3 py-2">Bunch</th>
-                  <th className="px-3 py-2">Branch</th>
-                  <th className="px-3 py-2">G/L head</th>
+                  <SortHeader label="Branch" sortKey="branch" sort={sort} onSort={sortBy} />
+                  <SortHeader label="G/L head" sortKey="gl" sort={sort} onSort={sortBy} />
                   <th className="px-3 py-2">Source / advance</th>
-                  <th className="px-3 py-2">Item</th>
+                  <SortHeader label="Item" sortKey="item" sort={sort} onSort={sortBy} />
                   <th className="px-3 py-2">Detail</th>
-                  <th className="px-3 py-2 text-right">Out</th>
+                  <SortHeader
+                    label="Amount"
+                    sortKey="amount"
+                    sort={sort}
+                    onSort={sortBy}
+                    align="right"
+                  />
                   <th className="px-3 py-2 text-right">In</th>
-                  <th className="px-3 py-2 text-right">Balance</th>
-                  <th className="px-3 py-2">Approval</th>
+                  <SortHeader
+                    label="Balance"
+                    sortKey="balance"
+                    sort={sort}
+                    onSort={sortBy}
+                    align="right"
+                  />
+                  <SortHeader
+                    label="Approval"
+                    sortKey="approval"
+                    sort={sort}
+                    onSort={sortBy}
+                  />
                   {canManage && <th className="px-3 py-2">Actions</th>}
                 </tr>
               </thead>

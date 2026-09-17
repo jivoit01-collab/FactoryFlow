@@ -6,6 +6,11 @@ import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { EntryApprovalStatus } from '@/modules/accounts/api';
 import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
+import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import {
+  type SortState,
+  useClientSort,
+} from '@/modules/accounts/components/sorting';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -14,9 +19,12 @@ import {
   Card,
   CardContent,
   Checkbox,
+  Input,
+  Label,
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 import { formatDateTimeShort, formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
@@ -57,13 +65,57 @@ export default function CashApprovalsPage() {
 
   const [state, setState] = useState<EntryApprovalStatus>('PENDING');
   const [selected, setSelected] = useState<number[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [branch, setBranch] = useState('ALL');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'date', direction: 'desc' });
 
   const { data, isLoading } = useApprovalQueue(state);
   const decide = useDecideEntries();
 
-  const rows = useMemo(() => data?.results ?? [], [data]);
+  const all = useMemo(() => data?.results ?? [], [data]);
   const counts = data?.counts;
   const deciding = state === 'PENDING' && canApprove;
+
+  // Filtered here rather than on the server: the queue arrives whole (capped
+  // at 500), so narrowing it is instant and costs no round trip.
+  const search = useDebounce(searchInput).trim().toLowerCase();
+  const filtered = useMemo(
+    () =>
+      all.filter((row) => {
+        if (branch !== 'ALL' && (row.branch_name ?? '') !== branch) return false;
+        if (minAmount && Number(row.amount) < Number(minAmount)) return false;
+        if (maxAmount && Number(row.amount) > Number(maxAmount)) return false;
+        if (!search) return true;
+        return [row.detail, row.item, row.gl_account_name, row.advance_holder_name]
+          .some((field) => (field ?? '').toLowerCase().includes(search));
+      }),
+    [all, branch, minAmount, maxAmount, search],
+  );
+
+  const rows = useClientSort(filtered, sort, (row, key) => {
+    switch (key) {
+      case 'amount':
+        return Number(row.amount);
+      case 'branch':
+        return row.branch_name;
+      case 'gl':
+        return row.gl_account_code;
+      case 'advance':
+        return row.advance_holder_name;
+      case 'detail':
+        return row.detail;
+      default:
+        return row.entry_date;
+    }
+  });
+
+  /** Every branch present in the queue, so the filter only offers real ones. */
+  const branchesInQueue = useMemo(
+    () => [...new Set(all.map((row) => row.branch_name).filter(Boolean))].sort(),
+    [all],
+  );
 
   // Scoped to what is on screen: a selection surviving a state change would
   // let somebody decide entries they never looked at.
@@ -79,6 +131,16 @@ export default function CashApprovalsPage() {
     setState(next);
     setSelected([]);
   }
+
+  function clearFilters() {
+    setSearchInput('');
+    setBranch('ALL');
+    setMinAmount('');
+    setMaxAmount('');
+  }
+
+  const filtering =
+    searchInput !== '' || branch !== 'ALL' || minAmount !== '' || maxAmount !== '';
 
   function toggle(id: number) {
     setSelected((current) =>
@@ -167,13 +229,76 @@ export default function CashApprovalsPage() {
         </div>
       </DashboardHeader>
 
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="appr-branch">Branch</Label>
+          <NativeSelect
+            id="appr-branch"
+            className="w-[170px]"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+          >
+            <SelectOption value="ALL">Every branch</SelectOption>
+            {branchesInQueue.map((name) => (
+              <SelectOption key={name} value={name as string}>
+                {name}
+              </SelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="appr-min">Amount from</Label>
+          <Input
+            id="appr-min"
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-[130px]"
+            placeholder="0.00"
+            value={minAmount}
+            onChange={(e) => setMinAmount(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="appr-max">Amount to</Label>
+          <Input
+            id="appr-max"
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-[130px]"
+            placeholder="Any"
+            value={maxAmount}
+            onChange={(e) => setMaxAmount(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="appr-search">Search</Label>
+          <Input
+            id="appr-search"
+            className="w-[260px]"
+            placeholder="Detail, item, G/L head or person…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        {filtering && (
+          <Button variant="ghost" className="pb-2" onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{STATE_LABEL[state]}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">{money(data?.total ?? 0)}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums">
+              {money(rows.reduce((sum, row) => sum + Number(row.amount), 0))}
+            </p>
             <p className="text-xs text-muted-foreground">
               {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
+              {filtering ? ` of ${all.length}` : ''}
             </p>
           </CardContent>
         </Card>
@@ -197,9 +322,11 @@ export default function CashApprovalsPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ClipboardList className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {state === 'PENDING'
-                ? 'Nothing is waiting for a decision.'
-                : `No entry is ${STATE_LABEL[state].toLowerCase()}.`}
+              {filtering
+                ? 'No entry matches those filters.'
+                : state === 'PENDING'
+                  ? 'Nothing is waiting for a decision.'
+                  : `No entry is ${STATE_LABEL[state].toLowerCase()}.`}
             </p>
           </CardContent>
         </Card>
@@ -220,12 +347,18 @@ export default function CashApprovalsPage() {
                       />
                     </th>
                   )}
-                  <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Branch</th>
-                  <th className="px-3 py-2">G/L head</th>
-                  <th className="px-3 py-2">Detail</th>
-                  <th className="px-3 py-2">Advance</th>
-                  <th className="px-3 py-2 text-right">Amount</th>
+                  <SortHeader label="Date" sortKey="date" sort={sort} onSort={setSort} />
+                  <SortHeader label="Branch" sortKey="branch" sort={sort} onSort={setSort} />
+                  <SortHeader label="G/L head" sortKey="gl" sort={sort} onSort={setSort} />
+                  <SortHeader label="Detail" sortKey="detail" sort={sort} onSort={setSort} />
+                  <SortHeader label="Advance" sortKey="advance" sort={sort} onSort={setSort} />
+                  <SortHeader
+                    label="Amount"
+                    sortKey="amount"
+                    sort={sort}
+                    onSort={setSort}
+                    align="right"
+                  />
                   <th className="px-3 py-2">State</th>
                 </tr>
               </thead>

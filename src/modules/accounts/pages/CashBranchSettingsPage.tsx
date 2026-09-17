@@ -1,5 +1,5 @@
 import { Building2, Check, Loader2, Pencil, Plus, RotateCcw, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
@@ -11,6 +11,11 @@ import {
   useRetireCashBranch,
   useUpdateCashBranch,
 } from '@/modules/accounts/api';
+import { SortHeader } from '@/modules/accounts/components/SortHeader';
+import {
+  type SortState,
+  useClientSort,
+} from '@/modules/accounts/components/sorting';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
@@ -39,8 +44,21 @@ export default function CashBranchSettingsPage() {
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortState>({ key: 'name', direction: 'asc' });
 
-  const { data: branches = [], isLoading } = useCashBranches(showRetired);
+  const { data: all = [], isLoading } = useCashBranches(showRetired);
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return needle ? all.filter((b) => b.name.toLowerCase().includes(needle)) : all;
+  }, [all, search]);
+  const branches = useClientSort(filtered, sort, (branch, key) =>
+    key === 'entries'
+      ? branch.entry_count
+      : key === 'status'
+        ? (branch.is_active ? 'In use' : 'Retired')
+        : branch.name,
+  );
   const create = useCreateCashBranch();
   const update = useUpdateCashBranch();
   const retire = useRetireCashBranch();
@@ -115,9 +133,18 @@ export default function CashBranchSettingsPage() {
         title="Cash Book Branches"
         description="The branches every payment in the cash book is filed under"
       >
-        <Button variant="outline" onClick={() => setShowRetired((value) => !value)}>
-          {showRetired ? 'Hide retired' : 'Show retired'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            aria-label="Search branches"
+            className="w-[220px]"
+            placeholder="Search branches…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Button variant="outline" onClick={() => setShowRetired((value) => !value)}>
+            {showRetired ? 'Hide retired' : 'Show retired'}
+          </Button>
+        </div>
       </DashboardHeader>
 
       {!canManage && (
@@ -167,7 +194,9 @@ export default function CashBranchSettingsPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Building2 className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              No branches yet. Until one exists, no payment can be recorded.
+              {search
+                ? 'No branch matches that.'
+                : 'No branches yet. Until one exists, no payment can be recorded.'}
             </p>
           </CardContent>
         </Card>
@@ -176,9 +205,15 @@ export default function CashBranchSettingsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left">
-                <th className="px-3 py-2">Branch</th>
-                <th className="px-3 py-2 text-right">Entries filed</th>
-                <th className="px-3 py-2">Status</th>
+                <SortHeader label="Branch" sortKey="name" sort={sort} onSort={setSort} />
+                <SortHeader
+                  label="Entries filed"
+                  sortKey="entries"
+                  sort={sort}
+                  onSort={setSort}
+                  align="right"
+                />
+                <SortHeader label="Status" sortKey="status" sort={sort} onSort={setSort} />
                 {canManage && <th className="px-3 py-2">Actions</th>}
               </tr>
             </thead>
