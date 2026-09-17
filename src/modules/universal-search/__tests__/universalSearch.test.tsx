@@ -18,6 +18,15 @@ vi.mock('@/core/auth/hooks/usePermission', () => ({
   }),
 }));
 
+// The page half is local, synchronous and tested in pageSearch.test.ts. Here
+// it is stubbed so these tests stay about the dialog -- and because the real
+// hook reaches Redux for the current company, which this suite has no store
+// for.
+const pageHits: { value: PageHit[] } = { value: [] };
+vi.mock('../hooks/usePageSearch', () => ({
+  usePageSearch: (query: string) => (query ? pageHits.value : []),
+}));
+
 const search = vi.fn();
 const document_ = vi.fn();
 vi.mock('../api/universalSearch.api', () => ({
@@ -31,6 +40,7 @@ vi.mock('../api/universalSearch.api', () => ({
 import { UNIVERSAL_SEARCH_PERMISSIONS } from '@/config/permissions';
 
 import type { CompanyResults, UniversalSearchResult } from '../api';
+import type { PageHit } from '../utils/pageSearch';
 import { UniversalSearchButton } from '../components/UniversalSearchButton';
 import { UniversalSearchDialog } from '../components/UniversalSearchDialog';
 
@@ -65,6 +75,23 @@ const INVOICE = {
   ref_no: '926224503',
 };
 
+function pageHit(title: string, path: string, section = ''): PageHit {
+  return {
+    entry: {
+      path,
+      title,
+      section,
+      permissions: [],
+      companies: [],
+      modulePrefix: undefined,
+      tier: 'NAV',
+      terms: [],
+    },
+    score: 100,
+    matched: [],
+  };
+}
+
 function result(companies: CompanyResults[]): UniversalSearchResult {
   return {
     term: '626090411',
@@ -96,13 +123,14 @@ describe('UniversalSearchDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     held.permissions = [UNIVERSAL_SEARCH_PERMISSIONS.USE];
+    pageHits.value = [];
     search.mockResolvedValue(result([company()]));
   });
 
-  it('asks for a number before searching anything', () => {
+  it('asks for something before searching anything', () => {
     renderDialog();
 
-    expect(screen.getByText('Type a number')).toBeInTheDocument();
+    expect(screen.getByText('Type to search')).toBeInTheDocument();
     expect(search).not.toHaveBeenCalled();
   });
 
@@ -161,6 +189,7 @@ describe('UniversalSearchDialog', () => {
   });
 
   it('names the companies it searched when nothing is found', async () => {
+    pageHits.value = [];
     search.mockResolvedValue(result([company(), company({ company_name: 'Jivo Mart' })]));
     renderDialog();
 
@@ -229,6 +258,87 @@ describe('UniversalSearchDialog', () => {
     fireEvent.click(screen.getByText('BST-0001'));
 
     expect(navigate).toHaveBeenCalledWith('/warehouse/bst/42');
+  });
+
+  it('offers matching screens, above the SAP results', async () => {
+    pageHits.value = [pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse')];
+    renderDialog();
+
+    await typeTerm('material grpo');
+
+    await waitFor(() => expect(screen.getByText('Pages')).toBeInTheDocument());
+    expect(screen.getByText('Material GRPO')).toBeInTheDocument();
+  });
+
+  it('opens a screen when it is clicked', async () => {
+    pageHits.value = [pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse')];
+    renderDialog();
+    await typeTerm('material grpo');
+    await waitFor(() => expect(screen.getByText('Material GRPO')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Material GRPO'));
+
+    expect(navigate).toHaveBeenCalledWith('/warehouse/grpo/material');
+  });
+
+  it('opens the first screen on Enter, without touching the mouse', async () => {
+    pageHits.value = [
+      pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse'),
+      pageHit('Finished Goods GRPO', '/warehouse/grpo/fg', 'Warehouse'),
+    ];
+    renderDialog();
+    await typeTerm('grpo');
+
+    fireEvent.keyDown(screen.getByPlaceholderText(/bill number/i), { key: 'Enter' });
+
+    expect(navigate).toHaveBeenCalledWith('/warehouse/grpo/material');
+  });
+
+  it('walks the list with the arrow keys', async () => {
+    pageHits.value = [
+      pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse'),
+      pageHit('Finished Goods GRPO', '/warehouse/grpo/fg', 'Warehouse'),
+    ];
+    renderDialog();
+    await typeTerm('grpo');
+    const input = screen.getByPlaceholderText(/bill number/i);
+
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(navigate).toHaveBeenCalledWith('/warehouse/grpo/fg');
+  });
+
+  it('does not send a whole question to three company databases', async () => {
+    pageHits.value = [pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse')];
+    renderDialog();
+
+    await typeTerm('where do i put the material grpo');
+
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(search).not.toHaveBeenCalled();
+    // The screen was still found, which is the whole point.
+    expect(screen.getByText('Material GRPO')).toBeInTheDocument();
+  });
+
+  it('still answers with screens when SAP fails', async () => {
+    pageHits.value = [pageHit('Material GRPO', '/warehouse/grpo/material', 'Warehouse')];
+    search.mockRejectedValue(new Error('SAP is down'));
+    renderDialog();
+
+    await typeTerm('grpo');
+
+    await waitFor(() => expect(screen.getByText('Material GRPO')).toBeInTheDocument());
+  });
+
+  it('says why nothing came back when SAP was deliberately not asked', async () => {
+    pageHits.value = [];
+    renderDialog();
+
+    await typeTerm('where do i put the flux capacitor');
+
+    await waitFor(() => expect(screen.getByText('Nothing found')).toBeInTheDocument());
+    expect(screen.getByText(/SAP was not asked/)).toBeInTheDocument();
   });
 
   it('says why an app record matched', async () => {

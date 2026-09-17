@@ -17,8 +17,12 @@ import { useDebounce } from '@/shared/hooks';
 
 import type { CompanyResults, SapDocumentHit } from '../api';
 import { universalSearchApi } from '../api';
+import { usePageSearch } from '../hooks/usePageSearch';
+import type { PageHit } from '../utils/pageSearch';
+import { isWorthAskingSap } from '../utils/vocabulary';
 import { CompanyResultGroup } from './CompanyResultGroup';
 import { DocumentDetailPane } from './DocumentDetailPane';
+import { PageResultGroup } from './PageResultGroup';
 
 /** Matches the server's floor. Below it there is nothing worth asking for. */
 const MIN_TERM_LENGTH = 2;
@@ -38,20 +42,31 @@ interface OpenDocument {
 }
 
 /**
- * One number, looked up everywhere at once.
+ * One box, two questions.
  *
- * The modal has two faces. The list is every company's answer, grouped by
- * company because the same number can legitimately be a different document in
- * each — the search does not pick a winner. Opening a SAP hit swaps the body
- * for its lines, with a way back; app records are links out to the module that
- * owns them, since those already have screens of their own.
+ * A number is a *thing* — a bill, a batch, an entry — and answering it means
+ * asking every company's SAP. Words are a *place* — "material grpo",
+ * "dashboards" — and answering that means the module registry, which is
+ * already in memory. Nobody should have to say which they meant, so both run
+ * and each sorts itself: pages lead on a worded query because a number almost
+ * never matches a page, and a numeric query almost never matches one at all.
+ *
+ * Pages answer on the keystroke; SAP answers on the debounce. That difference
+ * is the feature — by the time the network has been asked, whoever was looking
+ * for a screen has already pressed Enter on it.
  */
 export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDialogProps) {
   const navigate = useNavigate();
   const [term, setTerm] = useState('');
   const [opened, setOpened] = useState<OpenDocument | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const debounced = useDebounce(term.trim(), SEARCH_DEBOUNCE_MS);
   const isSearchable = debounced.length >= MIN_TERM_LENGTH;
+
+  // Local, synchronous, and on the raw term rather than the debounced one:
+  // the registry is in memory, so making a page search wait for a timer would
+  // be inventing latency.
+  const pages = usePageSearch(term.trim().length >= MIN_TERM_LENGTH ? term.trim() : '');
 
   // Each opening is a fresh search. Reopening on last week's number and its
   // stale results would be worse than an empty box.
@@ -59,12 +74,15 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
     if (!open) return;
     setTerm('');
     setOpened(null);
+    setActiveIndex(0);
   }, [open]);
 
   const search = useQuery({
     queryKey: ['universal-search', debounced],
     queryFn: ({ signal }) => universalSearchApi.search(debounced, signal),
-    enabled: open && isSearchable,
+    // A sentence is somebody hunting for a screen; sending it to three company
+    // databases buys nothing but latency.
+    enabled: open && isSearchable && isWorthAskingSap(debounced),
     // A document number means the same thing for as long as the modal is open,
     // so going back from a detail must not re-run the whole search.
     staleTime: 60_000,
@@ -76,10 +94,30 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
     [search.data],
   );
   const total = search.data?.total ?? 0;
+  const askedSap = isSearchable && isWorthAskingSap(debounced);
 
   function goTo(route: string) {
     onOpenChange(false);
     navigate(route);
+  }
+
+  /** Up, down and Enter move through the pages — the list that is always there. */
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (opened || !pages.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setActiveIndex((index) => (index + 1) % pages.length);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveIndex((index) => (index - 1 + pages.length) % pages.length);
+    } else if (event.key === 'Enter') {
+      const hit = pages[activeIndex];
+      if (hit) {
+        event.preventDefault();
+        goTo(hit.entry.path);
+      }
+    }
   }
 
   return (
@@ -88,8 +126,8 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
         <DialogHeader className="px-6 pt-6">
           <DialogTitle>Search</DialogTitle>
           <DialogDescription>
-            Look a bill or document number, one of our own entry numbers, an
-            item code or a batch up in every company at once.
+            Go to a screen, or look a bill number, entry no, item code or batch
+            up in every company at once.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,8 +140,10 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
               onChange={(event) => {
                 setTerm(event.target.value);
                 setOpened(null);
+                setActiveIndex(0);
               }}
-              placeholder="Bill number, entry no, item code, batch…"
+              onKeyDown={onKeyDown}
+              placeholder="A page, a bill number, an entry no, an item code…"
               className="pl-9"
             />
             {search.isFetching && (
@@ -113,11 +153,9 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
           <p className="mt-2 text-xs text-muted-foreground">
             {opened
               ? `${opened.hit.label} ${opened.hit.doc_num} — ${opened.companyCode.replace('JIVO_', '')}`
-              : isSearchable && search.data
-                ? `${total} ${total === 1 ? 'result' : 'results'} across ${companies.length} ${
-                    companies.length === 1 ? 'company' : 'companies'
-                  }`
-                : 'Every company is searched, not just the one you are in.'}
+              : isSearchable && (search.data || pages.length)
+                ? summaryLine(pages.length, total, companies.length, askedSap)
+                : 'Screens answer as you type. Numbers are looked for in every company.'}
           </p>
         </div>
 
@@ -131,16 +169,17 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
               >
                 <ArrowLeft className="h-4 w-4" /> Back to results
               </button>
-              <DocumentDetailPane
-                companyCode={opened.companyCode}
-                hit={opened.hit}
-              />
+              <DocumentDetailPane companyCode={opened.companyCode} hit={opened.hit} />
             </div>
           ) : (
             <SearchBody
               isSearchable={isSearchable}
-              isLoading={search.isLoading}
+              isLoading={search.isLoading && askedSap}
               error={search.isError}
+              askedSap={askedSap}
+              pages={pages}
+              activeIndex={activeIndex}
+              onHover={setActiveIndex}
               companies={companies}
               total={total}
               onOpenDocument={(companyCode, hit) => setOpened({ companyCode, hit })}
@@ -153,10 +192,34 @@ export function UniversalSearchDialog({ open, onOpenChange }: UniversalSearchDia
   );
 }
 
+function summaryLine(
+  pageCount: number,
+  total: number,
+  companyCount: number,
+  askedSap: boolean,
+): string {
+  const parts: string[] = [];
+  if (pageCount) {
+    parts.push(`${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`);
+  }
+  if (askedSap) {
+    parts.push(
+      `${total} ${total === 1 ? 'result' : 'results'} across ${companyCount} ${
+        companyCount === 1 ? 'company' : 'companies'
+      }`,
+    );
+  }
+  return parts.join(' · ') || 'Nothing yet';
+}
+
 interface SearchBodyProps {
   isSearchable: boolean;
   isLoading: boolean;
   error: boolean;
+  askedSap: boolean;
+  pages: PageHit[];
+  activeIndex: number;
+  onHover: (index: number) => void;
   companies: CompanyResults[];
   total: number;
   onOpenDocument: (companyCode: string, hit: SapDocumentHit) => void;
@@ -167,6 +230,10 @@ function SearchBody({
   isSearchable,
   isLoading,
   error,
+  askedSap,
+  pages,
+  activeIndex,
+  onHover,
   companies,
   total,
   onOpenDocument,
@@ -175,53 +242,70 @@ function SearchBody({
   if (!isSearchable) {
     return (
       <EmptyState
-        title="Type a number"
-        detail="A bill or document number, one of our own entry numbers, an item code, or a batch."
+        title="Type to search"
+        detail="The name of a screen — “material grpo”, “dashboards” — or a bill number, one of our own entry numbers, an item code, or a batch."
       />
     );
   }
 
+  const pageSection = (
+    <PageResultGroup
+      hits={pages}
+      activeIndex={activeIndex}
+      onNavigate={onNavigate}
+      onHover={onHover}
+    />
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Searching every company…
+      <div className="space-y-6">
+        {pageSection}
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Searching every company…
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <EmptyState
-        title="The search could not run"
-        detail="Try again in a moment. If it keeps happening, report it from the header."
-      />
+      <div className="space-y-6">
+        {pageSection}
+        <EmptyState
+          title="The number search could not run"
+          detail="Try again in a moment. If it keeps happening, report it from the header."
+        />
+      </div>
     );
   }
 
   // Companies that answered with nothing are still worth naming: "nothing in
   // Mart either" is an answer, and hiding it makes the search look narrower
   // than it was.
-  const withResults = companies.filter(
-    (company) => company.total > 0 || company.error,
-  );
+  const withResults = companies.filter((company) => company.total > 0 || company.error);
 
-  if (!withResults.length) {
+  if (!pages.length && !withResults.length) {
     return (
       <EmptyState
         title="Nothing found"
-        detail={`Searched ${companies.map((c) => c.company_name).join(', ')}. Check the number, or it may not be in SAP yet.`}
+        detail={
+          askedSap
+            ? `No screen by that name, and nothing in ${companies.map((c) => c.company_name).join(', ') || 'SAP'}. Check the number, or it may not be in SAP yet.`
+            : 'No screen by that name. That looked like a question rather than a number, so SAP was not asked.'
+        }
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      {total === 0 && (
+      {pageSection}
+      {askedSap && total === 0 && withResults.length > 0 && (
         <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <span>
-            No results — but not every company answered, so this may be
-            incomplete.
+            No results — but not every company answered, so this may be incomplete.
           </span>
         </div>
       )}
@@ -233,7 +317,7 @@ function SearchBody({
           onNavigate={onNavigate}
         />
       ))}
-      {companies.length > withResults.length && (
+      {askedSap && companies.length > withResults.length && (
         <p className="text-xs text-muted-foreground">
           Nothing in{' '}
           {companies
