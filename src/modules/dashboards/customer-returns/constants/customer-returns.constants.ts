@@ -1,4 +1,4 @@
-import { GOODS_RETURN_ACCESS } from '@/config/permissions';
+import { BOARD_FEED_PERMISSIONS, GOODS_RETURN_ACCESS } from '@/config/permissions';
 
 import type { ReturnCondition, ReturnReason, ReturnStatus } from '../types';
 
@@ -9,8 +9,23 @@ import type { ReturnCondition, ReturnReason, ReturnStatus } from '../types';
  * reports the returns its reader can already open one at a time, so it discloses
  * nothing extra — and it needs no permission row created on the live database
  * before anyone can use it. The backend gates the endpoint on the same right.
+ *
+ * THE FEED RIGHTS COME FIRST, AND THE OPERATIONAL ONES STAY.
+ * The `BOARD_FEED_PERMISSIONS` entries are what a dashboard-only login holds:
+ * they open this composed board on the server and reach no operational
+ * endpoint, so granting them puts nothing in the sidebar. The rights below them
+ * are the ones today's readers already hold, kept so nobody's access narrows —
+ * the same OR the API makes in `may_read`. Removing one would lock out a user
+ * who can read this board today.
+ *
+ * Worth being precise about what the feed right buys here: the composed
+ * DASHBOARD, and never the returns LIST behind it. That distinction is the
+ * whole design — a board right grants the figures, not the rows.
  */
-export const CUSTOMER_RETURNS_VIEW_PERMISSIONS = GOODS_RETURN_ACCESS;
+export const CUSTOMER_RETURNS_VIEW_PERMISSIONS: readonly string[] = [
+  BOARD_FEED_PERMISSIONS.GOODS_RETURN,
+  ...GOODS_RETURN_ACCESS,
+];
 
 /** Returns are typed up over days, not seconds — a page refetch every 5 min is plenty. */
 export const CUSTOMER_RETURNS_STALE_TIME = 5 * 60 * 1000;

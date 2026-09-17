@@ -33,7 +33,7 @@ import {
   useUnlinkAllBills,
 } from '@/modules/gate/api';
 import { SearchableSelect } from '@/shared/components';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { EmptyPanel, FilterBar, FilterField, PageHeader } from '@/shared/components/page';
 import {
   Badge,
   Button,
@@ -259,7 +259,7 @@ function buildTruckCards(
     if (!card.driverName) card.driverName = bill.plan.driver_name || '';
     // Name, not code, so a booked card badges its company the way an inside one does.
     const companyName = bill.company_code
-      ? companyNameByCode.get(bill.company_code) ?? bill.company_code
+      ? (companyNameByCode.get(bill.company_code) ?? bill.company_code)
       : '';
     if (companyName && !card.companies.includes(companyName)) {
       card.companies.push(companyName);
@@ -286,7 +286,11 @@ function matchesSearch(card: TruckCard, query: string) {
       ...entry.bills.map((bill) => bill.sap_doc_num),
     ]),
     ...card.bookedBills.flatMap((bill) => [bill.doc_num, bill.card_name, bill.company_code]),
-  ].some((value) => String(value || '').toLowerCase().includes(query));
+  ].some((value) =>
+    String(value || '')
+      .toLowerCase()
+      .includes(query),
+  );
 }
 
 /** A destination truck option for the Move action. */
@@ -400,9 +404,9 @@ export default function DispatchVehicleLinkingPage() {
   );
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   // Linking flow: the bill/vehicle picker, then the transport sheet.
-  const [pickerFor, setPickerFor] = useState<{ mode: 'new' } | { mode: 'add'; card: TruckCard } | null>(
-    null,
-  );
+  const [pickerFor, setPickerFor] = useState<
+    { mode: 'new' } | { mode: 'add'; card: TruckCard } | null
+  >(null);
   const [pickerSearch, setPickerSearch] = useState('');
   const [sheetBills, setSheetBills] = useState<DispatchBill[] | null>(null);
   const [sheetVehicle, setSheetVehicle] = useState<{ id: number; number: string } | null>(null);
@@ -789,13 +793,12 @@ export default function DispatchVehicleLinkingPage() {
   const isLoading = canViewInside ? vehiclesQuery.isLoading : billsQuery.isLoading;
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
+        icon={Truck}
+        accent="violet"
         title="Dispatch Vehicle Linking"
         description="One card per truck, from booking to the gate — link a vehicle, add or move bills, unlink, or mark a truck out (no database edits)"
-        // Three wide actions plus a long title only fit side by side on a big
-        // screen, so hold the stacked layout until lg instead of the default sm.
-        className="sm:flex-col sm:items-stretch lg:flex-row lg:items-center"
       >
         <Button
           type="button"
@@ -832,24 +835,37 @@ export default function DispatchVehicleLinkingPage() {
             Link New Vehicle
           </Button>
         )}
-      </DashboardHeader>
+      </PageHeader>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative w-full lg:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search vehicle, entry, arrival, company, driver, bill"
-            className="pl-9"
-          />
-        </div>
-        <div className="text-sm text-muted-foreground sm:shrink-0">
-          {cards.length} truck(s)
-          {canViewInside ? ` · ${insideCount} at the gate` : ''}
-          {query ? ` · ${visibleCards.length} matching` : ''}
-        </div>
-      </div>
+      <FilterBar
+        label="Search"
+        isFetching={isLoading}
+        onReset={search ? () => setSearch('') : undefined}
+        actions={
+          <span className="text-sm text-muted-foreground">
+            {cards.length} truck(s)
+            {canViewInside ? ` · ${insideCount} at the gate` : ''}
+            {query ? ` · ${visibleCards.length} matching` : ''}
+          </span>
+        }
+      >
+        <FilterField
+          label="Find a truck"
+          htmlFor="vehicle-linking-search"
+          className="sm:min-w-[320px] sm:flex-1"
+        >
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="vehicle-linking-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search vehicle, entry, arrival, company, driver, bill"
+              className="pl-9"
+            />
+          </div>
+        </FilterField>
+      </FilterBar>
 
       <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:flex-wrap sm:items-end">
         <div className="grid gap-1.5">
@@ -913,7 +929,7 @@ export default function DispatchVehicleLinkingPage() {
       ) : null}
 
       {!canViewInside ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
           Showing booked trucks only — you do not have the Inside Vehicle Manager view permission,
           so trucks already inside the gate and the bills on their gate-ins are hidden. A truck that
           is at the gate still shows here as “Booked”. Ask an administrator for
@@ -922,13 +938,13 @@ export default function DispatchVehicleLinkingPage() {
       ) : null}
 
       {canViewInside && vehiclesQuery.isError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load the trucks inside the gate. Booked trucks below are still accurate.
         </div>
       ) : null}
 
       {billsQuery.isError ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load dispatch bills. Booked trucks and the bill pickers are unavailable.
         </div>
       ) : null}
@@ -982,7 +998,10 @@ export default function DispatchVehicleLinkingPage() {
                           {card.isInside ? 'At the gate' : 'Booked'}
                         </Badge>
                         {card.arrivalNo ? (
-                          <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
+                          <Badge
+                            variant="outline"
+                            className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400"
+                          >
                             {card.arrivalNo}
                           </Badge>
                         ) : null}
@@ -1185,9 +1204,14 @@ export default function DispatchVehicleLinkingPage() {
                       isAddOpen &&
                       lookedUpBill &&
                       !feedAddableBills.some((b) => b.doc_entry === lookedUpBill.doc_entry)
-                        ? [{ ...lookedUpBill, company_code: entry.company_code }, ...feedAddableBills]
+                        ? [
+                            { ...lookedUpBill, company_code: entry.company_code },
+                            ...feedAddableBills,
+                          ]
                         : feedAddableBills;
-                    const moveTargets = insideTrucks.filter((t) => t.vehicleId !== entry.vehicle_id);
+                    const moveTargets = insideTrucks.filter(
+                      (t) => t.vehicleId !== entry.vehicle_id,
+                    );
 
                     return (
                       <div key={entry.vehicle_entry_id} className="space-y-3 rounded-md border p-3">
@@ -1301,7 +1325,7 @@ export default function DispatchVehicleLinkingPage() {
                                           title={
                                             bill.removable
                                               ? undefined
-                                              : bill.not_removable_reason ?? 'Cannot remove'
+                                              : (bill.not_removable_reason ?? 'Cannot remove')
                                           }
                                           onClick={() =>
                                             setPendingConfirm({ kind: 'remove', entry, bill })
@@ -1412,9 +1436,7 @@ export default function DispatchVehicleLinkingPage() {
                     <div className="space-y-3 rounded-md border p-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-medium">
-                          {card.isInside
-                            ? 'Booked, not on a gate-in yet'
-                            : 'Booked bills'}
+                          {card.isInside ? 'Booked, not on a gate-in yet' : 'Booked bills'}
                         </span>
                         <span className="text-xs text-muted-foreground">
                           {card.bookedBills.length} bill(s)
@@ -1509,7 +1531,7 @@ export default function DispatchVehicleLinkingPage() {
         // Keyed on the truck so each truck opens with a fresh, empty form.
         key={approvalTarget?.vehicleId ?? 'none'}
         target={approvalTarget}
-        existing={approvalTarget ? approvalByVehicle.get(approvalTarget.vehicleId) ?? null : null}
+        existing={approvalTarget ? (approvalByVehicle.get(approvalTarget.vehicleId) ?? null) : null}
         today={today}
         onClose={() => setApprovalTarget(null)}
       />
@@ -1602,10 +1624,7 @@ export default function DispatchVehicleLinkingPage() {
   );
 }
 
+/** Thin wrapper so the page's many call sites keep reading `<EmptyState text=… />`. */
 function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="flex h-24 items-center justify-center rounded-lg border px-4 text-center text-sm text-muted-foreground">
-      {text}
-    </div>
-  );
+  return <EmptyPanel message={text} loading={/loading/i.test(text)} />;
 }

@@ -82,6 +82,19 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
       open_po_overdue_count: 172,
       grpo_received_qty: 55_000,
       grpo_basis: 'gate receipts',
+      open_po_count: 67,
+      // The two halves of the 9 L open book, so the bar ties to the headline.
+      open_po_recent_qty: 38_000,
+      open_po_recent_value: 3_80_000,
+      open_po_recent_lines: 52,
+      open_po_older_qty: 52_000,
+      open_po_older_value: 5_20_000,
+      open_po_older_lines: 93,
+      pm_received_value: 1_34_00_000,
+      pm_received_qty: 43_71_066,
+      pm_received_docs: 65,
+      pm_received_lines: 140,
+      pm_received_basis: 'Goods receipts on the plan items, plan-to-date',
       over_purchased_qty: 2_456_000,
       over_purchased_count: 12,
       over_purchase_value: 1_820_000,
@@ -98,30 +111,34 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
       unweighed_below_benchmark: 3,
       benchmark_basis: 'Stock Benchmark filters',
       stores: ['BH-PM', 'BH-BS', 'BH-PC'],
-      // Two of the fifty-four the tile counts: the panel lists the worst by
-      // value and says how many it is showing.
-      over_purchased_rows: [
-        {
-          item_code: 'PM0000071',
-          item_name: 'SHRINKS 1 LTR 235X310',
-          over_qty: 60_00_000,
-          over_value: 7_74_000,
-          req_after_po_qty: 60_00_000,
-          open_po_qty: 80_00_000,
-          po_due_after_plan: true,
-          po_overdue: false,
-          over_issued: false,
-        },
+      // Two of the sixty-seven the tile counts: the panel lists the largest
+      // still on order and says how many it is showing.
+      open_po_rows: [
         {
           item_code: 'PM0000053',
           item_name: 'HDPE BOTTLE 5 LTR',
-          over_qty: 6_000,
-          over_value: 2_73_060,
-          req_after_po_qty: 6_000,
           open_po_qty: 10_000,
-          po_due_after_plan: false,
+          open_po_value: 82_70_000,
+          po_lines: 3,
+          po_earliest_due: '2026-09-04',
           po_overdue: true,
-          over_issued: false,
+          po_due_after_plan: false,
+          on_hand_qty: 4_000,
+          received_qty: 6_000,
+          received_value: 34_10_000,
+        },
+        {
+          item_code: 'PM0000071',
+          item_name: 'SHRINKS 1 LTR 235X310',
+          open_po_qty: 80_00_000,
+          open_po_value: 41_70_000,
+          po_lines: 1,
+          po_earliest_due: '2026-10-12',
+          po_overdue: false,
+          po_due_after_plan: true,
+          on_hand_qty: 20_00_000,
+          received_qty: 0,
+          received_value: 0,
         },
       ],
       worst: [],
@@ -161,8 +178,18 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
           occupancy_blocked_on: 'Square feet per thousand pieces.',
         },
         stores: [
-          { warehouse: 'BH-PM', capacity_tonnes: 500, last_audit_date: '2026-08-01', audit_days_ago: 41 },
-          { warehouse: 'BH-BS', capacity_tonnes: 300, last_audit_date: '2026-06-02', audit_days_ago: 101 },
+          {
+            warehouse: 'BH-PM',
+            capacity_tonnes: 500,
+            last_audit_date: '2026-08-01',
+            audit_days_ago: 41,
+          },
+          {
+            warehouse: 'BH-BS',
+            capacity_tonnes: 300,
+            last_audit_date: '2026-06-02',
+            audit_days_ago: 101,
+          },
           { warehouse: 'BH-PC', capacity_tonnes: 120, last_audit_date: null, audit_days_ago: null },
         ],
         capacity_tonnes: null,
@@ -291,20 +318,36 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
         unweighed_items: 0,
         age: {
           fresh: {
-            value: 30_000_000, pieces: 100_000, litres: 100_000,
-            tons: 100, items: 60, unweighed: 0,
+            value: 30_000_000,
+            pieces: 100_000,
+            litres: 100_000,
+            tons: 100,
+            items: 60,
+            unweighed: 0,
           },
           d4_7: {
-            value: 15_000_000, pieces: 60_000, litres: 60_000,
-            tons: 60, items: 40, unweighed: 0,
+            value: 15_000_000,
+            pieces: 60_000,
+            litres: 60_000,
+            tons: 60,
+            items: 40,
+            unweighed: 0,
           },
           d7_plus: {
-            value: 9_000_000, pieces: 40_000, litres: 40_000,
-            tons: 40, items: 18, unweighed: 0,
+            value: 9_000_000,
+            pieces: 40_000,
+            litres: 40_000,
+            tons: 40,
+            items: 18,
+            unweighed: 0,
           },
           never_shipped: {
-            value: 2_600_000, pieces: 8_328, litres: 8_328,
-            tons: 8.328, items: 3, unweighed: 0,
+            value: 2_600_000,
+            pieces: 8_328,
+            litres: 8_328,
+            tons: 8.328,
+            items: 3,
+            unweighed: 0,
           },
         },
         age_basis: 'since stock last left',
@@ -400,6 +443,36 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
             tons: 18,
             boxes: 900,
             item_count: 7,
+          },
+        ],
+        shipments: [
+          {
+            entry_no: 'BST-0412',
+            sap_doc_num: '',
+            invoice_no: 'INV-99871',
+            route: 'DISPATCH',
+            route_name: 'Sold on to Mart',
+            warehouse: '',
+            status: 'RECEIVED',
+            dispatched_at: '2026-09-17T11:20:00+05:30',
+            boxes: 900,
+            pieces: 18_000,
+            item_count: 7,
+            tons: 18,
+          },
+          {
+            entry_no: 'BST-0411',
+            sap_doc_num: 'ST-20455',
+            invoice_no: '',
+            route: 'BH-BT',
+            route_name: 'Bhakharpur New Basement',
+            warehouse: 'BH-BT',
+            status: 'RECEIVED',
+            dispatched_at: '2026-09-17T09:05:00+05:30',
+            boxes: 1_300,
+            pieces: 26_000,
+            item_count: 4,
+            tons: 26,
           },
         ],
       },
@@ -518,13 +591,47 @@ function tile(container: HTMLElement, name: string): HTMLElement {
 }
 
 describe('PlantBoardDashboardPage', () => {
+  /**
+   * EVERY TILE COLUMN CARRIES A ZERO FLOOR.
+   *
+   * The bands weight their tiles — the plan tile is wider than the one beside
+   * it — and the weights were written as bare `fr`. A bare `1fr` is
+   * `minmax(auto, 1fr)`, so the track cannot go below the width of what is in
+   * it, and these tiles hold figures that do not wrap. Four such floors added
+   * together came to more than the band had: the band grew past the board
+   * instead of being clipped by it, and what went over the right-hand edge was
+   * the last thing in the row — the people strip. The board lost its headcount
+   * on the wall and nothing reported an error.
+   *
+   * Asserted on the rendered template rather than on the source, because the
+   * value reaching the DOM is what the browser sizes from; jsdom does no
+   * layout, so the overflow itself is invisible here and the template is the
+   * closest provable thing to it.
+   */
+  it('gives every tile column a floor it can shrink to', () => {
+    const { container } = renderBoard(board());
+
+    const templates = [...container.querySelectorAll('.ops-groups')].map(
+      (el) => (el as HTMLElement).style.gridTemplateColumns,
+    );
+
+    expect(templates).toHaveLength(4);
+    for (const template of templates) {
+      // Any `fr` not inside a `minmax(0, …)`. Written as a subtraction rather
+      // than one expression: `minmax(0, 1.05fr)` contains a bare-looking `fr`
+      // and the point is that it is not bare.
+      const bare = template.replace(/minmax\(\s*0\s*,[^)]*\)/g, '');
+      expect(bare, `bare fr track in "${template}"`).not.toMatch(/\d*\.?\d*fr/);
+    }
+  });
+
   it('renders all four bands in the order material moves', () => {
     const { container } = renderBoard(board());
 
     // The rail is the only place a band is named, so it is what proves the
     // band rendered — and its order proves the reading order.
-    const rails = [...container.querySelectorAll('.ops-rail p')].map((el) =>
-      el.textContent?.trim().split(' ')[0],
+    const rails = [...container.querySelectorAll('.ops-rail p')].map(
+      (el) => el.textContent?.trim().split(' ')[0],
     );
     expect(rails).toEqual(['Purchase', 'Store', 'Production', 'Shifting']);
   });
@@ -555,8 +662,8 @@ describe('PlantBoardDashboardPage', () => {
 
     // The Production band reads the daily rate first, then the month against
     // its plan. Pinned so a later edit cannot quietly reshuffle it.
-    const productionTiles = [...container.querySelectorAll('.ops-b-production .ops-nm')].map(
-      (el) => el.textContent?.trim(),
+    const productionTiles = [...container.querySelectorAll('.ops-b-production .ops-nm')].map((el) =>
+      el.textContent?.trim(),
     );
     expect(productionTiles).toEqual([
       'Today on the lines',
@@ -579,8 +686,7 @@ describe('PlantBoardDashboardPage', () => {
   it('gives each band its own people, split company against outside', () => {
     const { container } = renderBoard(board());
 
-    const strip = (band: string) =>
-      container.querySelector(`.ops-b-${band} .ops-people`)!;
+    const strip = (band: string) => container.querySelector(`.ops-b-${band} .ops-people`)!;
     const read = (band: string) =>
       [...strip(band).querySelectorAll('.ops-prole')].map((role) => [
         role.querySelector('.k')?.textContent?.trim(),
@@ -608,18 +714,18 @@ describe('PlantBoardDashboardPage', () => {
     // Purchase has no department at all: buying is desk work, and the people
     // who receive the material are the PM warehouse, under Store. A zero here
     // would say the band is unstaffed and nobody would question it.
-    expect(
-      container.querySelector('.ops-b-purchase .ops-people')?.textContent,
-    ).not.toMatch(/\u20b90/);
-    const counts = [
-      ...container.querySelectorAll('.ops-b-purchase .ops-prole .n'),
-    ].map((el) => el.textContent?.trim());
+    expect(container.querySelector('.ops-b-purchase .ops-people')?.textContent).not.toMatch(
+      /\u20b90/,
+    );
+    const counts = [...container.querySelectorAll('.ops-b-purchase .ops-prole .n')].map((el) =>
+      el.textContent?.trim(),
+    );
     expect(counts).toEqual(['\u2014', '\u2014']);
 
     // And Shifting has staff but no hired labour \u2014 one half known, one not.
-    const shifting = [
-      ...container.querySelectorAll('.ops-b-shifting .ops-prole .n'),
-    ].map((el) => el.textContent?.trim());
+    const shifting = [...container.querySelectorAll('.ops-b-shifting .ops-prole .n')].map((el) =>
+      el.textContent?.trim(),
+    );
     expect(shifting).toEqual(['5', '\u2014']);
   });
 
@@ -669,8 +775,8 @@ describe('PlantBoardDashboardPage', () => {
 
     // The band must still be there — a stage of the factory that vanished
     // reads as a stage with nothing to report.
-    const rails = [...container.querySelectorAll('.ops-rail p')].map((el) =>
-      el.textContent?.trim().split(' ')[0],
+    const rails = [...container.querySelectorAll('.ops-rail p')].map(
+      (el) => el.textContent?.trim().split(' ')[0],
     );
     expect(rails).toContain('Production');
     expect(screen.getByText(/SAP did not answer for the plan and the floor/)).toBeInTheDocument();
@@ -709,14 +815,8 @@ describe('PlantBoardDashboardPage', () => {
     // row here would read 0.0 t every day of the year. And there is no Gupta
     // row on either half: that godown holds Mart's stock, so a load into it is
     // the sale the Dispatch row already carries.
-    expect(routesOf(allocated)).toEqual([
-      'BH-BT basement30.0 t',
-      'No litre volume1 SKUs',
-    ]);
-    expect(routesOf(shipped)).toEqual([
-      'BH-BT basement26.0 t',
-      'Dispatch to Mart18.0 t',
-    ]);
+    expect(routesOf(allocated)).toEqual(['BH-BT basement30.0 t', 'No litre volume1 SKUs']);
+    expect(routesOf(shipped)).toEqual(['BH-BT basement26.0 t', 'Dispatch to Mart18.0 t']);
 
     // And each route wears a FIXED tint, so a destination never changes colour
     // on the day it happens to be the biggest.
@@ -813,11 +913,7 @@ describe('PlantBoardDashboardPage', () => {
       [...tile(container, 'Shipped today').querySelectorAll('.ops-mkey span')].map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual([
-      'BH-BT basement26.0 t',
-      'Dispatch to Mart18.0 t',
-      'Elsewhere · GP-FG4.0 t',
-    ]);
+    ).toEqual(['BH-BT basement26.0 t', 'Dispatch to Mart18.0 t', 'Elsewhere · GP-FG4.0 t']);
   });
 
   it('says nothing was declared rather than leaving the pill empty', () => {
@@ -861,9 +957,7 @@ describe('PlantBoardDashboardPage', () => {
     // The floor divided the way it was actually MEASURED. The first block
     // covers three warehouses as one physical space and cannot be split, so
     // the bar does not pretend to an area per warehouse.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     expect(legend).toEqual([
       'BH-PM, BH-NM, BH-BS16,900 sq ft',
       'BH-PM15,000 sq ft',
@@ -897,9 +991,7 @@ describe('PlantBoardDashboardPage', () => {
       '38,900 sq ft across 4 stores \u00b7 1,634.9 pallets standing',
     );
 
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     // Two rows and no footnotes. What the figure rests on and what it leaves
     // out are reported through the header's Check chip instead.
     expect(legend).toEqual(['In use24,523 sq ft', 'Free14,377 sq ft']);
@@ -951,14 +1043,10 @@ describe('PlantBoardDashboardPage', () => {
 
     // Plus what is turning right now, summed across the running runs — a day
     // often carries more than one, and the two costs are per run.
-    expect(card.querySelector('.ops-tag')?.textContent).toBe(
-      '2 running · ₹2.4 L so far',
-    );
+    expect(card.querySelector('.ops-tag')?.textContent).toBe('2 running · ₹2.4 L so far');
 
     // A week of bars, today last, each carrying its own figure.
-    const labels = [...card.querySelectorAll('.ops-blab span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const labels = [...card.querySelectorAll('.ops-blab span')].map((el) => el.textContent?.trim());
     expect(labels).toEqual(['04', '05', '06', '07', '08', '09', 'Today']);
 
     // A day that blew nothing shows no figure: an empty column already says
@@ -981,14 +1069,8 @@ describe('PlantBoardDashboardPage', () => {
     // HEADLINE: 20 + 30 + 30 = 80. To purchase is the plan less BOTH the stock
     // and what the floor has already taken -- subtracting only the stock would
     // ask the buyer to re-buy what the line has already used.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(legend).toEqual([
-      'Already drawn₹20.0 L',
-      'PM on hand₹30.0 L',
-      'PM to purchase₹30.0 L',
-    ]);
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    expect(legend).toEqual(['Already drawn₹20.0 L', 'PM on hand₹30.0 L', 'PM to purchase₹30.0 L']);
     expect(card.querySelector('.ops-tag')?.textContent).toBe('38% still to buy');
 
     // NO SUBTITLE. The headline, the bar and the pill say the whole tile.
@@ -1034,8 +1116,9 @@ describe('PlantBoardDashboardPage', () => {
     expect(Math.round(total)).toBe(100);
 
     // Nothing left to buy, and it says zero rather than a negative.
-    const legend = [...tile(container, 'Plan this month').querySelectorAll('.ops-mkey span')]
-      .map((el) => el.textContent?.trim());
+    const legend = [...tile(container, 'Plan this month').querySelectorAll('.ops-mkey span')].map(
+      (el) => el.textContent?.trim(),
+    );
     expect(legend[2]).toBe('PM to purchase₹0');
   });
 
@@ -1060,14 +1143,8 @@ describe('PlantBoardDashboardPage', () => {
 
     // Three age buckets in tonnes, aged on when stock last LEFT. Stock that
     // has never shipped folds into the oldest: 40 t + 8.3 t.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(legend).toEqual([
-      'Up to 3 days100.0 t',
-      '4–7 days60.0 t',
-      'Over 7 days48.3 t',
-    ]);
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    expect(legend).toEqual(['Up to 3 days100.0 t', '4–7 days60.0 t', 'Over 7 days48.3 t']);
   });
 
   it('says how much of the floor has never shipped at all', () => {
@@ -1107,9 +1184,7 @@ describe('PlantBoardDashboardPage', () => {
     expect(card.querySelector('.ops-tag')?.textContent).toContain('76% produced');
 
     // The remainder, and the SKUs no tonnage can speak for.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     expect(legend).toEqual(['Left to make250 t', 'No litre volume2 SKUs']);
   });
 
@@ -1308,9 +1383,7 @@ describe('PlantBoardDashboardPage', () => {
     // Accepted and rejected are written at GRPO posting, not at the gate, so
     // the remainder is stock SAP does not have yet rather than stock nobody
     // has inspected. The tile must not call that a quality problem.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     expect(legend).toEqual(['Booked to SAP9,000', 'Rejected40', 'Awaiting GRPO2,960']);
   });
 
@@ -1320,9 +1393,9 @@ describe('PlantBoardDashboardPage', () => {
     data.store!.pm_vehicles_today.awaiting_grpo_qty = 0;
     const { container } = renderBoard(data);
 
-    const legend = [...tile(container, 'Packing material in').querySelectorAll('.ops-mkey span')].map(
-      (el) => el.textContent?.trim(),
-    );
+    const legend = [
+      ...tile(container, 'Packing material in').querySelectorAll('.ops-mkey span'),
+    ].map((el) => el.textContent?.trim());
     expect(legend).toEqual(['Booked to SAP11,960', 'Rejected40']);
   });
 
@@ -1335,9 +1408,7 @@ describe('PlantBoardDashboardPage', () => {
     expect(card.querySelector('.ops-val b')?.textContent).toBe('₹9.8 L');
 
     // Split on that page's own thresholds, and the two add to the count.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     expect(legend).toEqual(['Slow 30-45d18', 'Non-moving 45d +26']);
 
     // The SKUs that page sets aside as still moving, so the scope is visible
@@ -1345,28 +1416,37 @@ describe('PlantBoardDashboardPage', () => {
     expect(card.querySelector('.ops-sub')?.textContent).toContain('100 SKUs still moving');
   });
 
-  it('shows the requirement sheet own Req-after-PO figure, not a second one', () => {
+  it('shows what is still on order for the plan, and what has landed against it', () => {
     const { container } = renderBoard(board());
-    const card = tile(container, 'Over purchased');
+    const card = tile(container, 'Open POs');
 
-    // WHAT THE OVER-BUYING IS WORTH, not how many pieces it is. The tiles
-    // either side are in rupees, and a surplus in pieces compares with
-    // neither of them.
-    expect(card.querySelector('.ops-val b')?.textContent).toBe('₹18.2 L');
-    // The rupee sign is the unit; the tile's own name says what the figure is.
-    expect(card.querySelector('.ops-val u')).toBeNull();
-    expect(card.querySelector('.ops-tag')?.textContent).toContain('12 SKUs over');
-    // The count is in the pill and the value is the headline, so the subtitle
-    // only has to say which figure this is.
-    expect(card.querySelector('.ops-sub')?.textContent).toBe(
-      'Req after PO on the over-purchased rows',
+    // The open book itself, in money: what is still coming on the plan's own
+    // packing items.
+    expect(card.querySelector('.ops-val b')?.textContent).toBe('₹9.0 L');
+    expect(card.querySelector('.ops-sub')?.textContent).toContain('67');
+
+    // OVERDUE IN THE PILL. On Oil every open packing line was already past due
+    // on 9 September, so "how much is on order" without "how much of it should
+    // already be here" is half an answer.
+    expect(card.querySelector('.ops-tag')?.textContent).toContain('172 overdue');
+  });
+
+  it('splits the open book by the age of the order behind it', () => {
+    const { container } = renderBoard(board());
+    const card = tile(container, 'Open POs');
+
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    // An order placed this month is buying; one still open from March is a
+    // chase. The rupees alone cannot tell them apart.
+    expect(legend).toEqual(['Raised this month₹3.8 L', 'Older POs₹5.2 L']);
+
+    // A TRUE SPLIT: the halves are shares of the headline, so the bar and the
+    // figure above it cannot describe different books.
+    expect(card.querySelector('.ops-val b')?.textContent).toBe('₹9.0 L');
+    const widths = [...card.querySelectorAll('.ops-meter i')].map(
+      (bar) => parseFloat((bar as HTMLElement).style.width),
     );
-
-    // One figure and nothing beside it. Everything tried in the bar was a
-    // restatement of the headline rather than a second fact about it, and two
-    // near-identical numbers on one tile is worse than one.
-    expect(card.querySelectorAll('.ops-meter').length).toBe(0);
-    expect(card.querySelectorAll('.ops-mkey').length).toBe(0);
+    expect(widths[0] + widths[1]).toBeCloseTo(100, 0);
   });
 
   it('reports how many items are below benchmark, and on which side', () => {
@@ -1380,9 +1460,7 @@ describe('PlantBoardDashboardPage', () => {
     // ONLY the items below benchmark are drawn. The bar splits the headline
     // into its two halves; the healthy SKUs are not drawn at all, because a
     // tile about what is missing should not spend its bar on what is fine.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
     expect(legend).toEqual(['Low14', 'Critical6']);
 
     // And they are scaled against the 20 below benchmark, not the 196 in range,
@@ -1403,13 +1481,8 @@ describe('PlantBoardDashboardPage', () => {
     expect(card.querySelector('.ops-val b')?.textContent).toBe('₹12.0 L');
     // How much of it has arrived and what is still to come. The two must tie
     // back to the ordered figure above them.
-    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) =>
-      el.textContent?.trim(),
-    );
-    expect(legend).toEqual([
-      'Received₹7.8 L',
-      'Still to come₹4.2 L',
-    ]);
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    expect(legend).toEqual(['Received₹7.8 L', 'Still to come₹4.2 L']);
   });
 
   it('renders a rule, never NaN, when the API omits a figure', () => {
@@ -1464,17 +1537,14 @@ describe('PlantBoardDashboardPage', () => {
     it('opens the panel on the tile that was clicked, not another', () => {
       const { container } = renderBoard(board());
       const panel = openTile(container, 'Non-moving stock');
-      expect(within(panel).getByRole('heading', { level: 2 }).textContent).toBe(
-        'Non-moving stock',
-      );
+      expect(within(panel).getByRole('heading', { level: 2 }).textContent).toBe('Non-moving stock');
     });
 
     it('opens with the tile own figures above the rows that make them up', () => {
       // A drill-down that quietly disagrees with the tile that opened it is
       // worse than no drill-down, so the headline is repeated verbatim.
       const { container } = renderBoard(board());
-      const headline = tile(container, 'Non-moving stock').querySelector('.ops-val b')
-        ?.textContent;
+      const headline = tile(container, 'Non-moving stock').querySelector('.ops-val b')?.textContent;
       const panel = openTile(container, 'Non-moving stock');
       expect(panel.textContent).toContain(headline as string);
     });
@@ -1487,38 +1557,101 @@ describe('PlantBoardDashboardPage', () => {
       expect(rows.length).toBeGreaterThan(1);
     });
 
-    it('lists the over-purchased SKUs, worst by value', () => {
+    it('lists the items still on order, most outstanding first', () => {
       const { container } = renderBoard(board());
-      const panel = openTile(container, 'Over purchased');
+      const panel = openTile(container, 'Open POs');
 
       // The rows, not a pointer to another screen.
-      expect(panel.textContent).toContain('SHRINKS 1 LTR 235X310');
       expect(panel.textContent).toContain('HDPE BOTTLE 5 LTR');
-      // Worst by value first: 60 lakh pieces of shrink film and 6,000 bottles
-      // are the same length on a list and nothing like the same money.
+      expect(panel.textContent).toContain('SHRINKS 1 LTR 235X310');
+      // Ranked by what is still OPEN in money, not by pieces: 80 lakh pieces
+      // of shrink film and 10,000 five-litre bottles are the same length on a
+      // list and nothing like the same money.
       const names = within(panel)
         .getAllByRole('row')
         .slice(1)
         .map((row) => row.textContent ?? '');
-      expect(names[0]).toContain('SHRINKS 1 LTR 235X310');
+      expect(names[0]).toContain('HDPE BOTTLE 5 LTR');
     });
 
-    it('says why each SKU is over, which the money does not', () => {
+    it('shows the pile the order is adding to, and what has already landed', () => {
       const { container } = renderBoard(board());
-      const panel = openTile(container, 'Over purchased');
-      // An order landing after the plan closes is surplus later; an overdue one
-      // is surplus already paid for. Different problems, same rupees.
-      expect(panel.textContent).toContain('lands after the plan');
-      expect(panel.textContent).toContain('order overdue');
+      const panel = openTile(container, 'Open POs');
+      const header = within(panel).getAllByRole('row')[0].textContent ?? '';
+      expect(header).toContain('On hand');
+      expect(header).toContain('Open PO');
+      expect(header).toContain('Received');
+      const first = within(panel).getAllByRole('row')[1].textContent ?? '';
+      expect(first).toContain('4,000');
+      expect(first).toContain('₹34.1 L');
+    });
+
+    it('names the BSTs behind the shipped tile', () => {
+      // The tile says "4 transfers out" and the bar says 48 t went to Mart.
+      // Both are true and neither is a document, so a reader on their way to
+      // look a load up had nothing to type into the BST screen.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Shipped today');
+      expect(panel.textContent).toContain('BST-0412');
+      expect(panel.textContent).toContain('BST-0411');
+    });
+
+    it('carries the number that settles each load beside its BST', () => {
+      // A sale to Mart settles on an invoice; an internal move on a SAP stock
+      // transfer. Accounts asks for whichever one this load has.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Shipped today');
+      expect(panel.textContent).toContain('INV-99871');
+      expect(panel.textContent).toContain('ST-20455');
+    });
+
+    it('puts the newest dispatch at the top of the shipped list', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Shipped today');
+      const first = within(panel).getAllByRole('row')[1].textContent ?? '';
+      expect(first).toContain('BST-0412');
+    });
+
+    it('keeps the routes on the shipped panel, above the documents', () => {
+      // The table answers "which ones"; the strip above it still answers
+      // "where" — losing that to make room for the documents would trade one
+      // question for another.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Shipped today');
+      expect(panel.textContent).toContain('Where it went');
+      expect(panel.textContent).toContain('Sold on to Mart');
+      expect(panel.textContent).toContain('Bhakharpur New Basement');
+    });
+
+    it('offers no document column on the declared panel', () => {
+      // A declaration is a keeper's statement of intent — no BST exists for it
+      // yet, and an empty document column would suggest one does.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Declared today');
+      const header = within(panel).getAllByRole('row')[0].textContent ?? '';
+      expect(header).not.toContain('BST');
+      expect(header).toContain('Destination');
+    });
+
+    it('says when each order lands, which the money does not', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Open POs');
+      // An order already overdue is a chase; one not due until after the plan
+      // closes is stock the month that ordered it will never use.
+      expect(panel.textContent).toContain('overdue');
+      expect(panel.textContent).toContain('after the plan');
     });
 
     it('admits when the list is shorter than the count beside it', () => {
       // A truncated list that does not say so is one a buyer acts on believing
       // it is complete.
       const { container } = renderBoard(board());
-      const panel = openTile(container, 'Over purchased');
-      expect(panel.textContent).toContain('The worst 2 by value');
+      const panel = openTile(container, 'Open POs');
+      expect(panel.textContent).toContain('The 2 largest are below');
       expect(panel.textContent).toContain('PM Requirement sheet');
+      // And it says where the receipt figure comes from, which is a different
+      // document from the order it sits beside.
+      expect(panel.textContent).toContain('Goods receipts');
     });
 
     it('says where the rows are when this feed carries only a total', () => {
@@ -1560,9 +1693,7 @@ describe('PlantBoardDashboardPage', () => {
       });
       expect(container.querySelector('[data-drill="1"] .ops-nm')).toBeTruthy();
       expect(
-        [...container.querySelectorAll('[data-drill="1"] .ops-nm')].map(
-          (el) => el.textContent,
-        ),
+        [...container.querySelectorAll('[data-drill="1"] .ops-nm')].map((el) => el.textContent),
       ).not.toContain('Non-moving stock');
     });
 

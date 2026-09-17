@@ -1,8 +1,9 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { AlertCircle, ChevronRight, History, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui';
 
 import { useTransporterInvoiceHistory } from '../api';
@@ -79,30 +80,26 @@ export default function TransporterInvoiceHistoryPage() {
 
   const postedTotal = history
     .filter((entry) => entry.status === 'POSTED')
-    .reduce((sum, entry) => sum + parseFloat(entry.sap_doc_total || entry.invoice_amount || '0'), 0);
+    .reduce(
+      (sum, entry) => sum + parseFloat(entry.sap_doc_total || entry.invoice_amount || '0'),
+      0,
+    );
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/dispatch/transporter-invoices')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">A/P Invoice History</h2>
-          </div>
-          <p className="text-muted-foreground">Submitted and posted A/P Invoices from bilty GRPOs</p>
-        </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+    <div className="space-y-6">
+      <PageHeader
+        title="A/P Invoice History"
+        description="Submitted and posted A/P Invoices from bilty GRPOs"
+        icon={History}
+        accent="slate"
+        backTo="/dispatch/transporter-invoices"
+        backLabel="A/P Invoice"
+      >
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </div>
+      </PageHeader>
 
       <div className="grid gap-3 md:grid-cols-3">
         <Metric label="Total Postings" value={history.length} />
@@ -122,8 +119,8 @@ export default function TransporterInvoiceHistoryPage() {
           />
           {statusFilter && (
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-              Showing {STATUS_LABELS[statusFilter as TransporterAPInvoiceStatus] || statusFilter}
-              {' '}A/P Invoice records
+              Showing {STATUS_LABELS[statusFilter as TransporterAPInvoiceStatus] || statusFilter}{' '}
+              A/P Invoice records
             </div>
           )}
 

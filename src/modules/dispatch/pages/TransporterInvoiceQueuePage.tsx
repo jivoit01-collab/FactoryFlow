@@ -1,9 +1,18 @@
-import { AlertCircle, CheckCircle2, ChevronRight, FileText, RefreshCw, Send } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardCheck,
+  FileText,
+  RefreshCw,
+  Send,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import {
   Badge,
   Button,
@@ -148,14 +157,15 @@ export default function TransporterInvoiceQueuePage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Pending A/P Invoice</h2>
-          <p className="text-muted-foreground">
-            Review submitted transporter invoices and post them to SAP
-          </p>
-        </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Pending A/P Invoice"
+        description="Review submitted transporter invoices and post them to SAP"
+        icon={ClipboardCheck}
+        accent="indigo"
+        backTo="/dispatch/transporter-invoices"
+        backLabel="A/P Invoice"
+      >
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button variant="outline" onClick={() => navigate('/dispatch/transporter-invoices')}>
             <FileText className="mr-2 h-4 w-4" />
@@ -170,7 +180,7 @@ export default function TransporterInvoiceQueuePage() {
             Refresh
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {apiError && (
         <div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
@@ -448,10 +458,18 @@ function BaseLineSummary({ lines }: { lines: TransporterAPInvoiceLine[] }) {
         <table className="w-full min-w-[520px]">
           <thead className="bg-muted/40">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium">Bilty</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">Bilty / Doc No.</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">DocEntry</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">Line</th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bilty
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bilty / Doc No.
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                DocEntry
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Line
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -277,14 +277,18 @@
 /* ───────── the board admitting something ─────────
    A chip can carry a warning off the response — an assumption the server had to
    make, a plan that is not the current month. They are written for a person, so
-   they can run long; the ceiling keeps one from pushing the totals off the bar,
-   and the full text stays in the title attribute for whoever walks up. */
+   they can run long, and the ellipsis in the shared sheet is what keeps one from
+   pushing the totals off the bar.
+
+   The ceiling is tighter here than the vocabulary's own, because this board runs
+   FOUR chips where the others run two: the standing three — plan month, tonnage
+   rule, feed state — plus the warning when there is one. Four chips at the
+   shared 22u would take more of the header than it has left after the workforce
+   totals and the clock, and the chips are the half of a header that may be cut.
+   They shrink before that ceiling is reached in any case; this only stops one
+   long warning claiming the whole row while the others are still legible. */
 .plant-board .ops-chip {
-  max-width: calc(30 * var(--u));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
+  max-width: calc(15 * var(--u));
 }
 
 /*
@@ -295,23 +299,35 @@
  * with nothing below the fold. Every relaxation above is undone here, including
  * at narrow widths -- a laptop driving a projector is still a wall.
  */
-.plant-board.ops-board:fullscreen,
+.plant-board.ops-board:fullscreen {
+  height: 100vh;
+  min-height: 0;
+  --u: clamp(6px, min(0.833vw, 1.2vh), 30px);
+}
 .plant-board.ops-board:-webkit-full-screen {
   height: 100vh;
   min-height: 0;
   --u: clamp(6px, min(0.833vw, 1.2vh), 30px);
 }
-.plant-board.ops-board:fullscreen .ops-board__inner,
+.plant-board.ops-board:fullscreen .ops-board__inner {
+  height: 100%;
+  min-height: 0;
+}
 .plant-board.ops-board:-webkit-full-screen .ops-board__inner {
   height: 100%;
   min-height: 0;
 }
-.plant-board.ops-board:fullscreen .ops-stack,
+.plant-board.ops-board:fullscreen .ops-stack {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
+}
 .plant-board.ops-board:-webkit-full-screen .ops-stack {
   grid-template-rows: repeat(4, minmax(0, 1fr));
   grid-auto-rows: auto;
 }
-.plant-board.ops-board:fullscreen .ops-groups,
+.plant-board.ops-board:fullscreen .ops-groups {
+  grid-auto-rows: minmax(0, 1fr);
+}
 .plant-board.ops-board:-webkit-full-screen .ops-groups {
   grid-auto-rows: minmax(0, 1fr);
 }

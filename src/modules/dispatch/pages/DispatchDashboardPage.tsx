@@ -1,7 +1,8 @@
-import { LayoutGrid, Sparkles, TruckIcon } from 'lucide-react';
+import { Truck, TruckIcon } from 'lucide-react';
 
 import { DASHBOARDS_PERMISSIONS, DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+import { PageHeader, PageSection } from '@/shared/components/page';
 
 import {
   DispatchAnalytics,
@@ -11,11 +12,15 @@ import {
 } from '../components/dashboard';
 
 /**
- * Dispatch module dashboard (landing at /dispatch). One screen: headline KPIs +
- * charts, an animated live pipeline flow (Booked → Vehicle In → Docked →
- * Gatepass → Dispatched), and the module's sub-areas as light nav cards at the
- * bottom. Analytics/pipeline sections render only when the user holds the
- * matching dashboard permission; the section cards are always available.
+ * Dispatch module landing (/dispatch). One screen: an animated live pipeline
+ * flow (Booked → Vehicle In → Docked → Gatepass → Dispatched), headline KPIs and
+ * charts, and the module's sub-areas as the same tiles the Dashboards hub is
+ * built from. Analytics/pipeline sections render only when the user holds the
+ * matching dashboard permission; the section tiles are always available.
+ *
+ * The page wears the standard header rather than a gradient hero of its own —
+ * it is reached from the same sidebar as every other working page, and a second
+ * visual language here made Dispatch look like a different product.
  */
 export default function DispatchDashboardPage() {
   const { hasPermission } = usePermission();
@@ -24,50 +29,27 @@ export default function DispatchDashboardPage() {
   const canViewTracking = hasPermission(DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW);
 
   return (
-    <div className="relative min-h-full space-y-8 p-6">
-      {/* ambient background wash */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-teal-500/[0.06] via-teal-500/[0.02] to-transparent" />
+    <div className="space-y-6">
+      <PageHeader
+        title="Dispatch"
+        description="Plans, vehicle linking, docking, GRPO, bilties and transporter invoices — in one place."
+        icon={Truck}
+        accent="teal"
+      />
 
-      {/* header */}
-      <header className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both space-y-2 duration-500">
-        <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/5 px-3 py-1 text-xs font-medium text-teal-600 dark:text-teal-400">
-          <Sparkles className="h-3.5 w-3.5" />
-          Dispatch
-        </div>
-        <h1 className="bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-4xl font-bold tracking-tight text-transparent">
-          Dispatch control
-        </h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Plans, vehicle linking, docking, GRPO, bilties and transporter invoices — analysed in one
-          place.
-        </p>
-      </header>
-
-      {/* live pipeline flow */}
       {canViewPipeline && <DispatchPipelineFlow />}
 
-      {/* KPIs + charts */}
       {canViewAnalytics && <DispatchAnalytics />}
 
-      {/* what happened after the truck left the gate */}
       {canViewTracking && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <TruckIcon className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Delivery tracking</h2>
-          </div>
+        <PageSection title="Delivery tracking" icon={TruckIcon}>
           <DispatchDeliveryKpis />
-        </section>
+        </PageSection>
       )}
 
-      {/* module sections */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Dispatch sections</h2>
-        </div>
+      <PageSection title="Dispatch sections">
         <DispatchSectionCards />
-      </section>
+      </PageSection>
     </div>
   );
 }

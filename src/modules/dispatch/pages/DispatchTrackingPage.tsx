@@ -5,6 +5,7 @@ import {
   CalendarClock,
   ChevronRight,
   MapPin,
+  Navigation,
   Package,
   RefreshCw,
   Search,
@@ -28,7 +29,7 @@ import {
   useUploadReturnNote,
 } from '@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries';
 import { DateRangePicker } from '@/modules/gate/components/DateRangePicker';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { EmptyPanel, FilterBar, FilterField, PageHeader } from '@/shared/components/page';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import {
   Badge,
@@ -69,15 +70,24 @@ const STATUS_FILTER_OPTIONS: { value: TruckDispatchStatus; label: string }[] = [
 ];
 
 const STATUS_CLASS: Record<TruckDispatchStatus, string> = {
-  DISPATCHED: 'border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
-  IN_TRANSIT: 'border-indigo-300 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
-  REACHED_DESTINATION: 'border-cyan-300 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
-  UNLOADING: 'border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  DELIVERED: 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  PARTIALLY_DELIVERED: 'border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
-  RETURNED: 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
-  DELAYED: 'border-yellow-300 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
-  CLOSED: 'border-gray-300 dark:border-border bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground',
+  DISPATCHED:
+    'border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+  IN_TRANSIT:
+    'border-indigo-300 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+  REACHED_DESTINATION:
+    'border-cyan-300 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
+  UNLOADING:
+    'border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  DELIVERED:
+    'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  PARTIALLY_DELIVERED:
+    'border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400',
+  RETURNED:
+    'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
+  DELAYED:
+    'border-yellow-300 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+  CLOSED:
+    'border-gray-300 dark:border-border bg-gray-100 dark:bg-muted text-gray-700 dark:text-muted-foreground',
 };
 
 function StatusBadge({ status, label }: { status: TruckDispatchStatus; label: string }) {
@@ -149,9 +159,7 @@ export default function DispatchTrackingPage() {
   const trucksQuery = useDispatchTrackingTrucks(filters);
   const trucksPage = trucksQuery.data;
   const trucks = useMemo(() => trucksPage?.results ?? [], [trucksPage]);
-  const hasActiveFilters = Boolean(
-    search.trim() || statusFilter || dateRange.from || dateRange.to,
-  );
+  const hasActiveFilters = Boolean(search.trim() || statusFilter || dateRange.from || dateRange.to);
 
   // Overdue trucks — reach-by date passed and not reached yet. Alert once when found.
   const lateTrucks = useMemo(() => trucks.filter((truck) => truck.is_late), [trucks]);
@@ -167,8 +175,10 @@ export default function DispatchTrackingPage() {
   }, [lateTrucks.length]);
 
   return (
-    <div className="space-y-6 p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
+        icon={Navigation}
+        accent="sky"
         title="Dispatch Tracking"
         description="Track trucks after they leave the gate — in transit, delivered, returned. Add a status update as each event happens."
       >
@@ -182,43 +192,58 @@ export default function DispatchTrackingPage() {
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </DashboardHeader>
+      </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1 lg:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search vehicle, transporter, arrival, bill, customer, company, status"
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as TruckDispatchStatus | '')}
-          className="h-9 w-auto min-w-[160px]"
-          aria-label="Filter by status"
+      <FilterBar isFetching={trucksQuery.isFetching}>
+        <FilterField
+          label="Search"
+          htmlFor="dispatch-tracking-search"
+          className="sm:min-w-[300px] sm:flex-1"
         >
-          <SelectOption value="">All statuses</SelectOption>
-          {STATUS_FILTER_OPTIONS.map((option) => (
-            <SelectOption key={option.value} value={option.value}>
-              {option.label}
-            </SelectOption>
-          ))}
-        </Select>
-        <DateRangePicker
-          date={dateRangeAsDateObjects}
-          onDateChange={(date) => setDateRange(date && 'from' in date ? date : undefined)}
-        />
-      </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="dispatch-tracking-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search vehicle, transporter, arrival, bill, customer, company, status"
+              className="pl-9"
+            />
+          </div>
+        </FilterField>
+
+        <FilterField label="Status" htmlFor="dispatch-tracking-status">
+          <Select
+            id="dispatch-tracking-status"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as TruckDispatchStatus | '')}
+            className="h-10 w-full sm:w-44"
+            aria-label="Filter by status"
+          >
+            <SelectOption value="">All statuses</SelectOption>
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <SelectOption key={option.value} value={option.value}>
+                {option.label}
+              </SelectOption>
+            ))}
+          </Select>
+        </FilterField>
+
+        <FilterField label="Dispatched between">
+          <DateRangePicker
+            date={dateRangeAsDateObjects}
+            onDateChange={(date) => setDateRange(date && 'from' in date ? date : undefined)}
+          />
+        </FilterField>
+      </FilterBar>
 
       {lateTrucks.length > 0 ? (
-        <div className="flex items-center gap-3 rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-800 dark:text-red-400">
+        <div className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
           <AlertTriangle className="h-5 w-5 shrink-0" />
           <span className="font-medium">
-            {lateTrucks.length} truck{lateTrucks.length === 1 ? '' : 's'} overdue — the expected reach
-            date has passed and {lateTrucks.length === 1 ? 'it hasn’t' : 'they haven’t'} reached yet.
+            {lateTrucks.length} truck{lateTrucks.length === 1 ? '' : 's'} overdue — the expected
+            reach date has passed and {lateTrucks.length === 1 ? 'it hasn’t' : 'they haven’t'}{' '}
+            reached yet.
           </span>
         </div>
       ) : null}
@@ -256,7 +281,10 @@ export default function DispatchTrackingPage() {
           if (!open) setSelected(null);
         }}
       >
-        <SheetContent side="right" className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-xl">
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-4 overflow-y-auto sm:max-w-xl"
+        >
           {selected ? (
             <>
               <SheetHeader className="space-y-2">
@@ -264,7 +292,10 @@ export default function DispatchTrackingPage() {
                   <Truck className="h-5 w-5 text-blue-600" />
                   {selected.vehicle_number || '-'}
                   {selected.arrival_no ? (
-                    <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400"
+                    >
                       {selected.arrival_no}
                     </Badge>
                   ) : null}
@@ -337,12 +368,17 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
       }`}
     >
       <CardContent className="flex items-start gap-3 p-4">
-        <Truck className={`mt-0.5 h-4 w-4 shrink-0 ${truck.is_late ? 'text-red-600' : 'text-blue-600'}`} />
+        <Truck
+          className={`mt-0.5 h-4 w-4 shrink-0 ${truck.is_late ? 'text-red-600' : 'text-blue-600'}`}
+        />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">{truck.vehicle_number || '-'}</span>
             {truck.arrival_no ? (
-              <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
+              <Badge
+                variant="outline"
+                className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400"
+              >
                 {truck.arrival_no}
               </Badge>
             ) : null}
@@ -366,7 +402,8 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
               }`}
             >
               <CalendarClock className="h-3 w-3" />
-              {truck.is_late ? 'Date exceeded — was due' : 'Reach by'} {formatDate(truck.expected_reach_date)}
+              {truck.is_late ? 'Date exceeded — was due' : 'Reach by'}{' '}
+              {formatDate(truck.expected_reach_date)}
             </p>
           ) : null}
           {truck.transporter_name ? (
@@ -603,7 +640,8 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                 }
               />
               <span className="text-[11px] text-muted-foreground">
-                If this date passes before the truck reaches, the trip is flagged “late / date exceeded”.
+                If this date passes before the truck reaches, the trip is flagged “late / date
+                exceeded”.
               </span>
             </div>
           ) : null}
@@ -631,9 +669,9 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               <div>
                 <p className="text-xs font-medium">What came back?</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Open a bill and fill the quantity delivered and returned for each item
-                  the customer was short on. Items you leave blank — and bills you never
-                  open — count as delivered in full.
+                  Open a bill and fill the quantity delivered and returned for each item the
+                  customer was short on. Items you leave blank — and bills you never open — count as
+                  delivered in full.
                 </p>
               </div>
               {billsQuery.isLoading ? (
@@ -649,7 +687,10 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                       return Number(split?.delivered || 0) > 0 || Number(split?.returned || 0) > 0;
                     }).length;
                     return (
-                      <div key={bill.id} className="rounded border border-orange-200 dark:border-orange-500/30 bg-white">
+                      <div
+                        key={bill.id}
+                        className="rounded border border-orange-200 dark:border-orange-500/30 bg-white"
+                      >
                         <button
                           type="button"
                           aria-expanded={open}
@@ -748,8 +789,8 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                   onChange={(event) => setReturnNote(event.target.files?.[0] ?? null)}
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Not required now — if the signed note comes back with the driver later,
-                  save this update and attach it from the timeline.
+                  Not required now — if the signed note comes back with the driver later, save this
+                  update and attach it from the timeline.
                 </span>
               </div>
             </div>
@@ -856,7 +897,10 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                           </thead>
                           <tbody>
                             {line.items.map((item) => (
-                              <tr key={item.id} className="border-t border-orange-100 dark:border-orange-500/30">
+                              <tr
+                                key={item.id}
+                                className="border-t border-orange-100 dark:border-orange-500/30"
+                              >
                                 <td className="px-2 py-1">
                                   <span className="font-medium">{item.item_code}</span>
                                   <span className="block truncate text-muted-foreground">
@@ -911,10 +955,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
   );
 }
 
+/** Thin wrapper so the page's many call sites keep reading `<EmptyState text=… />`. */
 function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="flex h-24 items-center justify-center rounded-lg border text-sm text-muted-foreground">
-      {text}
-    </div>
-  );
+  return <EmptyPanel message={text} loading={/loading/i.test(text)} />;
 }

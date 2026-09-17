@@ -3,21 +3,24 @@ import { describe, expect, it } from 'vitest';
 import { amount, companyLabel, money, share, whole } from './format';
 
 describe('money', () => {
-  it('compacts into the units the board is read in', () => {
-    expect(money(2_53_67_380)).toBe('₹2.54 Cr');
-    expect(money(13_64_524)).toBe('₹13.65 L');
-    expect(money(69_000)).toBe('₹69.0k');
+  it('prints the whole figure, grouped the Indian way', () => {
+    expect(money(2_53_67_380)).toBe('₹2,53,67,380');
+    expect(money(13_64_524)).toBe('₹13,64,524');
+    expect(money(69_000)).toBe('₹69,000');
     expect(money(940)).toBe('₹940');
   });
 
-  it('groups the rupee case the Indian way', () => {
+  it('drops the paise rather than a digit', () => {
+    // The API sends '2599.50'; a board that showed '₹2.6k' lost the rupees,
+    // which is the part a register can be checked against.
+    expect(money(2599.5)).toBe('₹2,600');
     expect(money(999)).toBe('₹999');
   });
 
   it('keeps the sign on a credit', () => {
     // A credit cost type (scrap recovery and its kin) is negative money, and a
     // board that dropped the minus would read as spend.
-    expect(money(-13_64_524)).toBe('₹-13.65 L');
+    expect(money(-13_64_524)).toBe('-₹13,64,524');
   });
 
   it('does not dress up a non-number as zero', () => {

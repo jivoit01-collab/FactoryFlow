@@ -86,7 +86,7 @@ export function DateRangePicker({
         <Button
           variant="outline"
           className={cn(
-            'justify-start text-left font-normal h-9',
+            'h-10 justify-start text-left font-normal',
             !date && 'text-muted-foreground',
             className,
           )}

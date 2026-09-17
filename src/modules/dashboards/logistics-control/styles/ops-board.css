@@ -123,7 +123,18 @@
 }
 
 /*
- * Fullscreen — the board as it was actually designed.
+ * ONE PSEUDO-CLASS PER RULE, NEVER A LIST OF THE TWO SPELLINGS.
+ *
+ * `:fullscreen` and `:-webkit-full-screen` are the same state under two names,
+ * and writing them as one comma-separated selector is the trap this file warns
+ * about a few lines down for `.ops-wall`: a browser that does not recognise one
+ * name in a list throws the WHOLE list away, so a rule that names both applies
+ * in neither. The board then keeps its relaxed, growing layout on the very
+ * screen it was measured for -- four bands sized for more than the display,
+ * with the last one under the bottom edge -- and nothing anywhere reports an
+ * error. Split, each spelling stands or falls on its own.
+ *
+ * FULLSCREEN — THE BOARD AS IT WAS ACTUALLY DESIGNED.
  *
  * In the app it sits inside the shell and takes whatever height is left; the
  * `--u` clamp reads the real viewport either way, so in the shell the type is
@@ -133,7 +144,11 @@
  * `:fullscreen` needs its own background: the element is promoted out of the
  * page and the browser paints black behind anything transparent.
  */
-.ops-board:fullscreen,
+.ops-board:fullscreen {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
 .ops-board:-webkit-full-screen {
   height: 100vh;
   width: 100vw;
@@ -268,16 +283,43 @@
   white-space: nowrap;
 }
 
+/*
+ * THE CHIPS ARE THE HEADER'S FLEXIBLE HALF, AND HAD NO WAY TO SAY SO.
+ *
+ * Their track is the header's only `1fr`, which reads as "the part that gives
+ * way" and did not behave like it: a flex row with no `min-width: 0` cannot be
+ * sized below its own contents, so the track's floor was the sum of four
+ * unwrappable chips. On a four-chip board that floor is wider than the space
+ * left over, the header overflowed to the right, and what went off the edge was
+ * the far end of it -- the clock and the two controls. A board that has lost
+ * its clock cannot be told from a frozen tab, which is the one thing the clock
+ * is there to prove.
+ *
+ * So the row may now be narrower than its chips, and the chips shrink into it.
+ * Flex shrinks in proportion to size, so the longest chip -- always the warning,
+ * which is a sentence somebody wrote -- gives up the most, and the short
+ * standing ones keep their text. Nothing is lost: every chip already carries a
+ * floor it cannot go below, and the full string stays readable to anyone who
+ * walks up.
+ */
 .ops-chips {
   display: flex;
   gap: calc(0.45 * var(--u));
   justify-self: start;
   margin-left: calc(0.3 * var(--u));
+  min-width: 0;
+  overflow: hidden;
 }
 .ops-chip {
-  display: flex;
-  align-items: center;
-  gap: calc(0.35 * var(--u));
+  /*
+   * Block rather than flex, so the shrinking above ends in an ellipsis rather
+   * than a word cut down its middle: `text-overflow` needs one inline run, and
+   * a flex row of a label and a value is two boxes with a gap. The gap comes
+   * back as the literal space already in the markup.
+   */
+  display: block;
+  min-width: calc(4.5 * var(--u));
+  max-width: calc(22 * var(--u));
   padding: calc(0.3 * var(--u)) calc(0.62 * var(--u));
   border-radius: calc(0.55 * var(--u));
   background: #f6f8fb;
@@ -286,6 +328,8 @@
   font-weight: 600;
   color: var(--ink-2);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ops-chip em {
   font-style: normal;
@@ -1409,6 +1453,47 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
+/*
+ * Title and, where the panel was opened from another panel, the way back.
+ *
+ * The arrow sits BEFORE the title rather than beside the close button: back
+ * and close are opposite intentions, and a reader who wanted the customer list
+ * again must not be one mis-aim away from losing the panel entirely.
+ */
+.ops-drill__lede {
+  display: flex;
+  align-items: center;
+  gap: calc(0.85 * var(--du));
+  min-width: 0;
+}
+
+.ops-drill__back {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(2.3 * var(--du));
+  height: calc(2.3 * var(--du));
+  border: 0;
+  border-radius: calc(0.6 * var(--du));
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  color: #fff;
+  cursor: pointer;
+  font-size: calc(1.6 * var(--du));
+  line-height: 1;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+.ops-drill__back:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateX(calc(-0.12 * var(--du)));
+}
+.ops-drill__back:focus-visible {
+  outline: calc(0.16 * var(--du)) solid #fff;
+  outline-offset: calc(0.12 * var(--du));
+}
+
 .ops-drill__close {
   display: grid;
   place-items: center;
@@ -1590,6 +1675,45 @@
 .ops-drill .dim {
   color: var(--ink-3);
   font-weight: 500;
+}
+
+/*
+ * A row that opens something says so before it is clicked.
+ *
+ * Three signals, none of them colour alone: the pointer, a lift on hover and
+ * focus, and a chevron parked in its own column. A table whose rows are merely
+ * clickable-if-you-try is a feature nobody finds.
+ */
+.ops-drill__rowopen {
+  cursor: pointer;
+}
+.ops-drill__rowopen:hover td,
+.ops-drill__rowopen:focus-visible td {
+  background: color-mix(in srgb, var(--d3) 42%, #fff);
+}
+.ops-drill__rowopen:focus-visible {
+  outline: calc(0.14 * var(--du)) solid var(--d1);
+  outline-offset: calc(-0.14 * var(--du));
+}
+.ops-drill__rowopen:hover td:first-child {
+  color: var(--d1);
+}
+
+/* The chevron column: present on every row of an openable table so the column
+   does not jump, and dim until the row is under the cursor. */
+.ops-drill td.ops-drill__gocol {
+  width: calc(1.6 * var(--du));
+  padding-left: 0;
+  padding-right: calc(0.9 * var(--du));
+  text-align: right;
+  color: var(--ink-3);
+  font-size: calc(1.25 * var(--du));
+  font-weight: 700;
+  line-height: 1;
+}
+.ops-drill__rowopen:hover td.ops-drill__gocol,
+.ops-drill__rowopen:focus-visible td.ops-drill__gocol {
+  color: var(--d1);
 }
 
 /* An empty or unreadable table says which it is, never a blank panel. */

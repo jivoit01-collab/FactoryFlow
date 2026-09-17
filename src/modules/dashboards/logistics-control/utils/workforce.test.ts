@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS } from '../constants';
 import {
   buildWorkforceStrip,
   dailyFromAnnual,
@@ -7,6 +8,7 @@ import {
   gateLabourTotal,
   type LabourDepartment,
   labourForSection,
+  sectionHeadcount,
   UNALLOCATED_LABEL,
 } from './workforce';
 
@@ -196,5 +198,82 @@ describe('employeesForSection', () => {
 
   it('returns null for a section with no names assigned', () => {
     expect(employeesForSection(departments, [])).toBeNull();
+  });
+});
+
+describe('sectionHeadcount', () => {
+  const directory = [{ name: 'Logistics', code: 'LOGISTICS', headcount: 1 }];
+
+  it('shows the figure typed on the settings screen, not the directory', () => {
+    // The whole complaint: somebody typed 6 against Transport and the wall
+    // showed 1, with nothing on the settings screen to say why.
+    expect(sectionHeadcount(6, directory, ['LOGISTICS'])).toBe(6);
+  });
+
+  it('treats a typed zero as an answer, not as nothing typed', () => {
+    // A section really can have nobody in it, and the settings screen allows
+    // zero for exactly that. Falling through to the directory here would make
+    // the one deliberate zero on the board impossible to set.
+    expect(sectionHeadcount(0, directory, ['LOGISTICS'])).toBe(0);
+  });
+
+  it('falls back to the directory where nothing is configured', () => {
+    expect(sectionHeadcount(null, directory, ['LOGISTICS'])).toBe(1);
+  });
+
+  it('reports an unknown head count where neither master answers', () => {
+    expect(sectionHeadcount(null, directory, ['DOCK'])).toBeNull();
+  });
+});
+
+describe('the fallback section lists against the real directory', () => {
+  /**
+   * The JIVO_OIL employee directory as it actually stands, trimmed to the
+   * departments that carry one of the three sections' obvious words.
+   *
+   * Pinned here because the previous lists were written from the words a
+   * reader would expect and every one of them was wrong: `Warehouse` is the
+   * Beverages floor, `Store` is the PM store, and *Despatch*, *Docking*,
+   * *Transportation* and *Fleet* do not exist. Nothing in the app fails when
+   * that happens — an unconfigured card just quietly shows somebody else's
+   * people. This fixture makes the next edit to the lists fail out loud
+   * instead.
+   *
+   * Only JIVO_OIL is represented: Mart and Beverages have no departments on
+   * the roll at all, so their boards read the settings screen regardless.
+   */
+  const oilDirectory = [
+    { name: 'Dock', code: 'DOCK', headcount: 8 },
+    { name: 'Dispatched Frontend', code: 'DISPATCHED_FRONTEND', headcount: 0 },
+    { name: 'Dispatched Backend', code: 'DISPATCHED_BACKEND', headcount: 0 },
+    { name: 'Logistics', code: 'LOGISTICS', headcount: 1 },
+    { name: 'Store', code: 'STORE', headcount: 9 },
+    { name: 'Transport', code: 'TRANSPORT', headcount: 0 },
+    { name: 'Transport (Transport)', code: 'TRANSPORT_TRANSPORT', headcount: 6 },
+    { name: 'Warehouse', code: 'WAREHOUSE', headcount: 2 },
+    {
+      name: 'Warehouse (FG Warehouse Basement)',
+      code: 'WAREHOUSE_FG_WAREHOUSE_BASEMEN',
+      headcount: 4,
+    },
+    { name: 'FG Warehouse Basement', code: 'FG_WAREHOUSE_BASEMENT', headcount: 0 },
+    { name: 'FG Warehouse Bev', code: 'FG_WAREHOUSE_BEV', headcount: 0 },
+    { name: 'PM Warehouse', code: 'PM_WAREHOUSE', headcount: 2 },
+  ];
+
+  const section = (key: 'warehouse' | 'dispatch' | 'transport') =>
+    employeesForSection(oilDirectory, LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS[key]);
+
+  it('puts the FG basement on the warehouse card, not the PM store or the Beverages floor', () => {
+    expect(section('warehouse')).toBe(4);
+  });
+
+  it('finds dispatch under the name the directory uses for it', () => {
+    // *Dock*. A list that says "Dispatch" matches nobody here.
+    expect(section('dispatch')).toBe(8);
+  });
+
+  it('counts transport and logistics together', () => {
+    expect(section('transport')).toBe(7);
   });
 });

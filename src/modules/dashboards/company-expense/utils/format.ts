@@ -7,19 +7,22 @@
  */
 
 /**
- * Indian-grouped rupees, compacted to fit a square.
+ * Indian-grouped rupees, in full.
  *
- * A wall board has no room for paise, and none of these figures are reconciled
- * to the rupee anyway — they are accruals and register totals. Crore and lakh
- * rather than million: the people reading this board think in lakhs.
+ * Not compacted. A lakh-and-crore rounding hides the digits the people costing
+ * a line actually argue about — ₹2.6k and ₹2,600 read the same from the
+ * doorway, but only one of them can be checked against the register — so the
+ * whole figure is printed and the square is sized to hold it. Paise are still
+ * dropped: every figure here is an accrual or a register total, reconciled to
+ * the rupee at best.
  */
 export function money(value: number): string {
   if (!Number.isFinite(value)) return '—';
-  const magnitude = Math.abs(value);
-  if (magnitude >= 1_00_00_000) return `₹${(value / 1_00_00_000).toFixed(2)} Cr`;
-  if (magnitude >= 1_00_000) return `₹${(value / 1_00_000).toFixed(2)} L`;
-  if (magnitude >= 1_000) return `₹${(value / 1_000).toFixed(1)}k`;
-  return `₹${Math.round(value).toLocaleString('en-IN')}`;
+  const rupees = Math.round(value);
+  // The minus goes outside the symbol. `(-1).toLocaleString()` would put it
+  // inside — '₹-1,364' — which reads as a typo at four metres.
+  const sign = rupees < 0 ? '-' : '';
+  return `${sign}₹${Math.abs(rupees).toLocaleString('en-IN')}`;
 }
 
 /** Whole number, Indian grouping. For head counts and unit readings. */

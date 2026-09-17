@@ -342,17 +342,23 @@ export function usePendingBillsByCompany(
   companyCodes: readonly string[],
   window: { date_from: string; date_to: string },
   limit: number,
+  /** Booking states to ask for, one request each. Empty asks once, unfiltered. */
+  bookingStatuses: readonly string[] = [],
   enabled = true,
 ) {
   return useQuery({
+    // The states are in the key as well as the window: the same window read
+    // for two states is a different answer and must not be served from the
+    // entry the unfiltered read left behind.
     queryKey: [
       ...LOGISTICS_CONTROL_QUERY_KEYS.all,
       'pending-bills-by-company',
       companyCodes.join(','),
       window.date_from,
       window.date_to,
+      bookingStatuses.join(','),
     ] as const,
-    queryFn: () => getPendingBillsByCompany(companyCodes, window, limit),
+    queryFn: () => getPendingBillsByCompany(companyCodes, window, limit, bookingStatuses),
     staleTime: 60 * 1000,
     enabled: enabled && companyCodes.length > 0 && Boolean(window.date_from),
   });

@@ -1,8 +1,18 @@
-import { AlertCircle, CheckCircle2, Eye, Paperclip, RefreshCw, Send, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  Paperclip,
+  RefreshCw,
+  ScrollText,
+  Send,
+  X,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import {
   Button,
   Card,
@@ -178,21 +188,18 @@ export default function OpenBiltiesPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Open Bilties</h2>
-          <p className="text-muted-foreground">
-            Select open bilty GRPOs and submit the transporter invoice for A/P posting
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Open Bilties"
+        description="Select open bilty GRPOs and submit the transporter invoice for A/P posting"
+        icon={ScrollText}
+        accent="amber"
+      >
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
+        </Button>
+      </PageHeader>
 
       {apiError && (
         <div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
@@ -235,16 +242,30 @@ export default function OpenBiltiesPage() {
             ) : (
               <div className="max-w-full overflow-x-auto">
                 <table className="w-full min-w-[1040px]">
-                  <thead className="bg-muted/50">
+                  <thead className="bg-muted/40">
                     <tr>
                       <th className="w-10 p-3" aria-label="Select" />
-                      <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                      <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
-                      <th className="p-3 text-left text-sm font-medium">Bilty / SAP GRPO</th>
-                      <th className="p-3 text-left text-sm font-medium">Transporter</th>
-                      <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                      <th className="p-3 text-left text-sm font-medium">Branch</th>
-                      <th className="p-3 text-right text-sm font-medium">GRPO Total</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Dispatch Bill
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty / SAP GRPO
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Transporter
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Vehicle
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Branch
+                      </th>
+                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        GRPO Total
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -290,7 +311,7 @@ export default function OpenBiltiesPage() {
                             </div>
                           </td>
                           <td className="p-3 text-sm">{bilty.branch_id ?? '-'}</td>
-                          <td className="p-3 text-right text-sm font-medium">
+                          <td className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                             {formatCurrency(bilty.grpo_doc_total)}
                           </td>
                         </tr>
@@ -474,14 +495,26 @@ export default function OpenBiltiesPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[840px]">
-                <thead className="bg-muted/50">
+                <thead className="bg-muted/40">
                   <tr>
-                    <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                    <th className="p-3 text-left text-sm font-medium">Bilty / SAP GRPO</th>
-                    <th className="p-3 text-left text-sm font-medium">Line</th>
-                    <th className="p-3 text-left text-sm font-medium">Description</th>
-                    <th className="p-3 text-left text-sm font-medium">Tax</th>
-                    <th className="p-3 text-right text-sm font-medium">Line Total</th>
+                    <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Bilty
+                    </th>
+                    <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Bilty / SAP GRPO
+                    </th>
+                    <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Line
+                    </th>
+                    <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Description
+                    </th>
+                    <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tax
+                    </th>
+                    <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Line Total
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -497,7 +530,7 @@ export default function OpenBiltiesPage() {
                       <td className="p-3 text-sm">{line.grpo_line_num}</td>
                       <td className="p-3 text-sm">{line.service_description}</td>
                       <td className="p-3 text-sm">{line.tax_code || '-'}</td>
-                      <td className="p-3 text-right text-sm font-medium">
+                      <td className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                         {formatCurrency(line.line_total)}
                       </td>
                     </tr>

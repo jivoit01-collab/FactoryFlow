@@ -1,8 +1,9 @@
-import { AlertCircle, ArrowLeft, ExternalLink, FileText, Printer, RefreshCw } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { AlertCircle, ExternalLink, FileCheck2, FileText, Printer, RefreshCw } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { DocumentCodeBadge } from '@/shared/components';
+import { PageHeader } from '@/shared/components/page';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 import { resolveFileUrl } from '@/shared/utils';
 
@@ -59,7 +60,6 @@ const formatDate = (date?: string | null) => {
 };
 
 export default function ServiceGRPOHistoryDetailPage() {
-  const navigate = useNavigate();
   const { postingId } = useParams<{ postingId: string }>();
   const id = postingId ? parseInt(postingId, 10) : null;
 
@@ -72,23 +72,14 @@ export default function ServiceGRPOHistoryDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/dispatch/bilty-grpo/history')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {posting?.bilty_no || posting?.dispatch_bill_no || 'Service GRPO Detail'}
-            </h2>
-          </div>
-          <p className="text-muted-foreground">Transport service GRPO posting details</p>
-        </div>
+      <PageHeader
+        title={posting?.bilty_no || posting?.dispatch_bill_no || 'Service GRPO Detail'}
+        description="Transport service GRPO posting details"
+        icon={FileCheck2}
+        accent="teal"
+        backTo="/dispatch/bilty-grpo/history"
+        backLabel="Service GRPO History"
+      >
         <div className="flex w-full gap-2 sm:w-auto">
           <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 sm:flex-none">
             <Printer className="h-4 w-4 mr-2" />
@@ -104,7 +95,7 @@ export default function ServiceGRPOHistoryDetailPage() {
             Refresh
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {isLoading && (
         <div className="flex items-center justify-center h-48">
@@ -205,12 +196,20 @@ export default function ServiceGRPOHistoryDetailPage() {
               ) : (
                 <div className="rounded-md border overflow-hidden">
                   <table className="w-full min-w-[640px]">
-                    <thead className="bg-muted/50">
+                    <thead className="bg-muted/40">
                       <tr>
-                        <th className="p-3 text-left text-sm font-medium">Description</th>
-                        <th className="p-3 text-left text-sm font-medium">G/L Account</th>
-                        <th className="p-3 text-left text-sm font-medium">Tax Code</th>
-                        <th className="p-3 text-right text-sm font-medium">Amount</th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Description
+                        </th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          G/L Account
+                        </th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Tax Code
+                        </th>
+                        <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Amount
+                        </th>
                       </tr>
                     </thead>
                     <tbody>

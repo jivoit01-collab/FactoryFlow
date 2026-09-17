@@ -10,6 +10,7 @@ import {
   Printer,
   RotateCcw,
   Truck,
+  Warehouse,
   XCircle,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
@@ -30,6 +31,7 @@ import {
 } from '@/modules/gate/api';
 import { useArrivalDockings } from '@/modules/gate/api/arrivals/arrivals.queries';
 import { GateStatusBadge, StepLoadingSpinner } from '@/modules/gate/components';
+import { PageHeader } from '@/shared/components/page';
 import {
   ALL_SCAN_SHEET_FILTER,
   matchesScanSearch,
@@ -237,20 +239,15 @@ export default function SalesDispatchDetailPage() {
 
   return (
     <div className="space-y-6 pb-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">{entry.entry_no}</h2>
-            <p className="text-muted-foreground">
-              {isGateOutMode ? 'Invoice dispatch gate-out entry' : 'Docking gate-out entry'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
+      <PageHeader
+        title={entry.entry_no}
+        description={isGateOutMode ? 'Invoice dispatch gate-out entry' : 'Docking gate-out entry'}
+        icon={Warehouse}
+        accent="blue"
+        backTo={routes.dashboard}
+        backLabel={isGateOutMode ? 'Sales Dispatch Out' : 'Docking'}
+      >
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="outline"
@@ -294,7 +291,7 @@ export default function SalesDispatchDetailPage() {
             </Button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       <DockingOverviewCard
         entry={entry}
@@ -1073,15 +1070,29 @@ function DocumentSection({
       {document.items.length > 0 ? (
         <div className="overflow-x-auto border-t">
           <table className="w-full">
-            <thead className="bg-muted/50">
+            <thead className="bg-muted/40">
               <tr>
-                <th className="p-3 text-left text-sm font-medium">Item Code</th>
-                <th className="p-3 text-left text-sm font-medium">Item</th>
-                <th className="p-3 text-right text-sm font-medium">Quantity</th>
-                <th className="p-3 text-left text-sm font-medium">UOM</th>
-                <th className="p-3 text-left text-sm font-medium">Warehouse</th>
-                <th className="p-3 text-left text-sm font-medium">Metrics</th>
-                <th className="p-3 text-left text-sm font-medium">Scan</th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Item Code
+                </th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Item
+                </th>
+                <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Quantity
+                </th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  UOM
+                </th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Warehouse
+                </th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Metrics
+                </th>
+                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Scan
+                </th>
               </tr>
             </thead>
             <tbody>

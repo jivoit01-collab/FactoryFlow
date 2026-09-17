@@ -7,7 +7,11 @@
  * re-reads, when it stops believing itself, and which rights open the route.
  */
 
-import { DASHBOARDS_PERMISSIONS, PLANNING_PURCHASE_PERMISSIONS } from '@/config/permissions';
+import {
+  BOARD_FEED_PERMISSIONS,
+  DASHBOARDS_PERMISSIONS,
+  PLANNING_PURCHASE_PERMISSIONS,
+} from '@/config/permissions';
 
 /**
  * Fallback poll interval, in ms.
@@ -64,8 +68,20 @@ export const PLANT_BOARD_STORES: readonly string[] = ['BH-PM', 'BH-BS', 'BH-NM',
  *
  * These must ALSO be present on the parent `/dashboards` navigation entry, or
  * the whole Dashboards menu hides from a user who holds only one of them.
+ *
+ * THE FEED RIGHTS COME FIRST, AND THE OPERATIONAL ONES STAY.
+ * The `BOARD_FEED_PERMISSIONS` entries are what a dashboard-only login holds:
+ * they open this composed board on the server and reach no operational
+ * endpoint, so granting them puts nothing in the sidebar. The rights below them
+ * are the ones today's readers already hold, kept so nobody's access narrows —
+ * the same OR the API makes in `may_read`. Removing one would lock out a user
+ * who can read this board today.
  */
 export const PLANT_BOARD_VIEW_PERMISSIONS: readonly string[] = [
+  BOARD_FEED_PERMISSIONS.STOCK,
+  BOARD_FEED_PERMISSIONS.NON_MOVING,
+  BOARD_FEED_PERMISSIONS.PRODUCTION_REPORTS,
+  BOARD_FEED_PERMISSIONS.PRODUCTION_PLAN,
   DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
   DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
   DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,

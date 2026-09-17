@@ -7,7 +7,6 @@ import { useDispatchFulfilment } from '../../dispatch-fulfilment/api';
 import { useExpenseBoard } from '../../factory-expense/api';
 import { useWarehouseOccupancy } from '../../production-control/api';
 import { useControlNonMovingReport, useControlWmsCollection } from '../../warehouse-control/api';
-import { warehouseControlPlanWindow } from '../../warehouse-control/api';
 import { summarisePalletSpace } from '../../warehouse-control/utils/palletSpace';
 import {
   useApprovedPartialScans,
@@ -32,6 +31,8 @@ import {
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_ITEM_GROUP,
   LOGISTICS_CONTROL_OIL_SCOPE,
+  LOGISTICS_CONTROL_PENDING_STATUSES,
+  LOGISTICS_CONTROL_PENDING_WINDOW,
   LOGISTICS_CONTROL_REFRESH_MS,
   LOGISTICS_CONTROL_STOCK_ITEM_GROUPS,
   LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS,
@@ -44,11 +45,11 @@ import {
   costPerLitre,
   dayOnDay,
   dayPlan,
-  employeesForSection,
   gateLabourTotal,
   type LabourDepartment,
   labourForSection,
   rollUpTonnage,
+  sectionHeadcount,
   weighItems,
 } from '../utils';
 
@@ -137,12 +138,23 @@ export function useLogisticsControlBoard(
   const wmsPallets = useControlWmsCollection('pallets', wmsMapped);
   const wmsPurposes = useControlWmsCollection('cellPurposes', wmsMapped);
 
-  // One request per company, kept apart: the bills endpoint takes no company
-  // parameter, and the tile shows Oil and Mart side by side.
+  /*
+   * Every bill dated to leave and still waiting — with no date floor.
+   *
+   * One request per company AND per open booking state: the bills endpoint
+   * takes no company parameter (the tile shows Oil and Mart side by side), and
+   * the state slices are what keep an all-time window under the feed's own
+   * 2000-row cap. Both constants carry the reasoning.
+   *
+   * Pointedly NOT `warehouseControlPlanWindow` — that window exists to make the
+   * warehouse board agree with the Dispatch Plans page, and a bill stuck since
+   * April is exactly what this tile is for and what that window hides.
+   */
   const planBills = usePendingBillsByCompany(
     scope.dispatchCompanies,
-    warehouseControlPlanWindow(today),
+    LOGISTICS_CONTROL_PENDING_WINDOW,
     LOGISTICS_CONTROL_MAX_ROLLUP_ROWS,
+    LOGISTICS_CONTROL_PENDING_STATUSES,
   );
 
   /**
@@ -594,11 +606,24 @@ export function useLogisticsControlBoard(
     /**
      * One section's strip.
      *
-     * The head count is the directory's own answer where it has a department
-     * for this section, and the figure typed on the settings screen where it
-     * does not — the two masters are disjoint and a section can legitimately
-     * exist in only one of them. Live first, because a typed number goes stale
-     * the day somebody joins and nobody remembers to edit the board.
+     * The head count is the figure typed on the settings screen, and the
+     * employee directory's own answer only where nothing has been typed.
+     *
+     * This used to be the other way round — live first, on the reasoning that a
+     * typed number goes stale the day somebody joins. The reasoning was sound
+     * and the behaviour was still wrong, for two reasons the floor found before
+     * we did. The settings screen gives no sign it is being overridden: the
+     * field is labelled "Transport — employees" and the salary beside it says
+     * "Shows on the board as ₹5,461.10 a day", so somebody who types 6 and sees
+     * 1 on the wall has been told the board is broken. And the directory is a
+     * poorer master than it looks — it holds departments for one of the three
+     * companies, hangs its head count on leaves whose names repeat across
+     * floors, and answers for the org chart rather than for who works this
+     * shift on this floor.
+     *
+     * So the typed figure wins, and the directory fills the gap where the
+     * section has never been configured — which is the only case where it is
+     * the better of the two answers rather than merely the fresher one.
      */
     const strip = (
       section_: 'warehouse' | 'dispatch' | 'transport',
@@ -607,16 +632,20 @@ export function useLogisticsControlBoard(
       salaryDaily: number | null,
     ) => {
       const section = labourForSection(departments, names);
-      const onRoll =
-        employeesForSection(roll, scope.sectionEmployeeDepartments[section_]) ?? employees;
+      const onRoll = sectionHeadcount(
+        employees,
+        roll,
+        scope.sectionEmployeeDepartments[section_],
+      );
       // Priced against the gate's own head count when a rate is set, rather
       // than the expense board's figure for the same people.
       const labourCost =
         configuredRate !== null ? section.headcount * configuredRate : section.cost;
       return buildWorkforceStrip({
-        // The directory's on-roll count for this section, falling back to the
-        // settings screen. Salary stays typed in either way: payroll withholds
-        // it without a grant a wall-board login has no reason to hold.
+        // The settings screen's count for this section, falling back to the
+        // directory where none is typed. Salary is typed in either way: payroll
+        // withholds it without a grant a wall-board login has no reason to hold,
+        // so the head count and the cost beside it now come from one master.
         employees: onRoll,
         annualPayroll: null,
         salaryVisible: false,

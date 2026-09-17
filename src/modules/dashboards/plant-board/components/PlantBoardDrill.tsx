@@ -2,10 +2,11 @@ import { OpsDrill } from '../../logistics-control/components';
 import type {
   DailyQty,
   NonMovingItem,
-  OverPurchasedRow,
+  OpenPoRow,
   PlantBoardResponse,
   PurchaseWorstRow,
   ShiftingRoute,
+  ShiftingShipment,
   ShiftingStage,
   WasteDay,
 } from '../types';
@@ -33,7 +34,7 @@ export type PlantDrillKey =
   | 'plan'
   | 'purchased'
   | 'benchmark'
-  | 'over-purchased'
+  | 'open-pos'
   | 'stock-space'
   | 'non-moving'
   | 'pm-vehicles'
@@ -94,6 +95,21 @@ function shortDate(iso: string | null | undefined): string {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ][Number(parts[2]) - 1];
   return month ? `${Number(parts[3])} ${month}` : '—';
+}
+
+/**
+ * The clock time off an ISO timestamp, in the reader's own zone.
+ *
+ * Unlike `shortDate` above this one DOES go through `new Date`, and must: a
+ * dispatch stamp is a moment, not a calendar day, and the factory reading it
+ * wants the hour it happened locally. The date is left off — every row in this
+ * table is today's by construction.
+ */
+function clockTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '—';
+  return at.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -231,81 +247,81 @@ export function PlantBoardDrill({ which, data, onClose }: PlantBoardDrillProps) 
     );
   }
 
-  if (which === 'over-purchased') {
-    const over = purchase?.over_purchased_rows ?? [];
+  if (which === 'open-pos') {
+    const open = purchase?.open_po_rows ?? [];
     return (
-      <OpsDrill<OverPurchasedRow>
-        title="Over purchased"
+      <OpsDrill<OpenPoRow>
+        title="Open POs"
         // The list is capped like every other on this board, so when it is
         // shorter than the count beside it the panel says so AND says where the
         // rest are. A truncated list that does not admit it is a list a buyer
         // will act on believing it is complete.
         subtitle={
-          (purchase?.over_purchased_count ?? 0) > over.length
-            ? `${purchase?.over_purchase_basis} The worst ${over.length} by value are below; all ${purchase?.over_purchased_count} are on the PM Requirement sheet under its Over-purchased filter.`
-            : purchase?.over_purchase_basis
+          (purchase?.open_po_count ?? 0) > open.length
+            ? `Open purchase orders on the plan's packing items, netted off its shortages. The ${open.length} largest are below; all ${purchase?.open_po_count} are on the PM Requirement sheet. ${purchase?.pm_received_basis ?? ''}`
+            : `Open purchase orders on the plan's packing items, netted off its shortages. ${purchase?.pm_received_basis ?? ''}`
         }
         domain="purchase"
         onClose={onClose}
         stats={[
-          // The tile's own headline first, so the two visibly agree. Its
-          // caption on the card is loose — the big figure is the over-purchase
-          // VALUE, and `over_purchased_qty` is the Req-after-PO quantity. Both
-          // are named for what they are here rather than repeating the
-          // shorthand, because this is the screen where somebody acts on them.
-          { label: 'Over-purchase value', value: money(purchase?.over_purchase_value) },
-          { label: 'SKUs over', value: whole(purchase?.over_purchased_count) },
-          { label: 'Req after PO', value: `${whole(purchase?.over_purchased_qty)} pcs` },
-          { label: 'Listed here', value: whole(over.length) },
+          // The tile's own headline first, so the two visibly agree.
+          { label: 'Still on order', value: money(purchase?.open_po_value) },
+          { label: 'SKUs on order', value: whole(purchase?.open_po_count) },
+          { label: 'Overdue', value: whole(purchase?.open_po_overdue_count) },
+          // Named "received" and not "arrived value" because it is the goods
+          // receipt's own amount — what the company was billed — while the
+          // open figure beside it is priced at the item master. Two kinds of
+          // rupee, never added together.
+          { label: 'Received this month', value: money(purchase?.pm_received_value) },
         ]}
         breakdown={{
-          // WHY each row is over, which the money does not say. An order not
-          // due until after the plan closes is surplus later; an overdue one is
-          // surplus already paid for; a floor that drew more than the plan
-          // asked for is a question about the plan, not about the buying.
-          title: 'Why these are over, among the rows listed',
+          // WHEN it lands, which the money does not say. An order already
+          // overdue is a chase; one not due until after the plan closes is
+          // stock the month that ordered it will never use.
+          title: 'When these land, among the rows listed',
           items: [
             {
-              key: 'later',
-              label: 'Order lands after the plan closes',
-              value: whole(over.filter((row) => row.po_due_after_plan).length),
-            },
-            {
               key: 'overdue',
-              label: 'Order already overdue',
-              value: whole(over.filter((row) => row.po_overdue).length),
+              label: 'Already overdue',
+              value: whole(open.filter((row) => row.po_overdue).length),
             },
             {
-              key: 'issued',
-              label: 'Floor drew more than planned',
-              value: whole(over.filter((row) => row.over_issued).length),
+              key: 'later',
+              label: 'Due after the plan closes',
+              value: whole(open.filter((row) => row.po_due_after_plan).length),
+            },
+            {
+              key: 'in-plan',
+              label: 'Due inside the plan',
+              value: whole(
+                open.filter((row) => !row.po_overdue && !row.po_due_after_plan).length,
+              ),
             },
           ],
         }}
-        rows={over}
+        rows={open}
         rowKey={(row) => row.item_code}
-        empty="Nothing is over-purchased against this plan."
+        empty="Nothing is on order against this plan."
         columns={[
           { label: 'Item', cell: (row) => row.item_name },
           { label: 'Code', cell: (row) => row.item_code, dim: true },
-          { label: 'Over by', cell: (row) => whole(row.over_qty), numeric: true },
-          { label: 'Value', cell: (row) => money(row.over_value), numeric: true },
+          { label: 'On hand', cell: (row) => whole(row.on_hand_qty), numeric: true, dim: true },
+          { label: 'Open PO', cell: (row) => whole(row.open_po_qty), numeric: true },
+          { label: 'Value', cell: (row) => money(row.open_po_value), numeric: true },
           {
-            label: 'On order',
-            cell: (row) => whole(row.open_po_qty),
+            label: 'Received',
+            cell: (row) => money(row.received_value),
             numeric: true,
             dim: true,
           },
           {
-            label: 'Why',
+            label: 'Due',
             cell: (row) =>
-              row.over_issued
-                ? 'floor drew more'
-                : row.po_overdue
-                  ? 'order overdue'
-                  : row.po_due_after_plan
-                    ? 'lands after the plan'
-                    : 'bought over',
+              row.po_overdue
+                ? 'overdue'
+                : row.po_due_after_plan
+                  ? 'after the plan'
+                  : (row.po_earliest_due ?? 'no date'),
             dim: true,
           },
         ]}
@@ -676,41 +692,114 @@ export function PlantBoardDrill({ which, data, onClose }: PlantBoardDrillProps) 
     const stage: ShiftingStage | undefined = isDeclared
       ? shifting?.allocated
       : shifting?.shipped;
+    const stats = [
+      {
+        label: 'Total',
+        value: stage?.tonnage_available
+          ? `${decimal(stage?.total_tons)} t`
+          : `${whole(stage?.total_pieces)} pcs`,
+      },
+      { label: 'Pieces', value: whole(stage?.total_pieces) },
+      { label: 'Boxes', value: whole(stage?.boxes) },
+      {
+        label: isDeclared ? 'Declarations' : 'Transfers out',
+        value: whole(stage?.transfers),
+      },
+      { label: 'No litre volume', value: whole(stage?.unweighed_items) },
+    ];
+
+    /** One route as a line in the "where it went" strip. */
+    const routeItem = (row: ShiftingRoute) => ({
+      key: row.route,
+      label: row.codes?.length ? `${row.name} · ${row.codes.join(', ')}` : row.name,
+      value: row.tons === null ? `${whole(row.pieces)} pcs` : `${decimal(row.tons, 2)} t`,
+      sub: `${whole(row.boxes)} boxes · ${whole(row.item_count)} SKUs`,
+    });
+
+    /*
+     * THE SHIPPED HALF NAMES ITS DOCUMENTS; THE DECLARED HALF CANNOT.
+     *
+     * A reader who opens "Shipped today" is usually on their way to look one of
+     * these loads up, and neither the tile nor the route fold gave them
+     * anything to type into the BST screen — "7 transfers out" and "48 t to
+     * Mart" are both true and neither is a document. So the transfers are the
+     * table here and the routes move up into the breakdown strip, which is what
+     * that strip is for: the table answers "which ones", the strip answers
+     * "where".
+     *
+     * Declared keeps its routes as the table. A declaration is a keeper's
+     * statement of intent off the Godown Stock Movements page — no BST exists
+     * for it yet, and inventing an empty document column would suggest one does.
+     */
+    if (isDeclared) {
+      return (
+        <OpsDrill<ShiftingRoute>
+          title="Declared today"
+          subtitle={shifting?.basis}
+          domain="shifting"
+          onClose={onClose}
+          stats={stats}
+          rows={stage?.routes ?? []}
+          rowKey={(row) => row.route}
+          empty="The keeper has declared nothing off the floor today."
+          columns={[
+            {
+              label: 'Destination',
+              cell: (row) =>
+                row.codes?.length ? `${row.name} · ${row.codes.join(', ')}` : row.name,
+            },
+            { label: 'SKUs', cell: (row) => whole(row.item_count), numeric: true },
+            { label: 'Boxes', cell: (row) => whole(row.boxes), numeric: true },
+            { label: 'Pieces', cell: (row) => whole(row.pieces), numeric: true },
+            {
+              label: 'Tonnes',
+              cell: (row) => (row.tons === null ? '—' : decimal(row.tons, 2)),
+              numeric: true,
+            },
+          ]}
+        />
+      );
+    }
+
+    const shipped = shifting?.shipped;
     return (
-      <OpsDrill<ShiftingRoute>
-        title={isDeclared ? 'Declared today' : 'Shipped today'}
+      <OpsDrill<ShiftingShipment>
+        title="Shipped today"
         subtitle={shifting?.basis}
         domain="shifting"
         onClose={onClose}
-        stats={[
-          {
-            label: 'Total',
-            value: stage?.tonnage_available
-              ? `${decimal(stage?.total_tons)} t`
-              : `${whole(stage?.total_pieces)} pcs`,
-          },
-          { label: 'Pieces', value: whole(stage?.total_pieces) },
-          { label: 'Boxes', value: whole(stage?.boxes) },
-          {
-            label: isDeclared ? 'Declarations' : 'Transfers out',
-            value: whole(stage?.transfers),
-          },
-          { label: 'No litre volume', value: whole(stage?.unweighed_items) },
-        ]}
-        rows={stage?.routes ?? []}
-        rowKey={(row) => row.route}
-        empty={
-          isDeclared
-            ? 'The keeper has declared nothing off the floor today.'
-            : 'Nothing has been dispatched off the floor today.'
-        }
+        stats={stats}
+        breakdown={{
+          title: 'Where it went',
+          items: (shipped?.routes ?? []).map(routeItem),
+          empty: 'Nothing has left the floor today.',
+        }}
+        rows={shipped?.shipments ?? []}
+        rowKey={(row) => row.entry_no}
+        empty="Nothing has been dispatched off the floor today."
         columns={[
+          { label: 'BST', cell: (row) => row.entry_no || '—' },
           {
             label: 'Destination',
             cell: (row) =>
-              row.codes?.length ? `${row.name} · ${row.codes.join(', ')}` : row.name,
+              row.warehouse ? `${row.route_name} · ${row.warehouse}` : row.route_name,
           },
-          { label: 'SKUs', cell: (row) => whole(row.item_count), numeric: true },
+          {
+            /*
+             * SAP's own document first, and the typed one only as a fallback.
+             * `sap_doc_num` is what SAP posted — the stock transfer, or the
+             * invoice on a sale to Mart, which is the number Accounts asks for.
+             * `invoice_no` is what a warehouse user typed to FIND the BST: on
+             * live rows the two agree, but one is a record and the other is
+             * somebody's search box, so the record leads.
+             *
+             * Neither exists until SAP posts, and a transfer still waiting says
+             * so rather than showing a blank the reader takes for a dead feed.
+             */
+            label: 'SAP document',
+            cell: (row) => row.sap_doc_num || row.invoice_no || 'Not posted yet',
+            dim: true,
+          },
           { label: 'Boxes', cell: (row) => whole(row.boxes), numeric: true },
           { label: 'Pieces', cell: (row) => whole(row.pieces), numeric: true },
           {
@@ -718,6 +807,7 @@ export function PlantBoardDrill({ which, data, onClose }: PlantBoardDrillProps) 
             cell: (row) => (row.tons === null ? '—' : decimal(row.tons, 2)),
             numeric: true,
           },
+          { label: 'Out at', cell: (row) => clockTime(row.dispatched_at), dim: true },
         ]}
       />
     );

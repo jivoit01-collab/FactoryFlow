@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 import type { Ref } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useReactToPrint } from 'react-to-print';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 
 import { GATE_PERMISSIONS } from '@/config/permissions';
@@ -50,8 +50,8 @@ import {
 } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
-  SAP_GATEPASS_PRINT_PAGE_STYLE,
   SalesDispatchSapGatepassPrint,
+  SAP_GATEPASS_PRINT_PAGE_STYLE,
 } from './SalesDispatchSapGatepassPrint';
 
 interface PrintableDocument {
@@ -198,7 +198,7 @@ export default function SalesDispatchReprintPage() {
             Back to Entry
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Reprint Gatepass</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">Reprint Gatepass</h2>
             <p className="text-muted-foreground">
               {entry.entry_no} · {formatValue(entry.gatepass_no)}
             </p>
@@ -464,7 +464,7 @@ function SalesDispatchReprintSearchPage() {
             Back to Docking
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Reprint Gatepass</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">Reprint Gatepass</h2>
             <p className="text-muted-foreground">
               Search a printed Docking gatepass, log the reprint reason, and print the copy.
             </p>
@@ -733,16 +733,28 @@ function PrintHistoryTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
       <table className="w-full min-w-[760px]">
-        <thead className="bg-muted/50">
+        <thead className="bg-muted/40">
           <tr>
-            <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Copy</th>
-            <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Type</th>
-            <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Printed At</th>
-            <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Printed By</th>
-            <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Printer</th>
-            <th className="p-3 text-left text-sm font-medium">Reason</th>
+            <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Copy
+            </th>
+            <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Type
+            </th>
+            <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Printed At
+            </th>
+            <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Printed By
+            </th>
+            <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Printer
+            </th>
+            <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Reason
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -794,7 +806,9 @@ const PrintableGatepass = ({
           <div>
             <p className="text-sm font-medium uppercase text-slate-500">Gatepass Reprint</p>
             <h1 className="text-2xl font-bold">{companyName}</h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">{formatValue(entry.sap_branch_name)}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">
+              {formatValue(entry.sap_branch_name)}
+            </p>
           </div>
           <div className="text-sm sm:text-right">
             <div className="font-semibold">{formatValue(entry.gatepass_no)}</div>
@@ -823,7 +837,9 @@ const PrintableGatepass = ({
         </div>
 
         <div>
-          <h2 className="mb-2 text-sm font-semibold uppercase text-slate-600 dark:text-muted-foreground">Loaded Items</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase text-slate-600 dark:text-muted-foreground">
+            Loaded Items
+          </h2>
           <div className="space-y-3">
             {documents.map((document) => (
               <PrintableDocumentItemsTable
@@ -930,14 +946,16 @@ function PrintableDocumentItemsTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="flex flex-col gap-1 border-b bg-slate-50 dark:bg-muted/40 p-2 text-sm sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="font-semibold">
             {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
           </div>
           {showCustomer ? (
-            <div className="text-xs text-slate-600 dark:text-muted-foreground">{formatValue(document.customer_name)}</div>
+            <div className="text-xs text-slate-600 dark:text-muted-foreground">
+              {formatValue(document.customer_name)}
+            </div>
           ) : null}
         </div>
         <div className="text-xs text-slate-600 dark:text-muted-foreground">

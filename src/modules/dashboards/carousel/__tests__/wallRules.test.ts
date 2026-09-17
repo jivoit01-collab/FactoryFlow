@@ -110,4 +110,32 @@ describe('wall geometry is reachable from inside the carousel', () => {
       }
     }
   });
+
+  /**
+   * ...and neither may the two spellings of fullscreen itself.
+   *
+   * Same rule, the case it was actually written for. `:fullscreen` and
+   * `:-webkit-full-screen` are one state under two names, and a list naming
+   * both is thrown away whole by any engine that knows only one — so the
+   * standard rule is lost along with the prefixed one, and the board keeps its
+   * relaxed, growing layout on the wall it was measured for. That failure is
+   * invisible: no error, no warning, just a board a third too tall with its
+   * last band under the bottom edge. Every rule states one spelling and is
+   * repeated for the other.
+   */
+  it('never pairs :fullscreen with :-webkit-full-screen in one selector list', () => {
+    for (const { css, path } of sheets) {
+      const code = css.replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const [list] of code.matchAll(/(^|\})([^{}]*)\{/g)) {
+        const selector = list.replace(/^\}/, '').replace(/\{$/, '');
+        if (!selector.includes(':fullscreen')) continue;
+        expect(
+          selector.includes(':-webkit-full-screen'),
+          `${path}: "${selector.trim()}" names both spellings in one list, so a ` +
+            `browser that knows only one drops the rule entirely. Write the rule ` +
+            `twice, once per spelling.`,
+        ).toBe(false);
+      }
+    }
+  });
 });

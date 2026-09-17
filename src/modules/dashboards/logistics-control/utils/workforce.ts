@@ -165,3 +165,27 @@ export function employeesForSection(
   if (matched.length === 0) return null;
   return matched.reduce((total, row) => total + Math.max(row.headcount, 0), 0);
 }
+
+/**
+ * One card's head count, deciding between the two masters that claim it.
+ *
+ * The typed figure wins. It is the one a person chose for this board, next to
+ * the salary that prices it, on a screen that says "Shows on the board as ₹X a
+ * day" and gives no sign anything could override it — so a board that shows
+ * anything else has told that person it is broken.
+ *
+ * The directory answers only for a section nobody has configured, where it
+ * beats printing an em-dash on a wall. It is not the better master otherwise:
+ * it covers one of this board's companies, repeats department names across
+ * floors, and counts who is on the org chart rather than who works this floor.
+ *
+ * Zero is a configured answer, not a missing one — a section really can have
+ * nobody in it, and the settings screen allows zero deliberately for that.
+ */
+export function sectionHeadcount(
+  configured: number | null,
+  departments: readonly RollDepartmentCount[],
+  names: readonly string[],
+): number | null {
+  return configured ?? employeesForSection(departments, names);
+}

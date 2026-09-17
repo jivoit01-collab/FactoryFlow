@@ -93,8 +93,18 @@ function dayLabel(iso: string | null | undefined): string {
   const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
   if (!parts) return '—';
   const month = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ][Number(parts[2]) - 1];
   return month ? `${Number(parts[3])} ${month}` : '—';
 }
@@ -244,7 +254,7 @@ export default function PlantBoardDashboardPage() {
               <div className="ops-rail">
                 <p>Plant Control</p>
               </div>
-              <div className="ops-groups" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="ops-groups" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
                 <div className="ops-grp" style={{ gridTemplateRows: 'auto auto' }}>
                   <p className="ops-note">
                     The board could not be read. It keeps trying on its own.
@@ -284,9 +294,7 @@ export default function PlantBoardDashboardPage() {
       {/* The rows behind whichever tile was clicked. It reads the same `data`
           the tiles do, so the poll keeps it current while it is open and the
           panel can never disagree with the card underneath it. */}
-      {drill && (
-        <PlantBoardDrill which={drill} data={data} onClose={() => setDrill(null)} />
-      )}
+      {drill && <PlantBoardDrill which={drill} data={data} onClose={() => setDrill(null)} />}
     </div>
   );
 }
@@ -460,7 +468,7 @@ function PurchaseBand({
         domain="purchase"
         title="Purchase"
         scope="BH-PM · BH-BS · BH-NM · BH-PC"
-        columns="1fr"
+        columns="minmax(0, 1fr)"
         people={people}
         unavailable={
           degraded.includes('purchase')
@@ -513,12 +521,13 @@ function PurchaseBand({
     purchase.issued_value + purchase.on_hand_value + planToPurchase,
   );
 
+
   return (
     <OpsBand
       domain="purchase"
       title="Purchase"
       scope="BH-PM · BH-BS · BH-NM · BH-PC"
-      columns="1.05fr 1.15fr 1fr 1fr"
+      columns="minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr)"
       people={people}
     >
       <OpsGroup
@@ -527,7 +536,10 @@ function PurchaseBand({
         // The tag is the share, the figure is the absolute — never the same
         // number twice in different type sizes. Which plan month this is
         // already sits in the header chip.
-        tag={{ label: `${pct(planToPurchase, purchase.planning_value)} still to buy`, tone: 'neut' }}
+        tag={{
+          label: `${pct(planToPurchase, purchase.planning_value)} still to buy`,
+          tone: 'neut',
+        }}
         // NO SUBTITLE. The tile is the plan, on hand and to purchase, and
         // that is all three of them: the headline and the bar say it without
         // help. What the subtitle used to carry has not moved anywhere -- the
@@ -658,36 +670,48 @@ function PurchaseBand({
         }
       />
 
-      {/* The PM Requirement sheet's own answer, not a second one. Select its
-          Over-purchased chip and add up Req after PO and this is the figure:
-          the surplus those items will be holding once their open orders land.
-          Recomputing it here gave two answers to one question, which is the
-          one thing a wall board must not do. */}
+      {/* WHAT IS STILL COMING, and what has already landed against it. The
+          open book is read off the requirement sheet — the same open orders it
+          nets shortages against — so the board and that page cannot disagree
+          about what is on order. The receipt beside it is the goods receipt
+          itself, not the order's received column, which on this company reads
+          as arrived for any line a buyer closed by hand. */}
       <OpsGroup
-        name="Over purchased"
-        onOpen={onOpen('over-purchased')}
+        name="Open POs"
+        onOpen={onOpen('open-pos')}
         tag={
-          purchase.over_purchased_count > 0
-            ? { label: `${whole(purchase.over_purchased_count)} SKUs over`, tone: 'warn' }
-            : { label: 'nothing over', tone: 'ok' }
+          // OVERDUE FIRST. On Oil every open packing line was already past due
+          // on 9 September, so "how much is on order" without "how much of it
+          // should already be here" is half an answer.
+          purchase.open_po_overdue_count > 0
+            ? { label: `${whole(purchase.open_po_overdue_count)} overdue`, tone: 'bad' }
+            : { label: `${whole(purchase.open_po_count)} SKUs on order`, tone: 'neut' }
         }
-        // IN MONEY, NOT PIECES. A surplus of 31 lakh pieces means nothing
-        // next to the plan and the orders on the tiles beside it, which are
-        // both in rupees; what the over-buying is WORTH is the figure that
-        // compares. The pieces are still on the requirement sheet for anybody
-        // who needs to go and count them.
-        //
-        // The count is in the pill, so the subtitle says only what the figure
-        // is -- the requirement sheet's own Req-after-PO on its over-purchased
-        // rows, priced. Not a second answer to the same question.
-        // NO UNIT WORD. The rupee sign is the unit, and the tile is named
-        // Over purchased -- "surplus" after the figure only said the heading
-        // again.
-        sub="Req after PO on the over-purchased rows"
-        value={money(purchase.over_purchase_value)}
-        // No visualisation. The tile is one figure off the requirement sheet,
-        // and everything tried beside it was a restatement of that figure
-        // rather than a second fact about it.
+        sub={`${whole(purchase.open_po_count)} of the plan's items have something on order`}
+        value={money(purchase.open_po_value)}
+        viz={
+          // The book split by the AGE of the order behind it, which is the
+          // one thing the rupees do not say: an order placed this month is
+          // buying, an order still open from March is a chase. A true split —
+          // the two halves are shares of the headline itself, so the bar and
+          // the figure above it cannot describe different books.
+          <OpsMeter
+            segments={[
+              {
+                fill: 'main',
+                pct: share(purchase.open_po_recent_value, purchase.open_po_value),
+                label: 'Raised this month',
+                figure: money(purchase.open_po_recent_value),
+              },
+              {
+                fill: 'mute',
+                pct: share(purchase.open_po_older_value, purchase.open_po_value),
+                label: 'Older POs',
+                figure: money(purchase.open_po_older_value),
+              },
+            ]}
+          />
+        }
       />
     </OpsBand>
   );
@@ -715,7 +739,7 @@ function StoreBand({
         domain="store"
         title="Store"
         scope="Packaging"
-        columns="1fr"
+        columns="minmax(0, 1fr)"
         people={people}
         unavailable={
           degraded.includes('store')
@@ -737,13 +761,12 @@ function StoreBand({
   const blowingTrend = blowing.daily;
   const blowingBest = Math.max(1, ...blowingTrend.map((row) => row.bottles));
 
-
   return (
     <OpsBand
       domain="store"
       title="Store"
       scope="Packaging"
-      columns="1.05fr 1.15fr 1fr 1fr"
+      columns="minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr)"
       people={people}
     >
       {/* First in the band, because how full the stores are is the question
@@ -1002,7 +1025,7 @@ function ProductionBand({
         domain="production"
         title="Production"
         scope="FG · BH-PF"
-        columns="1fr"
+        columns="minmax(0, 1fr)"
         people={people}
         unavailable={
           degraded.includes('production')
@@ -1019,7 +1042,8 @@ function ProductionBand({
   // The piece ratio is a differently weighted number and would not match the
   // figures printed beside it.
   const attainment = production.attainment_tons_pct;
-  const attainmentTone = attainment == null ? 'nil' : attainment >= 90 ? 'ok' : attainment >= 70 ? 'warn' : 'bad';
+  const attainmentTone =
+    attainment == null ? 'nil' : attainment >= 90 ? 'ok' : attainment >= 70 ? 'warn' : 'bad';
   const tonsLeft = Math.max(0, production.planned_tons - production.produced_tons);
   const floor = production.floor;
   const age = floor.age;
@@ -1071,7 +1095,7 @@ function ProductionBand({
       domain="production"
       title="Production"
       scope="BH-PF"
-      columns="1.1fr 1.1fr 1.05fr 1.05fr"
+      columns="minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1.05fr) minmax(0, 1.05fr)"
       people={people}
     >
       {/* Two figures and no third: what the supervisor planned for today and
@@ -1248,9 +1272,7 @@ function ProductionBand({
           `Raw material ${money(wasteDay?.rm_value ?? 0)} · ` +
           `packing ${qty(wasteDay?.pm_pieces)} pcs` +
           (wasteDay?.pm_other?.length
-            ? `, ${wasteDay.pm_other
-                .map((row) => `${whole(row.qty)} ${row.uom}`)
-                .join(', ')}`
+            ? `, ${wasteDay.pm_other.map((row) => `${whole(row.qty)} ${row.uom}`).join(', ')}`
             : '')
         }
         value={money(wasteDay?.pm_value)}
@@ -1296,7 +1318,7 @@ function ShiftingBand({
         domain="shifting"
         title="Shifting"
         scope="Off BH-PF"
-        columns="1fr"
+        columns="minmax(0, 1fr)"
         people={people}
         unavailable={
           degraded.includes('shifting')
@@ -1314,7 +1336,7 @@ function ShiftingBand({
       domain="shifting"
       title="Shifting"
       scope="Off BH-PF"
-      columns="1fr 1fr"
+      columns="minmax(0, 1fr) minmax(0, 1fr)"
       people={people}
     >
       {/* TWO REGISTERS, READ DOWN THE SAME THREE ROWS, AND NEVER NETTED.

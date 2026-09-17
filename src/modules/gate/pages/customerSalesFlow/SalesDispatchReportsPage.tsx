@@ -1,10 +1,10 @@
 import {
   AlertTriangle,
-  ArrowLeft,
   Camera,
   CheckCircle2,
   Clock,
   Download,
+  FileBarChart,
   FileText,
   RefreshCw,
   Search,
@@ -24,6 +24,7 @@ import {
   useSalesDispatchReports,
 } from '@/modules/gate/api';
 import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
+import { FilterBar, FilterField, PageHeader } from '@/shared/components/page';
 import {
   Button,
   Card,
@@ -52,7 +53,6 @@ interface ReportSectionConfig {
 }
 
 export default function SalesDispatchReportsPage() {
-  const navigate = useNavigate();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
   const [documentType, setDocumentType] = useState<DocumentFilter>('ALL');
@@ -90,21 +90,15 @@ export default function SalesDispatchReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <Button
-            type="button"
-            variant="ghost"
-            className="-ml-3 mb-2"
-            onClick={() => navigate(DOCKING_ROUTES.dashboard)}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Docking
-          </Button>
-          <h2 className="text-3xl font-bold tracking-tight">Docking Reports</h2>
-          <p className="text-muted-foreground">Date-filtered Docking operations and exports</p>
-        </div>
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+      <PageHeader
+        title="Docking Reports"
+        description="Date-filtered Docking operations and exports"
+        icon={FileBarChart}
+        accent="blue"
+        backTo={DOCKING_ROUTES.dashboard}
+        backLabel="Docking"
+      >
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           <DateRangePicker
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
@@ -144,17 +138,30 @@ export default function SalesDispatchReportsPage() {
             Export
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="relative w-full lg:max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Search entry, document, customer, vehicle"
-          className="pl-9"
-        />
-      </div>
+      <FilterBar
+        label="Search"
+        isFetching={isFetching}
+        onReset={searchTerm ? () => setSearchTerm('') : undefined}
+      >
+        <FilterField
+          label="Find an entry"
+          htmlFor="docking-reports-search"
+          className="sm:min-w-[320px] sm:flex-1"
+        >
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="docking-reports-search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search entry, document, customer, vehicle"
+              className="pl-9"
+            />
+          </div>
+        </FilterField>
+      </FilterBar>
 
       {error ? (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -314,7 +321,7 @@ function ReportSection({
           <div className="overflow-auto border-t">
             <table className="w-full min-w-[1180px] table-fixed">
               <ReportTableColumns mode={mode} />
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/40">
                 <ReportTableHeader mode={mode} />
               </thead>
               <tbody>
@@ -395,7 +402,10 @@ function ReportTableHeader({ mode }: { mode: ReportTableMode }) {
   return (
     <tr>
       {headers.map((header) => (
-        <th key={header} className="whitespace-nowrap p-3 text-left text-sm font-medium">
+        <th
+          key={header}
+          className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        >
           {header}
         </th>
       ))}
@@ -495,9 +505,7 @@ function ReportTableRow({
         </div>
       </td>
       <td className="whitespace-nowrap p-3 text-sm">{entry.vehicle_no}</td>
-      <td className="whitespace-nowrap p-3 text-sm">
-        {formatActualGateOut(entry)}
-      </td>
+      <td className="whitespace-nowrap p-3 text-sm">{formatActualGateOut(entry)}</td>
       <td className="whitespace-nowrap p-3 text-sm">
         <GateStatusBadge
           status={entry.gatepass_no ? 'PRINTED' : 'PENDING'}

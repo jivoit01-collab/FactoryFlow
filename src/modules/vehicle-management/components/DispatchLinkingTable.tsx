@@ -68,30 +68,48 @@ export function DispatchLinkingTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1500px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
-              <th className="w-10 px-4 py-3 text-left font-medium text-muted-foreground"></th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Action</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Dispatch</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bill</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Customer</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+              <th className="w-10 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left"></th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Action
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Dispatch
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Bill
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Customer
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Status
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
                 SAP Location
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Location
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
                 Linked Vehicle
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
                 Vehicle Status
               </th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Load</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">SAP Hints</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Remarks</th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Load
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                SAP Hints
+              </th>
+              <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-left">
+                Remarks
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -179,10 +197,7 @@ export function DispatchLinkingTable({
                     </div>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <div
-                      className="max-w-[200px] truncate"
-                      title={bill.plan.location ?? undefined}
-                    >
+                    <div className="max-w-[200px] truncate" title={bill.plan.location ?? undefined}>
                       {compactText(bill.plan.location)}
                     </div>
                   </td>

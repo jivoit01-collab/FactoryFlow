@@ -1,10 +1,21 @@
-import { CheckSquare, RefreshCw } from 'lucide-react';
+import { CheckSquare, FileCheck2, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, Checkbox } from '@/shared/components/ui';
+import {
+  PageHeader,
+  ROW_CLASSES,
+  TABLE_CLASSES,
+  TableCard,
+  TableEmpty,
+  TableLoading,
+  Td,
+  Th,
+  THEAD_CLASSES,
+} from '@/shared/components/page';
+import { Button, Checkbox } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import { useDispatchBills, useSubmitBillSelection } from '../api';
@@ -19,6 +30,8 @@ function isSAPError(error: unknown): error is ApiError {
 
 const fmtNum = (v?: number | null) =>
   v === undefined || v === null ? '—' : Number(v).toLocaleString('en-IN');
+
+const COLUMN_COUNT = 8;
 
 /**
  * Bill Selection — the step BEFORE the Dispatch Plan page. Planners tick the
@@ -43,10 +56,12 @@ export default function DispatchBillSelectionPage() {
   const sapApiError = isSAPError(billsQuery.error) ? billsQuery.error : null;
 
   return (
-    <div className="space-y-6 p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
         title="Bill Selection"
         description="Pick bills to add to dispatch planning. Submitted bills move to the Plan page and leave this list."
+        icon={FileCheck2}
+        accent="blue"
       >
         <Button
           type="button"
@@ -55,10 +70,10 @@ export default function DispatchBillSelectionPage() {
           onClick={() => billsQuery.refetch()}
           disabled={billsQuery.isFetching}
         >
-          <RefreshCw className="mr-2 h-4 w-4" />
+          <RefreshCw className={cn('mr-2 h-4 w-4', billsQuery.isFetching && 'animate-spin')} />
           Refresh
         </Button>
-      </DashboardHeader>
+      </PageHeader>
 
       <DispatchPlanFilters
         filters={filters}
@@ -89,6 +104,20 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
 
   const allChecked = bills.length > 0 && bills.every((b) => selected.has(b.doc_entry));
 
+  // What the planner is about to send over, totalled — the same figures the
+  // Plan page will show, so the size of the hand-off is visible before Submit.
+  const selectedTotals = useMemo(() => {
+    return bills.reduce(
+      (acc, b) => {
+        if (!selected.has(b.doc_entry)) return acc;
+        acc.litres += Number(b.total_litres ?? 0);
+        acc.boxes += Number(b.total_boxes ?? 0);
+        return acc;
+      },
+      { litres: 0, boxes: 0 },
+    );
+  }, [bills, selected]);
+
   function toggle(docEntry: number) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -117,90 +146,95 @@ function SelectionBoard({ bills, isLoading }: { bills: DispatchBill[]; isLoading
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm text-muted-foreground">
-            {selected.size} of {bills.length} bill(s) selected
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSubmit}
-            disabled={submit.isPending || bills.length === 0}
-          >
-            <CheckSquare className="mr-2 h-4 w-4" />
-            {submit.isPending ? 'Submitting…' : 'Submit selection'}
-          </Button>
-        </div>
-
-        <div className="-mx-4 overflow-x-auto sm:mx-0">
-          <table className="w-full min-w-[860px] text-sm">
-            <thead className="border-y bg-muted/40 text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="p-3">
-                  <Checkbox
-                    checked={allChecked}
-                    onCheckedChange={toggleAll}
-                    aria-label="Select all bills"
-                    disabled={bills.length === 0}
-                  />
-                </th>
-                <th className="p-3">Invoice</th>
-                <th className="p-3">Date</th>
-                <th className="p-3">Party</th>
-                <th className="p-3">Location</th>
-                <th className="p-3 text-right">Litres</th>
-                <th className="p-3 text-right">Boxes</th>
-                <th className="p-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
-                    Loading bills…
-                  </td>
+    <TableCard
+      summary={
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium text-foreground tabular-nums">{selected.size}</span>
+          of
+          <span className="tabular-nums">{bills.length}</span>
+          bill(s) selected
+          {selected.size > 0 && (
+            <span className="text-muted-foreground">
+              · {fmtNum(selectedTotals.litres)} L · {fmtNum(selectedTotals.boxes)} boxes
+            </span>
+          )}
+        </span>
+      }
+      actions={
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSubmit}
+          disabled={submit.isPending || bills.length === 0}
+        >
+          <CheckSquare className="mr-2 h-4 w-4" />
+          {submit.isPending ? 'Submitting…' : 'Submit selection'}
+        </Button>
+      }
+    >
+      <table className={cn(TABLE_CLASSES, 'min-w-[860px]')}>
+        <thead className={THEAD_CLASSES}>
+          <tr>
+            <Th className="w-10">
+              <Checkbox
+                checked={allChecked}
+                onCheckedChange={toggleAll}
+                aria-label="Select all bills"
+                disabled={bills.length === 0}
+              />
+            </Th>
+            <Th>Invoice</Th>
+            <Th>Date</Th>
+            <Th>Party</Th>
+            <Th>Location</Th>
+            <Th align="right">Litres</Th>
+            <Th align="right">Boxes</Th>
+            <Th align="right">Amount</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <TableLoading colSpan={COLUMN_COUNT} message="Loading bills…" />
+          ) : bills.length === 0 ? (
+            <TableEmpty
+              colSpan={COLUMN_COUNT}
+              icon={FileCheck2}
+              message="No bills left to select"
+              hint="Every bill in this window is already added to planning."
+            />
+          ) : (
+            bills.map((b) => {
+              const checked = selected.has(b.doc_entry);
+              return (
+                <tr
+                  key={b.doc_entry}
+                  className={cn(ROW_CLASSES, 'cursor-pointer', checked && 'bg-primary/5')}
+                  onClick={() => toggle(b.doc_entry)}
+                >
+                  <Td onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggle(b.doc_entry)}
+                      aria-label={`Select bill ${b.doc_num}`}
+                    />
+                  </Td>
+                  <Td className="font-mono font-medium">{b.doc_num}</Td>
+                  <Td className="whitespace-nowrap text-muted-foreground">{b.doc_date ?? '—'}</Td>
+                  <Td className="font-medium">{b.card_name || b.card_code}</Td>
+                  <Td className="text-muted-foreground">
+                    {[b.city, b.state].filter(Boolean).join(', ') || '—'}
+                  </Td>
+                  <Td numeric>{fmtNum(b.total_litres)}</Td>
+                  <Td numeric>{fmtNum(b.total_boxes)}</Td>
+                  <Td numeric className="font-medium">
+                    {fmtNum(b.doc_total)}
+                  </Td>
                 </tr>
-              ) : bills.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
-                    No bills left to select in this window — all are already added to planning.
-                  </td>
-                </tr>
-              ) : (
-                bills.map((b) => {
-                  const checked = selected.has(b.doc_entry);
-                  return (
-                    <tr
-                      key={b.doc_entry}
-                      className={`border-b last:border-0 hover:bg-muted/40 ${checked ? 'bg-primary/5' : ''}`}
-                      onClick={() => toggle(b.doc_entry)}
-                    >
-                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() => toggle(b.doc_entry)}
-                          aria-label={`Select bill ${b.doc_num}`}
-                        />
-                      </td>
-                      <td className="p-3 font-mono font-medium">{b.doc_num}</td>
-                      <td className="p-3 text-muted-foreground">{b.doc_date ?? '—'}</td>
-                      <td className="p-3">{b.card_name || b.card_code}</td>
-                      <td className="p-3 text-muted-foreground">
-                        {[b.city, b.state].filter(Boolean).join(', ') || '—'}
-                      </td>
-                      <td className="p-3 text-right tabular-nums">{fmtNum(b.total_litres)}</td>
-                      <td className="p-3 text-right tabular-nums">{fmtNum(b.total_boxes)}</td>
-                      <td className="p-3 text-right tabular-nums">{fmtNum(b.doc_total)}</td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </TableCard>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowUpDown, Download, Droplets, FileText, RefreshCw } from 'lucide-react';
+import { ArrowUpDown, ClipboardList, Download, Droplets, FileText, RefreshCw } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -7,7 +7,7 @@ import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api';
 import { usePermission } from '@/core/auth';
 import { confirmDialog } from '@/shared/components';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { PageHeader } from '@/shared/components/page';
 import { Button, NativeSelect, SelectOption } from '@/shared/components/ui';
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
@@ -240,10 +240,12 @@ export default function DispatchPlansDashboardPage() {
   const sapApiError = isSAPError(sapError) ? sapError : null;
 
   return (
-    <div className="space-y-6 p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
         title="Dispatch Plans"
         description="SAP dispatch bills and planning handoff dates"
+        icon={ClipboardList}
+        accent="indigo"
       >
         <div className="flex items-center gap-1.5">
           <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
@@ -280,7 +282,7 @@ export default function DispatchPlansDashboardPage() {
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </DashboardHeader>
+      </PageHeader>
 
       <DispatchPlanFilters
         filters={filters}
@@ -296,7 +298,7 @@ export default function DispatchPlansDashboardPage() {
         <>
           <DispatchPlanMetaCards meta={billsQuery.data?.meta} />
           {canEdit && selectionSummary.count > 0 && (
-            <div className="flex flex-wrap items-center gap-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+            <div className="flex flex-wrap items-center gap-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm shadow-sm">
               <span className="inline-flex items-center gap-1.5 font-medium">
                 <FileText className="h-4 w-4 text-primary" />
                 {selectionSummary.count} bill{selectionSummary.count === 1 ? '' : 's'} selected

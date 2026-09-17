@@ -249,23 +249,48 @@ export const LOGISTICS_CONTROL_SECTION_DEPARTMENTS: Record<
  * .Department` names the payroll, and the two are disjoint — the same section
  * can be spelled differently in each, or exist in only one.
  *
- * Every plausible spelling is listed rather than one canonical name. The org
- * chart says *Despatch* where every route says *Dispatch*, and transport is
- * variously *Transport*, *Transportation* and *Logistics*; matching is
- * case-insensitive on the department's name or code, so a list that names both
- * spellings costs nothing and a list that names one silently returns nobody.
+ * Department CODES, not guessed names. Listing every plausible spelling was
+ * the original approach and it put wrong people on all three cards, because
+ * this directory reuses the obvious words on floors that are not these ones:
+ * `Warehouse` is the *Beverages* FG floor, `Store` is the PM store under PM
+ * Warehouse Terrarce, and neither belongs to BH-BT. Meanwhile the spellings
+ * that were guessed — *Despatch*, *Docking*, *Transportation*, *Fleet* — exist
+ * nowhere in it, so dispatch matched nobody and silently fell back to the
+ * typed figure, which is the one case that looked correct.
  *
- * A section that matches no department falls back to the head count typed on
- * the settings screen — which is the only source this board had before, and
- * still the right answer where the directory has no such department at all.
+ * Codes are unique per company and survive a rename; names are not and do not.
+ * Matching is still case-insensitive on name or code, so the lowercase stored
+ * form matches these.
+ *
+ * Each list names the department that holds the people AND the empty parent
+ * above it. The parents carry nobody today — this directory hangs its head
+ * count on the leaf — but naming them means a re-org that moves people up one
+ * level does not empty the card.
+ *
+ * This list is the FALLBACK, not the master. The head count on the board is
+ * the one typed on the settings screen; the directory answers only for a
+ * section nobody has configured yet. So a wrong entry here no longer puts
+ * somebody else's people on a card that has been filled in — but it still
+ * decides what an unconfigured board shows on its first day, which is the day
+ * nobody is watching it closely.
+ *
+ * Only JIVO_OIL has a directory at all: Mart and Beverages have no departments
+ * on the roll, so those boards read the settings screen whatever is listed here.
  */
 export const LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS: Record<
   'warehouse' | 'dispatch' | 'transport',
   readonly string[]
 > = {
-  warehouse: ['Warehouse', 'Warehouse Basement', 'Store', 'WH'],
-  dispatch: ['Dispatch', 'Despatch', 'Sales Dispatch', 'Docking', 'DISP'],
-  transport: ['Transport', 'Transportation', 'Logistics', 'Fleet', 'TRANS'],
+  // The FG basement — BH-BT, the floor this card is headed with. Note the
+  // truncated code: the column is 30 characters and the generated name ran past
+  // it, so it is `..._BASEMEN` and not `..._BASEMENT`.
+  warehouse: ['WAREHOUSE_FG_WAREHOUSE_BASEMEN', 'FG_WAREHOUSE_BASEMENT'],
+  // The directory calls dispatch *Dock*. Its two parents are the split the org
+  // chart drew across the bay and never staffed.
+  dispatch: ['DOCK', 'DISPATCHED_FRONTEND', 'DISPATCHED_BACKEND'],
+  // Transport keeps its people on a child of the same name, with Logistics the
+  // second child beside it — both under the Transport parent, so both count.
+  transport: ['TRANSPORT_TRANSPORT', 'LOGISTICS', 'TRANSPORT'],
 };
 
 /**
@@ -315,6 +340,43 @@ export const LOGISTICS_CONTROL_STALE_TIME = 20_000;
  * than this the card says so rather than quietly totalling a truncated set.
  */
 export const LOGISTICS_CONTROL_MAX_ROLLUP_ROWS = 2000;
+
+/**
+ * The window the pending-dispatch tile reads: all of it.
+ *
+ * The other control boards read one calendar month back through thirty days
+ * forward, to agree bill-for-bill with the Dispatch Plans page. This tile
+ * deliberately does not. It answers "what is dated to go and has not gone",
+ * and a bill stuck since April is the single most important row that question
+ * has — a month-wide window silently dropped 356 of them.
+ *
+ * Sent as an absurd pair rather than omitted because the endpoint requires
+ * both: `by_dispatch_date` only keys the window on the plan's own dispatch
+ * date when `date_from` AND `date_to` are present, and without them the feed
+ * falls back to windowing on the SAP invoice creation date instead — a
+ * different question with a plausible-looking answer.
+ */
+export const LOGISTICS_CONTROL_PENDING_WINDOW = {
+  date_from: '2000-01-01',
+  date_to: '2099-12-31',
+} as const;
+
+/**
+ * The booking states the pending tile asks for, one request each.
+ *
+ * NOT a cosmetic filter — it is what makes the unbounded window above work.
+ * The feed resolves its window to doc-entries ordered by dispatch date
+ * DESCENDING and slices to 2000 (a hard server cap) BEFORE SAP drops the ones
+ * already stamped as gone. Asked for all time in one call, those 2000 slots go
+ * to the newest plans — overwhelmingly dispatched ones — and the oldest
+ * genuinely-stuck bills fall off the bottom, so removing the date filter would
+ * have shown FEWER pending bills, not more.
+ *
+ * Asking per status scopes the cut to the ~400 plans that are actually open,
+ * which fits the cap many times over with every historical row intact.
+ * DISPATCHED and CANCELLED are absent because neither is waiting to leave.
+ */
+export const LOGISTICS_CONTROL_PENDING_STATUSES = ['PENDING', 'BOOKED'] as const;
 
 // ============================================================================
 // Panel hues

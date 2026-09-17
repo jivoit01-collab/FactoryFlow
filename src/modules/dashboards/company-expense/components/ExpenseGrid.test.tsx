@@ -1,12 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type {
-  ElectricityReconciliation,
-  ExpenseCell,
-  ExpenseColumn,
-  ExpenseRow,
-} from '../types';
+import type { ElectricityReconciliation, ExpenseCell, ExpenseColumn, ExpenseRow } from '../types';
 import { ExpenseGrid } from './ExpenseGrid';
 
 const COLUMNS: ExpenseColumn[] = [
@@ -27,7 +22,9 @@ function cell(partial: Partial<ExpenseCell> = {}): ExpenseCell {
   };
 }
 
-function row(partial: Partial<ExpenseRow> & Pick<ExpenseRow, 'key' | 'label' | 'kind'>): ExpenseRow {
+function row(
+  partial: Partial<ExpenseRow> & Pick<ExpenseRow, 'key' | 'label' | 'kind'>,
+): ExpenseRow {
   return {
     cells: {
       SALARY: cell(),
@@ -53,7 +50,9 @@ describe('ExpenseGrid', () => {
 
     expect(screen.getByText('Electricity')).toBeInTheDocument();
     // The source line is what stops "Salary" being read as a payroll figure.
-    expect(screen.getByText('Daily Electricity register · mains counted in Shared')).toBeInTheDocument();
+    expect(
+      screen.getByText('Daily Electricity register · mains counted in Shared'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Gate headcount by department × contract rate')).toBeInTheDocument();
   });
 
@@ -246,7 +245,7 @@ describe('ExpenseGrid', () => {
     );
 
     // Under 2% reads as "ties" rather than a number nobody can act on.
-    expect(screen.getByText(/sub-meters ₹6.62 L vs KWH ₹6.63 L · ties/)).toBeInTheDocument();
+    expect(screen.getByText(/sub-meters ₹6,61,708 vs KWH ₹6,63,180 · ties/)).toBeInTheDocument();
   });
 
   it('names the shortfall when the sub-meters do not add up', () => {
