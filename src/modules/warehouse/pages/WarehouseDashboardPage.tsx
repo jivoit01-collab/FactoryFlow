@@ -15,7 +15,6 @@ import {
   ScanLine,
   Truck,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 import {
   AR_INVOICE_PERMISSIONS,
@@ -28,6 +27,7 @@ import {
 } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ModuleTile, ModuleTileGrid, tileAccentByIndex } from '@/shared/components/navigation';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
 /**
@@ -152,7 +152,6 @@ const WAREHOUSE_SECTIONS = [
 ] as const;
 
 export default function WarehouseDashboardPage() {
-  const navigate = useNavigate();
   const { hasAnyPermission, permissionsLoaded } = usePermission();
 
   if (!permissionsLoaded) return null;
@@ -176,28 +175,21 @@ export default function WarehouseDashboardPage() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {sections.map((section) => {
+        <ModuleTileGrid>
+          {sections.map((section, index) => {
             const Icon = section.icon;
+
             return (
-              <Card
+              <ModuleTile
                 key={section.path}
-                className="cursor-pointer transition-colors hover:bg-accent"
-                onClick={() => navigate(section.path)}
-              >
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{section.title}</CardTitle>
-                    <CardDescription>{section.description}</CardDescription>
-                  </div>
-                </CardHeader>
-              </Card>
+                title={section.title}
+                icon={<Icon className="h-5 w-5" />}
+                accent={tileAccentByIndex(index)}
+                to={section.path}
+              />
             );
           })}
-        </div>
+        </ModuleTileGrid>
       )}
     </div>
   );

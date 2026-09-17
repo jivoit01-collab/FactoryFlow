@@ -6,7 +6,7 @@
 // component library; this file re-exports it for local imports and adds the
 // module-directory metadata (accents + blurbs keyed by nav path).
 
-import { type Accent, type AccentKey,ACCENTS } from '@/shared/components/dashboard';
+import { type Accent, type AccentKey, ACCENTS } from '@/shared/components/dashboard';
 
 export { type Accent, type AccentKey, ACCENTS, formatCount } from '@/shared/components/dashboard';
 
@@ -60,11 +60,15 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/vehicle-management': 'Vehicles, drivers, transporters & dispatch linking',
 };
 
+/** Resolve the accent key for a nav path. */
+export function accentKeyForPath(path: string): AccentKey {
+  const root = `/${path.split('/')[1] ?? ''}`;
+  return MODULE_ACCENT_KEYS[path] ?? MODULE_ACCENT_KEYS[root] ?? 'slate';
+}
+
 /** Resolve the accent bundle for a nav path. */
 export function accentForPath(path: string): Accent {
-  const root = `/${path.split('/')[1] ?? ''}`;
-  const key = MODULE_ACCENT_KEYS[path] ?? MODULE_ACCENT_KEYS[root] ?? 'slate';
-  return ACCENTS[key];
+  return ACCENTS[accentKeyForPath(path)];
 }
 
 /** Resolve a short description for a nav path, falling back to a generic line. */

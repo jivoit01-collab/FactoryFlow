@@ -25,6 +25,7 @@ import { COMPANY_CODE_LIST, COMPANY_LABELS, type CompanyCode } from '@/config/co
 import { ETP_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ModuleTile, ModuleTileGrid, tileAccentByIndex } from '@/shared/components/navigation';
 import {
   Badge,
   Card,
@@ -271,24 +272,21 @@ export default function EtpHubPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleRegisters.map((register) => {
+      <ModuleTileGrid>
+        {visibleRegisters.map((register, index) => {
           const Icon = register.icon;
+
           return (
-            <Link key={register.path} to={register.path}>
-              <Card className="h-full transition-colors hover:bg-muted/40">
-                <CardContent className="flex items-start gap-3 p-4">
-                  <Icon className="mt-0.5 h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium">{register.title}</div>
-                    <div className="text-sm text-muted-foreground">{register.description}</div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <ModuleTile
+              key={register.path}
+              title={register.title}
+              icon={<Icon className="h-5 w-5" />}
+              accent={tileAccentByIndex(index)}
+              to={register.path}
+            />
           );
         })}
-      </div>
+      </ModuleTileGrid>
     </div>
   );
 }

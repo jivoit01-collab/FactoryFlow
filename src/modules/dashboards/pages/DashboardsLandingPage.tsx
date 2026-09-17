@@ -6,12 +6,17 @@ import {
   CupSoda,
   DoorOpen,
   Factory,
+  FileBarChart,
+  GalleryHorizontalEnd,
+  Gauge,
   IndianRupee,
   LayoutDashboard,
   MonitorPlay,
   Navigation,
   Package,
+  PackageCheck,
   PackageX,
+  ShieldCheck,
   Table2,
   Target,
   Truck,
@@ -19,17 +24,20 @@ import {
   Wind,
 } from 'lucide-react';
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import {
   BLOWING_PERMISSIONS,
   DASHBOARDS_PERMISSIONS,
   DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
+  SAP_REPORTS_ACCESS,
 } from '@/config/permissions';
 import { useAuth, usePermission } from '@/core/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import type { AccentKey } from '@/shared/components/dashboard/accents';
+import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/components/navigation';
 
+import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
+import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
@@ -38,142 +46,135 @@ import {
   logisticsControlScopeForCompany,
 } from '../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
+import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from '../production-control/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
 interface DashboardsModuleCard {
   title: string;
-  description: string;
   icon: React.ReactNode;
   route: string;
-  color: string;
+  accent: AccentKey;
   permissions: readonly string[];
 }
 
+// Kept in the same order as the Dashboards sidebar, and holding the same
+// entries: a board that is reachable from the menu but missing here reads as
+// one this login cannot open at all.
 const dashboardsModules: DashboardsModuleCard[] = [
   {
+    title: 'Board Carousel',
+    icon: <GalleryHorizontalEnd className="h-5 w-5" />,
+    route: '/dashboards/carousel',
+    accent: 'blue',
+    permissions: BOARD_CAROUSEL_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Admin Control',
+    icon: <ShieldCheck className="h-5 w-5" />,
+    route: '/dashboards/admin-control',
+    accent: 'rose',
+    permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+  },
+  {
     title: 'Plant Control',
-    description:
-      'The whole plant on one wall screen: bought, stored, made and shifted, in that order',
     icon: <MonitorPlay className="h-5 w-5" />,
     route: '/dashboards/plant-board',
-    color: 'text-cyan-600',
+    accent: 'cyan',
     permissions: PLANT_BOARD_VIEW_PERMISSIONS,
   },
   {
+    title: 'Production Control',
+    icon: <Gauge className="h-5 w-5" />,
+    route: '/dashboards/production-control',
+    accent: 'emerald',
+    permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+  },
+  {
     title: 'Warehouse Control',
-    description: "Non-moving stock, pallet space, today's bills and vehicle linking on one board",
     icon: <LayoutDashboard className="h-5 w-5" />,
     route: '/dashboards/warehouse-control',
-    color: 'text-indigo-600',
+    accent: 'indigo',
     permissions: WAREHOUSE_CONTROL_VIEW_PERMISSIONS,
   },
   {
     // The dispatch office wall. One card, because it is one page: which plant
-    // it reports on follows the company switcher, so the title and blurb below
-    // are rewritten for a beverages viewer rather than a second card being
-    // listed that would send an Oil user to an empty-looking Beverages board.
+    // it reports on follows the company switcher, so the icon below is swapped
+    // for a beverages viewer rather than a second card being listed that would
+    // send an Oil user to an empty-looking Beverages board.
     title: 'Logistics Control',
-    description: "BH-BT's stock, the Oil and Mart dispatch, and the freight bills behind it",
     icon: <Truck className="h-5 w-5" />,
     route: '/dashboards/logistics-control',
-    color: 'text-violet-600',
+    accent: 'violet',
     permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   },
   {
+    title: 'Gate',
+    icon: <DoorOpen className="h-5 w-5" />,
+    route: '/dashboards/gate',
+    accent: 'blue',
+    permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Production',
+    icon: <Factory className="h-5 w-5" />,
+    route: '/dashboards/production',
+    accent: 'emerald',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    title: 'Blowing',
+    icon: <Wind className="h-5 w-5" />,
+    route: '/dashboards/blowing',
+    accent: 'cyan',
+    permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+  },
+  {
     title: 'Stock Benchmark',
-    description: 'Monitor on-hand inventory against benchmark levels across warehouses',
     icon: <Package className="h-5 w-5" />,
     route: '/dashboards/stock-levels',
-    color: 'text-emerald-600',
+    accent: 'teal',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
   },
   {
     title: 'Non-Moving RM & PM',
-    description: 'Identify dead raw and packing material by movement age, warehouse and value',
     icon: <PackageX className="h-5 w-5" />,
     route: '/dashboards/non-moving',
-    color: 'text-amber-600',
+    accent: 'amber',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
   },
   {
     title: 'Sales Plan vs Req.',
-    description: 'Compare monthly forecast demand against stock, minimum stock, and open POs',
     icon: <Target className="h-5 w-5" />,
     route: '/dashboards/sales-planning-requirement',
-    color: 'text-rose-600',
+    accent: 'rose',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
   },
   {
     title: 'Packing Material',
-    description:
-      'Packaging stock store by store, what production issued, and what shipped out inside bills',
     icon: <Boxes className="h-5 w-5" />,
     route: '/dashboards/packing-material',
-    color: 'text-cyan-600',
+    accent: 'blue',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
   },
   {
     title: 'PM Requirement',
-    description:
-      "The month's plan through its BOMs, less what the floor took and the stores hold, against open POs",
     icon: <ClipboardList className="h-5 w-5" />,
     route: '/dashboards/pm-requirement',
-    color: 'text-teal-600',
+    accent: 'emerald',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
   },
   {
     title: 'Production Movement',
-    description: 'Track inventory entries moving in and out of production warehouses',
     icon: <ArrowLeftRight className="h-5 w-5" />,
     route: '/dashboards/production-movement',
-    color: 'text-sky-600',
+    accent: 'sky',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
   },
   {
-    title: 'Factory Expense',
-    description:
-      "Today's factory cost on one wall screen - labour at the gate, salary, electricity and maintenance",
-    icon: <IndianRupee className="h-5 w-5" />,
-    route: '/dashboards/factory-expense',
-    color: 'text-teal-600',
-    permissions: [
-      DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
-      DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
-    ],
-  },
-  {
-    title: 'Company Expense',
-    description:
-      'The same spend as a grid - salary, electricity, maintenance and labour, company by company',
-    icon: <Table2 className="h-5 w-5" />,
-    route: '/dashboards/company-expense',
-    color: 'text-amber-600',
-    permissions: COMPANY_EXPENSE_VIEW_PERMISSIONS,
-  },
-  {
-    title: 'Customer Returns',
-    description: 'How much came back, in what state, which SKUs come back most, and who sent them',
-    icon: <Undo2 className="h-5 w-5" />,
-    route: '/dashboards/customer-returns',
-    color: 'text-sky-600',
-    permissions: CUSTOMER_RETURNS_VIEW_PERMISSIONS,
-  },
-  {
-    title: 'Budget Approvals',
-    description:
-      'Factory budget draft approvals from SAP - pending, approved and rejected expense drafts',
-    icon: <ClipboardCheck className="h-5 w-5" />,
-    route: '/dashboards/budget-approvals',
-    color: 'text-violet-600',
-    permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
-  },
-  {
     title: 'Dispatch',
-    description:
-      "Today's dispatch on one wall screen - trucks out, value shipped, vendors, company split & vehicles in/out",
     icon: <MonitorPlay className="h-5 w-5" />,
     route: '/dashboards/dispatch',
-    color: 'text-emerald-600',
+    accent: 'teal',
     permissions: [
       DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
       DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
@@ -182,57 +183,76 @@ const dashboardsModules: DashboardsModuleCard[] = [
   },
   {
     title: 'Dispatch Pipeline',
-    description: 'Track which vehicle is at which stage from vehicle linking to sales dispatch out',
     icon: <Truck className="h-5 w-5" />,
     route: '/dashboards/dispatch-pipeline',
-    color: 'text-teal-600',
+    accent: 'emerald',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE],
   },
   {
+    title: 'Dispatch Fulfilment',
+    icon: <PackageCheck className="h-5 w-5" />,
+    route: '/dashboards/dispatch-fulfilment',
+    accent: 'violet',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS],
+  },
+  {
     title: 'Dispatch Tracking',
-    description: 'Post-dispatch truck status — in transit, delivered, late/overdue & on-time KPIs',
     icon: <Navigation className="h-5 w-5" />,
     route: '/dashboards/dispatch-tracking',
-    color: 'text-indigo-600',
+    accent: 'indigo',
     permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
   },
   {
-    title: 'Gate',
-    description: 'All gate activity — vehicles in/out, visitors, receipts, dispatch & returns',
-    icon: <DoorOpen className="h-5 w-5" />,
-    route: '/dashboards/gate',
-    color: 'text-blue-600',
-    permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+    title: 'Factory Expense',
+    icon: <IndianRupee className="h-5 w-5" />,
+    route: '/dashboards/factory-expense',
+    accent: 'blue',
+    permissions: [
+      DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
+      DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
+    ],
   },
   {
-    title: 'Production',
-    description:
-      "Today's production on one wall screen - what came off the lines, App-vs-SAP, material, wastage & cost",
-    icon: <Factory className="h-5 w-5" />,
-    route: '/dashboards/production',
-    color: 'text-emerald-600',
-    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+    title: 'Company Expense',
+    icon: <Table2 className="h-5 w-5" />,
+    route: '/dashboards/company-expense',
+    accent: 'amber',
+    permissions: COMPANY_EXPENSE_VIEW_PERMISSIONS,
   },
   {
-    title: 'Blowing',
-    description: 'Preform to bottle — output, rejection, cost per bottle, make-vs-buy & standards',
-    icon: <Wind className="h-5 w-5" />,
-    route: '/dashboards/blowing',
-    color: 'text-cyan-600',
-    permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+    title: 'Customer Returns',
+    icon: <Undo2 className="h-5 w-5" />,
+    route: '/dashboards/customer-returns',
+    accent: 'teal',
+    permissions: CUSTOMER_RETURNS_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Budget Approvals',
+    icon: <ClipboardCheck className="h-5 w-5" />,
+    route: '/dashboards/budget-approvals',
+    accent: 'violet',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_BUDGET_APPROVALS],
+  },
+  {
+    // Routes for this one are owned by the sap-reports module; the sidebar
+    // entry lives in the dashboards config, so the card does too.
+    title: 'SAP Reports',
+    icon: <FileBarChart className="h-5 w-5" />,
+    route: '/dashboards/sap-reports',
+    accent: 'blue',
+    permissions: SAP_REPORTS_ACCESS,
   },
 ];
 
 export default function DashboardsLandingPage() {
-  const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const { currentCompany } = useAuth();
 
   /**
-   * Logistics Control is one route showing two plants, so its card says which
-   * one this viewer will actually get. Named off the scope rather than a second
-   * company check here: the scope is what the board itself reads, so the card
-   * cannot drift from the page it opens.
+   * Logistics Control is one route showing two plants, so its tile is marked
+   * with the one this viewer will actually get. Named off the scope rather than
+   * a second company check here: the scope is what the board itself reads, so
+   * the tile cannot drift from the page it opens.
    */
   const logisticsScope = logisticsControlScopeForCompany(currentCompany?.company_code);
 
@@ -242,12 +262,7 @@ export default function DashboardsLandingPage() {
         .filter((mod) => hasAnyPermission(mod.permissions))
         .map((mod) =>
           mod.route === '/dashboards/logistics-control' && logisticsScope.key === 'beverages'
-            ? {
-                ...mod,
-                description:
-                  "BH-FG's stock, the beverages plant's dispatch, and the freight bills behind it",
-                icon: <CupSoda className="h-5 w-5" />,
-              }
+            ? { ...mod, icon: <CupSoda className="h-5 w-5" /> }
             : mod,
         ),
     [hasAnyPermission, logisticsScope.key],
@@ -256,29 +271,24 @@ export default function DashboardsLandingPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboards</h2>
-        <p className="text-muted-foreground">Analytics and planning views across systems</p>
+        <h2 className="text-3xl font-semibold tracking-tight">Dashboards</h2>
+        <p className="mt-1.5 text-muted-foreground">Analytics and planning views across systems</p>
       </div>
 
-      <div>
-        <h3 className="mb-4 text-lg font-semibold">Available Dashboards</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="space-y-3.5">
+        <ModuleTileGroupLabel label="Available dashboards" count={visibleModules.length} />
+
+        <ModuleTileGrid>
           {visibleModules.map((module) => (
-            <Card
+            <ModuleTile
               key={module.route}
-              className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md"
-              onClick={() => navigate(module.route)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{module.title}</CardTitle>
-                <div className={module.color}>{module.icon}</div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">{module.description}</p>
-              </CardContent>
-            </Card>
+              title={module.title}
+              icon={module.icon}
+              accent={module.accent}
+              to={module.route}
+            />
           ))}
-        </div>
+        </ModuleTileGrid>
       </div>
     </div>
   );
