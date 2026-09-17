@@ -146,6 +146,13 @@ export interface ReviseArtworkPayload {
   cdr_file?: File | null;
 }
 
+/**
+ * Sent explicitly because the shared client defaults to `application/json`,
+ * and axios turns a FormData body into JSON when that default stands — the
+ * files vanish and the server rejects the request as the wrong media type.
+ */
+const MULTIPART = { headers: { 'Content-Type': 'multipart/form-data' } };
+
 function toFormData(payload: Record<string, unknown>): FormData {
   const form = new FormData();
   for (const [key, value] of Object.entries(payload)) {
@@ -193,6 +200,7 @@ export const artworkApi = {
     const { data } = await apiClient.post<ArtworkRecord>(
       API_ENDPOINTS.ARTWORK.RECORDS,
       toFormData(payload as unknown as Record<string, unknown>),
+      MULTIPART,
     );
     return data;
   },
@@ -202,6 +210,7 @@ export const artworkApi = {
     const { data } = await apiClient.patch<ArtworkRecord>(
       API_ENDPOINTS.ARTWORK.RECORD_DETAIL(recordId),
       toFormData(payload as unknown as Record<string, unknown>),
+      MULTIPART,
     );
     return data;
   },

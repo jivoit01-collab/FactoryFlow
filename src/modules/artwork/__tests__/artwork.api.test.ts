@@ -59,6 +59,12 @@ describe('artworkApi', () => {
     expect(form.get('barcode')).toBe('8906104570123');
     expect(form.get('pdf_file')).toBeInstanceOf(File);
     expect(form.get('cdr_file')).toBeInstanceOf(File);
+    // Without this header the shared client's JSON default stands, axios
+    // rewrites the form as JSON, and the upload is rejected as the wrong
+    // media type.
+    expect(post.mock.calls[0][2]).toEqual({
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   });
 
   it('omits a field left out of a revision rather than sending it empty', async () => {
@@ -73,6 +79,9 @@ describe('artworkApi', () => {
     expect(form.get('document_number')).toBeNull();
     expect(form.get('pdf_file')).toBeNull();
     expect(form.get('cdr_file')).toBeNull();
+    expect(patch.mock.calls[0][2]).toEqual({
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   });
 
   it('drops a null file so clearing the input does not clear the stored file', async () => {
