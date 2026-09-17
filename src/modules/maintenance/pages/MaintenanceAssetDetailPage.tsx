@@ -80,17 +80,17 @@ function AssetPhotoList({
   isLoading: boolean;
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading photos...</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">Loading photos...</div>;
   }
 
   if (photos.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No photos uploaded yet.</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">No photos uploaded yet.</div>;
   }
 
   return (
     <div className="space-y-2">
       {photos.map((photo) => (
-        <div key={photo.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+        <div key={photo.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-card p-3 transition-colors hover:border-sky-200 hover:bg-sky-50/50 dark:border-border dark:hover:border-sky-500/30 dark:hover:bg-muted/30">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">
               {photo.caption || fileNameFromUrl(photo.photo)}
@@ -122,17 +122,17 @@ function AssetDocumentList({
   options?: MaintenanceOptions;
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading documents...</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">Loading documents...</div>;
   }
 
   if (documents.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No documents uploaded yet.</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">No documents uploaded yet.</div>;
   }
 
   return (
     <div className="space-y-2">
       {documents.map((document) => (
-        <div key={document.id} className="flex items-center justify-between gap-3 rounded-md border p-3">
+        <div key={document.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-card p-3 transition-colors hover:border-sky-200 hover:bg-sky-50/50 dark:border-border dark:hover:border-sky-500/30 dark:hover:bg-muted/30">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{document.title}</div>
             <div className="mt-1 text-xs text-muted-foreground">
@@ -162,17 +162,17 @@ function AssetWorkOrderHistory({
   onOpen: (workOrderId: number) => void;
 }) {
   if (isLoading) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading work history...</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">Loading work history...</div>;
   }
 
   if (workOrders.length === 0) {
-    return <div className="rounded-md border p-4 text-sm text-muted-foreground">No work orders linked yet.</div>;
+    return <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">No work orders linked yet.</div>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
       <table className="w-full min-w-[760px] text-sm">
-        <thead className="border-b bg-muted/40">
+        <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
           <tr>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
@@ -185,7 +185,7 @@ function AssetWorkOrderHistory({
           {workOrders.map((workOrder) => (
             <tr
               key={workOrder.id}
-              className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+              className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
               onClick={() => onOpen(workOrder.id)}
             >
               <td className="px-4 py-3">
@@ -351,17 +351,17 @@ export default function MaintenanceAssetDetailPage() {
       </DashboardHeader>
 
       {assetQuery.isLoading ? (
-        <div className="flex h-48 items-center justify-center rounded-md border text-sm text-muted-foreground">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
           Loading asset...
         </div>
       ) : !asset ? (
-        <div className="flex h-48 items-center justify-center rounded-md border text-sm text-muted-foreground">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
           Asset not found.
         </div>
       ) : (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            <Card className="md:col-span-2">
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border md:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Asset</CardTitle>
               </CardHeader>
@@ -386,7 +386,7 @@ export default function MaintenanceAssetDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg">Photos</CardTitle>
                 <Button
@@ -407,7 +407,7 @@ export default function MaintenanceAssetDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg">Documents</CardTitle>
                 <Button
@@ -430,7 +430,7 @@ export default function MaintenanceAssetDetailPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="text-lg">Asset Photos</CardTitle>
@@ -450,7 +450,7 @@ export default function MaintenanceAssetDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="text-lg">Asset Documents</CardTitle>
@@ -475,7 +475,7 @@ export default function MaintenanceAssetDetailPage() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Machine Details</CardTitle>
             </CardHeader>
@@ -492,7 +492,7 @@ export default function MaintenanceAssetDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Work History</CardTitle>
             </CardHeader>
@@ -505,7 +505,7 @@ export default function MaintenanceAssetDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Warranty / AMC</CardTitle>
             </CardHeader>
@@ -519,7 +519,7 @@ export default function MaintenanceAssetDetailPage() {
           </Card>
 
           {asset.description && (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Description</CardTitle>
               </CardHeader>

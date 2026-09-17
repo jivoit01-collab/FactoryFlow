@@ -199,7 +199,7 @@ export function MaterialIndentQuotations({
   };
 
   return (
-    <div className="space-y-3 rounded-md border p-3">
+    <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium">Company Quotations</p>
@@ -220,7 +220,7 @@ export function MaterialIndentQuotations({
       </div>
 
       {indent.quotation_remarks && (
-        <p className="rounded-md border bg-amber-50/60 dark:bg-amber-500/10 p-2 text-sm">
+        <p className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
           <span className="font-medium">Note from approver: </span>
           {indent.quotation_remarks}
         </p>
@@ -436,8 +436,9 @@ function QuotationCard({
   return (
     <div
       className={cn(
-        'rounded-md border p-3',
-        isSelected && 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/10',
+        'rounded-xl border border-slate-200/80 bg-card p-3 transition-colors hover:border-sky-200 hover:shadow-sm dark:border-border dark:hover:border-sky-500/30',
+        isSelected &&
+          'border-emerald-300 bg-emerald-50/50 hover:border-emerald-300 dark:border-emerald-500/30 dark:bg-emerald-500/10',
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -480,7 +481,7 @@ function QuotationCard({
       </div>
 
       {quotation.lines.length > 0 && (
-        <div className="mt-2 overflow-x-auto rounded-md bg-muted/40">
+        <div className="mt-2 overflow-x-auto rounded-lg bg-slate-50 dark:bg-muted/40">
           <table className="w-full text-sm">
             <tbody>
               {quotation.lines.map((line) => (
@@ -517,7 +518,7 @@ function QuotationCard({
               href={attachment.file}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-muted"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-2 py-1 text-xs"
             >
               <Paperclip className="h-3 w-3" />
               {attachment.title || 'Quote file'}
@@ -774,7 +775,7 @@ function QuotationFormDialog({
             </div>
           </div>
 
-          <div className="rounded-md border">
+          <div className="rounded-xl border border-slate-200/80 dark:border-border">
             <div className="border-b bg-muted/50 p-2 text-sm font-medium">Rate per item</div>
             <div className="divide-y">
               {items.map((item) => {

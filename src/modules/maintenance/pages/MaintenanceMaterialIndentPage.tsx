@@ -120,7 +120,7 @@ function FileThumb({ file, onRemove }: { file: File; onRemove: () => void }) {
   }, [file]);
 
   return (
-    <div className="group relative h-20 w-20 overflow-hidden rounded-md border">
+    <div className="group relative h-20 w-20 overflow-hidden rounded-lg border border-slate-200 transition-shadow hover:shadow-md dark:border-border">
       <a
         href={url || undefined}
         target="_blank"
@@ -311,9 +311,9 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
                 Add item
               </Button>
             </div>
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
               <table className="w-full min-w-[820px] text-sm">
-                <thead className="border-b bg-muted/40">
+                <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                   <tr>
                     <th className="px-2 py-2 text-left font-medium text-muted-foreground">#</th>
                     <th className="px-2 py-2 text-left font-medium text-muted-foreground">
@@ -429,7 +429,7 @@ function NewIndentDialog({ onOpenChange }: { onOpenChange: (open: boolean) => vo
                 />
               ))}
               {files.length < MAX_INDENT_ATTACHMENTS && (
-                <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed text-xs text-muted-foreground hover:bg-muted/40">
+                <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 transition-colors hover:border-sky-400 hover:bg-sky-50 hover:text-sky-600 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 text-xs text-slate-500 dark:text-muted-foreground">
                   <Paperclip className="h-5 w-5" />
                   Add
                   <input
@@ -545,7 +545,7 @@ function IndentDetailDialog({
             </div>
 
             {/* Requester details — visible to store, authority and purchaser. */}
-            <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
+            <div className="grid gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 shadow-sm md:grid-cols-2 dark:border-border dark:bg-muted/20">
               <div>
                 <span className="text-muted-foreground">Purpose: </span>
                 {indent.purpose || '-'}
@@ -562,9 +562,9 @@ function IndentDetailDialog({
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
               <table className="w-full min-w-[720px] text-sm">
-                <thead className="border-b bg-muted/40">
+                <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -621,7 +621,7 @@ function IndentDetailDialog({
 
             {/* Gate-in details once the goods have arrived. */}
             {(indent.gatein_vehicle_number || indent.gate_in_by_name) && (
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
                 <span className="font-medium">Gate-in: </span>
                 {indent.gatein_vehicle_number || '—'}
                 {indent.gatein_driver_name && ` · ${indent.gatein_driver_name}`}
@@ -668,7 +668,7 @@ function IndentDetailDialog({
             )}
 
             {indent.status === 'RECEIVED' && (
-              <div className="rounded-md border bg-emerald-50/60 dark:bg-emerald-500/10 p-3">
+              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
                 <span className="font-medium">Received into Store / Spares</span>
                 {indent.received_by_name && ` by ${indent.received_by_name}`} — purchased items
                 added to stock.
@@ -677,7 +677,7 @@ function IndentDetailDialog({
 
             {/* Trail of remarks at each stage. */}
             {indent.store_remarks && (
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
                 <span className="font-medium">Store note: </span>
                 {indent.store_remarks}
                 {indent.reviewed_by_name && (
@@ -686,13 +686,13 @@ function IndentDetailDialog({
               </div>
             )}
             {indent.status === 'REJECTED' && indent.decision_remarks && (
-              <div className="rounded-md border bg-rose-50/60 dark:bg-rose-500/10 p-3">
+              <div className="rounded-xl border border-rose-200/70 bg-rose-50/60 p-3 dark:border-rose-500/30 dark:bg-rose-500/10">
                 <span className="font-medium">Rejected: </span>
                 {indent.decision_remarks}
               </div>
             )}
             {indent.status === 'PURCHASED' && (
-              <div className="rounded-md border bg-emerald-50/60 dark:bg-emerald-500/10 p-3">
+              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/60 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10">
                 <span className="font-medium">Purchased</span>
                 {indent.purchased_by_name && ` by ${indent.purchased_by_name}`}
                 {indent.purchase_remarks && ` — ${indent.purchase_remarks}`}
@@ -700,7 +700,7 @@ function IndentDetailDialog({
             )}
 
             {/* Actions */}
-            <div className="space-y-3 rounded-md border p-3">
+            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
               <p className="font-medium">Actions</p>
 
               {/* 1. Requester submits straight for purchase approval (store step skipped).
@@ -885,7 +885,7 @@ function IndentDetailDialog({
                       <SelectOption value="BILL">Bill</SelectOption>
                       <SelectOption value="OTHER">Other</SelectOption>
                     </NativeSelect>
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
                       <Upload className="h-4 w-4" />
                       Attach invoice / bill
                       <input
@@ -1129,7 +1129,7 @@ export default function MaintenanceMaterialIndentPage() {
         <SummaryCard title="To Purchase" value={toPurchase} icon={CheckCircle2} />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
           <CardDescription>Search by indent no, purpose or item; filter by status</CardDescription>
@@ -1175,9 +1175,9 @@ export default function MaintenanceMaterialIndentPage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[1060px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Indent No</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -1211,7 +1211,7 @@ export default function MaintenanceMaterialIndentPage() {
               </tr>
             ) : (
               indents.map((indent) => (
-                <tr key={indent.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={indent.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                   <td className="px-4 py-3 font-medium">{indent.indent_no}</td>
                   <td className="px-4 py-3">{indent.indent_date}</td>
                   <td className="px-4 py-3">{asLocalDate(indent.approved_at)}</td>

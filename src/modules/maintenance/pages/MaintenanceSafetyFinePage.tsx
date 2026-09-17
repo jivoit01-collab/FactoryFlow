@@ -126,7 +126,7 @@ function ViolationTypesDialog({ onOpenChange }: { onOpenChange: (open: boolean) 
             No violation types yet. Add one above.
           </p>
         ) : (
-          <ul className="divide-y rounded-md border">
+          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-card shadow-sm dark:divide-border/60 dark:border-border">
             {types.map((type) => (
               <li key={type.id} className="flex items-center justify-between px-3 py-2 text-sm">
                 <span>
@@ -346,7 +346,7 @@ function NewFineDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
               {PPE_OPTIONS.map((option) => (
                 <label
                   key={option.value}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm"
                 >
                   <Checkbox
                     checked={ppeMissing.includes(option.value)}
@@ -369,7 +369,7 @@ function NewFineDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
 
           <div className="space-y-2">
             <Label>Evidence photos</Label>
-            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
               <ImagePlus className="h-4 w-4" />
               Add photos
               <input
@@ -463,7 +463,7 @@ function FineDetailDialog({
               <span className="text-muted-foreground">{fine.violation_type_name}</span>
             </div>
 
-            <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
+            <div className="grid gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 shadow-sm md:grid-cols-2 dark:border-border dark:bg-muted/20">
               <div>
                 <span className="text-muted-foreground">Worker: </span>
                 {fine.offender_name} {fine.employee_code && `(${fine.employee_code})`}
@@ -510,7 +510,7 @@ function FineDetailDialog({
             </div>
 
             {fine.description && (
-              <div className="rounded-md border bg-muted/30 p-3">{fine.description}</div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">{fine.description}</div>
             )}
 
             <div className="space-y-2">
@@ -540,7 +540,7 @@ function FineDetailDialog({
                   </div>
                 ))}
                 {canManage && fine.status === 'PENDING' && (
-                  <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-muted/40">
+                  <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 transition-colors hover:border-sky-400 hover:bg-sky-50 hover:text-sky-600 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 text-slate-500 dark:text-muted-foreground">
                     <ImagePlus className="h-5 w-5" />
                     <input
                       type="file"
@@ -554,7 +554,7 @@ function FineDetailDialog({
             </div>
 
             {fine.status !== 'PENDING' && (
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
                 <span className="font-medium">
                   {fine.status === 'PAID' ? 'Paid' : 'Waived'} by {fine.settled_by_name || '-'}
                 </span>
@@ -563,7 +563,7 @@ function FineDetailDialog({
             )}
 
             {canManage && fine.status === 'PENDING' && (
-              <div className="space-y-2 rounded-md border p-3">
+              <div className="space-y-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                 <Label htmlFor="sf_remarks">Settlement remarks (required to waive)</Label>
                 <Textarea
                   id="sf_remarks"
@@ -677,7 +677,7 @@ export default function MaintenanceSafetyFinePage() {
         <SummaryCard title="Collected" value={money(String(collected))} icon={CheckCircle2} />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
           <CardDescription>Search by worker, fine no or location; filter by status and type</CardDescription>
@@ -735,9 +735,9 @@ export default function MaintenanceSafetyFinePage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[960px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Fine No</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Worker</th>
@@ -764,7 +764,7 @@ export default function MaintenanceSafetyFinePage() {
               </tr>
             ) : (
               fines.map((fine) => (
-                <tr key={fine.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={fine.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                   <td className="px-4 py-3 font-medium">{fine.fine_no}</td>
                   <td className="px-4 py-3">
                     {fine.offender_name}

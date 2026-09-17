@@ -160,7 +160,7 @@ export default function MaintenanceAutomationPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="space-y-6">
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <QrCode className="h-5 w-5" />
@@ -184,13 +184,13 @@ export default function MaintenanceAutomationPage() {
               </div>
 
               {scanQuery.isError && (
-                <div className="rounded-md border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-400">
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
                   No matching maintenance asset or spare found.
                 </div>
               )}
 
               {lookup?.type === 'asset' && lookup.asset && (
-                <div className="rounded-md border p-4">
+                <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-border dark:bg-muted/20">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="text-sm text-muted-foreground">Asset</div>
@@ -221,7 +221,7 @@ export default function MaintenanceAutomationPage() {
               )}
 
               {lookup?.type === 'spare' && lookup.spare && (
-                <div className="rounded-md border p-4">
+                <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 dark:border-border dark:bg-muted/20">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="text-sm text-muted-foreground">Spare</div>
@@ -251,7 +251,7 @@ export default function MaintenanceAutomationPage() {
           </Card>
 
           {lookup?.type === 'asset' && lookup.asset && (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <ClipboardPlus className="h-5 w-5" />
@@ -344,7 +344,7 @@ export default function MaintenanceAutomationPage() {
           )}
 
           {lookup?.type === 'spare' && stockQuery.data && (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Spare Availability</CardTitle>
               </CardHeader>
@@ -375,9 +375,9 @@ export default function MaintenanceAutomationPage() {
                     </div>
                   </div>
                 </div>
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                   <table className="w-full min-w-[760px] text-sm">
-                    <thead className="border-b bg-muted/40">
+                    <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                       <tr>
                         <th className="px-4 py-3 text-left">Warehouse</th>
                         <th className="px-4 py-3 text-right">On Hand</th>
@@ -415,16 +415,16 @@ export default function MaintenanceAutomationPage() {
           )}
         </div>
 
-        <Card>
+        <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
           <CardHeader>
             <CardTitle className="text-lg">Alerts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {alertsQuery.data?.alerts.length === 0 && (
-              <div className="rounded-md border p-4 text-sm text-muted-foreground">No alerts.</div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">No alerts.</div>
             )}
             {alertsQuery.data?.alerts.slice(0, 12).map((alert) => (
-              <div key={`${alert.type}-${alert.reference_id}`} className="rounded-md border p-3">
+              <div key={`${alert.type}-${alert.reference_id}`} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="font-medium">{alert.title}</div>

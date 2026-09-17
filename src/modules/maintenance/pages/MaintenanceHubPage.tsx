@@ -160,7 +160,7 @@ export default function MaintenanceHubPage() {
       <DashboardHeader title="Maintenance" description="Choose a section to open" />
 
       {visible.length === 0 ? (
-        <Card>
+        <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             You don’t have access to any Maintenance sections.
           </CardContent>

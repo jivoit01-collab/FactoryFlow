@@ -253,7 +253,7 @@ function NewIssueDialog({
               </Button>
             </div>
             {rows.map((row, index) => (
-              <div key={index} className="rounded-md border p-3">
+              <div key={index} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1 xl:col-span-2">
                     <Label className="text-xs">Fire store item (optional)</Label>
@@ -427,7 +427,7 @@ function IssueDetailDialog({
             </div>
 
             {/* Everything captured on the issue form, in the order it was filled. */}
-            <dl className="grid gap-4 rounded-md border p-4 sm:grid-cols-2 lg:grid-cols-3">
+            <dl className="grid gap-4 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3 dark:border-border dark:bg-muted/20">
               <DetailField label="Issued to" value={issue.issued_to_name} />
               <DetailField label="Employee code" value={issue.employee_code} />
               <DetailField label="Department" value={issue.department} />
@@ -462,9 +462,9 @@ function IssueDetailDialog({
               />
             </dl>
 
-            <div className="overflow-x-auto rounded-md border">
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
               <table className="w-full min-w-[720px] text-sm">
-                <thead className="border-b bg-muted/40">
+                <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Item</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -647,7 +647,7 @@ export default function MaintenanceFireIssuePage() {
         <SummaryCard title="Returned" value={returned} icon={CheckCircle2} />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
           <CardDescription>Search by person, employee code, department or item</CardDescription>
@@ -706,9 +706,9 @@ export default function MaintenanceFireIssuePage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[960px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Issued To</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Department</th>
@@ -739,7 +739,7 @@ export default function MaintenanceFireIssuePage() {
                 // the same dialog, they just say so out loud.
                 <tr
                   key={issue.id}
-                  className="cursor-pointer border-b last:border-b-0 hover:bg-muted/40"
+                  className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                   onClick={() => setDetailId(issue.id)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {

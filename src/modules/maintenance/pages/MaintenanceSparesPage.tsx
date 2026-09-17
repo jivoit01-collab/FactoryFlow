@@ -501,7 +501,7 @@ function SpareActionDialog({
           <DialogTitle>{actionLabel}</DialogTitle>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-sm dark:border-border dark:bg-muted/25">
             <div className="font-medium">{request?.spare_part_number}</div>
             <div className="text-muted-foreground">{request?.spare_name}</div>
             <div className="mt-2 text-xs text-muted-foreground">{maxLabel}</div>
@@ -583,7 +583,7 @@ function SpareAdjustDialog({
           <DialogTitle>Adjust Stock</DialogTitle>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-sm dark:border-border dark:bg-muted/25">
             <div className="font-medium">{spare?.part_number}</div>
             <div className="text-muted-foreground">{spare?.name}</div>
             <div className="mt-2 text-xs text-muted-foreground">
@@ -803,7 +803,7 @@ export default function MaintenanceSparesPage() {
             {pendingReceipts.map((indent) => (
               <div
                 key={indent.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-2 text-sm dark:border-border dark:bg-muted/20"
               >
                 <div>
                   <span className="font-medium">{indent.indent_no}</span>
@@ -864,7 +864,7 @@ export default function MaintenanceSparesPage() {
         </TabsList>
 
         <TabsContent value="spares" className="space-y-4">
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Spare Filters</CardTitle>
               <CardDescription>Search by part number, SAP item, name, or bin location</CardDescription>
@@ -944,9 +944,9 @@ export default function MaintenanceSparesPage() {
             </CardContent>
           </Card>
 
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
             <table className="w-full min-w-[1120px] text-sm">
-              <thead className="border-b bg-muted/40">
+              <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Spare</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Category</th>
@@ -975,7 +975,7 @@ export default function MaintenanceSparesPage() {
                   </tr>
                 ) : (
                   spares.map((spare) => (
-                    <tr key={spare.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                    <tr key={spare.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                       <td className="px-4 py-3">
                         <div className="font-semibold">{spare.part_number}</div>
                         <div className="text-xs text-muted-foreground">{spare.name}</div>
@@ -1047,7 +1047,7 @@ export default function MaintenanceSparesPage() {
         </TabsContent>
 
         <TabsContent value="requests" className="space-y-4">
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Request Filters</CardTitle>
               <CardDescription>Track spare requests raised from maintenance work orders</CardDescription>
@@ -1087,9 +1087,9 @@ export default function MaintenanceSparesPage() {
             </CardContent>
           </Card>
 
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
             <table className="w-full min-w-[1220px] text-sm">
-              <thead className="border-b bg-muted/40">
+              <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Spare</th>
@@ -1126,7 +1126,7 @@ export default function MaintenanceSparesPage() {
                     const canUseIssued =
                       canManageSpare && decimalNumber(request.available_to_consume_qty) > 0;
                     return (
-                      <tr key={request.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                      <tr key={request.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                         <td className="px-4 py-3">
                           <div className="font-semibold">{request.work_order_no}</div>
                           <div className="max-w-[260px] truncate text-xs text-muted-foreground">

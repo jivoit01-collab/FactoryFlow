@@ -194,7 +194,7 @@ export default function MaintenanceWorkOrdersPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="grid gap-3 rounded-md border p-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 shadow-sm md:grid-cols-2 xl:grid-cols-6 dark:border-border dark:bg-muted/20">
         <div className="space-y-2 xl:col-span-2">
           <Label htmlFor="work_search">Search</Label>
           <div className="relative">
@@ -308,9 +308,9 @@ export default function MaintenanceWorkOrdersPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[1300px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
@@ -340,7 +340,7 @@ export default function MaintenanceWorkOrdersPage() {
               </tr>
             ) : (
               workOrders.map((workOrder) => (
-                <tr key={workOrder.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={workOrder.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                   <td className="px-4 py-3">
                     <button
                       type="button"

@@ -145,14 +145,14 @@ interface WorkOrderTableProps {
 
 function WorkOrderTable({ title, workOrders, emptyText, onOpen }: WorkOrderTableProps) {
   return (
-    <Card>
+    <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
       <CardHeader>
         <CardTitle className="text-lg">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
           <table className="w-full min-w-[860px] text-sm">
-            <thead className="border-b bg-muted/40">
+            <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
@@ -173,7 +173,7 @@ function WorkOrderTable({ title, workOrders, emptyText, onOpen }: WorkOrderTable
                 workOrders.map((workOrder) => (
                   <tr
                     key={workOrder.id}
-                    className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                    className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                     onClick={() => onOpen(workOrder.id)}
                   >
                     <td className="px-4 py-3">
@@ -251,7 +251,7 @@ export default function MaintenanceDashboardPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="grid gap-3 rounded-md border p-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 shadow-sm md:grid-cols-2 xl:grid-cols-6 dark:border-border dark:bg-muted/20">
         <div className="space-y-2">
           <Label htmlFor="dashboard_department">Department</Label>
           <NativeSelect
@@ -338,7 +338,7 @@ export default function MaintenanceDashboardPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex h-48 items-center justify-center rounded-md border text-sm text-muted-foreground">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
           Loading maintenance data...
         </div>
       ) : (
@@ -457,14 +457,14 @@ export default function MaintenanceDashboardPage() {
               onOpen={openWorkOrder}
             />
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Critical Spare Alerts</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                   <table className="w-full min-w-[620px] text-sm">
-                    <thead className="border-b bg-muted/40">
+                    <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                       <tr>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Spare</th>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Stock</th>
@@ -483,7 +483,7 @@ export default function MaintenanceDashboardPage() {
                         data?.spare_risk.items.map((spare) => (
                           <tr
                             key={spare.id}
-                            className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                            className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                             onClick={() => navigate('/maintenance/spares')}
                           >
                             <td className="px-4 py-3">
@@ -509,15 +509,15 @@ export default function MaintenanceDashboardPage() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Vendor / AMC Due</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 lg:grid-cols-2">
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                   <table className="w-full min-w-[620px] text-sm">
-                    <thead className="border-b bg-muted/40">
+                    <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                       <tr>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Visit</th>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
@@ -536,7 +536,7 @@ export default function MaintenanceDashboardPage() {
                         data?.vendor_amc.visits.map((visit) => (
                           <tr
                             key={visit.id}
-                            className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                            className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                             onClick={() => openWorkOrder(visit.work_order)}
                           >
                             <td className="px-4 py-3">
@@ -558,9 +558,9 @@ export default function MaintenanceDashboardPage() {
                   </table>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                   <table className="w-full min-w-[560px] text-sm">
-                    <thead className="border-b bg-muted/40">
+                    <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                       <tr>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
                         <th className="px-4 py-3 text-left font-medium text-muted-foreground">Vendor</th>
@@ -579,7 +579,7 @@ export default function MaintenanceDashboardPage() {
                         data?.vendor_amc.amc_assets.map((asset) => (
                           <tr
                             key={asset.id}
-                            className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                            className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                             onClick={() => navigate(`/maintenance/assets/${asset.id}`)}
                           >
                             <td className="px-4 py-3">
@@ -601,14 +601,14 @@ export default function MaintenanceDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Recent Work Orders</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                 <table className="w-full min-w-[860px] text-sm">
-                  <thead className="border-b bg-muted/40">
+                  <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                     <tr>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">Work</th>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
@@ -628,7 +628,7 @@ export default function MaintenanceDashboardPage() {
                       data?.recent_work_orders.map((workOrder) => (
                         <tr
                           key={workOrder.id}
-                          className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                          className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                           onClick={() => openWorkOrder(workOrder.id)}
                         >
                           <td className="px-4 py-3">
@@ -659,14 +659,14 @@ export default function MaintenanceDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Recent Assets</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-md border">
+              <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
                 <table className="w-full min-w-[760px] text-sm">
-                  <thead className="border-b bg-muted/40">
+                  <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                     <tr>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">Asset</th>
                       <th className="px-4 py-3 text-left font-medium text-muted-foreground">Location</th>
@@ -685,7 +685,7 @@ export default function MaintenanceDashboardPage() {
                       data?.recent_assets.map((asset) => (
                         <tr
                           key={asset.id}
-                          className="cursor-pointer border-b last:border-b-0 hover:bg-muted/50"
+                          className="cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                           onClick={() => navigate(`/maintenance/assets/${asset.id}`)}
                         >
                           <td className="px-4 py-3">

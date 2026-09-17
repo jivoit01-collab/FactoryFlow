@@ -493,7 +493,7 @@ export function ReturnableForm({
 
         <div className="space-y-3">
           {fields.map((field, index) => (
-            <div key={field.id} className="rounded-md border bg-background p-4">
+            <div key={field.id} className="rounded-xl border border-slate-200/80 bg-background p-4 shadow-sm dark:border-border">
               <div className="mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Package className="h-3.5 w-3.5" />

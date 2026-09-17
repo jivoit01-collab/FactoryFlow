@@ -152,7 +152,7 @@ export default function MaintenanceDailyWastagePage() {
       </DashboardHeader>
 
       {/* Filters */}
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardContent className="flex flex-wrap items-end gap-4 p-4">
           <div>
             <Label htmlFor="waste-date-from">From</Label>
@@ -185,7 +185,7 @@ export default function MaintenanceDailyWastagePage() {
       </Card>
 
       {/* Log table */}
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading wastage log...</div>
@@ -211,7 +211,7 @@ export default function MaintenanceDailyWastagePage() {
                 </thead>
                 <tbody>
                   {logs.map((log) => (
-                    <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr key={log.id} className="border-b border-slate-100 last:border-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                       <td className="whitespace-nowrap px-3 py-2">{log.date}</td>
                       <td className="px-3 py-2">{log.material_name}</td>
                       <td className="px-3 py-2 text-right font-medium">{log.qty}</td>
@@ -326,7 +326,7 @@ export default function MaintenanceDailyWastagePage() {
                 <img
                   src={photoPreview}
                   alt="Wastage proof"
-                  className="mt-2 max-h-40 rounded-md border object-contain"
+                  className="mt-2 max-h-40 rounded-lg border border-slate-200 object-contain dark:border-border"
                 />
               )}
             </div>

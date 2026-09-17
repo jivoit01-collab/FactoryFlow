@@ -40,7 +40,7 @@ export function ReturnablePassDetails({ pass }: ReturnablePassDetailsProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-base">Gate Pass Details</CardTitle>
         </CardHeader>
@@ -97,7 +97,7 @@ export function ReturnablePassDetails({ pass }: ReturnablePassDetailsProps) {
       </Card>
 
       {pass.attachments.length > 0 ? (
-        <Card>
+        <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Paperclip className="h-4 w-4" />
@@ -116,7 +116,7 @@ export function ReturnablePassDetails({ pass }: ReturnablePassDetailsProps) {
                     href={attachment.file}
                     target="_blank"
                     rel="noreferrer"
-                    className="group block overflow-hidden rounded-md border"
+                    className="group block overflow-hidden rounded-lg border border-slate-200 transition-shadow hover:shadow-md dark:border-border"
                     title={fileName(attachment)}
                   >
                     <div className="aspect-square overflow-hidden bg-muted">

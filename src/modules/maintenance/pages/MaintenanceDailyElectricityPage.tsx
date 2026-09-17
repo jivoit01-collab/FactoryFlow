@@ -376,7 +376,7 @@ export default function MaintenanceDailyElectricityPage() {
         </thead>
         <tbody>
           {rows.map((reading) => (
-            <tr key={reading.id} className="border-b last:border-0 hover:bg-muted/30">
+            <tr key={reading.id} className="border-b border-slate-100 last:border-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
               <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
               <td className="px-3 py-2">
                 {reading.meter_name}
@@ -471,7 +471,7 @@ export default function MaintenanceDailyElectricityPage() {
       </DashboardHeader>
 
       {/* Filters */}
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardContent className="flex flex-wrap items-end gap-4 p-4">
           <div>
             <Label htmlFor="elec-date-from">From</Label>
@@ -524,7 +524,7 @@ export default function MaintenanceDailyElectricityPage() {
           <div className="ml-auto flex flex-wrap items-center gap-6 text-sm">
             {mainReadings.length > 0 && (
               <div
-                className="rounded-md border border-dashed px-3 py-1"
+                className="rounded-lg border border-dashed border-slate-300 bg-slate-50/40 px-3 py-1 dark:border-border dark:bg-muted/10"
                 title="Incoming supply — read on its own, not added to the total"
               >
                 <span className="text-muted-foreground">Total Supply: </span>
@@ -555,7 +555,7 @@ export default function MaintenanceDailyElectricityPage() {
 
       {/* Main meters — the incoming supply, reported apart from the total */}
       {mainReadings.length > 0 && (
-        <Card>
+        <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
           <CardContent className="p-0">
             <div className="border-b bg-muted/30 px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -586,8 +586,10 @@ export default function MaintenanceDailyElectricityPage() {
                 {supplyGroups.map((group) => (
                   <div
                     key={`${group.source}-${group.counts}`}
-                    className={`rounded-md border px-3 py-1 text-sm ${
-                      group.counts ? 'bg-background' : 'border-dashed text-muted-foreground'
+                    className={`rounded-lg border px-3 py-1 text-sm ${
+                      group.counts
+                        ? 'border-slate-200/80 bg-background dark:border-border'
+                        : 'border-dashed border-slate-300 bg-slate-50/40 text-muted-foreground dark:border-border dark:bg-muted/10'
                     }`}
                     title={
                       group.counts
@@ -620,7 +622,7 @@ export default function MaintenanceDailyElectricityPage() {
       )}
 
       {/* Readings table — sub-meters, the ones that add up */}
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-8 text-center text-muted-foreground">Loading readings...</div>
@@ -800,7 +802,7 @@ export default function MaintenanceDailyElectricityPage() {
             <DialogTitle>Electricity Meters</DialogTitle>
           </DialogHeader>
           <DialogBody className="space-y-4">
-            <div className="max-h-64 overflow-y-auto rounded-md border">
+            <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
               {metersLoading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
               ) : meters.length === 0 ? (
@@ -888,7 +890,7 @@ export default function MaintenanceDailyElectricityPage() {
               )}
             </div>
 
-            <div className="rounded-md border p-3">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
               <p className="mb-3 text-sm font-medium">
                 {editingMeter ? `Edit: ${editingMeter.name}` : 'Add Meter'}
               </p>

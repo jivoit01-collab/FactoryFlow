@@ -248,7 +248,7 @@ function NewReportDialog({
             </div>
             <div className="space-y-3">
               {rows.map((row, index) => (
-                <div key={index} className="rounded-md border p-3">
+                <div key={index} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <div className="space-y-1">
                       <Label className="text-xs">Equipment name</Label>
@@ -320,7 +320,7 @@ function NewReportDialog({
                     <div className="space-y-1 xl:col-span-4">
                       <Label className="text-xs">Photos</Label>
                       <div className="flex items-center gap-2">
-                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
                           <ImagePlus className="h-4 w-4" />
                           Add photos
                           <input
@@ -379,7 +379,7 @@ function NewReportDialog({
 
           <div className="space-y-2">
             <Label>Attachments (optional)</Label>
-            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
               <Upload className="h-4 w-4" />
               Add files
               <input
@@ -509,17 +509,17 @@ function ReportDetailDialog({
             </div>
 
             {report.summary_remarks && (
-              <div className="rounded-md border bg-muted/30 p-3 text-sm">{report.summary_remarks}</div>
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-sm dark:border-border dark:bg-muted/25">{report.summary_remarks}</div>
             )}
 
             <div className="space-y-3">
               {report.items.length === 0 ? (
-                <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-center text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
                   No equipment lines on this report.
                 </div>
               ) : (
                 report.items.map((item) => (
-                  <div key={item.id} className="rounded-md border p-3">
+                  <div key={item.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <div className="font-medium">
@@ -568,7 +568,7 @@ function ReportDetailDialog({
                         </div>
                       ))}
                       {canManage && (
-                        <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded border border-dashed text-muted-foreground hover:bg-muted/40">
+                        <label className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 transition-colors hover:border-sky-400 hover:bg-sky-50 hover:text-sky-600 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 text-slate-500 dark:text-muted-foreground">
                           <ImagePlus className="h-5 w-5" />
                           <input
                             type="file"
@@ -653,7 +653,7 @@ function ReportDetailDialog({
                     placeholder="Title (optional)"
                     className="max-w-xs"
                   />
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
                     <Upload className="h-4 w-4" />
                     Upload file
                     <input type="file" className="hidden" onChange={handleAttachmentUpload} />
@@ -663,14 +663,14 @@ function ReportDetailDialog({
             </div>
 
             {report.status === 'REVIEWED' && report.review_remarks && (
-              <div className="rounded-md border bg-emerald-50/50 dark:bg-emerald-500/10 p-3 text-sm">
+              <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/50 p-3 text-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
                 <span className="font-medium">Review note: </span>
                 {report.review_remarks}
               </div>
             )}
 
             {canReview && report.status === 'SUBMITTED' && (
-              <div className="space-y-2 rounded-md border p-3">
+              <div className="space-y-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                 <Label htmlFor="review_remarks">Review note (optional)</Label>
                 <Textarea
                   id="review_remarks"
@@ -759,7 +759,7 @@ export default function MaintenanceFireReportsPage() {
         <SummaryCard title="Needs Attention" value={flagged} icon={AlertTriangle} />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
           <CardDescription>Search by area or equipment, filter by shift, status and date</CardDescription>
@@ -832,9 +832,9 @@ export default function MaintenanceFireReportsPage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[960px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Shift</th>
@@ -861,7 +861,7 @@ export default function MaintenanceFireReportsPage() {
               </tr>
             ) : (
               reports.map((report) => (
-                <tr key={report.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={report.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                   <td className="px-4 py-3">{report.report_date}</td>
                   <td className="px-4 py-3">{report.shift_display}</td>
                   <td className="px-4 py-3">{report.area || '-'}</td>

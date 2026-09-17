@@ -194,7 +194,7 @@ function WorkOrderLogList({
   return (
     <ol className="space-y-3">
       {logs.map((log) => (
-        <li key={log.id} className="rounded-md border p-3">
+        <li key={log.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-semibold">{log.action_label}</span>
             <span className="text-xs text-muted-foreground">{log.created_at}</span>
@@ -225,12 +225,12 @@ function WorkOrderPhotoList({
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">Loading photos...</div>
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">Loading photos...</div>
     );
   }
   if (photos.length === 0) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         No work photos uploaded yet.
       </div>
     );
@@ -241,7 +241,7 @@ function WorkOrderPhotoList({
       {photos.map((photo) => (
         <div
           key={photo.id}
-          className="flex items-center justify-between gap-3 rounded-md border p-3"
+          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-card p-3 transition-colors hover:border-sky-200 hover:bg-sky-50/50 dark:border-border dark:hover:border-sky-500/30 dark:hover:bg-muted/30"
         >
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">
@@ -281,14 +281,14 @@ function WorkOrderAttachmentList({
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         Loading attachments...
       </div>
     );
   }
   if (attachments.length === 0) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         No attachments on this work order yet.
       </div>
     );
@@ -299,7 +299,7 @@ function WorkOrderAttachmentList({
       {attachments.map((attachment) => (
         <div
           key={attachment.id}
-          className="flex items-center justify-between gap-3 rounded-md border p-3"
+          className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-card p-3 transition-colors hover:border-sky-200 hover:bg-sky-50/50 dark:border-border dark:hover:border-sky-500/30 dark:hover:bg-muted/30"
         >
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">
@@ -405,7 +405,7 @@ function WorkOrderSpareRequestDialog({
             </NativeSelect>
           </div>
           {selectedSpare && (
-            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-sm dark:border-border dark:bg-muted/25">
               <div className="font-medium">
                 Stock: {formatQty(selectedSpare.current_stock)} {selectedSpare.uom}
               </div>
@@ -470,23 +470,23 @@ function WorkOrderSpareRequestList({
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         Loading spare requests...
       </div>
     );
   }
   if (requests.length === 0) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         No spares requested yet.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
       <table className="w-full min-w-[760px] text-sm">
-        <thead className="border-b bg-muted/40">
+        <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
           <tr>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Spare</th>
             <th className="px-4 py-3 text-right font-medium text-muted-foreground">Requested</th>
@@ -726,14 +726,14 @@ function VendorVisitList({
 }) {
   if (isLoading) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         Loading vendor visits...
       </div>
     );
   }
   if (visits.length === 0) {
     return (
-      <div className="rounded-md border p-4 text-sm text-muted-foreground">
+      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
         No vendor visits planned.
       </div>
     );
@@ -742,7 +742,7 @@ function VendorVisitList({
   return (
     <div className="space-y-2">
       {visits.map((visit) => (
-        <div key={visit.id} className="rounded-md border p-3">
+        <div key={visit.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
@@ -1112,17 +1112,17 @@ export default function MaintenanceWorkOrderDetailPage() {
       </DashboardHeader>
 
       {workOrderQuery.isLoading ? (
-        <div className="flex h-48 items-center justify-center rounded-md border text-sm text-muted-foreground">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
           Loading work order...
         </div>
       ) : !workOrder ? (
-        <div className="flex h-48 items-center justify-center rounded-md border text-sm text-muted-foreground">
+        <div className="flex h-48 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 text-sm text-muted-foreground dark:border-border dark:bg-muted/20">
           Work order not found.
         </div>
       ) : (
         <>
           <div className="grid gap-4 lg:grid-cols-4">
-            <Card className="lg:col-span-2">
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Work Summary</CardTitle>
               </CardHeader>
@@ -1156,7 +1156,7 @@ export default function MaintenanceWorkOrderDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Assignment</CardTitle>
               </CardHeader>
@@ -1170,7 +1170,7 @@ export default function MaintenanceWorkOrderDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Time</CardTitle>
               </CardHeader>
@@ -1185,7 +1185,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Lifecycle</CardTitle>
             </CardHeader>
@@ -1198,7 +1198,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Hand-off Trail</CardTitle>
               <CardDescription>
@@ -1210,7 +1210,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg">Spare Usage</CardTitle>
@@ -1244,7 +1244,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg">Vendor Visits</CardTitle>
@@ -1271,7 +1271,7 @@ export default function MaintenanceWorkOrderDetailPage() {
           </Card>
 
           {workOrder.production_run && (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg">Production Breakdown</CardTitle>
                 <Button
@@ -1296,7 +1296,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </Card>
           )}
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-lg">Problem and Resolution</CardTitle>
             </CardHeader>
@@ -1314,7 +1314,7 @@ export default function MaintenanceWorkOrderDetailPage() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div>
                   <CardTitle className="text-lg">Work Photos</CardTitle>
@@ -1340,7 +1340,7 @@ export default function MaintenanceWorkOrderDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-lg">Verification</CardTitle>
                 <CardDescription>
@@ -1395,7 +1395,7 @@ export default function MaintenanceWorkOrderDetailPage() {
             </Card>
           </div>
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">

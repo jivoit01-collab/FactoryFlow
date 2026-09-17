@@ -246,7 +246,7 @@ export default function MaintenanceReturnableDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-base">Gate Pass Details</CardTitle>
             </CardHeader>
@@ -299,7 +299,7 @@ export default function MaintenanceReturnableDetailPage() {
           </Card>
 
           {pass.gate_out_at ? (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-base">Gate Out</CardTitle>
               </CardHeader>
@@ -330,7 +330,7 @@ export default function MaintenanceReturnableDetailPage() {
             </Card>
           ) : null}
 
-          <Card>
+          <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
             <CardHeader>
               <CardTitle className="text-base">
                 {pass.is_returnable
@@ -341,7 +341,7 @@ export default function MaintenanceReturnableDetailPage() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px] text-sm">
-                  <thead className="bg-muted/40">
+                  <thead className="bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:bg-muted/30">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">#</th>
                       <th className="px-3 py-2 text-left font-medium">Item</th>
@@ -411,7 +411,7 @@ export default function MaintenanceReturnableDetailPage() {
           </Card>
 
           {pass.attachments.length > 0 ? (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-base">
                   Attachments ({pass.attachments.length})
@@ -441,7 +441,7 @@ export default function MaintenanceReturnableDetailPage() {
           ) : null}
 
           {pass.return_events.length > 0 ? (
-            <Card>
+            <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
               <CardHeader>
                 <CardTitle className="text-base">
                   Return Trips ({pass.return_events.length})
@@ -449,7 +449,7 @@ export default function MaintenanceReturnableDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {pass.return_events.map((event) => (
-                  <div key={event.id} className="rounded-md border p-3">
+                  <div key={event.id} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">{event.event_ref}</p>
@@ -493,7 +493,7 @@ export default function MaintenanceReturnableDetailPage() {
 
         {/* Audit trail. The backend has no simple-history, so the module keeps
             its own append-only log of every action taken on the pass. */}
-        <Card className="lg:col-span-1">
+        <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <History className="h-4 w-4" />

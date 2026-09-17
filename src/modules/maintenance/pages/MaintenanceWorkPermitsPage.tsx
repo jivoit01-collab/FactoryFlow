@@ -97,7 +97,7 @@ function CheckboxGrid({
       {options.map((option) => (
         <label
           key={option.value}
-          className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
+          className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm"
         >
           <Checkbox
             checked={selected.includes(option.value)}
@@ -375,7 +375,7 @@ function NewWorkPermitDialog({
                 ['Process', processIso, setProcessIso, processDetail, setProcessDetail],
               ] as const
             ).map(([label, required, setRequired, detail, setDetail]) => (
-              <div key={label} className="rounded-md border p-3">
+              <div key={label} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                   <Checkbox checked={required} onCheckedChange={(v) => setRequired(v)} />
                   {label} isolation required
@@ -467,7 +467,7 @@ function NewWorkPermitDialog({
           {/* Attachments */}
           <section className="space-y-2">
             <Label>Attachments (method statement, drawings)</Label>
-            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/40">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2 text-sm">
               <Upload className="h-4 w-4" />
               Add files
               <input
@@ -603,7 +603,7 @@ function WorkPermitDetailDialog({
 
             <BadgeList codes={permit.permit_types} label={getPermitTypeLabel} />
 
-            <div className="grid gap-3 rounded-md border p-3 md:grid-cols-2">
+            <div className="grid gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 shadow-sm md:grid-cols-2 dark:border-border dark:bg-muted/20">
               <div>
                 <span className="text-muted-foreground">Issuing dept: </span>
                 {permit.issuing_dept || '-'}
@@ -637,7 +637,7 @@ function WorkPermitDetailDialog({
             </div>
 
             {permit.control_measures && (
-              <div className="rounded-md border bg-muted/30 p-3">
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
                 <span className="font-medium">Control measures: </span>
                 {permit.control_measures}
               </div>
@@ -651,7 +651,7 @@ function WorkPermitDetailDialog({
                   ['Process', permit.process_isolation_required, permit.process_isolation_detail],
                 ] as const
               ).map(([label, required, detail]) => (
-                <div key={label} className="rounded-md border p-2">
+                <div key={label} className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-2 dark:border-border dark:bg-muted/20">
                   <p className="font-medium">{label} isolation</p>
                   <p className="text-xs text-muted-foreground">
                     {required ? detail || 'Required' : 'Not required'}
@@ -676,7 +676,7 @@ function WorkPermitDetailDialog({
               {permit.workers.length === 0 ? (
                 <span className="text-xs text-muted-foreground">None recorded.</span>
               ) : (
-                <ul className="divide-y rounded-md border">
+                <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-card shadow-sm dark:divide-border/60 dark:border-border">
                   {permit.workers.map((worker) => (
                     <li key={worker.id} className="flex justify-between px-3 py-2">
                       <span>{worker.name}</span>
@@ -693,7 +693,7 @@ function WorkPermitDetailDialog({
               {permit.approvals.length === 0 ? (
                 <span className="text-xs text-muted-foreground">No sign-offs yet.</span>
               ) : (
-                <ul className="divide-y rounded-md border">
+                <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-card shadow-sm dark:divide-border/60 dark:border-border">
                   {permit.approvals.map((approval) => (
                     <li key={approval.id} className="flex justify-between px-3 py-2">
                       <span>
@@ -750,7 +750,7 @@ function WorkPermitDetailDialog({
                     placeholder="Title (optional)"
                     className="max-w-xs"
                   />
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 hover:bg-muted/40">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-card transition-colors hover:border-sky-300 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:hover:border-sky-500/40 dark:hover:bg-muted/40 dark:hover:text-sky-300 px-3 py-2">
                     <Upload className="h-4 w-4" />
                     Upload file
                     <input type="file" className="hidden" onChange={handleAttachmentUpload} />
@@ -760,7 +760,7 @@ function WorkPermitDetailDialog({
             </div>
 
             {permit.status === 'EXPIRED' && (
-              <div className="rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-red-700 dark:text-red-400">
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
                 This permit expired
                 {permit.expired_at ? ` on ${new Date(permit.expired_at).toLocaleString()}` : ''}
                 {' '}before the work was completed. Renew it to continue the job.
@@ -768,7 +768,7 @@ function WorkPermitDetailDialog({
             )}
 
             {/* Workflow actions */}
-            <div className="space-y-3 rounded-md border p-3">
+            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 dark:border-border dark:bg-muted/20">
               <p className="font-medium">Actions</p>
 
               {/* 1. Maintenance submits the draft to the Fire Department Head */}
@@ -981,7 +981,7 @@ export default function MaintenanceWorkPermitsPage() {
         <SummaryCard title="Closed" value={closed} icon={CheckCircle2} />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
           <CardDescription>Search by job, filter by status, type and date</CardDescription>
@@ -1044,9 +1044,9 @@ export default function MaintenanceWorkPermitsPage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[960px] text-sm">
-          <thead className="border-b bg-muted/40">
+          <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
             <tr>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Serial</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
@@ -1073,7 +1073,7 @@ export default function MaintenanceWorkPermitsPage() {
               </tr>
             ) : (
               permits.map((permit) => (
-                <tr key={permit.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                <tr key={permit.id} className="border-b border-slate-100 last:border-b-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                   <td className="px-4 py-3 font-medium">{permit.serial_no || '-'}</td>
                   <td className="px-4 py-3">
                     {permit.valid_date}

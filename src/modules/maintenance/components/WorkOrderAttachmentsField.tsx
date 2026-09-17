@@ -96,7 +96,7 @@ export function WorkOrderAttachmentsField({
       </div>
 
       {value.length === 0 ? (
-        <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/40 p-4 text-center text-sm text-muted-foreground dark:border-border dark:bg-muted/10">
           No files attached yet — add a photo of the fault, a quote or a drawing.
         </p>
       ) : (
@@ -104,7 +104,7 @@ export function WorkOrderAttachmentsField({
           {value.map((item, index) => (
             <li
               key={`${item.file.name}-${index}`}
-              className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-end"
+              className="flex flex-col gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 shadow-sm sm:flex-row sm:items-end dark:border-border dark:bg-muted/20"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{item.file.name}</p>

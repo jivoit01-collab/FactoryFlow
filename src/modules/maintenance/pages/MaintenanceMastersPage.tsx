@@ -43,7 +43,7 @@ function MasterTable<TItem extends { id: number; name: string; description: stri
   canAdd: boolean;
 }) {
   return (
-    <Card>
+    <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Icon className="h-5 w-5 text-primary" />
@@ -55,9 +55,9 @@ function MasterTable<TItem extends { id: number; name: string; description: stri
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
           <table className="w-full min-w-[620px] text-sm">
-            <thead className="border-b bg-muted/40">
+            <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
                 {columns.map((column) => (

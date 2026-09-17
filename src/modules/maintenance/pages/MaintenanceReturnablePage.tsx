@@ -154,7 +154,7 @@ export default function MaintenanceReturnablePage() {
         />
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -223,9 +223,9 @@ export default function MaintenanceReturnablePage() {
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
         <table className="w-full min-w-[1260px] text-sm">
-          <thead className="bg-muted/40">
+          <thead className="bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:bg-muted/30">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Pass No</th>
               <th className="px-3 py-2 text-left font-medium">Type</th>
@@ -257,7 +257,7 @@ export default function MaintenanceReturnablePage() {
               passes.map((pass) => (
                 <tr
                   key={pass.id}
-                  className="cursor-pointer border-t hover:bg-muted/30"
+                  className="cursor-pointer border-t border-slate-100 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40"
                   onClick={() => navigate(`/maintenance/returnable/${pass.id}`)}
                 >
                   <td className="px-3 py-2 font-medium">{pass.pass_no}</td>

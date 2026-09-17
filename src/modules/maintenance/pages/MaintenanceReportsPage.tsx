@@ -174,7 +174,7 @@ export default function MaintenanceReportsPage() {
         }
       />
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Filter className="h-5 w-5" />
@@ -331,7 +331,7 @@ export default function MaintenanceReportsPage() {
         ))}
       </div>
 
-      <Card>
+      <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
         <CardHeader>
           <CardTitle className="flex items-center justify-between gap-3 text-lg">
             <span>{reportQuery.data?.title ?? 'Report Rows'}</span>
@@ -341,9 +341,9 @@ export default function MaintenanceReportsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-md border">
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-card shadow-sm dark:border-border">
             <table className="w-full min-w-[980px] text-sm">
-              <thead className="border-b bg-muted/40">
+              <thead className="border-b border-slate-200/80 bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:border-border dark:bg-muted/30">
                 <tr>
                   {columns.length === 0 ? (
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">Result</th>
