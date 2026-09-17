@@ -194,6 +194,20 @@ export default function BOMRequestDetailPage() {
   };
 
   const pendingApprovalLines = detail?.lines.map((line) => getApproval(line)) ?? [];
+  // Name the register the figures come from. The approval is checked against
+  // the same one, so an approver who reads a number here can trust it will be
+  // accepted — a SAP figure shown against an RM gate used to offer quantities
+  // the approval then refused.
+  const stockSources = new Set(
+    (detail?.lines ?? []).map((line) => line.stock_source).filter(Boolean),
+  );
+  const stockSourceLabel =
+    stockSources.size === 1
+      ? stockSources.has('RM_REGISTER')
+        ? 'Raw Material register'
+        : 'SAP stock'
+      : null;
+
   const hasApprovedLine = pendingApprovalLines.some((line) =>
     line.status === 'APPROVED' && line.approved_qty > 0
   );
@@ -319,7 +333,14 @@ export default function BOMRequestDetailPage() {
                 <tr className="border-b text-left">
                   <th className="py-2 px-2">Material</th>
                   <th className="py-2 px-2 text-right">Required</th>
-                  <th className="py-2 px-2 text-right">In Stock</th>
+                  <th className="py-2 px-2 text-right">
+                    In Stock
+                    {stockSourceLabel && (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {stockSourceLabel}
+                      </span>
+                    )}
+                  </th>
                   {isPending ? (
                     <>
                       <th className="py-2 px-2">Approve Qty</th>
