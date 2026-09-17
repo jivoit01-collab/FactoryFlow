@@ -22,14 +22,14 @@ import { formatDateTimeShort, formatNumber, getErrorMessage } from '@/shared/uti
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
 const STATE_LABEL: Record<EntryApprovalStatus, string> = {
-  UNSENT: 'Not sent',
+  NOT_REQUIRED: 'Receipt',
   PENDING: 'Awaiting approval',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
 };
 
 const STATE_TONE: Record<EntryApprovalStatus, string> = {
-  UNSENT: 'bg-muted text-muted-foreground',
+  NOT_REQUIRED: 'bg-muted text-muted-foreground',
   PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
   APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
   REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
@@ -140,9 +140,6 @@ export default function CashApprovalsPage() {
           >
             <SelectOption value="PENDING">
               Awaiting approval{counts ? ` (${counts.PENDING})` : ''}
-            </SelectOption>
-            <SelectOption value="UNSENT">
-              Not sent{counts ? ` (${counts.UNSENT})` : ''}
             </SelectOption>
             <SelectOption value="APPROVED">
               Approved{counts ? ` (${counts.APPROVED})` : ''}

@@ -57,7 +57,6 @@ export {
   useRejectCashBunch,
   useResendCashBunch,
   useRetireCashBranch,
-  useSendEntriesForApproval,
   useSendForApproval,
   useUpdateCashBranch,
   useUpdateCashEntry,

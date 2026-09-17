@@ -3,7 +3,13 @@ import { apiClient } from '@/core/api';
 
 export type CashDirection = 'IN' | 'OUT';
 export type BunchStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type EntryApprovalStatus = 'UNSENT' | BunchStatus;
+/**
+ * Where an entry has got to with its approver.
+ *
+ * There is deliberately no "not sent": a payment is waiting from the moment
+ * it is recorded, and a receipt never enters a queue at all.
+ */
+export type EntryApprovalStatus = 'NOT_REQUIRED' | BunchStatus;
 
 /** The bunch an entry is in, as the register row needs to describe it. */
 export interface CashBunchSummary {
@@ -274,8 +280,6 @@ export interface RecordEntryPayload {
   gl_account_name?: string;
   item?: string;
   detail: string;
-  /** Sent the moment it is saved, rather than found again on the register. */
-  send_for_approval?: boolean;
 }
 
 export type UpdateEntryPayload = Partial<RecordEntryPayload>;
@@ -309,14 +313,6 @@ export interface BranchPayload {
 
 export const cashBookApi = {
   // --- approval, which belongs to the entry ---------------------------
-  async sendForApproval(entryIds: number[]): Promise<CashEntry[]> {
-    const { data } = await apiClient.post<CashEntry[]>(
-      API_ENDPOINTS.CASH_BOOK.ENTRIES_SEND,
-      { entry_ids: entryIds },
-    );
-    return data;
-  },
-
   async decideEntries(
     entryIds: number[],
     approve: boolean,

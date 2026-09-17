@@ -199,10 +199,6 @@ export function useApprovalQueue(state: EntryApprovalStatus = 'PENDING') {
   });
 }
 
-export function useSendEntriesForApproval() {
-  return useCashBookMutation((entryIds: number[]) => cashBookApi.sendForApproval(entryIds));
-}
-
 export function useDecideEntries() {
   return useCashBookMutation((vars: { ids: number[]; approve: boolean; note?: string }) =>
     cashBookApi.decideEntries(vars.ids, vars.approve, vars.note ?? ''),

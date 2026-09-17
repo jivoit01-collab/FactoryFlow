@@ -4,7 +4,6 @@ import {
   Ban,
   Loader2,
   Pencil,
-  Send,
   Wallet,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -22,7 +21,6 @@ import {
   useCancelCashEntry,
   useCashBookOptions,
   useCashEntries,
-  useSendEntriesForApproval,
 } from '@/modules/accounts/api';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -32,7 +30,6 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   Input,
   Label,
   NativeSelect,
@@ -60,7 +57,7 @@ const EMPTY_RECONCILIATION: CashReconciliation = {
 
 /** Colour per approval state. Same vocabulary on the approvals screen. */
 const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
-  UNSENT: 'bg-muted text-muted-foreground',
+  NOT_REQUIRED: 'bg-muted text-muted-foreground',
   PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
   APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
   REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
@@ -98,7 +95,6 @@ export default function CashBookPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
-  const [selected, setSelected] = useState<number[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashEntry | null>(null);
   const [newDirection, setNewDirection] = useState<CashDirection>('OUT');
@@ -119,7 +115,6 @@ export default function CashBookPage() {
   const { data, isLoading } = useCashEntries(params);
   const { data: options } = useCashBookOptions();
   const cancel = useCancelCashEntry();
-  const send = useSendEntriesForApproval();
 
   const rows = useMemo(() => data?.results ?? [], [data]);
   // Always the whole book, never the filter: a reconciliation of part of a
@@ -128,28 +123,8 @@ export default function CashBookPage() {
   const settled = Number(recon.difference) === 0;
   const branches = options?.branches ?? [];
 
-  /** Only a live, unsent entry can join a bunch. */
-  const sendable = useMemo(
-    () => rows.filter((row) => row.is_active && row.approval_status === 'UNSENT'),
-    [rows],
-  );
-  // Selection is scoped to what is on screen. A selection that survived paging
-  // would let somebody send entries they never looked at.
-  const chosen = useMemo(
-    () => selected.filter((id) => sendable.some((row) => row.id === id)),
-    [selected, sendable],
-  );
-  const allChosen = sendable.length > 0 && chosen.length === sendable.length;
-
   function resetPage() {
     setPage(1);
-    setSelected([]);
-  }
-
-  function toggle(id: number) {
-    setSelected((current) =>
-      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
-    );
   }
 
   function openNew(which: CashDirection) {
@@ -177,26 +152,6 @@ export default function CashBookPage() {
       toast.success('Entry cancelled');
     } catch (err) {
       toast.error(getErrorMessage(err, 'That entry could not be cancelled.'));
-    }
-  }
-
-  async function handleSend() {
-    if (chosen.length === 0) return;
-    const ok = await confirmDialog({
-      title: `Send ${chosen.length} ${chosen.length === 1 ? 'entry' : 'entries'} for approval?`,
-      description:
-        'Each one goes up on its own and freezes until the approver decides. A rejected entry unfreezes so you can correct it and send it again.',
-      confirmLabel: 'Send',
-    });
-    if (!ok) return;
-    try {
-      await send.mutateAsync(chosen);
-      setSelected([]);
-      toast.success(
-        `${chosen.length} ${chosen.length === 1 ? 'entry' : 'entries'} sent for approval`,
-      );
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Those entries could not be sent.'));
     }
   }
 
@@ -361,10 +316,10 @@ export default function CashBookPage() {
             }}
           >
             <SelectOption value={ALL}>Any state</SelectOption>
-            <SelectOption value="UNSENT">Not sent</SelectOption>
             <SelectOption value="PENDING">Awaiting approval</SelectOption>
             <SelectOption value="APPROVED">Approved</SelectOption>
             <SelectOption value="REJECTED">Rejected</SelectOption>
+            <SelectOption value="NOT_REQUIRED">Receipts</SelectOption>
           </NativeSelect>
         </div>
         <div className="space-y-1">
@@ -391,16 +346,6 @@ export default function CashBookPage() {
           Show cancelled
         </label>
 
-        {canManage && chosen.length > 0 && (
-          <Button className="ml-auto" onClick={handleSend} disabled={send.isPending}>
-            {send.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Send {chosen.length} for approval
-          </Button>
-        )}
       </div>
 
       {isLoading ? (
@@ -424,18 +369,6 @@ export default function CashBookPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
-                  {canManage && (
-                    <th className="w-10 px-3 py-2">
-                      <Checkbox
-                        aria-label="Select every unsent entry on this page"
-                        checked={allChosen}
-                        disabled={sendable.length === 0}
-                        onCheckedChange={(checked) =>
-                          setSelected(checked === true ? sendable.map((row) => row.id) : [])
-                        }
-                      />
-                    </th>
-                  )}
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Bunch</th>
                   <th className="px-3 py-2">Branch</th>
@@ -461,17 +394,6 @@ export default function CashBookPage() {
                         cancelled ? 'text-muted-foreground line-through' : ''
                       }`}
                     >
-                      {canManage && (
-                        <td className="px-3 py-2">
-                          {row.is_active && row.approval_status === 'UNSENT' && (
-                            <Checkbox
-                              aria-label={`Select entry ${row.id}`}
-                              checked={chosen.includes(row.id)}
-                              onCheckedChange={() => toggle(row.id)}
-                            />
-                          )}
-                        </td>
-                      )}
                       <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.bunch ? row.bunch.number : '—'}
@@ -518,7 +440,7 @@ export default function CashBookPage() {
                           variant="outline"
                           className={`text-[10px] ${APPROVAL_TONE[row.approval_status]}`}
                         >
-                          {row.approval_status === 'UNSENT' ? 'Not sent' : row.bunch?.status_label}
+                          {row.approval_label}
                         </Badge>
                         {row.bunch?.decided_at && (
                           <p className="mt-1 text-[10px] text-muted-foreground">
@@ -567,10 +489,7 @@ export default function CashBookPage() {
             total={data?.count ?? 0}
             totalPages={data?.total_pages ?? 1}
             isLoading={isLoading}
-            onPageChange={(next) => {
-              setPage(next);
-              setSelected([]);
-            }}
+            onPageChange={setPage}
             onPageSizeChange={(next) => {
               setPageSize(next);
               resetPage();
