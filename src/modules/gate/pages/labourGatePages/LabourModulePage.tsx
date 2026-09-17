@@ -253,7 +253,7 @@ export default function LabourModulePage() {
         <div className="space-y-1">
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Building2 className="h-7 w-7" />
-            Labour
+            Allocate labour
           </h2>
           <p className="text-muted-foreground">
             Split each contractor’s gate labour across departments (for information). The split can’t

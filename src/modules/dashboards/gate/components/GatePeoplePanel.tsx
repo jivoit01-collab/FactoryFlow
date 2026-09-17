@@ -64,7 +64,8 @@ export function GatePeoplePanel({
 
   const personTypes = [...board.personTypes].sort((a, b) => b.inside_count - a.inside_count);
 
-  // The split is made on the Labour module and read on the gate's own board.
+  // The split is made on Organisation > Allocate labour and read on the gate's
+  // own board.
   // Send each viewer to the one they can actually open — a row that lands on an
   // access-denied screen is worse than a row that does nothing.
   const labourRoute = hasPermission(GATE_PERMISSIONS.LABOUR_GATE.ALLOCATE)

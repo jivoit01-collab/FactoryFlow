@@ -37,7 +37,6 @@ const MODULE_ACCENT_KEYS: Record<string, AccentKey> = {
   '/marketplace': 'pink',
   '/gate': 'blue',
   '/finance': 'rose',
-  '/labour': 'cyan',
   '/admin': 'slate',
   '/vehicle-management': 'indigo',
 };
@@ -55,7 +54,6 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/marketplace': 'Marketplace inward, packing, outward, returns & reconciliation',
   '/gate': 'Vehicle arrivals, gate-in variants, gatepass & person entries',
   '/finance': 'Credit notes, debit notes & AP invoice postings',
-  '/labour': 'Shift-wise labour counting, verification & gate batches',
   '/admin': 'Docking scan-skip & partial-dispatch approvals',
   '/vehicle-management': 'Vehicles, drivers, transporters & dispatch linking',
 };

@@ -16,7 +16,6 @@ import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
-import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
@@ -43,7 +42,6 @@ export const moduleRegistry: ModuleConfig[] = [
   dispatchModuleConfig,
   gateModuleConfig,
   returnsModuleConfig,
-  labourModuleConfig,
   vehicleManagementModuleConfig,
   qcModuleConfig,
   // Sits after QC: the artwork on a label is a controlled document, and QA

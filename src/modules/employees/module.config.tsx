@@ -4,7 +4,10 @@
  * The sidebar calls it "Organisation" and it opens on the department ownership
  * chart at `/organization`, which is registered by its own module, alongside
  * Request Labour (`/organization/request-labour`) -- what each department needs
- * on the next day's shifts. Everything below those two is the employee screens,
+ * on the next day's shifts -- and Allocate Labour (`/labour`) -- how the labour
+ * that turned up is split across those departments. Allocate Labour used to be
+ * a top-level module of its own; only its sidebar entry moved, so its URL is
+ * unchanged. Everything below those three is the employee screens,
  * which keep their `/employees/*` paths. The name is the only thing shared —
  * nothing was moved, so a bookmark, a deep link or a printed URL still lands
  * where it did.
@@ -31,6 +34,7 @@ import {
   ClipboardList,
   HardHat,
   Network,
+  Split,
   Table2,
   Users,
   Wallet,
@@ -46,6 +50,7 @@ import {
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
+import { ALLOCATE_LABOUR_ACCESS } from '@/modules/organization/module.config';
 
 const EmployeeDirectoryPage = lazy(() => import('./pages/EmployeeDirectoryPage'));
 const OrgChartPage = lazy(() => import('./pages/OrgChartPage'));
@@ -65,6 +70,7 @@ const ORGANISATION_ACCESS: readonly string[] = [
   ...ORG_CHART_ACCESS,
   ...EMPLOYEE_ACCESS,
   ...LABOUR_REQUEST_ACCESS,
+  ...ALLOCATE_LABOUR_ACCESS,
 ];
 
 export const employeesModuleConfig: ModuleConfig = {
@@ -139,6 +145,12 @@ export const employeesModuleConfig: ModuleConfig = {
           title: 'Request labour',
           icon: ClipboardList,
           permissions: LABOUR_REQUEST_ACCESS,
+        },
+        {
+          path: '/labour',
+          title: 'Allocate labour',
+          icon: Split,
+          permissions: ALLOCATE_LABOUR_ACCESS,
         },
         {
           path: '/employees',
