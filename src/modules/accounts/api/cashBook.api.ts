@@ -170,7 +170,17 @@ export interface CashReconciliation {
   awaiting_approval: string;
   /** The notes that should be in the box: the book's balance less advances. */
   cash_in_hand: string;
+  /** Factory cash in somebody's pocket that they have not explained yet. */
   advance_given: string;
+  /**
+   * The other direction, and not netted against the one above.
+   *
+   * Somebody paid for something themselves and said what for. The expense is
+   * in the book so the balance has dropped, but the notes never left the
+   * drawer -- so the box holds more than the book alone implies, by exactly
+   * this, until they are paid back.
+   */
+  owed_to_people: string;
   difference: string;
 }
 
