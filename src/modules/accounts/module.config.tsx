@@ -1,19 +1,21 @@
 /**
  * Accounts module — the factory's cash box.
  *
- * Five pages, following the money. **ATM** is the imprest card the cash is
+ * Six pages, following the money. **ATM** is the imprest card the cash is
  * drawn off. **Cash Book** is the register: every receipt and payment in the
  * order it was written down, with the running balance beside it, and the
- * tick-and-send that bundles vouchers for approval. **Advances** is cash out
- * with somebody who has not yet said what it went on. **Cash Approvals** is
- * where the bunches are decided on, and **Branches** configures the short list
- * every payment is filed under -- Oil, Beverage, Water, Common.
+ * tick-and-bundle that batches approved vouchers for head office. **Advances**
+ * is cash out with somebody who has not yet said what it went on. **Cash
+ * Approvals** is where each payment is agreed to, one by one. **Bunches**
+ * records the batches that were downloaded and mailed, and **Branches**
+ * configures the short list every payment is filed under -- Oil, Beverage,
+ * Water, Common.
  *
  * The sidebar hides the whole module from anyone without a `cash_book.*`
  * permission (`modulePrefix`), so the three groups the backend ships with —
  * Cash Book Viewer, Custodian and Approver — are the only way in. Approvals
- * is narrowed further: it is for the approver, and for the custodian chasing
- * or re-sending a bunch.
+ * is narrowed further: deciding is the approver's, so only they are offered
+ * it.
  */
 import {
   Building2,
@@ -21,6 +23,7 @@ import {
   CreditCard,
   HandCoins,
   IndianRupee,
+  Package,
   Wallet,
 } from 'lucide-react';
 
@@ -38,6 +41,7 @@ const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
 const CashBranchSettingsPage = lazy(() => import('./pages/CashBranchSettingsPage'));
 const AtmPage = lazy(() => import('./pages/AtmPage'));
 const AdvancesPage = lazy(() => import('./pages/AdvancesPage'));
+const BunchesPage = lazy(() => import('./pages/BunchesPage'));
 
 export const accountsModuleConfig: ModuleConfig = {
   name: 'accounts',
@@ -62,6 +66,13 @@ export const accountsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: CASH_BOOK_ACCESS,
       breadcrumb: { label: 'Advances' },
+    },
+    {
+      path: '/accounts/bunches',
+      element: <BunchesPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Bunches' },
     },
     {
       path: '/accounts/cash-approvals',
@@ -106,6 +117,12 @@ export const accountsModuleConfig: ModuleConfig = {
           path: '/accounts/advances',
           title: 'Advances',
           icon: HandCoins,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/bunches',
+          title: 'Bunches',
+          icon: Package,
           permissions: CASH_BOOK_ACCESS,
         },
         {

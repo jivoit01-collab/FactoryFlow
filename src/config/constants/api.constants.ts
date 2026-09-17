@@ -1779,11 +1779,13 @@ export const API_ENDPOINTS = {
     // DECIDE takes ?reject=true to send one back.
     ENTRIES_DECIDE: '/cash-book/entries/decide/',
     APPROVALS: '/cash-book/approvals/',
+    // A bunch is the paper batch: approved vouchers bundled, downloaded as
+    // one spreadsheet and mailed to head office.
     BUNCHES: '/cash-book/bunches/',
     BUNCH_DETAIL: (bunchId: number) => `/cash-book/bunches/${bunchId}/`,
-    BUNCH_APPROVE: (bunchId: number) => `/cash-book/bunches/${bunchId}/approve/`,
-    BUNCH_REJECT: (bunchId: number) => `/cash-book/bunches/${bunchId}/reject/`,
-    BUNCH_RESEND: (bunchId: number) => `/cash-book/bunches/${bunchId}/resend/`,
+    BUNCH_EXPORT: (bunchId: number) => `/cash-book/bunches/${bunchId}/export/`,
+    BUNCH_SENT: (bunchId: number) => `/cash-book/bunches/${bunchId}/sent/`,
+    ENTRY_BUNCH: (entryId: number) => `/cash-book/entries/${entryId}/bunch/`,
   },
 } as const;
 

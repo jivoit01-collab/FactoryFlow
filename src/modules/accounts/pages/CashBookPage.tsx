@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Ban,
   Loader2,
+  Package,
   Pencil,
   Wallet,
 } from 'lucide-react';
@@ -19,9 +20,11 @@ import type {
   EntryApprovalStatus,
 } from '@/modules/accounts/api';
 import {
+  cashBookApi,
   useCancelCashEntry,
   useCashEntries,
   useColumnValues,
+  useCreateBunch,
 } from '@/modules/accounts/api';
 import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
 import {
@@ -78,9 +81,13 @@ const APPROVAL_TONE: Record<EntryApprovalStatus, string> = {
  *   branch and each row still shows what the box held at that moment,
  *   which is the only figure that means anything.
  *
- * Vouchers leave the custodian in bunches: tick the entries, send them, and
- * they freeze until an approver decides. A rejected bunch unfreezes so the
- * entries can be corrected and sent again — that is what rejecting is for.
+ * Approval is not asked for here: a payment joins the approver's queue the
+ * moment it is recorded, and stays changeable until they decide.
+ *
+ * Bunching comes *after* that. Filter the book down to what belongs in one
+ * envelope, tick those rows, and bundle them — which builds the spreadsheet
+ * that gets mailed to head office. Only approved, not-yet-bundled vouchers can
+ * be ticked, so a batch cannot carry a payment nobody has agreed to.
  */
 export default function CashBookPage() {
   const { hasPermission } = usePermission();
@@ -96,6 +103,11 @@ export default function CashBookPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
+  // Ticked vouchers, held as whole entries rather than ids: the count and the
+  // total have to stay right after paging away from the rows they came from.
+  const [picked, setPicked] = useState<Map<number, CashEntry>>(new Map());
+  const [bundling, setBundling] = useState(false);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashEntry | null>(null);
   const [newDirection, setNewDirection] = useState<CashDirection>('OUT');
@@ -110,6 +122,7 @@ export default function CashBookPage() {
 
   const { data, isLoading } = useCashEntries(params);
   const cancel = useCancelCashEntry();
+  const createBunch = useCreateBunch();
 
   // Only the open drop-down fetches, so twelve filterable columns cost nothing
   // until one is used. Its own ticks are left out of the query, which is what
@@ -181,6 +194,83 @@ export default function CashBookPage() {
   function openEdit(entry: CashEntry) {
     setEditing(entry);
     setDialogOpen(true);
+  }
+
+  /**
+   * Whether a row may go into a batch.
+   *
+   * Approved and not already in one. A pending voucher is still an argument,
+   * and a bundled one is already in somebody's envelope — putting either into
+   * a batch would send head office paper that says nothing.
+   */
+  function canBundle(entry: CashEntry) {
+    return entry.is_active && entry.approval_status === 'APPROVED' && !entry.bunch;
+  }
+
+  const bundleable = rows.filter(canBundle);
+  const pickedTotal = [...picked.values()].reduce(
+    (sum, entry) => sum + Number(entry.amount),
+    0,
+  );
+  const allPagePicked =
+    bundleable.length > 0 && bundleable.every((entry) => picked.has(entry.id));
+
+  function togglePick(entry: CashEntry) {
+    setPicked((current) => {
+      const next = new Map(current);
+      if (next.has(entry.id)) next.delete(entry.id);
+      else next.set(entry.id, entry);
+      return next;
+    });
+  }
+
+  /** Ticks or clears this page's eligible rows, leaving other pages' alone. */
+  function togglePage() {
+    setPicked((current) => {
+      const next = new Map(current);
+      for (const entry of bundleable) {
+        if (allPagePicked) next.delete(entry.id);
+        else next.set(entry.id, entry);
+      }
+      return next;
+    });
+  }
+
+  /**
+   * Bundle what is ticked, and hand over the spreadsheet in the same breath.
+   *
+   * The download is the point of the batch — it is what gets mailed — so it is
+   * not left as a second trip to another screen. A batch whose file fails to
+   * download is still a batch: it is on record, and the Bunches page can
+   * download it again. That is why the failure is reported as what it is,
+   * rather than as the bundling having failed.
+   */
+  async function bundle() {
+    setBundling(true);
+    try {
+      const bunch = await createBunch.mutateAsync({ ids: [...picked.keys()] });
+      setPicked(new Map());
+      toast.success(
+        `Bunch ${bunch.number} made — ${bunch.entry_count} vouchers, ${money(bunch.total)}`,
+      );
+      try {
+        const blob = await cashBookApi.exportBunch(bunch.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `bunch-${bunch.number}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error(
+          `Bunch ${bunch.number} was made, but its file could not be downloaded. Download it again from the Bunches page.`,
+        );
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Those vouchers could not be bundled.'));
+    } finally {
+      setBundling(false);
+    }
   }
 
   async function handleCancel(entry: CashEntry) {
@@ -315,6 +405,28 @@ export default function CashBookPage() {
       </div>
 
 
+      {canManage && picked.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
+          <Package className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">
+            <strong className="tabular-nums">{picked.size}</strong>{' '}
+            {picked.size === 1 ? 'voucher' : 'vouchers'} ticked ·{' '}
+            <strong className="tabular-nums">{money(pickedTotal)}</strong>
+          </span>
+          <Button size="sm" onClick={bundle} disabled={bundling}>
+            {bundling ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Package className="mr-2 h-4 w-4" />
+            )}
+            Bundle and download
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setPicked(new Map())}>
+            Clear selection
+          </Button>
+        </div>
+      )}
+
       {!balanceReadsAsRunning && (
         <p className="text-xs text-muted-foreground">
           Sorted by {sort.key}. Each row still shows the balance the box held at that
@@ -344,6 +456,16 @@ export default function CashBookPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
+                  {canManage && (
+                    <th className="w-10 px-3 py-2">
+                      <Checkbox
+                        checked={allPagePicked}
+                        disabled={bundleable.length === 0}
+                        onCheckedChange={togglePage}
+                        aria-label="Tick every bundleable voucher on this page"
+                      />
+                    </th>
+                  )}
                   <ColumnFilter {...column('date', 'Date')} />
                   <ColumnFilter {...column('bunch', 'Bunch')} />
                   <ColumnFilter {...column('branch', 'Branch')} />
@@ -356,6 +478,7 @@ export default function CashBookPage() {
                   <th className="px-3 py-2 text-right">In</th>
                   <ColumnFilter {...column('balance', 'Balance', 'right')} />
                   <ColumnFilter {...column('approval', 'Approval')} />
+                  {canManage && <th className="px-3 py-2">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -369,6 +492,17 @@ export default function CashBookPage() {
                         cancelled ? 'text-muted-foreground line-through' : ''
                       }`}
                     >
+                      {canManage && (
+                        <td className="px-3 py-2">
+                          {canBundle(row) && (
+                            <Checkbox
+                              checked={picked.has(row.id)}
+                              onCheckedChange={() => togglePick(row)}
+                              aria-label={`Tick this ${money(row.amount)} voucher for bundling`}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.bunch ? row.bunch.number : '—'}
@@ -421,9 +555,9 @@ export default function CashBookPage() {
                         >
                           {row.approval_label}
                         </Badge>
-                        {row.bunch?.decided_at && (
+                        {row.approval_decided_at && (
                           <p className="mt-1 text-[10px] text-muted-foreground">
-                            {row.bunch.decided_at.slice(0, 10)}
+                            {row.approval_decided_at.slice(0, 10)}
                           </p>
                         )}
                       </td>

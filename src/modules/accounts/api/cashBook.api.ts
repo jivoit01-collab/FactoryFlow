@@ -2,23 +2,23 @@ import { API_ENDPOINTS } from '@/config/constants/api.constants';
 import { apiClient } from '@/core/api';
 
 export type CashDirection = 'IN' | 'OUT';
-export type BunchStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 /**
  * Where an entry has got to with its approver.
  *
  * There is deliberately no "not sent": a payment is waiting from the moment
  * it is recorded, and a receipt never enters a queue at all.
  */
-export type EntryApprovalStatus = 'NOT_REQUIRED' | BunchStatus;
+export type EntryApprovalStatus =
+  | 'NOT_REQUIRED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED';
 
 /** The bunch an entry is in, as the register row needs to describe it. */
 export interface CashBunchSummary {
   id: number;
   number: number;
-  status: BunchStatus;
-  status_label: string;
-  sent_at: string;
-  decided_at: string | null;
+  sent_at: string | null;
 }
 
 
@@ -199,7 +199,6 @@ export interface CashBookOptions {
   /** Active branches only — a retired one is not offered to a new entry. */
   branches: CashBranch[];
   directions: { value: CashDirection; label: string }[];
-  bunch_statuses: { value: BunchStatus; label: string }[];
   approval_statuses: { value: EntryApprovalStatus; label: string }[];
   balance: string;
   gl_account_search_limit: number;
@@ -235,21 +234,25 @@ export interface GLAccount {
   account_type: string;
 }
 
+/**
+ * A batch of approved vouchers, bundled to be mailed to head office.
+ *
+ * Paperwork, not a decision: everything in it was approved one by one before
+ * it was bundled. `total` is derived from the contents, so it cannot disagree
+ * with them — the old spreadsheet used that figure as the batch's own name.
+ */
 export interface CashBunch {
   id: number;
   number: number;
-  status: BunchStatus;
-  status_label: string;
   remarks: string;
-  sent_at: string;
+  created_at: string;
+  created_by_name: string | null;
+  /** Null until somebody says it has gone — the app does not send the mail. */
+  sent_at: string | null;
   sent_by_name: string | null;
-  /** The sheet's 'Sign Date': when it was approved or sent back. */
-  decided_at: string | null;
-  decided_by_name: string | null;
-  decision_note: string;
+  is_sent: boolean;
   entry_count: number;
-  total_in: string;
-  total_out: string;
+  total: string;
 }
 
 export interface CashBunchDetail extends CashBunch {
@@ -302,11 +305,6 @@ export interface RecordEntryPayload {
 }
 
 export type UpdateEntryPayload = Partial<RecordEntryPayload>;
-
-export interface SendForApprovalPayload {
-  entry_ids: number[];
-  remarks?: string;
-}
 
 /**
  * Column filters go up as `f_branch=Oil|Common`.
@@ -549,9 +547,9 @@ export const cashBookApi = {
     await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ENTRY_DETAIL(entryId));
   },
 
-  async bunches(status?: BunchStatus): Promise<CashBunch[]> {
+  async bunches(state?: 'SENT' | 'UNSENT'): Promise<CashBunch[]> {
     const { data } = await apiClient.get<CashBunch[]>(API_ENDPOINTS.CASH_BOOK.BUNCHES, {
-      params: status ? { status } : {},
+      params: state ? { state } : {},
     });
     return data;
   },
@@ -563,36 +561,40 @@ export const cashBookApi = {
     return data;
   },
 
-  async sendForApproval(payload: SendForApprovalPayload): Promise<CashBunchDetail> {
+  /** Bundle approved vouchers into a batch. Only approved ones may go in. */
+  async createBunch(entryIds: number[], remarks = ''): Promise<CashBunchDetail> {
     const { data } = await apiClient.post<CashBunchDetail>(
       API_ENDPOINTS.CASH_BOOK.BUNCHES,
-      payload,
+      { entry_ids: entryIds, remarks },
     );
     return data;
   },
 
-  async approve(bunchId: number, note = ''): Promise<CashBunchDetail> {
-    const { data } = await apiClient.post<CashBunchDetail>(
-      API_ENDPOINTS.CASH_BOOK.BUNCH_APPROVE(bunchId),
-      { note },
+  /**
+   * The batch as the spreadsheet that gets mailed.
+   *
+   * Fetched as a blob rather than linked to: the endpoint is permission
+   * checked, so the request has to carry the auth header and a plain
+   * `<a href>` would not.
+   */
+  async exportBunch(bunchId: number): Promise<Blob> {
+    const { data } = await apiClient.get<Blob>(
+      API_ENDPOINTS.CASH_BOOK.BUNCH_EXPORT(bunchId),
+      { responseType: 'blob' },
     );
     return data;
   },
 
-  /** A rejection must say why — the custodian has to know what to fix. */
-  async reject(bunchId: number, note: string): Promise<CashBunchDetail> {
-    const { data } = await apiClient.post<CashBunchDetail>(
-      API_ENDPOINTS.CASH_BOOK.BUNCH_REJECT(bunchId),
-      { note },
+  async markBunchSent(bunchId: number, sent = true): Promise<CashBunch> {
+    const { data } = await apiClient.post<CashBunch>(
+      API_ENDPOINTS.CASH_BOOK.BUNCH_SENT(bunchId),
+      { sent },
     );
     return data;
   },
 
-  async resend(bunchId: number, remarks?: string): Promise<CashBunchDetail> {
-    const { data } = await apiClient.post<CashBunchDetail>(
-      API_ENDPOINTS.CASH_BOOK.BUNCH_RESEND(bunchId),
-      remarks === undefined ? {} : { remarks },
-    );
-    return data;
+  /** Take one voucher back out of a batch that has not gone yet. */
+  async removeFromBunch(entryId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ENTRY_BUNCH(entryId));
   },
 };

@@ -3,13 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   type AdvanceDirection,
   type BranchPayload,
-  type BunchStatus,
   cashBookApi,
   type CashEntryListParams,
   type ColumnFilters,
   type EntryApprovalStatus,
   type RecordEntryPayload,
-  type SendForApprovalPayload,
   type UpdateEntryPayload,
 } from './cashBook.api';
 
@@ -34,7 +32,7 @@ export const CASH_BOOK_QUERY_KEYS = {
     [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
   people: (search: string, holdingOnly: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'people', search, holdingOnly] as const,
-  bunches: (status?: BunchStatus) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', status ?? ''] as const,
+  bunches: (state?: string) => [...CASH_BOOK_QUERY_KEYS.all, 'bunches', state ?? ''] as const,
   bunch: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'bunch', id] as const,
 };
 
@@ -104,11 +102,27 @@ export function useCashBranches(includeRetired = false) {
   });
 }
 
-export function useCashBunches(status?: BunchStatus) {
+export function useCashBunches(state?: 'SENT' | 'UNSENT') {
   return useQuery({
-    queryKey: CASH_BOOK_QUERY_KEYS.bunches(status),
-    queryFn: () => cashBookApi.bunches(status),
+    queryKey: CASH_BOOK_QUERY_KEYS.bunches(state),
+    queryFn: () => cashBookApi.bunches(state),
   });
+}
+
+export function useCreateBunch() {
+  return useCashBookMutation((vars: { ids: number[]; remarks?: string }) =>
+    cashBookApi.createBunch(vars.ids, vars.remarks ?? ''),
+  );
+}
+
+export function useMarkBunchSent() {
+  return useCashBookMutation((vars: { id: number; sent: boolean }) =>
+    cashBookApi.markBunchSent(vars.id, vars.sent),
+  );
+}
+
+export function useRemoveFromBunch() {
+  return useCashBookMutation((entryId: number) => cashBookApi.removeFromBunch(entryId));
 }
 
 export function useCashBunch(id: number | null) {
@@ -148,12 +162,6 @@ export function useUpdateCashEntry() {
 
 export function useCancelCashEntry() {
   return useCashBookMutation((id: number) => cashBookApi.cancel(id));
-}
-
-export function useSendForApproval() {
-  return useCashBookMutation((payload: SendForApprovalPayload) =>
-    cashBookApi.sendForApproval(payload),
-  );
 }
 
 export function useCreateCashBranch() {
@@ -264,20 +272,3 @@ export function useCancelAdvance() {
   return useCashBookMutation((id: number) => cashBookApi.cancelAdvance(id));
 }
 
-export function useApproveCashBunch() {
-  return useCashBookMutation((vars: { id: number; note?: string }) =>
-    cashBookApi.approve(vars.id, vars.note ?? ''),
-  );
-}
-
-export function useRejectCashBunch() {
-  return useCashBookMutation((vars: { id: number; note: string }) =>
-    cashBookApi.reject(vars.id, vars.note),
-  );
-}
-
-export function useResendCashBunch() {
-  return useCashBookMutation((vars: { id: number; remarks?: string }) =>
-    cashBookApi.resend(vars.id, vars.remarks),
-  );
-}
