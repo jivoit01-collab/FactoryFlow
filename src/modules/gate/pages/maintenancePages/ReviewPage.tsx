@@ -46,15 +46,15 @@ function UrgencyBadge({ level }: { level: string }) {
   const getUrgencyColor = () => {
     switch (level.toUpperCase()) {
       case 'CRITICAL':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+        return 'bg-red-100 text-red-800 dark:bg-red-500/10 dark:text-red-400';
       case 'HIGH':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-500/10 dark:text-orange-400';
       case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400';
       case 'LOW':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+        return 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-gray-100 text-gray-800 dark:bg-muted/40 dark:text-muted-foreground';
     }
   };
 
@@ -413,10 +413,10 @@ export default function ReviewPage() {
               {/* Urgency Warning */}
               {(maintenanceDetails.urgency_level === 'CRITICAL' ||
                 maintenanceDetails.urgency_level === 'HIGH') && (
-                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 flex items-start gap-3">
+                <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 p-3 flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
                       {maintenanceDetails.urgency_level === 'CRITICAL' ? 'Critical' : 'High'}{' '}
                       Priority Item
                     </p>

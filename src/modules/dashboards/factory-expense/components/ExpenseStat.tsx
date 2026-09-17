@@ -109,7 +109,7 @@ export function ExpenseStat({
       {figures.warning && (
         <div className="relative z-10 mt-2 flex items-start gap-1.5 rounded-lg border border-amber-600/30 dark:border-amber-400/30 bg-amber-500/10 dark:bg-amber-400/10 px-2 py-1.5">
           <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
-          <span className="text-[11px] leading-tight text-amber-800 dark:text-amber-200">
+          <span className="text-[11px] leading-tight text-amber-800 dark:text-amber-300">
             {figures.warning}
           </span>
         </div>

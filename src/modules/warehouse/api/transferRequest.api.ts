@@ -5,7 +5,11 @@ import type {
   SapApprovalDecisionPayload,
   SapApprovalDecisionResult,
   SapApprovalStatus,
+  SapAwaitingTransfer,
   SapTransferApproval,
+  SapTransferDraft,
+  SapTransferDraftPostResult,
+  SapTransferPostResult,
   TransferAllocationPreview,
   TransferApprovePayload,
   TransferBatchVerification,
@@ -178,10 +182,16 @@ export const transferRequestApi = {
  * straight in the SAP client.
  */
 export const sapTransferApprovalApi = {
-  /** `status: 'ALL'` drops the filter; default is PENDING. */
+  /**
+   * `status: 'ALL'` drops the filter; default is PENDING.
+   *
+   * The history views ask for more rows than the live queue: pending is a
+   * backlog that should stay short, while approved/rejected is a log people
+   * scroll back through. The server clamps at 500 either way.
+   */
   async list(status: SapApprovalStatus | 'ALL' = 'PENDING'): Promise<SapTransferApproval[]> {
     const res = await apiClient.get<SapTransferApproval[]>(EP.SAP_TRANSFER_APPROVALS, {
-      params: { status },
+      params: { status, limit: status === 'PENDING' ? 100 : 300 },
     });
     return res.data;
   },
@@ -197,6 +207,54 @@ export const sapTransferApprovalApi = {
     const res = await apiClient.patch<SapApprovalDecisionResult>(
       EP.SAP_TRANSFER_APPROVAL_STATUS(wddCode),
       payload,
+    );
+    return res.data;
+  },
+};
+
+/**
+ * SAP transfer requests that are approved but still owe stock.
+ *
+ * Separate from the approval queue because these are past their decision: the
+ * request is cleared and what remains is the movement itself.
+ */
+export const sapTransferPostApi = {
+  async awaiting(): Promise<SapAwaitingTransfer[]> {
+    const res = await apiClient.get<SapAwaitingTransfer[]>(EP.SAP_TRANSFER_AWAITING);
+    return res.data;
+  },
+
+  /**
+   * Post one transfer against a request. `quantities` is keyed by WTQ1.LineNum
+   * and carries decimal strings; a line left out is simply not moved and the
+   * request stays open for it.
+   */
+  async post(docEntry: number, quantities: Record<string, string>): Promise<SapTransferPostResult> {
+    const res = await apiClient.post<SapTransferPostResult>(EP.SAP_TRANSFER_POST(docEntry), {
+      quantities,
+    });
+    return res.data;
+  },
+};
+
+/**
+ * Inventory-transfer DRAFTS that SAP approved but nobody added.
+ *
+ * The step after the approval queue for a transfer raised in the SAP client:
+ * approving clears the approval, and the stock still does not move until the
+ * draft is added. Separate from the two above because there is nothing to
+ * choose — the draft is posted exactly as SAP holds it.
+ */
+export const sapTransferDraftApi = {
+  async list(): Promise<SapTransferDraft[]> {
+    const res = await apiClient.get<SapTransferDraft[]>(EP.SAP_TRANSFER_DRAFTS);
+    return res.data;
+  },
+
+  /** Add one draft. No body: quantities and batches were settled in SAP. */
+  async post(draftEntry: number): Promise<SapTransferDraftPostResult> {
+    const res = await apiClient.post<SapTransferDraftPostResult>(
+      EP.SAP_TRANSFER_DRAFT_POST(draftEntry),
     );
     return res.data;
   },

@@ -58,7 +58,7 @@ function TruckCard({
           'w-full rounded-lg border p-3 text-left transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:border-foreground/30 focus-visible:outline-none',
           // A truck that has left is a record, not a task — muted, but still legible.
           truck.isDispatched &&
-            'border-emerald-300 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20',
+            'border-emerald-300 bg-emerald-50/50 dark:border-emerald-500/30 dark:bg-emerald-500/10',
         )}
       >
         <div className="flex items-start justify-between gap-2">
@@ -85,7 +85,7 @@ function TruckCard({
             {truck.isDispatched ? (
               <Badge
                 variant="outline"
-                className="gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                className="gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300"
               >
                 <CheckCircle2 className="h-3 w-3" />
                 Dispatched
@@ -94,7 +94,7 @@ function TruckCard({
               truck.dispatchedBills > 0 && (
                 <Badge
                   variant="outline"
-                  className="gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                  className="gap-1 border-emerald-300 text-emerald-700 dark:border-emerald-500/30 dark:text-emerald-300"
                 >
                   {formatCount(truck.dispatchedBills)} gone
                 </Badge>

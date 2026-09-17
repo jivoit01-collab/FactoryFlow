@@ -26,6 +26,13 @@ import type {
   EmployeePayload,
   EmployeeSalaryResponse,
   HistoryEntry,
+  LabourAuditResponse,
+  LabourDepartmentChoice,
+  LabourPresencePayload,
+  LabourPresenceResponse,
+  LabourPresenceRow,
+  LabourStrength,
+  LabourStrengthPayload,
   ManagerChangePayload,
   OrgTreeResponse,
   PagedResponse,
@@ -62,6 +69,20 @@ export function toQuery(filters: EmployeeFilters = {}): URLSearchParams {
   return params;
 }
 
+/**
+ * Add the department scope to a labour URL.
+ *
+ * Three states, and the difference between two of them matters: `'ALL'` sends
+ * nothing (the server totals every department), `null` sends `none` (the one
+ * bucket for labour that is not split by department), and an id sends itself.
+ * Collapsing the first two would make a screen that forgot the parameter read
+ * as a plant declaring it does not divide its labour.
+ */
+function withDepartment(url: string, department: LabourDepartmentChoice) {
+  if (department === 'ALL') return url;
+  return `${url}?department=${department === null ? 'none' : department}`;
+}
+
 export const employeesApi = {
   async getMeta(): Promise<EmployeeMeta> {
     const response = await apiClient.get<EmployeeMeta>(EP.META);
@@ -93,10 +114,7 @@ export const employeesApi = {
    * nulls meaning null (multipart would send the string "null" and blank a
    * field somebody meant to clear).
    */
-  async updateEmployee(
-    employeeId: number,
-    payload: EmployeeEditPayload,
-  ): Promise<EmployeeDetail> {
+  async updateEmployee(employeeId: number, payload: EmployeeEditPayload): Promise<EmployeeDetail> {
     if (!(payload.photo instanceof File)) {
       // No file: send JSON, and drop the (empty) photo key rather than sending
       // a null that would clear a photo nobody asked to remove.
@@ -114,10 +132,7 @@ export const employeesApi = {
       if (value === undefined || value === null) return;
       form.append(key, value instanceof File ? value : String(value));
     });
-    const response = await apiClient.patch<EmployeeDetail>(
-      EP.EMPLOYEE_DETAIL(employeeId),
-      form,
-    );
+    const response = await apiClient.patch<EmployeeDetail>(EP.EMPLOYEE_DETAIL(employeeId), form);
     return response.data;
   },
 
@@ -135,18 +150,19 @@ export const employeesApi = {
   },
 
   async getAudit(employeeId: number, page = 1): Promise<PagedResponse<AuditEntry>> {
-    const response = await apiClient.get<PagedResponse<AuditEntry>>(
-      EP.EMPLOYEE_AUDIT(employeeId),
-      { params: { page, page_size: 50 } },
-    );
+    const response = await apiClient.get<PagedResponse<AuditEntry>>(EP.EMPLOYEE_AUDIT(employeeId), {
+      params: { page, page_size: 50 },
+    });
     return response.data;
   },
 
-  async getTree(params: {
-    root?: number;
-    department?: number;
-    include_past?: boolean;
-  } = {}): Promise<OrgTreeResponse> {
+  async getTree(
+    params: {
+      root?: number;
+      department?: number;
+      include_past?: boolean;
+    } = {},
+  ): Promise<OrgTreeResponse> {
     const response = await apiClient.get<OrgTreeResponse>(EP.TREE, {
       params: toQuery(params as never),
     });
@@ -194,17 +210,12 @@ export const employeesApi = {
   },
 
   async getSalary(employeeId: number): Promise<EmployeeSalaryResponse> {
-    const response = await apiClient.get<EmployeeSalaryResponse>(
-      EP.EMPLOYEE_SALARY(employeeId),
-    );
+    const response = await apiClient.get<EmployeeSalaryResponse>(EP.EMPLOYEE_SALARY(employeeId));
     return response.data;
   },
 
   async createSalary(employeeId: number, payload: SalaryPayload): Promise<SalaryRecord> {
-    const response = await apiClient.post<SalaryRecord>(
-      EP.EMPLOYEE_SALARY(employeeId),
-      payload,
-    );
+    const response = await apiClient.post<SalaryRecord>(EP.EMPLOYEE_SALARY(employeeId), payload);
     return response.data;
   },
 
@@ -225,16 +236,17 @@ export const employeesApi = {
     return response.data;
   },
 
-  async getSalaryRevisions(params: {
-    revision_type?: string;
-    employee?: number;
-    year?: number;
-    page?: number;
-  } = {}): Promise<PagedResponse<SalaryRevisionRow>> {
-    const response = await apiClient.get<PagedResponse<SalaryRevisionRow>>(
-      EP.SALARY_REVISIONS,
-      { params },
-    );
+  async getSalaryRevisions(
+    params: {
+      revision_type?: string;
+      employee?: number;
+      year?: number;
+      page?: number;
+    } = {},
+  ): Promise<PagedResponse<SalaryRevisionRow>> {
+    const response = await apiClient.get<PagedResponse<SalaryRevisionRow>>(EP.SALARY_REVISIONS, {
+      params,
+    });
     return response.data;
   },
 
@@ -252,10 +264,7 @@ export const employeesApi = {
     departmentId: number,
     payload: Partial<DepartmentPayload>,
   ): Promise<Department> {
-    const response = await apiClient.patch<Department>(
-      EP.DEPARTMENT_DETAIL(departmentId),
-      payload,
-    );
+    const response = await apiClient.patch<Department>(EP.DEPARTMENT_DETAIL(departmentId), payload);
     return response.data;
   },
 
@@ -295,6 +304,65 @@ export const employeesApi = {
     const response = await apiClient.get<WorkforceReports>(EP.REPORTS, {
       params: includePast ? { include_past: 1 } : {},
     });
+    return response.data;
+  },
+
+  // -- permanent labour ----------------------------------------------------
+
+  /**
+   * One department's strength, the undivided bucket's, or every department
+   * added up.
+   *
+   * `'ALL'` leaves the parameter off and `null` sends `none`, because the
+   * server reads a missing parameter as "the total" — the one distinction the
+   * whole scoping rests on.
+   */
+  async getLabourStrength(department: LabourDepartmentChoice = 'ALL'): Promise<LabourStrength> {
+    const response = await apiClient.get<LabourStrength>(
+      withDepartment(EP.LABOUR_STRENGTH, department),
+    );
+    return response.data;
+  },
+
+  async setLabourStrength(payload: LabourStrengthPayload): Promise<LabourStrength> {
+    const response = await apiClient.put<LabourStrength>(EP.LABOUR_STRENGTH, payload);
+    return response.data;
+  },
+
+  /** A window of days, newest first. Both ends optional — see the view. */
+  async getLabourPresence(
+    range: { from?: string; to?: string; department?: LabourDepartmentChoice } = {},
+  ): Promise<LabourPresenceResponse> {
+    const params = new URLSearchParams();
+    if (range.from) params.set('from', range.from);
+    if (range.to) params.set('to', range.to);
+    const department = range.department ?? 'ALL';
+    if (department !== 'ALL')
+      params.set('department', department === null ? 'none' : `${department}`);
+    const query = params.toString();
+    const response = await apiClient.get<LabourPresenceResponse>(
+      query ? `${EP.LABOUR_PRESENCE}?${query}` : EP.LABOUR_PRESENCE,
+    );
+    return response.data;
+  },
+
+  /** Upsert: the same date + shift replaces its own row rather than adding one. */
+  async recordLabourPresence(payload: LabourPresencePayload): Promise<LabourPresenceRow> {
+    const response = await apiClient.post<LabourPresenceRow>(EP.LABOUR_PRESENCE, payload);
+    return response.data;
+  },
+
+  async getLabourStrengthAudit(
+    department: LabourDepartmentChoice = 'ALL',
+  ): Promise<LabourAuditResponse> {
+    const response = await apiClient.get<LabourAuditResponse>(
+      withDepartment(EP.LABOUR_STRENGTH_AUDIT, department),
+    );
+    return response.data;
+  },
+
+  async getLabourPresenceAudit(presenceId: number): Promise<LabourAuditResponse> {
+    const response = await apiClient.get<LabourAuditResponse>(EP.LABOUR_PRESENCE_AUDIT(presenceId));
     return response.data;
   },
 };

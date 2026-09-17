@@ -133,7 +133,7 @@ export default function IssuesListPage() {
         <div className="flex flex-wrap gap-2">
           {canTriage && (
             <Button variant="outline" size="sm" asChild>
-              <Link to="/issues/labels">Labels &amp; areas</Link>
+              <Link to="/issues/labels">Settings</Link>
             </Button>
           )}
           {canCreate && (
@@ -176,13 +176,13 @@ export default function IssuesListPage() {
       </div>
 
       {unknown.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-900">
+        <div className="flex items-start gap-2 rounded-md border border-yellow-300 dark:border-yellow-500/30 bg-yellow-50 dark:bg-yellow-500/10 px-3 py-2 text-sm text-yellow-900 dark:text-yellow-400">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Ignored: <code className="font-mono">{unknown.join(' ')}</code>. Try{' '}
             <code className="font-mono">is:</code>, <code className="font-mono">label:</code>,{' '}
             <code className="font-mono">assignee:</code>, <code className="font-mono">author:</code>,{' '}
-            <code className="font-mono">area:</code>, <code className="font-mono">priority:</code>,{' '}
+            <code className="font-mono">priority:</code>,{' '}
             <code className="font-mono">no:</code> or <code className="font-mono">sort:</code>.
           </span>
         </div>
@@ -384,7 +384,6 @@ function IssueRow({
               : `closed ${timeAgo(issue.closed_at)}`}
           </span>
           {issue.author && <> by {issue.author.name}</>}
-          {issue.area_name && <> · {issue.area_name}</>}
         </p>
       </div>
 

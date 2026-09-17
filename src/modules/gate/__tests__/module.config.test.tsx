@@ -225,9 +225,4 @@ describe('Gate Module Config', () => {
   it('children include New Entry', () => {
     expect(content).toContain("title: 'New Entry'");
   });
-
-  it('children include Barcode Dispatch Reports', () => {
-    expect(content).toContain("title: 'Barcode Dispatch Reports'");
-    expect(content).toContain("path: '/gate/sales-dispatch/barcode-reports'");
-  });
 });

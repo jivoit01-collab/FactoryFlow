@@ -40,19 +40,19 @@ export const RUN_STATUS_COLORS: Record<RunStatus, StatusColorConfig> = {
   DRAFT: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   IN_PROGRESS: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   COMPLETED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
 };
@@ -102,20 +102,20 @@ export const CHECKLIST_STATUS_COLORS: Record<ChecklistStatus, StatusColorConfig>
   OK: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   NOT_OK: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
   NA: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
 };
 
@@ -135,31 +135,31 @@ export const CLEARANCE_STATUS_COLORS: Record<ClearanceStatus, StatusColorConfig>
   DRAFT: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   SUBMITTED: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   ON_HOLD: {
     bg: 'bg-amber-100',
     text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
+    darkBg: 'dark:bg-amber-500/15',
     darkText: 'dark:text-amber-400',
   },
   CLEARED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   NOT_CLEARED: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
 };
@@ -196,19 +196,19 @@ export const WASTE_APPROVAL_COLORS: Record<WasteApprovalStatus, StatusColorConfi
   PENDING: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
+    darkBg: 'dark:bg-yellow-500/15',
     darkText: 'dark:text-yellow-400',
   },
   PARTIALLY_APPROVED: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   FULLY_APPROVED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
 };
@@ -239,19 +239,19 @@ export const SHIFT_COLORS: Record<Shift, StatusColorConfig> = {
   MORNING: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
+    darkBg: 'dark:bg-yellow-500/15',
     darkText: 'dark:text-yellow-400',
   },
   AFTERNOON: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
-    darkBg: 'dark:bg-orange-900/30',
+    darkBg: 'dark:bg-orange-500/15',
     darkText: 'dark:text-orange-400',
   },
   NIGHT: {
     bg: 'bg-indigo-100',
     text: 'text-indigo-800',
-    darkBg: 'dark:bg-indigo-900/30',
+    darkBg: 'dark:bg-indigo-500/15',
     darkText: 'dark:text-indigo-400',
   },
 };
@@ -270,20 +270,20 @@ export const QC_RESULT_COLORS: Record<QCResult, StatusColorConfig> = {
   PASS: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   FAIL: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
   NA: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
 };
 
@@ -297,19 +297,19 @@ export const FINAL_QC_COLORS: Record<FinalQCResult, StatusColorConfig> = {
   PASS: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   FAIL: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
   CONDITIONAL: {
     bg: 'bg-amber-100',
     text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
+    darkBg: 'dark:bg-amber-500/15',
     darkText: 'dark:text-amber-400',
   },
 };

@@ -9,6 +9,7 @@ import {
   isFullBox,
   isLooseItem,
   parsePositiveNumber,
+  requiresScanning,
 } from './salesDispatchBoxCounts';
 
 export interface ItemScanRow {
@@ -42,6 +43,11 @@ export interface ItemScanRow {
   scannedBoxQuantities: number[];
   /** True when the bill counts this item in boxes, not pieces (CSD stock). */
   isBoxCounted: boolean;
+  /**
+   * False for packaging material, which carries no box label at all: the line ships but
+   * nothing can ever be scanned against it, so it is never short and never gates a bill.
+   */
+  requiresScan: boolean;
   progressPercent: number | null;
   isComplete: boolean;
 }
@@ -148,9 +154,13 @@ export function summarizeItems(
   const items = expectedItems.map((item, index) => {
     const scanStats = stats[index];
     const expectedQuantity = parsePositiveNumber(item.quantity);
+    // A scan-exempt line (packaging material) is neither complete nor short — there is no
+    // label to scan — so it carries no progress bar and never decides a bill's status.
+    const requiresScan = requiresScanning(item);
     const isComplete = expectedQuantity > 0 && scanStats.quantity >= expectedQuantity;
-    const progressPercent =
-      expectedQuantity > 0
+    const progressPercent = !requiresScan
+      ? null
+      : expectedQuantity > 0
         ? Math.min(100, Math.round((scanStats.quantity / expectedQuantity) * 100))
         : null;
 
@@ -172,6 +182,7 @@ export function summarizeItems(
       scannedQuantity: scanStats.quantity,
       scannedBoxQuantities: scanStats.boxQuantities,
       isBoxCounted: isBoxCountedItem(item),
+      requiresScan,
       progressPercent,
       isComplete,
     };
@@ -180,6 +191,24 @@ export function summarizeItems(
   return { items, unplannedScanCount };
 }
 
+
+/**
+ * True when the bill still owes goods a scanner can account for.
+ *
+ * Reads the scannable rows only: packaging material has no box label, so leaving it out is
+ * the difference between "the truck is loaded" and a load-wide lock. Judged on invoiced vs
+ * scanned QUANTITY, the same signal as the backend's `has_unscanned_bill_lines`.
+ */
+export function hasUnscannedGoods(summary: BillScanSummary): boolean {
+  return summary.items.some(
+    (row) => row.requiresScan && row.expectedQuantity > 0 && row.scannedQuantity < row.expectedQuantity,
+  );
+}
+
+/** True when the bill carries at least one line that can be scanned at all. */
+export function hasScannableLines(summary: BillScanSummary): boolean {
+  return summary.items.some((row) => row.requiresScan);
+}
 
 export interface ScanProgressTotals {
   /** Physical labels scanned — loose-covering and unplanned boxes included. */
@@ -272,7 +301,9 @@ export function getScanTargetPacking(items: SalesDispatchItem[]) {
   // carrying half a box each of the same product ship two part boxes — merging them across
   // bills would invent a whole box that no one packed.
   const groups = new Map<string, { quantity: number; head: SalesDispatchItem }>();
-  items.forEach((item, index) => {
+  // Packaging material is left out: no box label is printed for it, so it is no part of
+  // what the scanner can cover (mirrors scannable_lines on the backend).
+  items.filter(requiresScanning).forEach((item, index) => {
     const code = normalizeItemCode(item.item_code) || `__uncoded_${index}`;
     const key = `${item.document ?? ''}|${code}`;
     const quantity = parsePositiveNumber(item.quantity);

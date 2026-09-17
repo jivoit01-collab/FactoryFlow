@@ -1,0 +1,126 @@
+/**
+ * Accounts module — the factory's cash box.
+ *
+ * Five pages, following the money. **ATM** is the imprest card the cash is
+ * drawn off. **Cash Book** is the register: every receipt and payment in the
+ * order it was written down, with the running balance beside it, and the
+ * tick-and-send that bundles vouchers for approval. **Advances** is cash out
+ * with somebody who has not yet said what it went on. **Cash Approvals** is
+ * where the bunches are decided on, and **Branches** configures the short list
+ * every payment is filed under -- Oil, Beverage, Water, Common.
+ *
+ * The sidebar hides the whole module from anyone without a `cash_book.*`
+ * permission (`modulePrefix`), so the three groups the backend ships with —
+ * Cash Book Viewer, Custodian and Approver — are the only way in. Approvals
+ * is narrowed further: it is for the approver, and for the custodian chasing
+ * or re-sending a bunch.
+ */
+import {
+  Building2,
+  ClipboardCheck,
+  CreditCard,
+  HandCoins,
+  IndianRupee,
+  Wallet,
+} from 'lucide-react';
+
+import {
+  CASH_BOOK_ACCESS,
+  CASH_BOOK_APPROVALS_ACCESS,
+  CASH_BOOK_MODULE_PREFIX,
+  CASH_BOOK_SETTINGS_ACCESS,
+} from '@/config/permissions';
+import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
+import type { ModuleConfig } from '@/core/types';
+
+const CashBookPage = lazy(() => import('./pages/CashBookPage'));
+const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
+const CashBranchSettingsPage = lazy(() => import('./pages/CashBranchSettingsPage'));
+const AtmPage = lazy(() => import('./pages/AtmPage'));
+const AdvancesPage = lazy(() => import('./pages/AdvancesPage'));
+
+export const accountsModuleConfig: ModuleConfig = {
+  name: 'accounts',
+  routes: [
+    {
+      path: '/accounts/cash-book',
+      element: <CashBookPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Cash Book' },
+    },
+    {
+      path: '/accounts/atm',
+      element: <AtmPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'ATM' },
+    },
+    {
+      path: '/accounts/advances',
+      element: <AdvancesPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Advances' },
+    },
+    {
+      path: '/accounts/cash-approvals',
+      element: <CashApprovalsPage />,
+      layout: 'main',
+      permissions: CASH_BOOK_APPROVALS_ACCESS,
+      breadcrumb: { label: 'Cash Approvals' },
+    },
+    {
+      path: '/accounts/branches',
+      element: <CashBranchSettingsPage />,
+      layout: 'main',
+      // Readable by anyone who can read the book -- the page says so itself
+      // when the visitor cannot change anything -- but only an administrator
+      // is offered it in the sidebar.
+      permissions: CASH_BOOK_ACCESS,
+      breadcrumb: { label: 'Cash Book Branches' },
+    },
+  ],
+  navigation: [
+    {
+      path: '/accounts/cash-book',
+      title: 'Accounts',
+      icon: IndianRupee,
+      showInSidebar: true,
+      hasSubmenu: true,
+      modulePrefix: CASH_BOOK_MODULE_PREFIX,
+      children: [
+        {
+          path: '/accounts/cash-book',
+          title: 'Cash Book',
+          icon: Wallet,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/atm',
+          title: 'ATM',
+          icon: CreditCard,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/advances',
+          title: 'Advances',
+          icon: HandCoins,
+          permissions: CASH_BOOK_ACCESS,
+        },
+        {
+          path: '/accounts/cash-approvals',
+          title: 'Cash Approvals',
+          icon: ClipboardCheck,
+          permissions: CASH_BOOK_APPROVALS_ACCESS,
+        },
+        {
+          path: '/accounts/branches',
+          title: 'Branches',
+          icon: Building2,
+          permissions: CASH_BOOK_SETTINGS_ACCESS,
+        },
+      ],
+    },
+  ],
+};

@@ -85,7 +85,7 @@ function StepTrucks({
                   ? `${plate.vehicle_no} · ${plate.count} plans${plate.stage_label ? ` · ${plate.stage_label}` : ''}`
                   : plate.stage_label
               }
-              className="flex items-center gap-1 whitespace-nowrap rounded-[5px] border border-slate-300 bg-white px-2 py-[2px] text-[11px] font-extrabold uppercase leading-none tracking-wider text-slate-800 shadow-sm dark:border-slate-500 dark:bg-slate-100"
+              className="flex items-center gap-1 whitespace-nowrap rounded-[5px] border border-slate-300 bg-white px-2 py-[2px] text-[11px] font-extrabold uppercase leading-none tracking-wider text-slate-800 dark:text-foreground shadow-sm dark:border-slate-500 dark:bg-slate-100"
             >
               <span>{plate.vehicle_no}</span>
               {plate.count > 1 && (
@@ -221,7 +221,7 @@ export function GateVehicleJourney({
           <div
             className={cn(
               'absolute left-1/2 top-[26%] -translate-x-1/2 rounded-full px-4 py-1.5 text-xs font-medium text-muted-foreground',
-              !isLoading && 'bg-white/70 shadow-sm dark:bg-slate-800/70',
+              !isLoading && 'bg-white/70 shadow-sm dark:bg-muted/70',
             )}
           >
             {isLoading ? 'Loading vehicles…' : 'No vehicles on the road for this range'}

@@ -10,11 +10,21 @@
 
 ## Overview — what it does & who uses it
 
-The Labour frontend is **thin and reuses gate screens**. The top-level
-`src/modules/labour/` folder contains only `module.config.tsx` — one route
-(`/labour`) and one sidebar entry. Every actual screen lives under
+The Labour frontend is **thin and reuses gate screens**. There is no folder of
+its own: the `/labour` route is registered by the **Organisation** module
+(`src/modules/organization/module.config.tsx`) and reached from the
+Organisation sidebar submenu as **Allocate labour**. It was a top-level
+**Labour** module until 2026-09-17; only the sidebar entry moved, so the URL is
+unchanged. Every actual screen lives under
 `src/modules/gate/pages/`, because Labour reuses the gate's masters
 (`Contractor`, `Department`) and API clients.
+
+**Not this module: the plant's own permanent labour.** Everything here counts
+*contractor* heads. The factory's own labourers — the strength on the rolls and
+how many of them were present each shift, both kept per department — live in the
+Employees module, at `/employees/labour` (backend `employee_hierarchy`). That
+page shows the plant totals until a department is picked, and only a picked
+department can be written to.
 
 There are **five screens**, backed by **two backend apps** (`labour_gate` for
 the live in/out tally + allocation, `labour_count` for the man-day register —
@@ -28,7 +38,8 @@ see the paired backend doc for the domain model):
 | **Daily Labour** count (`LabourCountPage`) | `/gate/labour` | `labour_count` | Dept supervisor |
 | **Labour Verification** board (`LabourGatePage`) | `/gate/labour/verify` | `labour_count` | Gate operator |
 
-Only `/labour` is a first-class **sidebar** item (icon `Users`). The four
+Only `/labour` is in the **sidebar** — as **Allocate labour** under
+Organisation (icon `Split`). The four
 `/gate/labour*` screens are **not** in the sidebar tree — they are reached from
 the **Gate Dashboard** (`GateDashboardPage`): the two count screens appear as
 "Labour" tools, and Labour In / Labour Out appear as Gate-In / Gate-Out entry
@@ -45,7 +56,7 @@ buffer here — a failed call simply rejects and shows a toast.
 
 - **Gate intake** = a `LabourGateEntry` with `department == null` (owned by the
   Labour In screen). **Allocation split** = an entry with `department` set
-  (owned by the Labour module). Both carry `count_in`, `total_out`, `remaining`,
+  (owned by Allocate labour). Both carry `count_in`, `total_out`, `remaining`,
   `out_batches`, soft-delete flags, and grace-window flags
   (`can_undo_last`, `can_restore`). Types: `api/labourGate/labourGate.api.ts`.
 - **Count sheet** = a `LabourCountSheet` (`DRAFT` → `SUBMITTED` → `VERIFIED`,
@@ -100,7 +111,7 @@ buffer here — a failed call simply rejects and shows a toast.
    (`useUpdateLabourIn`) or delete (`useRemoveLabourIn`, blocked once anyone is
    marked out).
 
-### 4. Labour module (HOD allocation) — (`LabourModulePage`, `/labour`)
+### 4. Allocate labour (HOD allocation) — (`LabourModulePage`, `/labour`)
 
 1. Pick **Shift + Date**. Progressive form: choose a **Department first**, then a
    **Contractor + count**.
@@ -121,7 +132,7 @@ buffer here — a failed call simply rejects and shows a toast.
 
 1. Pick **Shift + Date**. Summary **In / Out / Inside** turns green when all
    cleared.
-2. **Allocation Breakdown** (read-only, from the Labour module): toggle **By
+2. **Allocation Breakdown** (read-only, from Allocate labour): toggle **By
    Department** / **By Contractor**; the contractor view flags any
    `unallocated` remainder.
 3. Select a contractor with labour inside and a count → **Out**
@@ -330,9 +341,11 @@ Codenames from `config/permissions/labour.permissions.ts` &
 
 Nav gating specifics (worth knowing when "a whole screen is missing"):
 
-- **`/labour` sidebar entry** (`modules/labour/module.config.tsx`) is gated on
+- **Allocate labour sidebar entry** (`employees/module.config.tsx`, using
+  `ALLOCATE_LABOUR_ACCESS` from `organization/module.config.tsx`) is gated on
   **`[ALLOCATE, VIEW]`** — holding *either* lights it up. This is why an HOD
-  (allocate) *and* a plain viewer both see the Labour module.
+  (allocate) *and* a plain viewer both see it. Either right also reveals the
+  Organisation parent item.
 - **Labour In / Labour Out tiles** (`constants/gateEntryTypes.ts`) are gated on
   **`RECORD_IN` / `RECORD_OUT` only** — `VIEW` is deliberately **excluded** so
   that an HOD (who holds `VIEW` to reach `/labour`) does **not** accidentally
@@ -350,8 +363,10 @@ Nav gating specifics (worth knowing when "a whole screen is missing"):
 ## Developer file map
 
 **Frontend — module & pages:**
-- `src/modules/labour/module.config.tsx` — `/labour` route + sidebar entry
-  (gated `[ALLOCATE, VIEW]`).
+- `src/modules/organization/module.config.tsx` — `/labour` route + the exported
+  `ALLOCATE_LABOUR_ACCESS` (gated `[ALLOCATE, VIEW]`).
+- `src/modules/employees/module.config.tsx` — the **Allocate labour** entry in
+  the Organisation sidebar submenu.
 - `src/modules/gate/pages/labourGatePages/LabourModulePage.tsx` — HOD allocation
   (rendered at `/labour`).
 - `src/modules/gate/pages/labourGatePages/GateLabourInPage.tsx` — gate intake.

@@ -59,9 +59,9 @@ import type {
 } from '../types';
 
 const STATUS_CLASSES: Record<FireIssueStatus, string> = {
-  ISSUED: 'border-sky-200 bg-sky-50 text-sky-700',
-  PARTIALLY_RETURNED: 'border-amber-200 bg-amber-50 text-amber-700',
-  RETURNED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  ISSUED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+  PARTIALLY_RETURNED: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+  RETURNED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
 };
 
 const CONDITION_OPTIONS: Array<{ value: FireReturnCondition; label: string }> = [
@@ -420,7 +420,7 @@ function IssueDetailDialog({
                 {issue.status_display}
               </Badge>
               {issue.is_overdue && (
-                <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+                <Badge variant="outline" className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400">
                   Overdue
                 </Badge>
               )}
@@ -542,7 +542,7 @@ function IssueDetailDialog({
                                 </NativeSelect>
                               </div>
                             ) : (
-                              <span className="text-xs text-emerald-700">Settled</span>
+                              <span className="text-xs text-emerald-700 dark:text-emerald-400">Settled</span>
                             )}
                           </td>
                         )}
@@ -772,7 +772,7 @@ export default function MaintenanceFireIssuePage() {
                     {issue.pending_items > 0 && (
                       <Badge
                         variant="outline"
-                        className="ml-2 border-amber-200 bg-amber-50 text-amber-700"
+                        className="ml-2 border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400"
                       >
                         {issue.pending_items} out
                       </Badge>

@@ -1,16 +1,16 @@
 export {
+  type FailedScan,
+  useBoxScanQueue,
+  type UseBoxScanQueueOptions,
+  type UseBoxScanQueueResult,
+} from './useBoxScanQueue';
+export {
   getCurrentTimeHHMM,
   getTimeFromDatetime,
   useCurrentTime,
   type UseCurrentTimeConfig,
   type UseCurrentTimeReturn,
 } from './useCurrentTime';
-export {
-  useBoxScanQueue,
-  type FailedScan,
-  type UseBoxScanQueueOptions,
-  type UseBoxScanQueueResult,
-} from './useBoxScanQueue';
 export { useDebounce } from './useDebounce';
 export {
   useEditFormState,
@@ -20,3 +20,9 @@ export {
 export { useFormErrors, type UseFormErrorsReturn } from './useFormErrors';
 export { useLocalStorage } from './useLocalStorage';
 export { useScrollToError } from './useScrollToError';
+export {
+  resolveSupportContact,
+  type SupportContact,
+  useSupportContact,
+  useSupportContactSetting,
+} from './useSupportContact';

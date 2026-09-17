@@ -66,9 +66,14 @@ describe('constants/index.ts — Barrel Re-exports', () => {
     }
   });
 
-  it('re-exports exactly 8 modules', () => {
+  it('re-exports from ./support.constants', () => {
+    const content = readSource();
+    expect(content).toContain("from './support.constants'");
+  });
+
+  it('re-exports exactly 11 modules', () => {
     const content = readSource();
     const exportLines = content.split('\n').filter((l: string) => l.trim().startsWith('export *'));
-    expect(exportLines).toHaveLength(8);
+    expect(exportLines).toHaveLength(11);
   });
 });

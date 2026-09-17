@@ -337,12 +337,12 @@ function WorkOrderAttachmentList({
 
 function SpareRequestBadge({ status }: { status: SpareRequest['status'] }) {
   const classes: Record<SpareRequest['status'], string> = {
-    REQUESTED: 'border-sky-200 bg-sky-50 text-sky-700',
-    PARTIALLY_ISSUED: 'border-amber-200 bg-amber-50 text-amber-700',
-    ISSUED: 'border-blue-200 bg-blue-50 text-blue-700',
-    PARTIALLY_CONSUMED: 'border-violet-200 bg-violet-50 text-violet-700',
-    CLOSED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    CANCELLED: 'border-slate-200 bg-slate-50 text-slate-600',
+    REQUESTED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    PARTIALLY_ISSUED: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    ISSUED: 'border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    PARTIALLY_CONSUMED: 'border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400',
+    CLOSED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    CANCELLED: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-600 dark:text-muted-foreground',
   };
   return (
     <Badge variant="outline" className={classes[status]}>
@@ -526,10 +526,10 @@ function WorkOrderSpareRequestList({
 
 function VendorVisitBadge({ status }: { status: MaintenanceVendorVisit['status'] }) {
   const classes: Record<MaintenanceVendorVisit['status'], string> = {
-    PLANNED: 'border-sky-200 bg-sky-50 text-sky-700',
-    IN_PROGRESS: 'border-amber-200 bg-amber-50 text-amber-700',
-    COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    CANCELLED: 'border-slate-200 bg-slate-50 text-slate-600',
+    PLANNED: 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    IN_PROGRESS: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    COMPLETED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    CANCELLED: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-600 dark:text-muted-foreground',
   };
   return (
     <Badge variant="outline" className={classes[status]}>

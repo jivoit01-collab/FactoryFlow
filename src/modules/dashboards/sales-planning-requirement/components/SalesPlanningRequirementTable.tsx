@@ -49,8 +49,8 @@ function RequirementBadge({ shortage }: { shortage: number }) {
       variant="outline"
       className={cn(
         isShortage
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400'
+          : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
       )}
     >
       {isShortage ? 'Shortage' : 'PO Covered'}
@@ -242,7 +242,7 @@ export function SalesPlanningRequirementTable({
                   key={item.id}
                   className={cn(
                     'border-b transition-colors hover:bg-muted/30',
-                    item.net_shortage_qty > 0 && 'bg-red-50/50 dark:bg-red-950/10',
+                    item.net_shortage_qty > 0 && 'bg-red-50/50 dark:bg-red-500/10',
                   )}
                 >
                   <td

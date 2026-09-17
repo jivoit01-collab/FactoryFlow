@@ -1,4 +1,5 @@
 import { Warehouse } from 'lucide-react';
+import { useMemo } from 'react';
 
 import { cn } from '@/shared/utils';
 
@@ -6,6 +7,7 @@ import { WAREHOUSE_CONTROL_MAX_RENDERED_ROWS } from '../constants';
 import { ACCENTS, occupancyAccent, SECTION_ACCENT } from '../constants/warehouse-control.theme';
 import type { PalletSpaceSummary, PalletSpaceWarehouseRow, StoredGoodsRow } from '../types';
 import { formatCount, formatPercent } from '../utils/format';
+import { shortWarehouseTags } from '../utils/warehouseTag';
 import { CapacityMeter } from './CapacityMeter';
 import { ControlScrollList } from './ControlScrollList';
 import { ControlSection } from './ControlSection';
@@ -57,8 +59,20 @@ function WarehouseRow({ row }: { row: PalletSpaceWarehouseRow }) {
  * Boxes is the number the floor talks in, so it is the figure on the right and
  * the one the bar is scaled against; the pallet count rides underneath as the
  * secondary fact.
+ *
+ * The line totals every warehouse, so it carries a tag for each one it stands
+ * in — otherwise a reader cannot tell Gupta stock from Basement stock, or see
+ * that a line is split across both.
  */
-function GoodsRow({ row, largest }: { row: StoredGoodsRow; largest: number }) {
+function GoodsRow({
+  row,
+  largest,
+  tags,
+}: {
+  row: StoredGoodsRow;
+  largest: number;
+  tags: Map<string, string>;
+}) {
   const accent = ACCENTS[SECTION_ACCENT.palletSpace];
   const width = largest > 0 ? (row.boxes / largest) * 100 : 0;
   const palletWord = row.pallets === 1 ? 'pallet' : 'pallets';
@@ -70,10 +84,23 @@ function GoodsRow({ row, largest }: { row: StoredGoodsRow; largest: number }) {
           <p className="truncate text-sm font-medium">
             {row.itemName || row.itemCode || 'Unidentified stock'}
           </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {row.itemCode && row.itemName ? `${row.itemCode} · ` : ''}
-            {formatCount(row.pallets)} {palletWord}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <span className="truncate">
+              {row.itemCode && row.itemName ? `${row.itemCode} · ` : ''}
+              {formatCount(row.pallets)} {palletWord}
+            </span>
+            {row.warehouses.map((warehouse) => (
+              <span
+                key={warehouse.warehouseId}
+                className="shrink-0 rounded border border-border/70 bg-muted/60 px-1 py-px text-[10px] font-medium uppercase tracking-wide"
+                title={`${warehouse.name} · ${formatCount(warehouse.pallets)} ${
+                  warehouse.pallets === 1 ? 'pallet' : 'pallets'
+                } · ${formatCount(warehouse.boxes)} boxes`}
+              >
+                {tags.get(warehouse.warehouseId) ?? warehouse.name}
+              </span>
+            ))}
+          </div>
         </div>
         <p className="shrink-0 text-sm font-semibold tabular-nums">
           {formatCount(row.boxes)}
@@ -112,6 +139,9 @@ export function PalletSpacePanel({
   const goods = summary.goods.slice(0, WAREHOUSE_CONTROL_MAX_RENDERED_ROWS);
   const hiddenGoods = summary.goods.length - goods.length;
   const largestGoods = goods[0]?.boxes ?? 0;
+  // Built from every warehouse, not just the drawn ones, so two names that
+  // shorten alike are still caught.
+  const tags = useMemo(() => shortWarehouseTags(summary.warehouses), [summary.warehouses]);
 
   const meta = hasLayout
     ? `${formatCount(summary.totalSpace)} slots across ${formatCount(summary.warehouses.length)} warehouses`
@@ -167,7 +197,12 @@ export function PalletSpacePanel({
               </div>
               <ControlScrollList grow>
                 {goods.map((row) => (
-                  <GoodsRow key={row.itemCode || row.itemName} row={row} largest={largestGoods} />
+                  <GoodsRow
+                    key={row.itemCode || row.itemName}
+                    row={row}
+                    largest={largestGoods}
+                    tags={tags}
+                  />
                 ))}
               </ControlScrollList>
               {hiddenGoods > 0 && (

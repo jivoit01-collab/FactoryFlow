@@ -256,10 +256,65 @@ describe('summarisePalletSpace', () => {
     });
 
     expect(summary.goods).toEqual([
-      { itemCode: 'FG001', itemName: 'CANOLA 4 LTR', pallets: 2, boxes: 500 },
-      { itemCode: 'FG002', itemName: 'MUSTARD 1 LTR', pallets: 1, boxes: 120 },
+      {
+        itemCode: 'FG001',
+        itemName: 'CANOLA 4 LTR',
+        pallets: 2,
+        boxes: 500,
+        warehouses: [
+          { warehouseId: 'wh-1', code: 'BH', name: 'Bhakharpur', pallets: 2, boxes: 500 },
+        ],
+      },
+      {
+        itemCode: 'FG002',
+        itemName: 'MUSTARD 1 LTR',
+        pallets: 1,
+        boxes: 120,
+        warehouses: [
+          { warehouseId: 'wh-1', code: 'BH', name: 'Bhakharpur', pallets: 1, boxes: 120 },
+        ],
+      },
     ]);
     expect(summary.totalBoxes).toBe(620);
+  });
+
+  it('splits a line that stands in two warehouses, heaviest warehouse first', () => {
+    const summary = summarisePalletSpace({
+      warehouses: [
+        makeWarehouse({ id: 'wh-1', code: 'BHAKHARPUR-BASEMENT', name: 'Bhakharpur Basement' }),
+        makeWarehouse({ id: 'wh-2', code: 'GUPTA-GODOWN', name: 'Gupta Godown' }),
+      ],
+      locations: [
+        makeLocation({
+          id: 'loc-1',
+          warehouseId: 'wh-1',
+          capacity: { maxPallets: 20, maxUnits: null, maxWeight: null, maxVolume: null },
+        }),
+        makeLocation({
+          id: 'loc-2',
+          warehouseId: 'wh-2',
+          capacity: { maxPallets: 20, maxUnits: null, maxWeight: null, maxVolume: null },
+        }),
+      ],
+      pallets: [
+        makePallet({ id: 'p1', currentLocationId: 'loc-1', itemCode: 'FG001', boxCount: 100 }),
+        makePallet({ id: 'p2', currentLocationId: 'loc-2', itemCode: 'FG001', boxCount: 300 }),
+        makePallet({ id: 'p3', currentLocationId: 'loc-2', itemCode: 'FG001', boxCount: 50 }),
+      ],
+      purposes: [],
+    });
+
+    expect(summary.goods[0]?.boxes).toBe(450);
+    expect(summary.goods[0]?.warehouses).toEqual([
+      { warehouseId: 'wh-2', code: 'GUPTA-GODOWN', name: 'Gupta Godown', pallets: 2, boxes: 350 },
+      {
+        warehouseId: 'wh-1',
+        code: 'BHAKHARPUR-BASEMENT',
+        name: 'Bhakharpur Basement',
+        pallets: 1,
+        boxes: 100,
+      },
+    ]);
   });
 
   it('leaves shipped, removed and unplaced pallets out of the goods total', () => {
@@ -288,7 +343,15 @@ describe('summarisePalletSpace', () => {
     });
 
     expect(summary.goods).toEqual([
-      { itemCode: '', itemName: 'LOOSE STOCK', pallets: 1, boxes: 40 },
+      {
+        itemCode: '',
+        itemName: 'LOOSE STOCK',
+        pallets: 1,
+        boxes: 40,
+        warehouses: [
+          { warehouseId: 'wh-1', code: 'BH', name: 'Bhakharpur', pallets: 1, boxes: 40 },
+        ],
+      },
     ]);
     expect(summary.totalBoxes).toBe(40);
   });

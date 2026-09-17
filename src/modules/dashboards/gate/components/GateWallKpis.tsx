@@ -6,6 +6,10 @@ import { useWallPalette } from '../../dispatch/constants/wall.palette';
 import { count } from '../../dispatch/utils/format';
 import type { GateBoard } from '../hooks/useGateBoard';
 
+/** What a tile shows instead of a figure the viewer was never allowed to ask
+ *  for. An em dash, not a zero — see the note on the component below. */
+const NO_ACCESS = '—';
+
 /**
  * The six numbers a security head wants before they have finished sitting down:
  * what came in, what went out, how many contractor hands are on site, how many
@@ -16,6 +20,14 @@ import type { GateBoard } from '../hooks/useGateBoard';
  * have overstayed: a long-stay count is only ever read together with the total
  * it came out of, and two tiles side by side invite reading one without the
  * other.
+ *
+ * A tile the viewer has no right to reads "—", not "0". Each figure is fetched
+ * only where the viewer can open the register behind it, so an ungranted section
+ * arrives as a nought — and a nought on a wall board is a statement: "no vehicles
+ * came in today", "nobody is inside". Printing that to someone who simply was not
+ * allowed to ask is worse than printing nothing, because on a gate board those
+ * two answers get acted on differently. The road tile has always said so; the
+ * rest now do too.
  */
 export function GateWallKpis({
   board,
@@ -30,27 +42,34 @@ export function GateWallKpis({
   const palette = useWallPalette();
 
   const spanNoun = isToday ? 'today' : 'in this range';
+  const { access } = board;
 
   return (
     <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       <WallStat
         icon={LogIn}
         label="Vehicles in"
-        value={count(board.vehiclesIn)}
-        sub={`Inbound gate entries ${spanNoun}`}
+        value={access.inbound ? count(board.vehiclesIn) : NO_ACCESS}
+        sub={
+          access.inbound ? `Inbound gate entries ${spanNoun}` : 'Needs an inbound gate permission'
+        }
         hex={palette.hue('gateIn')}
         delayMs={0}
-        onClick={() => navigate('/gate/empty-vehicle-in')}
+        onClick={access.inbound ? () => navigate('/gate/empty-vehicle-in') : undefined}
       />
 
       <WallStat
         icon={LogOut}
         label="Vehicles out"
-        value={count(board.vehiclesOut)}
-        sub={`Dispatch, returns & job work ${spanNoun}`}
+        value={access.outbound ? count(board.vehiclesOut) : NO_ACCESS}
+        sub={
+          access.outbound
+            ? `Dispatch, returns & job work ${spanNoun}`
+            : 'Needs an outbound gate permission'
+        }
         hex={palette.hue('gateOut')}
         delayMs={60}
-        onClick={() => navigate('/gate/sales-dispatch')}
+        onClick={access.outbound ? () => navigate('/gate/sales-dispatch') : undefined}
       />
 
       {/* Head-count at the barrier, with how much of it a department has
@@ -59,47 +78,51 @@ export function GateWallKpis({
       <WallStat
         icon={HardHat}
         label="Labours in"
-        value={count(board.laboursIn)}
+        value={access.labour ? count(board.laboursIn) : NO_ACCESS}
         sub={
-          board.laboursIn === 0
-            ? `No contractor labour ${isToday ? 'today' : `on ${board.labourDate}`}`
-            : `${count(board.labourAllocated)} allocated to departments${
-                isToday ? '' : ` · ${board.labourDate}`
-              }`
+          !access.labour
+            ? 'Needs the labour gate permission'
+            : board.laboursIn === 0
+              ? `No contractor labour ${isToday ? 'today' : `on ${board.labourDate}`}`
+              : `${count(board.labourAllocated)} allocated to departments${
+                  isToday ? '' : ` · ${board.labourDate}`
+                }`
         }
         hex={palette.hue('labour')}
         delayMs={120}
-        onClick={() => navigate('/gate/labour-in')}
+        onClick={access.labour ? () => navigate('/gate/labour-in') : undefined}
       />
 
       <WallStat
         icon={Users}
         label="Visitors in"
-        value={count(board.visitorsIn)}
-        sub={`Visitors signed in ${spanNoun}`}
+        value={access.persons ? count(board.visitorsIn) : NO_ACCESS}
+        sub={access.persons ? `Visitors signed in ${spanNoun}` : 'Needs the person gate permission'}
         hex={palette.hue('visitors')}
         delayMs={180}
-        onClick={() => navigate('/gate/visitor-labour')}
+        onClick={access.persons ? () => navigate('/gate/visitor-labour') : undefined}
       />
 
       <WallStat
         icon={UserCheck}
         label="Inside now"
-        value={count(board.insideNow)}
+        value={access.persons ? count(board.insideNow) : NO_ACCESS}
         sub={
-          board.longStay > 0
-            ? `${count(board.longStay)} over the long-stay limit`
-            : 'People on site at this moment'
+          !access.persons
+            ? 'Needs the person gate permission'
+            : board.longStay > 0
+              ? `${count(board.longStay)} over the long-stay limit`
+              : 'People on site at this moment'
         }
         hex={palette.hue('inside')}
         delayMs={240}
-        onClick={() => navigate('/gate/visitor-labour')}
+        onClick={access.persons ? () => navigate('/gate/visitor-labour') : undefined}
       />
 
       <WallStat
         icon={Route}
         label="On the road"
-        value={canViewJourney ? count(board.onRoad) : '—'}
+        value={canViewJourney ? count(board.onRoad) : NO_ACCESS}
         sub={
           canViewJourney
             ? 'Vehicles between the two barriers'

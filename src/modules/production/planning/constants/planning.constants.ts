@@ -31,37 +31,37 @@ export const PLAN_STATUS_COLORS: Record<PlanStatus, StatusColorConfig> = {
   DRAFT: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   OPEN: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   IN_PROGRESS: {
     bg: 'bg-amber-100',
     text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
+    darkBg: 'dark:bg-amber-500/15',
     darkText: 'dark:text-amber-400',
   },
   COMPLETED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   CLOSED: {
     bg: 'bg-slate-100',
     text: 'text-slate-800',
-    darkBg: 'dark:bg-slate-800',
-    darkText: 'dark:text-slate-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   CANCELLED: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
 };
@@ -89,19 +89,19 @@ export const SAP_POSTING_COLORS: Record<SAPPostingStatus, StatusColorConfig> = {
   NOT_POSTED: {
     bg: 'bg-gray-100',
     text: 'text-gray-600',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-400',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   POSTED: {
     bg: 'bg-green-100',
     text: 'text-green-700',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   FAILED: {
     bg: 'bg-red-100',
     text: 'text-red-700',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
 };
@@ -120,19 +120,19 @@ export const WEEKLY_STATUS_COLORS: Record<WeeklyPlanStatus, StatusColorConfig> =
   PENDING: {
     bg: 'bg-gray-100',
     text: 'text-gray-700',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-400',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   IN_PROGRESS: {
     bg: 'bg-amber-100',
     text: 'text-amber-800',
-    darkBg: 'dark:bg-amber-900/30',
+    darkBg: 'dark:bg-amber-500/15',
     darkText: 'dark:text-amber-400',
   },
   COMPLETED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
 };
@@ -157,19 +157,19 @@ export const SHIFT_COLORS: Record<Shift, StatusColorConfig> = {
   MORNING: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
+    darkBg: 'dark:bg-yellow-500/15',
     darkText: 'dark:text-yellow-400',
   },
   AFTERNOON: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
-    darkBg: 'dark:bg-orange-900/30',
+    darkBg: 'dark:bg-orange-500/15',
     darkText: 'dark:text-orange-400',
   },
   NIGHT: {
     bg: 'bg-indigo-100',
     text: 'text-indigo-800',
-    darkBg: 'dark:bg-indigo-900/30',
+    darkBg: 'dark:bg-indigo-500/15',
     darkText: 'dark:text-indigo-400',
   },
 };

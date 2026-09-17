@@ -85,6 +85,22 @@ export interface PmReqRow {
   short_qty: number;
   short_value: number;
 
+  /**
+   * The buying question from the other end.
+   *
+   * `to_buy_qty` is what still has to be BOUGHT once the stores are counted
+   * — 1,000 needed against 800 on hand is 200 — and `over_purchase_qty` is
+   * what is on order beyond it. A 400 order against that 200 is 200 over.
+   *
+   * `over_purchased` is flagged on a whole-unit threshold rather than on
+   * `> 0`: a BOM written per-bottle leaves thousandths behind, and a carton
+   * over-ordered by 0.004 is rounding, not a purchasing decision.
+   */
+  to_buy_qty: number;
+  over_purchase_qty: number;
+  over_purchase_value: number;
+  over_purchased: boolean;
+
   /** How many planned SKUs drive this component. */
   sku_count: number;
   po_lines: number;
@@ -123,6 +139,10 @@ export interface PmReqTotals {
   po_overdue_count: number;
   over_issued_count: number;
   surplus_count: number;
+  /** Summed over the flagged rows only, so count and total describe one set. */
+  over_purchased_count: number;
+  over_purchase_qty: number;
+  over_purchase_value: number;
 }
 
 export interface PmReqCoverageItem {
@@ -201,7 +221,8 @@ export type PmReqSortKey =
   | 'req_qty'
   | 'open_po_qty'
   | 'req_after_po_qty'
-  | 'short_value';
+  | 'short_value'
+  | 'over_purchase_value';
 
 export type PmReqSortDir = 'asc' | 'desc';
 
@@ -217,7 +238,13 @@ export interface PmReqSort {
  * netted off. `at-risk` is narrower and is the one worth acting on today:
  * short, or leaning on an order that is late or lands after the plan closes.
  */
-export type PmReqFilter = 'all' | 'short' | 'at-risk' | 'surplus' | 'over-issued';
+export type PmReqFilter =
+  | 'all'
+  | 'short'
+  | 'at-risk'
+  | 'surplus'
+  | 'over-issued'
+  | 'over-purchased';
 
 /** What one row is, in a word, for the status column. */
 export type PmReqStatus = 'short' | 'po-covered' | 'po-risk' | 'over-issued' | 'covered';

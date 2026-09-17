@@ -27,11 +27,11 @@ type ExportCell = string | number | boolean | null | undefined;
 type ExportRow = Record<string, ExportCell>;
 
 const STATUS_TONE: Partial<Record<DispatchSessionStatus, string>> = {
-  COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  CLOSED: 'border-slate-200 bg-slate-50 text-slate-700',
-  CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700',
-  SAP_SYNC_FAILED: 'border-rose-200 bg-rose-50 text-rose-700',
-  READY_TO_DISPATCH: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+  COMPLETED: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  CLOSED: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+  CANCELLED: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  SAP_SYNC_FAILED: 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400',
+  READY_TO_DISPATCH: 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
 };
 
 function formatDateTime(value: string | null | undefined) {
@@ -142,11 +142,11 @@ function SummaryTile({
   tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
 }) {
   const toneClass = {
-    slate: 'border-slate-200 bg-white',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    rose: 'border-rose-200 bg-rose-50/70',
-    cyan: 'border-cyan-200 bg-cyan-50/70',
+    slate: 'border-slate-200 dark:border-border bg-white',
+    emerald: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-500/10',
+    amber: 'border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10',
+    rose: 'border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-rose-500/10',
+    cyan: 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/70 dark:bg-cyan-500/10',
   }[tone];
 
   return (
@@ -354,7 +354,7 @@ export default function BarcodeDispatchSummaryPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className={STATUS_TONE[report.session.status] || 'border-slate-200 bg-slate-50 text-slate-700'}>
+              <Badge className={STATUS_TONE[report.session.status] || 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground'}>
                 {report.session.status.replaceAll('_', ' ')}
               </Badge>
             </div>
@@ -426,7 +426,7 @@ export default function BarcodeDispatchSummaryPage() {
       <Card className="rounded-md">
         <div className="flex items-center justify-between gap-3 border-b p-4">
           <h2 className="text-base font-semibold">Scan Audit</h2>
-          <Badge className="border-slate-200 bg-slate-50 text-slate-700">{report.scans.length.toLocaleString('en-IN')}</Badge>
+          <Badge className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground">{report.scans.length.toLocaleString('en-IN')}</Badge>
         </div>
         <CardContent className="p-0">
           {report.scans.length ? (
@@ -436,7 +436,7 @@ export default function BarcodeDispatchSummaryPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-mono text-sm font-semibold">{scan.barcode}</p>
-                      <Badge className={scan.result === 'ACCEPTED' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}>
+                      <Badge className={scan.result === 'ACCEPTED' ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400'}>
                         {scan.result}
                       </Badge>
                     </div>

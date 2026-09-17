@@ -15,6 +15,7 @@ import { useReactToPrint } from 'react-to-print';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
 
@@ -133,7 +134,7 @@ export default function TransferRequestDetailPage() {
           <Printer className="mr-2 h-4 w-4" />
           Print
         </Button>
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -209,13 +210,13 @@ export default function TransferRequestDetailPage() {
       )}
 
       {r.status === 'REJECTED' && r.rejection_reason && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           <strong>Rejected:</strong> {r.rejection_reason}
         </div>
       )}
 
       {r.posting_status === 'FAILED' && r.posting_error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -227,7 +228,7 @@ export default function TransferRequestDetailPage() {
       )}
 
       {r.awaits_second_leg && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+        <div className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-3 text-sm text-indigo-900 dark:text-indigo-400">
           <div className="flex items-start gap-2">
             <Truck className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -320,7 +321,7 @@ export default function TransferRequestDetailPage() {
       </Card>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           {error}
         </div>
       )}
@@ -330,7 +331,7 @@ export default function TransferRequestDetailPage() {
       {isPending &&
         hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) &&
         !managesDestination && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
             This request is coming into <strong>{r.to_warehouse}</strong>, which you do not
             manage — its own manager decides on it. You can follow it here but not approve or
             reject it.
@@ -385,10 +386,27 @@ export default function TransferRequestDetailPage() {
                 setShowBatches(true);
                 return;
               }
-              void run(
-                () => post.mutateAsync({ requestId: id }),
-                'Could not post the transfer to SAP.',
-              );
+              void run(async () => {
+                const confirmed = await confirmSapPost({
+                  title: 'Post this transfer to SAP?',
+                  details: [
+                    {
+                      label: 'Creates',
+                      value: r.is_cross_branch
+                        ? 'Inventory Transfer (leg 1 of a cross-branch move)'
+                        : 'Inventory Transfer',
+                    },
+                    { label: 'Out of', value: r.from_warehouse },
+                    {
+                      label: 'Into',
+                      value: r.is_cross_branch ? 'The in-transit warehouse' : r.to_warehouse,
+                    },
+                    { label: 'Quantities', value: 'The approved quantities' },
+                  ],
+                });
+                if (!confirmed) return;
+                await post.mutateAsync({ requestId: id });
+              }, 'Could not post the transfer to SAP.');
             }}
           >
             <Upload className="mr-2 h-4 w-4" />
@@ -427,10 +445,18 @@ export default function TransferRequestDetailPage() {
             variant="outline"
             disabled={secondLeg.isPending}
             onClick={() =>
-              run(
-                () => secondLeg.mutateAsync({ requestId: id }),
-                'Could not post the second leg.',
-              )
+              run(async () => {
+                const confirmed = await confirmSapPost({
+                  title: 'Post the second leg to SAP?',
+                  details: [
+                    { label: 'Creates', value: 'Inventory Transfer (leg 2)' },
+                    { label: 'Out of', value: 'The in-transit warehouse' },
+                    { label: 'Into', value: r.to_warehouse },
+                  ],
+                });
+                if (!confirmed) return;
+                await secondLeg.mutateAsync({ requestId: id });
+              }, 'Could not post the second leg.')
             }
           >
             <Truck className="mr-2 h-4 w-4" />
@@ -465,7 +491,27 @@ export default function TransferRequestDetailPage() {
                 onClick={() =>
                   run(
                     () =>
-                      reject.mutateAsync({ requestId: id, data: { reason: rejectReason.trim() } }),
+                      confirmSapPost({
+                        title: 'Reject this request?',
+                        details: [
+                          {
+                            label: 'Closes',
+                            value: `Inventory Transfer Request ${
+                              r.sap_request_doc_num || r.sap_request_doc_entry
+                            }`,
+                          },
+                          { label: 'Effect', value: 'The request stops reserving the stock' },
+                        ],
+                        confirmLabel: 'Reject and close it',
+                        destructive: true,
+                      }).then((confirmed) =>
+                        confirmed
+                          ? reject.mutateAsync({
+                              requestId: id,
+                              data: { reason: rejectReason.trim() },
+                            })
+                          : undefined,
+                      ),
                     'Could not reject this request.',
                   )
                 }
@@ -485,6 +531,24 @@ export default function TransferRequestDetailPage() {
         crossBranch={r.is_cross_branch}
         onConfirm={(allocations: TransferPostAllocation[]) =>
           run(async () => {
+            const confirmed = await confirmSapPost({
+              title: 'Post this transfer to SAP?',
+              details: [
+                {
+                  label: 'Creates',
+                  value: r.is_cross_branch
+                    ? 'Inventory Transfer (leg 1 of a cross-branch move)'
+                    : 'Inventory Transfer',
+                },
+                { label: 'Out of', value: r.from_warehouse },
+                {
+                  label: 'Into',
+                  value: r.is_cross_branch ? 'The in-transit warehouse' : r.to_warehouse,
+                },
+                { label: 'Batch allocations', value: allocations.length },
+              ],
+            });
+            if (!confirmed) return;
             await post.mutateAsync({ requestId: id, allocations });
             setShowBatches(false);
           }, 'Could not post the transfer to SAP.')
@@ -518,8 +582,8 @@ export default function TransferRequestDetailPage() {
         <div
           className={`rounded-lg border p-3 text-sm ${
             verification.data.matches
-              ? 'border-green-200 bg-green-50 text-green-900'
-              : 'border-amber-200 bg-amber-50 text-amber-900'
+              ? 'border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-900 dark:text-green-400'
+              : 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-400'
           }`}
         >
           {verification.data.matches ? (

@@ -100,12 +100,14 @@ import {
   formatValue,
   isMultiDockingTruck,
   resolveScanGate,
+  summarizePartialRequests,
 } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
 import {
   type BillScanSummary,
   formatScannedBoxQuantities,
   groupItemsByItemCode,
+  hasUnscannedGoods,
   normalizeItemCode,
   summarizeItems,
 } from './salesDispatchScanSummary';
@@ -146,6 +148,11 @@ export default function SalesDispatchBarcodeScanPage() {
   const [isPartialDialogOpen, setIsPartialDialogOpen] = useState(false);
   const [partialReason, setPartialReason] = useState('');
   const [partialError, setPartialError] = useState('');
+  // Which bills the operator is sending for approval. An approval covers ONE bill, and the
+  // dialog used to say nothing about that: a request raised from one bill's screen quietly
+  // asked the admin to approve every short bill on the truck. `null` means "untouched" —
+  // the default (every bill that is short) still applies and follows the scans live.
+  const [partialBillKeys, setPartialBillKeys] = useState<string[] | null>(null);
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const manualInputRef = useRef<HTMLInputElement>(null);
   // Computed once per device — auto-focus the barcode field only where a hardware
@@ -203,7 +210,7 @@ export default function SalesDispatchBarcodeScanPage() {
     [isArrivalMode, arrivalDockings.dockings, dockingScans],
   );
   const { data: skipRequest } = useDockingScanSkipRequestByDispatch(entry?.id);
-  const { data: partialRequest } = useDockingPartialScanRequestByDispatch(entry?.id);
+  const { data: partialRequests } = useDockingPartialScanRequestByDispatch(entry?.id);
   const {
     data: barcodeScans,
     isFetching: isBarcodeScansLoading,
@@ -230,8 +237,13 @@ export default function SalesDispatchBarcodeScanPage() {
   const isBoxScanOptional = entry?.gatepass_readiness?.box_scan_optional ?? false;
   const skipStatus = skipRequest?.status ?? null;
   const isSkipPending = skipStatus === 'PENDING';
-  const partialStatus = partialRequest?.status ?? null;
-  const isPartialPending = partialStatus === 'PENDING';
+  // One request per short BILL, for the whole truck: two of three bills can be approved
+  // while the third still holds the load, so there is no single status to read.
+  const partialSummary = useMemo(
+    () => summarizePartialRequests(partialRequests ?? []),
+    [partialRequests],
+  );
+  const isPartialPending = partialSummary.pending.length > 0;
   const isSaving = scanBox.isPending || removeScan.isPending || removeScans.isPending;
 
   // Keep the barcode field focused so a connected hardware scanner can fire one box
@@ -336,14 +348,46 @@ export default function SalesDispatchBarcodeScanPage() {
   // Each bill's lines are grouped by item code, so one row per product already means one
   // entry per (bill, item_code) — matching the backend's per-(bill, item_code) check
   // (has_unscanned_bill_lines): a line short of its invoiced quantity flags the load.
-  const hasUnscannedBillLine = gatingBillGroups.some((bill) =>
-    bill.summary.items.some(
-      (item) => item.expectedQuantity > 0 && item.scannedQuantity < item.expectedQuantity,
-    ),
-  );
+  // Scan-exempt rows are skipped: packaging material has no box label to scan, so counting
+  // it here is what kept a fully loaded truck reading "partial" and locked the step behind
+  // an approval nobody should have had to raise (bill 626090325, four carton lines).
+  const hasUnscannedBillLine = gatingBillGroups.some((bill) => hasUnscannedGoods(bill.summary));
   const hasTrustworthyScanQuantities = scans.some(
     (scan) => scan.document != null && parsePositiveNumber(scan.quantity) > 0,
   );
+  // The bills the partial-dispatch dialog lists, each with whether it still owes goods.
+  // Scan-exempt bills (packaging material only) are left out: they have no label to scan,
+  // so there is nothing for an admin to approve. Complete ones stay on the list, shown and
+  // locked, so the operator can see exactly which bills the request does and does not cover.
+  const partialRequestStatusByBill = useMemo(() => {
+    const map = new Map<string, DockingPartialScanRequest['status']>();
+    (partialRequests ?? []).forEach((request) => {
+      const key = `${request.sales_dispatch}:${request.document ?? ''}`;
+      // Newest first from the API; a bill re-requested after a rejection reads PENDING.
+      if (!map.has(key)) map.set(key, request.status);
+    });
+    return map;
+  }, [partialRequests]);
+  const partialBillChoices = useMemo(
+    () =>
+      gatingBillGroups
+        .filter((bill) => bill.requiresScan)
+        .map((bill) => {
+          const key = `${bill.dockingId}:${bill.documentId ?? ''}`;
+          return {
+            key,
+            bill,
+            needsApproval: hasUnscannedGoods(bill.summary),
+            requestStatus: partialRequestStatusByBill.get(key) ?? null,
+          };
+        }),
+    [gatingBillGroups, partialRequestStatusByBill],
+  );
+  const defaultPartialBillKeys = useMemo(
+    () => partialBillChoices.filter((choice) => choice.needsApproval).map((choice) => choice.key),
+    [partialBillChoices],
+  );
+  const selectedPartialBillKeys = partialBillKeys ?? defaultPartialBillKeys;
   const isPartialScan =
     gatingScanCount > 0 &&
     (hasTrustworthyScanQuantities
@@ -372,7 +416,7 @@ export default function SalesDispatchBarcodeScanPage() {
     scannedCount: gatingScanCount,
     isPartialScan,
     ownSkipStatus: skipStatus,
-    ownPartialStatus: partialStatus,
+    ownPartialApproved: entry?.gatepass_readiness?.partial_scan_approved,
     loadDockings: isArrivalMode ? arrivalDockings.dockings : [],
   });
   const isScanLocked = !isReview && !isReadOnly && !scanGateSatisfied;
@@ -383,7 +427,11 @@ export default function SalesDispatchBarcodeScanPage() {
         ? 'Locked — box-scan skip is awaiting admin approval. You can continue once it is approved.'
         : 'Locked — scan at least one box, or request approval to skip scanning (panel above), to continue.'
       : isPartialPending
-        ? 'Locked — partial dispatch is awaiting admin approval. You can continue once it is approved.'
+        ? `Locked — partial dispatch is awaiting admin approval for bill${
+            partialSummary.pending.length === 1 ? '' : 's'
+          } ${partialSummary.pending.join(', ')}. You can continue once ${
+            partialSummary.pending.length === 1 ? 'it is' : 'they are'
+          } approved.`
         : 'Locked — scan all boxes, or request partial dispatch approval (panel above), to continue.';
 
   // Auto-open the only bill (nothing to choose); multi-bill loads stay collapsed.
@@ -559,10 +607,12 @@ export default function SalesDispatchBarcodeScanPage() {
               group.documentId === target.documentId && group.dockingId === target.dockingId,
           )
         : undefined;
-      if (targetBill && targetBill.status === 'Complete') {
+      if (targetBill && (targetBill.status === 'Complete' || targetBill.status === 'Exempt')) {
         setError('');
         toast.warning(
-          `Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`,
+          targetBill.status === 'Exempt'
+            ? `Bill ${formatValue(targetBill.sapDocNum)} is packaging material only — it has no boxes to scan.`
+            : `Bill ${formatValue(targetBill.sapDocNum)} already has all its boxes scanned.`,
         );
         setManualBarcode('');
         return;
@@ -672,7 +722,9 @@ export default function SalesDispatchBarcodeScanPage() {
       if (isPartialScan && !isPartialApproved) {
         setError(
           isPartialPending
-            ? 'Partial dispatch is awaiting admin approval. You can continue once it is approved.'
+            ? `Partial dispatch is awaiting admin approval for bill${
+                partialSummary.pending.length === 1 ? '' : 's'
+              } ${partialSummary.pending.join(', ')}.`
             : 'Scan all boxes, or request partial dispatch approval to continue.',
         );
         return;
@@ -706,12 +758,44 @@ export default function SalesDispatchBarcodeScanPage() {
       setPartialError('Enter a reason for dispatching with a partial scan.');
       return;
     }
+    const selected = partialBillChoices.filter(
+      (choice) => choice.needsApproval && selectedPartialBillKeys.includes(choice.key),
+    );
+    if (!selected.length && defaultPartialBillKeys.length) {
+      setPartialError('Select at least one bill to send for approval.');
+      return;
+    }
     setPartialError('');
+    // The selection is sent only when the operator actually NARROWED it. Left as it opened
+    // — every short bill ticked — the backend decides which bills are short, exactly as
+    // before: its judgement is the one the gate enforces, so a bill this page failed to
+    // flag (a load whose scans carry no quantity, judged there on box counts instead) can
+    // still get the approval that releases the truck.
+    const narrowed = defaultPartialBillKeys.some((key) => !selectedPartialBillKeys.includes(key));
     try {
-      await createPartialRequest.mutateAsync({ sales_dispatch: entry.id, reason: trimmedReason });
+      // One request per SELECTED bill — say how many went, so the operator knows to expect
+      // that many approvals rather than watching for a single one.
+      const raised = await createPartialRequest.mutateAsync({
+        sales_dispatch: entry.id,
+        reason: trimmedReason,
+        ...(narrowed
+          ? {
+              bills: selected.map((choice) => ({
+                sales_dispatch: choice.bill.dockingId,
+                document: choice.bill.documentId,
+              })),
+            }
+          : {}),
+      });
       setIsPartialDialogOpen(false);
       setPartialReason('');
-      toast.success('Partial dispatch request sent for admin approval');
+      toast.success(
+        raised.length === 1
+          ? `Approval requested for bill ${raised[0].sap_doc_num || raised[0].id}`
+          : `Approval requested for ${raised.length} bills: ${raised
+              .map((request) => request.sap_doc_num || `#${request.id}`)
+              .join(', ')}`,
+      );
     } catch (submitError) {
       setPartialError(
         getErrorMessage(submitError, 'Unable to submit the partial dispatch request'),
@@ -734,7 +818,7 @@ export default function SalesDispatchBarcodeScanPage() {
             error || (entryError ? getErrorMessage(entryError, 'Docking details not found') : null)
           }
         />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Docking details not found</span>
@@ -779,7 +863,7 @@ export default function SalesDispatchBarcodeScanPage() {
         />
       ) : isPartialScan ? (
         <PartialScanPanel
-          partialRequest={partialRequest}
+          partialRequests={partialRequests ?? []}
           approvedOnLoad={isPartialApproved}
           canRequest={canRequestPartial && !isReadOnly && canEditDocking}
           scanned={gatingFullBoxCount}
@@ -788,6 +872,7 @@ export default function SalesDispatchBarcodeScanPage() {
           onRequest={() => {
             setPartialReason('');
             setPartialError('');
+            setPartialBillKeys(null);
             setIsPartialDialogOpen(true);
           }}
         />
@@ -817,7 +902,7 @@ export default function SalesDispatchBarcodeScanPage() {
                   Check Barcode Scans
                 </Button>
                 {pendingCount > 0 ? (
-                  <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+                  <Badge className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                     Syncing {pendingCount}
                   </Badge>
@@ -938,7 +1023,7 @@ export default function SalesDispatchBarcodeScanPage() {
       </Card>
 
       {scanLockMessage ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
           <Lock className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{scanLockMessage}</span>
         </div>
@@ -1024,10 +1109,80 @@ export default function SalesDispatchBarcodeScanPage() {
               {gatingFullBoxCount < expectedBoxes
                 ? `Only ${gatingFullBoxCount} of ${expectedBoxes} boxes are scanned.`
                 : 'Some bills on this load still have unscanned items.'}{' '}
-              Send this load to Admin for approval to dispatch with a partial scan. You cannot
-              continue until an admin approves the request.
+              Approval is given <strong>one bill at a time</strong>, so pick the bills to send.
+              Every bill you send must be approved before the load can continue.
             </DialogDescription>
           </DialogHeader>
+          {partialBillChoices.length ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Bills to send for approval</Label>
+                <span className="text-xs text-muted-foreground">
+                  {
+                    partialBillChoices.filter(
+                      (choice) =>
+                        choice.needsApproval && selectedPartialBillKeys.includes(choice.key),
+                    ).length
+                  }{' '}
+                  of {defaultPartialBillKeys.length} selected
+                </span>
+              </div>
+              <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-1">
+                {partialBillChoices.map((choice) => {
+                  const checked =
+                    choice.needsApproval && selectedPartialBillKeys.includes(choice.key);
+                  return (
+                    <label
+                      key={choice.key}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-md p-2 text-sm',
+                        choice.needsApproval ? 'hover:bg-muted/50' : 'cursor-default opacity-60',
+                      )}
+                    >
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={checked}
+                        // A fully scanned bill owes nothing, so there is no approval to ask
+                        // for — ticking it would send a request the backend rightly drops.
+                        disabled={!choice.needsApproval}
+                        onCheckedChange={(value) => {
+                          setPartialError('');
+                          setPartialBillKeys(
+                            value === true
+                              ? [...selectedPartialBillKeys, choice.key]
+                              : selectedPartialBillKeys.filter((key) => key !== choice.key),
+                          );
+                        }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="font-medium">Bill {formatValue(choice.bill.sapDocNum)}</span>
+                        {choice.bill.customerName ? (
+                          <span className="text-muted-foreground"> · {choice.bill.customerName}</span>
+                        ) : null}
+                        {isArrivalMode && choice.bill.companyName ? (
+                          <span className="text-muted-foreground"> · {choice.bill.companyName}</span>
+                        ) : null}
+                        <span className="block text-xs text-muted-foreground">
+                          {choice.bill.scannedBoxes}
+                          {choice.bill.expectedBoxes > 0 ? `/${choice.bill.expectedBoxes}` : ''} boxes
+                          scanned
+                          {choice.bill.expectedLoose > 0 || choice.bill.scannedLoose > 0
+                            ? ` · ${formatNumber(choice.bill.scannedLoose)}/${formatNumber(choice.bill.expectedLoose)} PCS loose`
+                            : ''}
+                          {choice.needsApproval ? '' : ' · fully scanned, no approval needed'}
+                          {choice.requestStatus === 'PENDING'
+                            ? ' · already sent, awaiting approval'
+                            : choice.requestStatus === 'REJECTED'
+                              ? ' · previous request rejected'
+                              : ''}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="docking-partial-scan-reason">Reason</Label>
             <Textarea
@@ -1053,7 +1208,11 @@ export default function SalesDispatchBarcodeScanPage() {
             <Button
               type="button"
               onClick={() => void handleSubmitPartialRequest()}
-              disabled={createPartialRequest.isPending || !partialReason.trim()}
+              disabled={
+                createPartialRequest.isPending ||
+                !partialReason.trim() ||
+                (defaultPartialBillKeys.length > 0 && selectedPartialBillKeys.length === 0)
+              }
             >
               {createPartialRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Send for Approval
@@ -1159,7 +1318,7 @@ function BarcodeScansDialog({
             Checking barcode module...
           </div>
         ) : errorMessage ? (
-          <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="flex items-start gap-3 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-red-800 dark:text-red-400">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <p className="text-sm">{errorMessage}</p>
           </div>
@@ -1367,8 +1526,10 @@ function BillScanCard({
 }) {
   const canScan = !isReadOnly && canEdit;
   // Every invoiced line on this bill is fully scanned — lock further scanning so no
-  // over-scan can be attempted (the enqueue guard blocks the hardware scanner too).
+  // over-scan can be attempted (the enqueue guard blocks the hardware scanner too). A
+  // packaging-material bill is closed for the opposite reason: it has no label to scan.
   const isComplete = bill.status === 'Complete';
+  const isExempt = bill.status === 'Exempt';
   const inputId = `box-barcode-${bill.key}`;
 
   return (
@@ -1387,11 +1548,15 @@ function BillScanCard({
       subtitle={`${bill.items.length} item${bill.items.length === 1 ? '' : 's'}`}
       badges={
         <>
-          <Badge variant="outline">
-            {bill.scannedBoxes}
-            {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
-            {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
-          </Badge>
+          {/* A bill with nothing to scan has no box count worth showing — "0 boxes" next
+              to an exempt badge reads as a shortfall. */}
+          {isExempt ? null : (
+            <Badge variant="outline">
+              {bill.scannedBoxes}
+              {bill.expectedBoxes > 0 ? `/${bill.expectedBoxes}` : ''} box
+              {bill.scannedBoxes === 1 && bill.expectedBoxes <= 1 ? '' : 'es'}
+            </Badge>
+          )}
           {/* The loose half of the bill's printed "Box + Loose" pair. Without it, a bill
               invoicing 116 boxes + 4 PCS loose read "116/116 boxes" the moment a part box
               filled a box slot — count complete, goods short. */}
@@ -1405,19 +1570,31 @@ function BillScanCard({
             status={
               bill.status === 'Complete'
                 ? 'complete'
-                : bill.status === 'Partial'
-                  ? 'partial'
-                  : 'open'
+                : bill.status === 'Exempt'
+                  ? 'exempt'
+                  : bill.status === 'Partial'
+                    ? 'partial'
+                    : 'open'
             }
-            label={bill.status}
+            label={isExempt ? 'Scan not required' : bill.status}
           />
         </>
       }
     >
       <BillItemsTable summary={bill.summary} />
 
+      {canScan && isExempt ? (
+        <div className="flex items-center gap-2 rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span>
+            This bill is packaging material only — no box labels are printed for it, so there is
+            nothing to scan.
+          </span>
+        </div>
+      ) : null}
+
       {canScan && isComplete ? (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+        <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
           <Lock className="h-4 w-4 shrink-0" />
           <span>
             All {bill.expectedBoxes > 0 ? bill.expectedBoxes : bill.scannedBoxes} box
@@ -1429,7 +1606,7 @@ function BillScanCard({
         </div>
       ) : null}
 
-      {canScan && !isComplete ? (
+      {canScan && !isComplete && !isExempt ? (
         <div className="grid gap-4 rounded-md border bg-muted/10 p-3 xl:grid-cols-[minmax(240px,0.9fr)_minmax(0,1.1fr)]">
           <div className="space-y-3">
             {/* The camera viewport only takes space while the camera is running;
@@ -1547,7 +1724,13 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
     itemCode: formatValue(item.itemCode),
     itemName: formatValue(item.itemName),
     itemNote: `Line ${item.lineNum + 1}`,
-    status: item.isComplete ? 'complete' : item.scanCount > 0 ? 'partial' : 'open',
+    status: !item.requiresScan
+      ? 'exempt'
+      : item.isComplete
+        ? 'complete'
+        : item.scanCount > 0
+          ? 'partial'
+          : 'open',
     cells: [
       {
         align: 'right',
@@ -1565,18 +1748,21 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
       },
       {
         align: 'right',
-        primary:
-          item.expectedBoxes > 0 ? (
-            formatNumber(item.expectedBoxes)
-          ) : item.isLoose ? (
-            // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
-            // bill prints "0 Box / N PCS": there is no box target to scan against,
-            // so the row is judged on quantity. Saying "Loose" beats a bare dash,
-            // which reads as missing data.
-            <span className="text-xs font-medium text-muted-foreground">Loose</span>
-          ) : (
-            '-'
-          ),
+        primary: !item.requiresScan ? (
+          // Packaging material: cartons, caps and labels carry no box barcode, so there
+          // is nothing here for the operator to count against.
+          <span className="text-xs font-medium text-muted-foreground">Not scanned</span>
+        ) : item.expectedBoxes > 0 ? (
+          formatNumber(item.expectedBoxes)
+        ) : item.isLoose ? (
+          // SAP transacts this item per piece (SalFactor2 = 1, non-CSD) and its
+          // bill prints "0 Box / N PCS": there is no box target to scan against,
+          // so the row is judged on quantity. Saying "Loose" beats a bare dash,
+          // which reads as missing data.
+          <span className="text-xs font-medium text-muted-foreground">Loose</span>
+        ) : (
+          '-'
+        ),
         // SAP prints this line as boxes PLUS a remainder (1,860 PCS of a 16-PCS
         // item = 116 boxes + 4 loose). The remainder arrives in a part box, so the
         // operator must know it is expected.
@@ -1586,32 +1772,40 @@ function BillItemsTable({ summary }: { summary: BillScanSummary }) {
             : undefined,
       },
       {
-        primary: `${item.fullBoxCount} box${item.fullBoxCount === 1 ? '' : 'es'}`,
-        lines: [
-          // A short box covers the line's loose remainder, not a box slot: called
-          // out so "boxes scanned" can never quietly stand in for missing pieces.
-          item.looseBoxCount > 0 ? (
-            <span className="font-medium text-amber-700">
-              + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
-              {item.looseBoxCount === 1 ? '' : 'es'})
-            </span>
-          ) : null,
-          item.scannedQuantity > 0
-            ? item.isBoxCounted
-              ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
-              : formatQuantity(item.scannedQuantity, item.uom)
-            : '-',
-          // What each box carried. Cartons of a loose item are whatever the packers
-          // packed (362 + 138 against a 500-pc line), so the count alone doesn't
-          // tell the operator whether the goods are covered.
-          item.scanCount > 1 ? (
-            <span className="tabular-nums text-muted-foreground/80">
-              {item.isBoxCounted ? 'holding ' : ''}
-              {formatScannedBoxQuantities(item.scannedBoxQuantities)}
-              {item.isBoxCounted ? ' pcs' : ''}
-            </span>
-          ) : null,
-        ],
+        primary: item.requiresScan ? (
+          `${item.fullBoxCount} box${item.fullBoxCount === 1 ? '' : 'es'}`
+        ) : (
+          // Nothing was scanned here and nothing was owed: saying "0 boxes" would read as
+          // a shortfall on a line that has no barcode to scan in the first place.
+          <span className="text-xs font-medium text-muted-foreground">Scan not required</span>
+        ),
+        lines: item.requiresScan
+          ? [
+              // A short box covers the line's loose remainder, not a box slot: called
+              // out so "boxes scanned" can never quietly stand in for missing pieces.
+              item.looseBoxCount > 0 ? (
+                <span className="font-medium text-amber-700 dark:text-amber-400">
+                  + {formatNumber(item.loosePieces)} PCS loose (in {item.looseBoxCount} box
+                  {item.looseBoxCount === 1 ? '' : 'es'})
+                </span>
+              ) : null,
+              item.scannedQuantity > 0
+                ? item.isBoxCounted
+                  ? `${formatNumber(item.scannedQuantity)} of ${formatNumber(item.expectedQuantity)} boxes`
+                  : formatQuantity(item.scannedQuantity, item.uom)
+                : '-',
+              // What each box carried. Cartons of a loose item are whatever the packers
+              // packed (362 + 138 against a 500-pc line), so the count alone doesn't
+              // tell the operator whether the goods are covered.
+              item.scanCount > 1 ? (
+                <span className="tabular-nums text-muted-foreground/80">
+                  {item.isBoxCounted ? 'holding ' : ''}
+                  {formatScannedBoxQuantities(item.scannedBoxQuantities)}
+                  {item.isBoxCounted ? ' pcs' : ''}
+                </span>
+              ) : null,
+            ]
+          : undefined,
         progress: item.progressPercent !== null ? { percent: item.progressPercent } : null,
       },
     ],
@@ -1647,8 +1841,8 @@ function FailedScansQueue({
 }) {
   if (failedScans.length === 0) return null;
   return (
-    <div className="overflow-hidden rounded-md border border-red-200">
-      <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+    <div className="overflow-hidden rounded-md border border-red-200 dark:border-red-500/30">
+      <div className="flex items-center gap-2 border-b border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm font-semibold text-red-700 dark:text-red-400">
         <AlertCircle className="h-4 w-4" />
         Failed scans ({failedScans.length})
       </div>
@@ -1843,7 +2037,7 @@ function BillScannedBoxes({
 
 function ScanOptionalPanel() {
   return (
-    <div className="flex items-start gap-3 rounded-md border border-sky-200 bg-sky-50 p-4 text-sky-900">
+    <div className="flex items-start gap-3 rounded-md border border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 p-4 text-sky-900 dark:text-sky-400">
       <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="space-y-1">
         <p className="font-medium">Box scanning is optional</p>
@@ -1876,7 +2070,7 @@ function ScanSkipPanel({
 
   if (status === 'APPROVED' || approvedOnLoad) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-400">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">Scanning skip approved</p>
@@ -1887,7 +2081,7 @@ function ScanSkipPanel({
               : "Approved for this truck's load on another company's docking. You can continue to attachments without scanning boxes."}
           </p>
           {skipRequest?.review_notes ? (
-            <p className="text-sm text-emerald-800">Note: {skipRequest.review_notes}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">Note: {skipRequest.review_notes}</p>
           ) : null}
         </div>
       </div>
@@ -1896,7 +2090,7 @@ function ScanSkipPanel({
 
   if (status === 'PENDING') {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
           <p className="font-medium">Scanning skip pending approval</p>
@@ -1905,7 +2099,7 @@ function ScanSkipPanel({
             still scan boxes to proceed normally.
           </p>
           {skipRequest?.reason ? (
-            <p className="text-sm text-amber-800">Reason: {skipRequest.reason}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {skipRequest.reason}</p>
           ) : null}
         </div>
       </div>
@@ -1933,7 +2127,7 @@ function ScanSkipPanel({
               : 'Request admin approval to continue without scanning boxes for this Docking entry.'}
           </p>
           {wasRejected && skipRequest?.review_notes ? (
-            <p className="text-sm text-red-700">Reason: {skipRequest.review_notes}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">Reason: {skipRequest.review_notes}</p>
           ) : null}
         </div>
       </div>
@@ -1953,7 +2147,7 @@ function ScanSkipPanel({
 }
 
 function PartialScanPanel({
-  partialRequest,
+  partialRequests = [],
   approvedOnLoad,
   canRequest,
   scanned,
@@ -1961,8 +2155,9 @@ function PartialScanPanel({
   isSubmitting,
   onRequest,
 }: {
-  partialRequest?: DockingPartialScanRequest | null;
-  /** An approval raised from another docking on this same truck already cleared the load. */
+  /** Every partial-dispatch request on this truck — one per bill that is short. */
+  partialRequests?: DockingPartialScanRequest[];
+  /** The backend's verdict that every short bill on this truck now carries an approval. */
   approvedOnLoad?: boolean;
   canRequest: boolean;
   scanned: number;
@@ -1970,49 +2165,59 @@ function PartialScanPanel({
   isSubmitting: boolean;
   onRequest: () => void;
 }) {
-  const status = partialRequest?.status ?? null;
+  const summary = summarizePartialRequests(partialRequests);
+  const lastReviewed = partialRequests.find((request) => request.reviewed_by_name);
 
-  if (status === 'APPROVED' || approvedOnLoad) {
+  if (approvedOnLoad) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+      <div className="flex items-start gap-3 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-400">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
-          <p className="font-medium">Partial dispatch approved</p>
-          <p className="text-sm">
-            {partialRequest?.reviewed_by_name
-              ? `Approved by ${partialRequest.reviewed_by_name}. `
-              : ''}
-            {status === 'APPROVED'
-              ? 'You can continue to attachments with the boxes scanned so far.'
-              : "Approved for this truck's load on another company's docking. You can continue to attachments with the boxes scanned so far."}
+          <p className="font-medium">
+            Partial dispatch approved
+            {summary.approved.length > 1 ? ` (${summary.approved.length} bills)` : ''}
           </p>
-          {partialRequest?.review_notes ? (
-            <p className="text-sm text-emerald-800">Note: {partialRequest.review_notes}</p>
+          <p className="text-sm">
+            {lastReviewed?.reviewed_by_name ? `Approved by ${lastReviewed.reviewed_by_name}. ` : ''}
+            Every short bill on this truck is approved, so you can continue to attachments with the
+            boxes scanned so far.
+          </p>
+          {summary.approved.length ? (
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">Bills: {summary.approved.join(', ')}</p>
           ) : null}
         </div>
       </div>
     );
   }
 
-  if (status === 'PENDING') {
+  if (summary.pending.length) {
     return (
-      <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
         <Clock3 className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-1">
-          <p className="font-medium">Partial dispatch pending approval</p>
-          <p className="text-sm">
-            An admin must approve this request before you can continue with a partial scan. You can
-            still scan the remaining boxes to proceed normally.
+          <p className="font-medium">
+            Partial dispatch pending approval
+            {summary.approved.length
+              ? ` — ${summary.approved.length} of ${
+                  summary.approved.length + summary.pending.length
+                } bills approved`
+              : ''}
           </p>
-          {partialRequest?.reason ? (
-            <p className="text-sm text-amber-800">Reason: {partialRequest.reason}</p>
+          <p className="text-sm">
+            {/* Naming the bill matters: an approval covers ONE bill, and the truck moves only
+                when every short one is through. */}
+            Waiting on bill{summary.pending.length === 1 ? '' : 's'} {summary.pending.join(', ')}.
+            You can still scan the remaining boxes to proceed normally.
+          </p>
+          {partialRequests[0]?.reason ? (
+            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {partialRequests[0].reason}</p>
           ) : null}
         </div>
       </div>
     );
   }
 
-  const wasRejected = status === 'REJECTED';
+  const wasRejected = summary.rejected.length > 0;
 
   if (!wasRejected && !canRequest) {
     return null;
@@ -2035,8 +2240,8 @@ function PartialScanPanel({
                     : 'Some bills on this load still have unscanned items.'
                 } Request admin approval to dispatch this load with a partial scan.`}
           </p>
-          {wasRejected && partialRequest?.review_notes ? (
-            <p className="text-sm text-red-700">Reason: {partialRequest.review_notes}</p>
+          {wasRejected && lastReviewed?.review_notes ? (
+            <p className="text-sm text-red-700 dark:text-red-400">Reason: {lastReviewed.review_notes}</p>
           ) : null}
         </div>
       </div>
@@ -2094,7 +2299,9 @@ interface BillGroup {
   scannedLooseBoxes: number;
   scannedLoose: number;
   summary: BillScanSummary;
-  status: 'Open' | 'Partial' | 'Complete';
+  /** False for a bill with no scannable line at all — packaging material only. */
+  requiresScan: boolean;
+  status: 'Open' | 'Partial' | 'Complete' | 'Exempt';
 }
 
 // Group the load's scans under the bill (SAP document) each belongs to, so the
@@ -2174,15 +2381,32 @@ function makeBillGroup(args: {
   // Anything not matched to a line (a box outside this bill's item list) has no pack size
   // to be short of, so it stays a box — the table flags it separately.
   const scannedBoxes = Math.max(0, args.scans.length - scannedLooseBoxes);
-  const allComplete = summary.items.length > 0 && summary.items.every((item) => item.isComplete);
-  // Any label scanned makes the bill Partial — including a bill of unboxed goods, whose
-  // every scan lands under scannedLoose and would otherwise leave it reading "Open".
-  const status: BillGroup['status'] = allComplete
-    ? 'Complete'
-    : args.scans.length > 0
-      ? 'Partial'
-      : 'Open';
-  return { ...args, scannedBoxes, scannedLooseBoxes, scannedLoose, summary, status };
+  // Judged on the scannable lines only: packaging material carries no box label, so a
+  // bill of oil plus cartons is finished when its oil is loaded — waiting on the PM row is
+  // what left bill 626090324 "Partial" with the whole load on the truck.
+  const scanLines = summary.items.filter((item) => item.requiresScan);
+  const requiresScan = scanLines.length > 0;
+  const allComplete = requiresScan && scanLines.every((item) => item.isComplete);
+  // A bill of packaging material only (bill 626090325: four carton lines) can never be
+  // scanned, so "Open" would be a state it can never leave. It is exempt, like a PM row.
+  // Otherwise: any label scanned makes the bill Partial — including a bill of unboxed
+  // goods, whose every scan lands under scannedLoose and would otherwise read "Open".
+  const status: BillGroup['status'] = !requiresScan
+    ? 'Exempt'
+    : allComplete
+      ? 'Complete'
+      : args.scans.length > 0
+        ? 'Partial'
+        : 'Open';
+  return {
+    ...args,
+    scannedBoxes,
+    scannedLooseBoxes,
+    scannedLoose,
+    summary,
+    requiresScan,
+    status,
+  };
 }
 
 function getDocumentItems(

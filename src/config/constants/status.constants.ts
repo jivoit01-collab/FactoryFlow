@@ -104,85 +104,85 @@ export const ENTRY_STATUS_COLORS: Record<EntryStatus, StatusColorConfig> = {
   DRAFT: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
+    darkBg: 'dark:bg-yellow-500/15',
     darkText: 'dark:text-yellow-400',
   },
   IN_PROGRESS: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   SECURITY_CHECK_DONE: {
     bg: 'bg-cyan-100',
     text: 'text-cyan-800',
-    darkBg: 'dark:bg-cyan-900/30',
+    darkBg: 'dark:bg-cyan-500/15',
     darkText: 'dark:text-cyan-400',
   },
   ARRIVAL_SLIP_SUBMITTED: {
     bg: 'bg-sky-100',
     text: 'text-sky-800',
-    darkBg: 'dark:bg-sky-900/30',
+    darkBg: 'dark:bg-sky-500/15',
     darkText: 'dark:text-sky-400',
   },
   ARRIVAL_SLIP_REJECTED: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
   QC_PENDING: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/30',
+    darkBg: 'dark:bg-yellow-500/15',
     darkText: 'dark:text-yellow-400',
   },
   QC_IN_REVIEW: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
-    darkBg: 'dark:bg-blue-900/30',
+    darkBg: 'dark:bg-blue-500/15',
     darkText: 'dark:text-blue-400',
   },
   QC_AWAITING_QAM: {
     bg: 'bg-purple-100',
     text: 'text-purple-800',
-    darkBg: 'dark:bg-purple-900/30',
+    darkBg: 'dark:bg-purple-500/15',
     darkText: 'dark:text-purple-400',
   },
   QC_REJECTED: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/30',
+    darkBg: 'dark:bg-red-500/15',
     darkText: 'dark:text-red-400',
   },
   QC_HOLD: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
-    darkBg: 'dark:bg-orange-900/30',
+    darkBg: 'dark:bg-orange-500/15',
     darkText: 'dark:text-orange-400',
   },
   QC_COMPLETED: {
     bg: 'bg-purple-100',
     text: 'text-purple-800',
-    darkBg: 'dark:bg-purple-900/30',
+    darkBg: 'dark:bg-purple-500/15',
     darkText: 'dark:text-purple-400',
   },
   COMPLETED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/30',
+    darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
   CANCELLED: {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-800',
-    darkText: 'dark:text-gray-300',
+    darkBg: 'dark:bg-muted',
+    darkText: 'dark:text-muted-foreground',
   },
   REJECTED: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
-    darkBg: 'dark:bg-orange-900/30',
+    darkBg: 'dark:bg-orange-500/15',
     darkText: 'dark:text-orange-400',
   },
 };
@@ -191,19 +191,19 @@ export const SECURITY_APPROVAL_COLORS: Record<SecurityApprovalStatus, StatusColo
   PENDING: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
-    darkBg: 'dark:bg-yellow-900/20',
+    darkBg: 'dark:bg-yellow-500/10',
     darkText: 'dark:text-yellow-400',
   },
   APPROVED: {
     bg: 'bg-green-100',
     text: 'text-green-800',
-    darkBg: 'dark:bg-green-900/20',
+    darkBg: 'dark:bg-green-500/10',
     darkText: 'dark:text-green-400',
   },
   REJECTED: {
     bg: 'bg-red-100',
     text: 'text-red-800',
-    darkBg: 'dark:bg-red-900/20',
+    darkBg: 'dark:bg-red-500/10',
     darkText: 'dark:text-red-400',
   },
 };
@@ -222,32 +222,32 @@ export interface StatusConfigWithIcon {
 export const GRPO_STATUS_CONFIG: Record<GRPOStatus, StatusConfigWithIcon> = {
   DRAFT: {
     label: 'Draft',
-    color: 'text-slate-600',
-    bgColor: 'bg-slate-50',
+    color: 'text-slate-600 dark:text-muted-foreground',
+    bgColor: 'bg-slate-50 dark:bg-muted/40',
     icon: FilePen,
   },
   PENDING: {
     label: 'Pending',
     color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-500/10',
     icon: Clock,
   },
   POSTED: {
     label: 'Posted',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
   FAILED: {
     label: 'Failed',
     color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    bgColor: 'bg-red-50 dark:bg-red-500/10',
     icon: XCircle,
   },
   PARTIALLY_POSTED: {
     label: 'Partially Posted',
     color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
+    bgColor: 'bg-orange-50 dark:bg-orange-500/10',
     icon: AlertTriangle,
   },
 };
@@ -269,25 +269,25 @@ export const ATTACHMENT_STATUS_CONFIG: Record<AttachmentStatusType, StatusConfig
   PENDING: {
     label: 'Pending',
     color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-500/10',
     icon: Clock,
   },
   UPLOADED: {
     label: 'Uploaded',
     color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
+    bgColor: 'bg-blue-50 dark:bg-blue-500/10',
     icon: Clock,
   },
   LINKED: {
     label: 'Linked',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
   FAILED: {
     label: 'Failed',
     color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    bgColor: 'bg-red-50 dark:bg-red-500/10',
     icon: XCircle,
   },
 };
@@ -313,8 +313,8 @@ export function getSecurityApprovalClasses(status: string): string {
   const config = SECURITY_APPROVAL_COLORS[normalizedStatus] || {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
-    darkBg: 'dark:bg-gray-900/20',
-    darkText: 'dark:text-gray-400',
+    darkBg: 'dark:bg-muted/40',
+    darkText: 'dark:text-muted-foreground',
   };
   return `${config.bg} ${config.text} ${config.darkBg} ${config.darkText}`;
 }
@@ -323,4 +323,4 @@ export function getSecurityApprovalClasses(status: string): string {
  * Default status color classes for unknown statuses
  */
 export const DEFAULT_STATUS_CLASSES =
-  'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+  'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground';

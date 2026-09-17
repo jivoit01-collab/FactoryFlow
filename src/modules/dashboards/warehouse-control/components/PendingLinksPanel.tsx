@@ -71,7 +71,7 @@ function PendingRow({ bill, today, onSelect }: PendingRowProps) {
         onClick={() => onSelect(bill)}
         className={cn(
           'flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
-          isOverdue && 'bg-rose-50/60 dark:bg-rose-950/20',
+          isOverdue && 'bg-rose-50/60 dark:bg-rose-500/10',
         )}
       >
         <div className="min-w-0">

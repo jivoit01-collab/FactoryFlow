@@ -8,7 +8,13 @@ import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useGRPODetail } from '../api';
-import { AttachmentsSection, QCReportButton, useQCReportPrint } from '../components';
+import {
+  AttachmentsSection,
+  GRPOPrintButton,
+  POPrintButton,
+  QCReportButton,
+  useQCReportPrint,
+} from '../components';
 import { GRPO_STATUS_CONFIG } from '../constants';
 
 // Format date/time for display
@@ -42,6 +48,16 @@ export default function GRPOHistoryDetailPage() {
   const isPermissionError = apiError?.status === 403;
 
   const statusConfig = posting ? GRPO_STATUS_CONFIG[posting.status] : null;
+
+  // Every PO this posting covers. A merged GRPO carries them on
+  // `merged_po_receipts`; an unmerged one has the single FK, and the server
+  // sends that one through the same field, so this is a fallback for older
+  // payloads rather than the common case.
+  const poReceipts = posting
+    ? (posting.merged_po_receipts?.length
+        ? posting.merged_po_receipts
+        : [{ id: posting.po_receipt, po_number: posting.po_number }])
+    : [];
 
   return (
     <div className="space-y-6">
@@ -83,7 +99,7 @@ export default function GRPOHistoryDetailPage() {
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -112,13 +128,28 @@ export default function GRPOHistoryDetailPage() {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Posting Information</h3>
-                {statusConfig && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
-                  >
-                    {statusConfig.label}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* SAP's own purchase order, one per PO — a merged GRPO
+                      covers several, and each has its own sheet. */}
+                  {poReceipts.map((receipt) => (
+                    <POPrintButton
+                      key={receipt.id}
+                      receipt={receipt}
+                      label={poReceipts.length > 1 ? `PO ${receipt.po_number}` : 'Print PO'}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    />
+                  ))}
+                  {/* SAP's own Goods Receipt Note, for a posting SAP accepted. */}
+                  <GRPOPrintButton posting={posting} size="sm" className="h-7 px-2 text-xs" />
+                  {statusConfig && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
+                    >
+                      {statusConfig.label}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
@@ -183,6 +214,12 @@ export default function GRPOHistoryDetailPage() {
                         <p className="text-sm font-medium">
                           {line.item_code} - {line.item_name}
                         </p>
+                        {/* The lot this receipt created in SAP's stock ledger. */}
+                        {line.batches && line.batches.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Batch: {line.batches.map((batch) => batch.BatchNumber).join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className="text-sm font-semibold">{line.quantity_posted}</span>

@@ -174,7 +174,7 @@ export default function OrgChartPage() {
       </div>
 
       {departmentId && (
-        <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/5 dark:text-amber-200">
+        <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/5 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span>
             <Building2 className="mr-1 inline h-3.5 w-3.5" />

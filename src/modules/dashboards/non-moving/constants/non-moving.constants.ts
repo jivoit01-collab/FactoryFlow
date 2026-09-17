@@ -1,3 +1,5 @@
+import type { MovementStatus } from '../utils/movementStatus';
+
 // ============================================================================
 // Filter Options
 // ============================================================================
@@ -12,6 +14,44 @@ export const NON_MOVING_AGE_OPTIONS = [
   { value: 365, label: '365 Days' },
 ] as const;
 
+export const NON_MOVING_STATUS_FILTER_OPTIONS = [
+  { value: 'recent', label: 'Recently Moved' },
+  { value: 'slow-moving', label: 'Slow Moving' },
+  { value: 'non-moving', label: 'Non Moving' },
+] as const;
+
+/**
+ * The page opens on stock untouched for more than 45 days — the threshold the
+ * factory treats as non-moving, and what this board is opened to look at.
+ *
+ * It is a hard cut, not a highlight: `age` trims the rows SAP hands back, so at
+ * this default the Recently Moved and Slow Moving meta cards read zero, because
+ * no row under 45 days is in the answer to count. Both are one click on
+ * `All Stock` away, which fetches every age and restores the full split.
+ */
+export const DEFAULT_NON_MOVING_AGE = 45;
+export const DEFAULT_NON_MOVING_STATUS_FILTER: MovementStatus[] = ['slow-moving', 'non-moving'];
+export const NON_MOVING_ALL_STATUSES: MovementStatus[] = ['recent', 'slow-moving', 'non-moving'];
+
+export const NON_MOVING_PAGE_SIZE = 50;
+
+// ============================================================================
+// Production Rule
+// ============================================================================
+
+/**
+ * The page opens with the production rule ON — the board's standing rule, and
+ * the only behaviour it had before the switch existed.
+ *
+ * Switched off, nothing internal resets an item's clock: not a production
+ * issue, not a receipt from production, not a transfer. The only movement left
+ * is the item's last Goods Receipt PO, which turns Days Idle from "when was
+ * this last used" into "when did we last buy any". The two answers can be very
+ * far apart — Beverages' GLASS BOTTLE 200 MLS NEW reads 45 days on production
+ * and 272 on its last purchase.
+ */
+export const DEFAULT_COUNT_PRODUCTION = true;
+
 // ============================================================================
 // Warehouse Scope
 // ============================================================================
@@ -22,6 +62,18 @@ export const NON_MOVING_AGE_OPTIONS = [
  * or the backend's "Unassigned" bucket, and is hidden from this dashboard.
  */
 export const FACTORY_WAREHOUSE_PREFIXES = ['BH', 'GP'] as const;
+
+/**
+ * The stores the dashboard opens on: the two packaging stores that feed the
+ * floor and the two non-moving godowns stock is parked in. Everything else --
+ * the consumption store, wastage, finished-goods and the depots -- is one
+ * click away in the filter, but is not what this page is opened to look at.
+ *
+ * Applied against the warehouses the report actually returned, never blind:
+ * JIVO_MART has none of these four codes, and presetting them there would open
+ * the dashboard on an empty table that reads as a broken page.
+ */
+export const DEFAULT_NON_MOVING_WAREHOUSES = ['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM'] as const;
 
 // ============================================================================
 // Query Config

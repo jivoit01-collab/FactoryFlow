@@ -8,7 +8,6 @@ import {
   Undo2,
 } from 'lucide-react';
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import {
   ADMIN_PERMISSIONS,
@@ -19,11 +18,11 @@ import {
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui';
+import { ModuleTile, ModuleTileGrid, tileAccent } from '@/shared/components/navigation';
+import { Card, CardContent } from '@/shared/components/ui';
 
 interface AdminModuleCard {
   title: string;
-  description: string;
   route: string;
   icon: React.ReactNode;
   color: string;
@@ -33,10 +32,9 @@ interface AdminModuleCard {
 const adminModuleCards: AdminModuleCard[] = [
   {
     title: 'Docking — Scan Skip Requests',
-    description: 'Review and approve operator requests to skip box scanning for docking entries.',
     route: '/admin/docking/scan-approvals',
     icon: <ClipboardCheck className="h-5 w-5" />,
-    color: 'text-emerald-700',
+    color: 'text-emerald-700 dark:text-emerald-400',
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_SCAN_SKIP,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_SCAN_SKIP,
@@ -44,10 +42,9 @@ const adminModuleCards: AdminModuleCard[] = [
   },
   {
     title: 'Docking — Partial Dispatch Approvals',
-    description: 'Review and approve requests to dispatch a docking entry with partial box scanning.',
     route: '/admin/docking/partial-dispatch-approvals',
     icon: <Truck className="h-5 w-5" />,
-    color: 'text-amber-700',
+    color: 'text-amber-700 dark:text-amber-400',
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_PARTIAL_SCAN,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
@@ -55,10 +52,9 @@ const adminModuleCards: AdminModuleCard[] = [
   },
   {
     title: 'Material Indent — Purchase Approvals',
-    description: 'Review material requests raised across departments and approve them for purchase.',
     route: '/admin/material-indent-approvals',
     icon: <ClipboardList className="h-5 w-5" />,
-    color: 'text-sky-700',
+    color: 'text-sky-700 dark:text-sky-400',
     permissions: [
       MAINTENANCE_PERMISSIONS.VIEW_MATERIAL_INDENT,
       MAINTENANCE_PERMISSIONS.APPROVE_MATERIAL_INDENT,
@@ -66,44 +62,35 @@ const adminModuleCards: AdminModuleCard[] = [
   },
   {
     title: 'Returnable / Non-returnable Approvals',
-    description:
-      'Sign off on material leaving the gate for repair, exchange or job work before the gate sees it.',
     route: '/admin/returnable-approvals',
     icon: <PackageCheck className="h-5 w-5" />,
-    color: 'text-violet-700',
+    color: 'text-violet-700 dark:text-violet-400',
     permissions: [RETURNABLE_PERMISSIONS.APPROVE_GATEPASS],
   },
   {
     title: 'BST Partial-Transfer Approvals',
-    description:
-      'Review requests to seal a branch transfer whose scanned quantity is short of the bill.',
     route: '/admin/bst-approvals',
     icon: <ShieldCheck className="h-5 w-5" />,
-    color: 'text-teal-700',
+    color: 'text-teal-700 dark:text-teal-400',
     permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
   },
   {
     title: 'Goods Return Approvals',
-    description:
-      'Approve customer returns flagged "coming on approval" so the goods can be received.',
     route: '/admin/goods-return-approvals',
     icon: <Undo2 className="h-5 w-5" />,
-    color: 'text-rose-700',
+    color: 'text-rose-700 dark:text-rose-400',
     permissions: [GOODS_RETURN_PERMISSIONS.APPROVE],
   },
   {
     title: 'Cost Master',
-    description:
-      'Define every cost type the factory incurs and set its rates — factory-wide, per company, per department, or for a specific value.',
     route: '/admin/cost-master',
     icon: <Coins className="h-5 w-5" />,
-    color: 'text-indigo-700',
+    color: 'text-indigo-700 dark:text-indigo-400',
     permissions: [COST_MASTER_PERMISSIONS.MANAGE],
   },
 ];
 
 export default function AdminDashboardPage() {
-  const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
 
   const visibleCards = useMemo(
@@ -128,23 +115,17 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <ModuleTileGrid>
           {visibleCards.map((card) => (
-            <Card
+            <ModuleTile
               key={card.route}
-              className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md"
-              onClick={() => navigate(card.route)}
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <div className={card.color}>{card.icon}</div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-5 text-muted-foreground">{card.description}</p>
-              </CardContent>
-            </Card>
+              title={card.title}
+              icon={card.icon}
+              accent={tileAccent(card.color)}
+              to={card.route}
+            />
           ))}
-        </div>
+        </ModuleTileGrid>
       )}
     </div>
   );

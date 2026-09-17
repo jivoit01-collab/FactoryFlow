@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const get = vi.fn().mockResolvedValue({ data: {} });
+const get = vi.fn().mockResolvedValue({ data: [] });
 const post = vi.fn().mockResolvedValue({ data: {} });
 
 vi.mock('@/core/api', () => ({
@@ -24,32 +24,92 @@ describe('partialScanApprovalApi', () => {
     expect(get.mock.calls[0][0]).toContain('status=PENDING');
   });
 
-  it('fetches the request for a docking', async () => {
-    await partialScanApprovalApi.byDispatch(7);
-    expect(get).toHaveBeenCalledWith(
-      '/docking-admin/partial-scan-requests/by-sales-dispatch/7/',
-    );
+  it("fetches the whole truck's requests for a docking", async () => {
+    // One request per short bill, from any docking on the truck — the operator standing on
+    // the fully scanned half has to see the ones raised for its neighbour's bills.
+    get.mockResolvedValueOnce({
+      data: [
+        { id: 1, status: 'PENDING', sap_doc_num: '626090324' },
+        { id: 2, status: 'PENDING', sap_doc_num: '626090325' },
+      ],
+    });
+    const requests = await partialScanApprovalApi.byDispatch(7);
+    expect(get).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/by-sales-dispatch/7/');
+    expect(requests.map((request) => request.sap_doc_num)).toEqual(['626090324', '626090325']);
   });
 
-  it('creates a partial-dispatch request', async () => {
-    await partialScanApprovalApi.create({ sales_dispatch: 7, reason: 'short load' });
+  it('reads a docking with no requests as an empty list, never null', async () => {
+    get.mockResolvedValueOnce({ data: null });
+    expect(await partialScanApprovalApi.byDispatch(7)).toEqual([]);
+  });
+
+  it('creates one request per short bill and returns them all', async () => {
+    post.mockResolvedValueOnce({
+      data: [
+        { id: 1, status: 'PENDING', sap_doc_num: '626090324' },
+        { id: 2, status: 'PENDING', sap_doc_num: '626090325' },
+      ],
+    });
+    const raised = await partialScanApprovalApi.create({
+      sales_dispatch: 7,
+      reason: 'short load',
+    });
     expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/', {
       sales_dispatch: 7,
       reason: 'short load',
+    });
+    expect(raised).toHaveLength(2);
+  });
+
+  it('sends only the bills the operator selected', async () => {
+    // Approval is per bill, so a request must carry the operator's own picks — without
+    // them the backend raises one for every short bill on the truck, including bills he
+    // never saw.
+    post.mockResolvedValueOnce({ data: [{ id: 1, status: 'PENDING', sap_doc_num: '626090324' }] });
+    await partialScanApprovalApi.create({
+      sales_dispatch: 7,
+      reason: 'short load',
+      bills: [{ sales_dispatch: 9, document: 41 }],
+    });
+    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/', {
+      sales_dispatch: 7,
+      reason: 'short load',
+      bills: [{ sales_dispatch: 9, document: 41 }],
     });
   });
 
   it('approves a request', async () => {
     await partialScanApprovalApi.approve(7, { notes: 'ok' });
-    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/7/approve/', {
-      notes: 'ok',
-    });
+    // No files -> a plain JSON review, exactly as before attachments existed.
+    expect(post).toHaveBeenCalledWith(
+      '/docking-admin/partial-scan-requests/7/approve/',
+      { notes: 'ok' },
+      undefined,
+    );
   });
 
   it('rejects a request', async () => {
     await partialScanApprovalApi.reject(7, { notes: 'not now' });
-    expect(post).toHaveBeenCalledWith('/docking-admin/partial-scan-requests/7/reject/', {
-      notes: 'not now',
-    });
+    expect(post).toHaveBeenCalledWith(
+      '/docking-admin/partial-scan-requests/7/reject/',
+      { notes: 'not now' },
+      undefined,
+    );
+  });
+
+  it('sends the approver attachments as multipart', async () => {
+    // The paperwork behind the decision rides with the decision -- one repeated
+    // `attachments` key per file, which is what DRF reads a list off.
+    const mail = new File(['mail'], 'authorisation.pdf', { type: 'application/pdf' });
+    const photo = new File(['photo'], 'load.jpg', { type: 'image/jpeg' });
+
+    await partialScanApprovalApi.approve(7, { notes: 'ok', attachments: [mail, photo] });
+
+    const [url, body, config] = post.mock.calls[0] as [string, FormData, { headers: object }];
+    expect(url).toBe('/docking-admin/partial-scan-requests/7/approve/');
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('notes')).toBe('ok');
+    expect(body.getAll('attachments')).toHaveLength(2);
+    expect(config.headers).toEqual({ 'Content-Type': 'multipart/form-data' });
   });
 });

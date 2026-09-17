@@ -38,6 +38,7 @@ import {
   CardTitle,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -271,7 +272,7 @@ function StockShortfallDialog({
                   <td className="p-2 text-right text-muted-foreground">
                     {Number(l.available_quantity)}
                   </td>
-                  <td className="p-2 text-right font-semibold text-amber-700">
+                  <td className="p-2 text-right font-semibold text-amber-700 dark:text-amber-400">
                     {Number(l.shortfall_quantity)}
                   </td>
                 </tr>
@@ -814,14 +815,14 @@ export default function MpDeliveryNotesPage() {
               )}
 
               {tab === 'HELD' && stockShortfall.length > 0 && (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50/50 p-2 text-sm dark:bg-amber-950/20">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50/50 p-2 text-sm dark:bg-amber-500/10">
                   <span className="text-amber-800 dark:text-amber-300">
                     {stockShortfall.length} finished good(s) short across held orders.
                   </span>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 border-amber-400 text-amber-800 hover:bg-amber-100"
+                    className="shrink-0 border-amber-400 text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25"
                     onClick={() => setShortfallOpen(true)}
                   >
                     <PackageX className="mr-2 h-4 w-4" /> Stock needed ({stockShortfall.length})
@@ -863,7 +864,7 @@ export default function MpDeliveryNotesPage() {
                               key={d.dispatch_id}
                               className={cn(
                                 'border-b last:border-0',
-                                pickable.length > 0 && 'bg-amber-50/60 dark:bg-amber-950/20',
+                                pickable.length > 0 && 'bg-amber-50/60 dark:bg-amber-500/10',
                               )}
                             >
                               <td className="p-3 font-mono font-medium">
@@ -962,7 +963,7 @@ export default function MpDeliveryNotesPage() {
                                       <td className="p-2 text-right text-muted-foreground">
                                         {Number(s.available_quantity)}
                                       </td>
-                                      <td className="p-2 text-right font-semibold text-amber-700">
+                                      <td className="p-2 text-right font-semibold text-amber-700 dark:text-amber-400">
                                         {Number(s.shortfall_quantity)}
                                       </td>
                                       <td className="p-2 text-right">
@@ -1185,13 +1186,23 @@ export default function MpDeliveryNotesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cut SAP delivery note?</DialogTitle>
+            <DialogDescription>Review the details below before posting to SAP.</DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This posts the SAP delivery note(s) for <strong>{scopeLabel}</strong>, covering{' '}
-            <strong>{count}</strong> dispatch(es) with{' '}
-            <strong>{summary?.totals.fg_item_count ?? 0}</strong> line item(s). This can&apos;t be
-            undone.
-          </p>
+
+          <div className="space-y-3">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Scope:</span>{' '}
+              <span className="font-medium">{scopeLabel}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Dispatches:</span>{' '}
+              <span className="font-medium">{count}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Line items:</span>{' '}
+              <span className="font-medium">{summary?.totals.fg_item_count ?? 0}</span>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <label htmlFor="dn-doc-date" className="text-sm font-medium">
@@ -1217,7 +1228,7 @@ export default function MpDeliveryNotesPage() {
             <div className="flex gap-2 rounded-md border border-amber-400/60 bg-amber-50 p-3 text-sm dark:bg-amber-500/10">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div className="space-y-1">
-                <p className="font-medium text-amber-900 dark:text-amber-200">
+                <p className="font-medium text-amber-900 dark:text-amber-300">
                   This posts into a previous month
                 </p>
                 <p className="text-amber-800 dark:text-amber-300/90">

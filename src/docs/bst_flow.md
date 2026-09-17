@@ -44,8 +44,8 @@ scanned again by the destination warehouse to accept or reject them.
   (`BST-YYYYMMDD-NNNN`), the SAP doc snapshot (`sap_doc_entry/num/date`,
   `sap_from_warehouse`, `sap_to_warehouse`, `sap_reference`), `invoice_no`,
   optional `vehicle`/`driver`, `requires_gate`, `status`, and audit stamps
-  (`created_by`, `scan_approved_by/at`, `dispatched_by/at`, `gated_out_by/at`,
-  `received_by/at`, `cancelled_*`).
+  (`created_by`, `scan_approved_by/at`, `loaded_by/at`, `dispatched_by/at`,
+  `gated_out_by/at`, `received_by/at`, `cancelled_*`).
 - **`BSTTransferItem`** — a snapshot of each SAP line (item, quantity, uom,
   from/to warehouse). This is the "bill" the scanning is checked against.
 - **`BSTBoxScan`** — one row per physical box, holding **both** the send state
@@ -114,9 +114,32 @@ DRAFT ─▶ SCANNING ─▶ (approve)
 
 - Shows Bill vs Scanned per item + the vehicle/driver summary.
 - **Approve** (`POST /warehouse/bst/:id/approve/`) is the warehouse's final action.
-  It stamps `scan_approved_by/at` and then:
+  It stamps `scan_approved_by/at` (**and `loaded_by/at`** when the transfer leaves
+  on a vehicle) and then:
   - `requires_gate` → status **`AWAITING_GATE_OUT`** (handed to the gate),
   - otherwise → status **`IN_TRANSIT`** (dispatched, receivable).
+
+### 3b. Loaded at — the handoff between the two teams
+
+`loaded_at` is the line the whole flow pivots on: everything before it is the
+dispatch team's work (scanning, filling the truck), everything after it is the
+gate's. Approving stamps it, because sealing is the sender's last act on the
+load, and nothing downstream moves it again.
+
+**Only for `requires_gate` transfers.** An internal move has no such handover —
+the warehouse team puts the pallets on a lift and the receiving warehouse's own
+team takes them off, with no dispatch team and no gate in between — so it is
+never stamped, and the card, the detail row and the approve-page note all render
+nothing for one.
+
+- Shown on the BST dashboard (blank for internal moves), the transfer detail
+  (**`BSTLoadedAtCard`**), and the gate's BST Out list + review — the gate-out
+  queue is *ordered* by it, oldest load first.
+- A truck is often loaded before anyone reaches a screen, so a holder of
+  **`warehouse.can_edit_bst_loaded_at`** (granted to *BST Approver*) can correct
+  the time from the detail page (`PUT /warehouse/bst/:id/loaded-at/`). The
+  backend keeps it between the BST's creation and whatever followed — gate-out
+  or receipt — and the correction is stamped and displayed, never silent.
 
 ### 4. Gate out (gate) — `/gate/bst-out`, `/gate/bst-out/:id`
 
@@ -124,6 +147,7 @@ Only for transfers that leave on a vehicle.
 - **BST Out list** (`GET /warehouse/bst/gate/expected-outwards/`, date-filtered):
   transfers approved by the warehouse and awaiting gate-out.
 - **Gate review**: the gate person verifies the **warehouse approval (who/when)**,
+  the **loaded-at** time their own clock starts from,
   the **vehicle/driver**, and **bill qty vs scanned qty**, then **Mark vehicle out**
   (`POST /warehouse/bst/:id/gate/mark-out/`) → status **`IN_TRANSIT`**
   (stamps `gated_out_*` and `dispatched_*`).

@@ -1,0 +1,343 @@
+/* ══════════════════════════════════════════════════════════════
+   PLANT CONTROL BOARD — the operations vocabulary, four bands wide
+
+   This file adds nothing to the design system. It extends the one in
+   `logistics-control/styles/ops-board.css` with the two things a four-band
+   board needs that a three-band board did not: a vertical unit that still fits,
+   and a fourth domain hue. Everything else — the tile grid, the meters, the
+   people strip, the condition scale — is imported unchanged, because two
+   boards inventing their own teal would be two teals.
+
+   THE FOUR COLOUR RULES ARE INHERITED, NOT RESTATED
+   1. Domain hue  = the band.
+   2. Composition = two or three tints of the SAME domain hue.
+   3. Ageing      = fresh-to-oldest, left to right.
+   4. Grey        = the part that isn't there: remainder, reference, idle.
+   Green/amber/red are reserved for condition and are never a domain hue.
+
+   WHY THE UNIT SHRINKS
+   The original unit is `min(0.833vw, 1.481vh)` — 16px on a 1080p wall, sized so
+   three bands and a header fill the height exactly. A fourth band does not fit
+   inside that budget: at 16px each band gets 14.4u, its tile 11.4u of content,
+   and the four fixed rows alone want 8.5u, leaving under 3u for a meter and its
+   legend — which overflows.
+
+   So the vertical coefficient drops to 1.20vh. The board is still exactly one
+   viewport tall and still scales with the display; each band simply gets 18.4u
+   instead, and the visualisation row lands at a comfortable 6.8u. The
+   horizontal coefficient is untouched, so a wide screen still binds on height
+   and the layout does not stretch.
+   ══════════════════════════════════════════════════════════════ */
+
+.plant-board {
+  /*
+   * THE UNIT MEASURES THIS BOARD, NOT THE WINDOW.
+   *
+   * `vw`/`vh` are the whole viewport, and in the app the board is never the
+   * whole viewport: the nav rail takes ~260px and the shell's own header takes
+   * ~190px. On a 1920x1080 screen the board actually gets about 1640x820, so a
+   * unit read off `vw`/`vh` came out around a third too large -- and since
+   * every length here is a multiple of it, the big figures stopped fitting
+   * their tiles and wrapped into their own unit labels. That is the overlap.
+   *
+   * `cqw` is this element's own content width, so the horizontal term is now
+   * true in a tab, in a narrower window, and with the nav rail collapsed.
+   * Height stays on `vh`: `cqh` would need `container-type: size`, which needs
+   * a definite height, and this board is mounted in a scrolling shell where it
+   * does not always have one -- a zero there would collapse the unit to its
+   * 6px floor and make the board unreadable. `vh` is the safe over-estimate,
+   * and the width term now binds first at every size that was breaking.
+   */
+  container-type: inline-size;
+  /*
+   * The ceiling used to be the wall's real problem.
+   *
+   * It stops the unit growing, and on a large screen the unit WANTS to be
+   * bigger than it: at 4K the height term asks for about 26px and the old cap
+   * held it at 22. Everything sized in `--u` then froze — the people column,
+   * the type, the bar chart's reserved headroom — while the columns and rows
+   * measured in `fr` kept growing with the panel. The board came apart along
+   * exactly that seam: a rail too narrow for its own figures next to tiles with
+   * space to spare.
+   *
+   * Raised so the board keeps scaling on the screens it is actually hung on. No
+   * ordinary display is anywhere near it — a 1080p panel resolves this to about
+   * 13px — so nothing below a very large screen renders differently.
+   */
+  --u: clamp(6px, min(0.833cqw, 1.2vh), 30px);
+}
+
+/*
+ * A figure is never broken across lines.
+ *
+ * "Rs 4.72 Cr" is one number and splitting it after the decimal makes two
+ * numbers, neither of them true. When the figure and its unit cannot share a
+ * line the UNIT moves down instead -- it is the half that can be read on a
+ * second line without changing meaning.
+ */
+.plant-board .ops-val {
+  flex-wrap: wrap;
+}
+.plant-board .ops-val b {
+  white-space: nowrap;
+}
+.plant-board .ops-val u {
+  /* Once wrapped it takes the whole line, so it sits under the figure rather
+     than beside a gap. */
+  min-width: 0;
+}
+
+/*
+ * ...and the row grows to hold it, rather than the tile clipping it.
+ *
+ * The four rows are fixed heights so a row of tiles shares one baseline. The
+ * value row is the one exception: it may take a second line, and the
+ * visualisation under it gives up the space. A clipped unit reads as a missing
+ * unit, and a figure with no unit on a wall is worse than a shorter bar.
+ */
+.plant-board .ops-grp {
+  grid-template-rows: var(--r-head) var(--r-sub) minmax(var(--r-value), auto) minmax(0, 1fr);
+}
+
+/*
+ * IN A TAB THE BANDS TAKE THE HEIGHT THEY NEED; ON THE WALL THEY DIVIDE ONE.
+ *
+ * The original rule was `repeat(4, minmax(0, 1fr))` -- four bands dividing one
+ * viewport, nothing below the fold. That is right on the factory TV and wrong
+ * everywhere else, because in the app the board is not a viewport tall: the
+ * shell's header and the nav rail take a couple of hundred pixels each, while
+ * `--u` is still measured against the whole window. Four bands then divide a
+ * height a third larger than they actually have, every tile is asked to fit
+ * four fixed rows into less room than the unit promised, and what spills is
+ * the figure -- which is the overlap this fixes.
+ *
+ * So off the wall a band is at least tall enough for its tiles and grows if it
+ * needs to, and the page scrolls. A board that scrolls is a smaller thing to
+ * give up than a board whose numbers sit on top of each other.
+ *
+ * The fullscreen rules at the foot of this file restore the original layout,
+ * because that is the mode the wall runs in and there the arithmetic is exact.
+ */
+.plant-board .ops-stack {
+  grid-template-rows: none;
+  grid-auto-rows: minmax(calc(17 * var(--u)), auto);
+}
+
+.plant-board.ops-board,
+.plant-board .ops-board__inner {
+  height: auto;
+  min-height: 100%;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SMALLER SCREENS
+
+   The board is designed for a factory TV: four bands, four tiles each, one
+   screenful, nothing below the fold. On a laptop in a browser tab that is
+   still nearly true and the rules above keep it honest. Below about a
+   thousand pixels it stops being true at all, and pretending otherwise gives
+   sixteen unreadable tiles rather than a smaller board.
+
+   So under that width the board changes SHAPE rather than scale: tiles wrap
+   two to a row, then one, and the page scrolls. It stops being a wall board
+   and becomes a page, which is what a split window or a phone can show.
+
+   Fullscreen is exempt at every size -- that is the wall, and there the
+   original layout is the whole point.
+   ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1000px) {
+  .plant-board .ops-groups {
+    /* Two up. `auto-fit` rather than a fixed two so a band with three tiles
+       does not leave a hole, and `minmax` so a tile never goes narrower than
+       its own figures. `!important` because the column template is an inline
+       style: it is per band, so it cannot live in this file. */
+    grid-template-columns: repeat(auto-fit, minmax(calc(20 * var(--u)), 1fr)) !important;
+    grid-auto-rows: minmax(calc(14 * var(--u)), auto);
+  }
+
+  .plant-board.ops-board {
+    /* The unit stops shrinking with the window here: below this width the type
+       has to stay readable at arm's length rather than keep scaling towards a
+       screen nobody is standing four metres from. */
+    --u: clamp(9px, 2.1vw, 16px);
+  }
+}
+
+@media (max-width: 620px) {
+  .plant-board .ops-groups {
+    /* One up. Two tiles at this width leaves each too narrow for its own
+       figure, which is the thing this section exists to prevent. */
+    grid-template-columns: 1fr !important;
+  }
+
+  .plant-board .ops-band {
+    /* The rail is a vertical label down the side of a band that is now taller
+       than it is wide, and the workforce strip is pinned to a right-hand
+       column that no longer has room. Both become ordinary rows. */
+    grid-template-columns: 1fr;
+  }
+
+  .plant-board .ops-rail p {
+    writing-mode: horizontal-tb;
+    transform: none;
+  }
+}
+
+/* ───────── domain hues ─────────
+   A cool progression across the four stages, in the order material moves:
+   bought, stored, made, shifted. Adjacent bands are one step apart on the
+   spectrum, which is enough to tell them apart while keeping the board one
+   family rather than a paintbox — and the rail label and vertical position
+   disambiguate in any case.
+
+   Deliberately no green: rule 4 reserves it for condition, and a green
+   Production band would make every healthy tag inside it invisible. */
+
+/* Purchase — cyan */
+.ops-b-purchase {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #0e7490;
+  --d2: #06b6d4;
+  --d3: #67e8f9;
+  --d4: #cffafe;
+  --ga: rgba(6, 182, 212, 0.3);
+  --gb: rgba(6, 182, 212, 0.2);
+  --soft: rgba(6, 182, 212, 0.07);
+  --tint1: rgba(6, 182, 212, 0.2);
+  --tint2: rgba(6, 182, 212, 0.09);
+  --glow: rgba(6, 182, 212, 0.26);
+}
+
+/* Store — blue */
+.ops-b-store {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #1e40af;
+  --d2: #3b82f6;
+  --d3: #93c5fd;
+  --d4: #dbeafe;
+  --ga: rgba(59, 130, 246, 0.28);
+  --gb: rgba(59, 130, 246, 0.18);
+  --soft: rgba(59, 130, 246, 0.07);
+  --tint1: rgba(59, 130, 246, 0.2);
+  --tint2: rgba(59, 130, 246, 0.09);
+  --glow: rgba(59, 130, 246, 0.26);
+}
+
+/* Production — indigo */
+.ops-b-production {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #3730a3;
+  --d2: #6366f1;
+  --d3: #a5b4fc;
+  --d4: #e0e7ff;
+  --ga: rgba(99, 102, 241, 0.28);
+  --gb: rgba(99, 102, 241, 0.18);
+  --soft: rgba(99, 102, 241, 0.07);
+  --tint1: rgba(99, 102, 241, 0.2);
+  --tint2: rgba(99, 102, 241, 0.09);
+  --glow: rgba(99, 102, 241, 0.26);
+}
+
+/* Shifting — violet */
+.ops-b-shifting {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #5b21b6;
+  --d2: #8b5cf6;
+  --d3: #c4b5fd;
+  --d4: #ede9fe;
+  --ga: rgba(139, 92, 246, 0.28);
+  --gb: rgba(139, 92, 246, 0.18);
+  --soft: rgba(139, 92, 246, 0.07);
+  --tint1: rgba(139, 92, 246, 0.2);
+  --tint2: rgba(139, 92, 246, 0.09);
+  --glow: rgba(139, 92, 246, 0.26);
+}
+
+/* ───────── the rail, on a band that is a quarter of the screen ─────────
+   Four bands means each rail is about three-quarters the height a three-band
+   rail had, while the Purchase band carries the longest scope on the board —
+   four store codes. At the inherited size that string runs past the band and
+   the name at its head is what gets cut.
+
+   The scope is the secondary half of the label, so the scope is what shrinks.
+   The name stays at full size, and both now fit inside the band. */
+.plant-board .ops-rail p {
+  /* Measured, not guessed: at the inherited 1.02u the Purchase rail wanted
+     216px of a 200px band and the Shifting rail 210px. These two steps bring
+     the longest label on the board to about 195px, which fits with room to
+     spare at every size the board scales through. */
+  font-size: calc(0.95 * var(--u));
+}
+.plant-board .ops-rail p em {
+  font-size: 0.82em;
+  letter-spacing: 0;
+}
+
+/* ───────── the board admitting something ─────────
+   A chip can carry a warning off the response — an assumption the server had to
+   make, a plan that is not the current month. They are written for a person, so
+   they can run long; the ceiling keeps one from pushing the totals off the bar,
+   and the full text stays in the title attribute for whoever walks up. */
+.plant-board .ops-chip {
+  max-width: calc(30 * var(--u));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/*
+ * The wall is the wall, whatever the window was before it.
+ *
+ * Fullscreen is the mode the board was measured for: the element IS the
+ * viewport, so `--u` is exact and the four bands divide the height between them
+ * with nothing below the fold. Every relaxation above is undone here, including
+ * at narrow widths -- a laptop driving a projector is still a wall.
+ */
+.plant-board.ops-board:fullscreen,
+.plant-board.ops-board:-webkit-full-screen {
+  height: 100vh;
+  min-height: 0;
+  --u: clamp(6px, min(0.833vw, 1.2vh), 30px);
+}
+.plant-board.ops-board:fullscreen .ops-board__inner,
+.plant-board.ops-board:-webkit-full-screen .ops-board__inner {
+  height: 100%;
+  min-height: 0;
+}
+.plant-board.ops-board:fullscreen .ops-stack,
+.plant-board.ops-board:-webkit-full-screen .ops-stack {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
+}
+.plant-board.ops-board:fullscreen .ops-groups,
+.plant-board.ops-board:-webkit-full-screen .ops-groups {
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+/*
+ * The same wall, reached through the carousel.
+ *
+ * Repeated against `.ops-wall` rather than added to the selector lists above —
+ * see `ops-board.css` for why the two must not share a list. This is the block
+ * whose absence clipped the fourth band (Shifting) off the bottom of the
+ * carousel: without it the board keeps `grid-auto-rows: minmax(17*--u, auto)`
+ * from the relaxed layout, which sizes four bands to more than the screen.
+ */
+.ops-wall .plant-board.ops-board {
+  height: 100%;
+  min-height: 0;
+  --u: clamp(6px, min(0.833vw, 1.2vh), 30px);
+}
+.ops-wall .plant-board.ops-board .ops-board__inner {
+  height: 100%;
+  min-height: 0;
+}
+.ops-wall .plant-board.ops-board .ops-stack {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
+}
+.ops-wall .plant-board.ops-board .ops-groups {
+  grid-auto-rows: minmax(0, 1fr);
+}

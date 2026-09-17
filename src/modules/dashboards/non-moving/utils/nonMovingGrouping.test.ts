@@ -48,6 +48,23 @@ describe('groupNonMovingItemsBySku', () => {
     expect(grouped.consumption_ratio).toBe(0.12);
   });
 
+  it('carries the warehouse the freshest movement happened in', () => {
+    const [grouped] = groupNonMovingItemsBySku([
+      makeItem({ warehouse: 'BH-PM', days_since_last_movement: 187 }),
+      makeItem({
+        warehouse: 'GP-NM',
+        days_since_last_movement: 8,
+        last_movement_date: '2026-09-07 00:00:00',
+        movement_basis: 'production',
+        last_movement_warehouse: 'BH-PP',
+        last_movement_warehouse_name: 'Bhakharpur Production Process 1st Floor',
+      }),
+    ]);
+
+    expect(grouped.last_movement_warehouse).toBe('BH-PP');
+    expect(grouped.last_movement_warehouse_name).toBe('Bhakharpur Production Process 1st Floor');
+  });
+
   it('keeps the warehouse code when only one warehouse contributes', () => {
     const [grouped] = groupNonMovingItemsBySku([
       makeItem({ warehouse: 'BH-PM', days_since_last_movement: 35 }),
@@ -170,5 +187,21 @@ describe('buildNonMovingWarehouseGroups', () => {
     );
 
     expect(group.items.map((item) => item.value)).toEqual([400, 250]);
+  });
+});
+
+describe('folding a decommissioned warehouse', () => {
+  it('marks the line inactive only when every warehouse behind it is', () => {
+    const both = groupNonMovingItemsBySku([
+      makeItem({ item_code: 'A', warehouse: 'BH-PP', warehouse_inactive: true }),
+      makeItem({ item_code: 'A', warehouse: 'BH-PM', warehouse_inactive: false }),
+    ]);
+    // Half the stock is in a live store, so the line is not frozen stock.
+    expect(both[0].warehouse_inactive).toBe(false);
+
+    const onlyFrozen = groupNonMovingItemsBySku([
+      makeItem({ item_code: 'B', warehouse: 'BH-PP', warehouse_inactive: true }),
+    ]);
+    expect(onlyFrozen[0].warehouse_inactive).toBe(true);
   });
 });

@@ -298,7 +298,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
             (entryError ? getErrorMessage(entryError, 'Sales dispatch out entry not found') : null)
           }
         />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Sales dispatch out entry details not found</span>
@@ -441,7 +441,7 @@ export default function SalesDispatchGateOutWeighmentPage() {
         </CardContent>
       </Card>
 
-      <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+      <div className="rounded-md border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-4 text-sm text-blue-950">
         <div className="flex items-start gap-3">
           <Scale className="mt-0.5 h-5 w-5" />
           <div>
@@ -535,7 +535,7 @@ function ScanApprovalNotice({
   if (!scanSkipApproved && !partialScanApproved) return null;
   const isFullSkip = scanSkipApproved && scannedBoxes === 0;
   return (
-    <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+    <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
       <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="space-y-0.5">
         <p className="font-medium">
@@ -564,7 +564,7 @@ function CombinedLoadNotice({
   currentId: number;
 }) {
   return (
-    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+    <div className="rounded-md border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-4 text-sm text-blue-950">
       <div className="flex items-start gap-3">
         <Boxes className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="space-y-2">
@@ -619,10 +619,10 @@ function InfoItem({ label, value }: { label: string; value?: string | number | n
 }
 
 const VARIANCE_TONE = {
-  good: { box: 'border-emerald-200 bg-emerald-50 text-emerald-800', label: 'Within tolerance' },
-  warn: { box: 'border-amber-200 bg-amber-50 text-amber-800', label: 'Check the load' },
-  bad: { box: 'border-red-200 bg-red-50 text-red-800', label: 'Large weight mismatch' },
-  neutral: { box: 'border-slate-200 bg-slate-50 text-slate-700', label: 'Comparison' },
+  good: { box: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400', label: 'Within tolerance' },
+  warn: { box: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400', label: 'Check the load' },
+  bad: { box: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-400', label: 'Large weight mismatch' },
+  neutral: { box: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground', label: 'Comparison' },
 } as const;
 
 function getVarianceTone(pct: number | null): keyof typeof VARIANCE_TONE {
@@ -748,7 +748,7 @@ function WeightCheckCard({
             Enter gross and tare weight to compare the loaded net weight against the challan.
           </p>
         ) : !hasChallanWeight ? (
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
             No challan or invoice weight to compare against. Enter a challan weight above. Net loaded
             weight is {formatKg(net)}.
           </div>
@@ -841,7 +841,7 @@ function DockingLoadCard({
         </div>
 
         {scannedBoxes === 0 && scanSkipApproved ? (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <div className="flex items-center gap-2 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-400">
             <PackageCheck className="h-4 w-4" />
             Box scanning was skipped for this entry (approved by admin).
           </div>
@@ -1105,7 +1105,7 @@ function AdditionalWeightCard({
         </div>
 
         {goodsWeight !== null && hasReference ? (
-          <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
             Estimated goods {formatKg(goodsWeight)} vs {challanWeight > 0 ? 'challan' : 'invoice'}{' '}
             {formatKg(reference)} ·{' '}
             <span className="font-semibold">

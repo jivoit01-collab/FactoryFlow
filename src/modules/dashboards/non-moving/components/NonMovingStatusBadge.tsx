@@ -6,15 +6,15 @@ export function NonMovingStatusBadge({ days }: { days: number }) {
   const config = {
     recent: {
       label: 'Recently Moved',
-      classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+      classes: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
     },
     'slow-moving': {
       label: 'Slow Moving',
-      classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
     },
     'non-moving': {
       label: 'Non Moving',
-      classes: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+      classes: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
     },
   } as const;
   const { label, classes } = config[getMovementStatus(days)];

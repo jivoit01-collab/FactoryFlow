@@ -15,12 +15,12 @@ interface SalesPlanningRequirementRefreshPanelProps {
 function statusClasses(status?: string): string {
   switch (status) {
     case 'success':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      return 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
     case 'running':
     case 'pending':
-      return 'border-sky-200 bg-sky-50 text-sky-700';
+      return 'border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400';
     case 'failed':
-      return 'border-red-200 bg-red-50 text-red-700';
+      return 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400';
     default:
       return 'border-muted bg-muted/40 text-muted-foreground';
   }

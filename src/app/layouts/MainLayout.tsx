@@ -8,6 +8,7 @@ import { useSettings } from '@/shared/contexts';
 import { useLocalStorage } from '@/shared/hooks';
 
 import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components';
+import { HeaderHelpTour } from './components/HeaderHelpTour';
 
 export function MainLayout() {
   const [isMobile, setIsMobile] = useState(false);
@@ -55,6 +56,10 @@ export function MainLayout() {
           </div>
         </main>
         {aiEnabled && <AiAssistantWidget />}
+
+        {/* Points out the support number and the issue tracker once, to a
+            user who has never been shown either. */}
+        <HeaderHelpTour />
       </div>
     </TooltipProvider>
   );

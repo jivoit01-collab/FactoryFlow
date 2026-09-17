@@ -1693,7 +1693,7 @@ export default function InspectionDetailPage() {
                               paramType === 'BOOLEAN' ||
                               paramType === 'RANGE'
                             }
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-gray-300 dark:border-border"
                           />
                           <span className="text-muted-foreground">Within Spec</span>
                         </label>
@@ -1871,7 +1871,7 @@ export default function InspectionDetailPage() {
                               paramType === 'BOOLEAN' ||
                               paramType === 'RANGE'
                             }
-                            className="h-4 w-4 rounded border-gray-300"
+                            className="h-4 w-4 rounded border-gray-300 dark:border-border"
                           />
                         </td>
                         <td className="p-3">
@@ -2041,7 +2041,7 @@ export default function InspectionDetailPage() {
             </div>
             <Button
               variant="outline"
-              className="border-orange-500 text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-950"
+              className="border-orange-500 text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-500/25 dark:text-orange-400 dark:hover:bg-orange-500/25"
               onClick={handleSendBack}
               disabled={isSaving}
             >

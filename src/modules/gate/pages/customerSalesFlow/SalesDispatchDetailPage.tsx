@@ -655,9 +655,9 @@ function buildScanItemOptions(docs: DetailDocument[]) {
 type ScanTone = 'complete' | 'partial' | 'none' | 'unknown';
 
 const SCAN_TONE_CLASSES: Record<ScanTone, string> = {
-  complete: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
-  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  none: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+  complete: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+  partial: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+  none: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
   unknown: 'bg-muted text-muted-foreground',
 };
 
@@ -671,9 +671,9 @@ function getScanTone(scanned: number, expected: number): ScanTone {
 // Subtle row tint mirroring the scan tone (green = fully scanned, amber = partial,
 // red = nothing scanned yet). Kept faint so the row text stays readable.
 const SCAN_ROW_CLASSES: Record<ScanTone, string> = {
-  complete: 'bg-green-50/70 dark:bg-green-950/20',
-  partial: 'bg-amber-50/70 dark:bg-amber-950/20',
-  none: 'bg-red-50/60 dark:bg-red-950/20',
+  complete: 'bg-green-50/70 dark:bg-green-500/10',
+  partial: 'bg-amber-50/70 dark:bg-amber-500/10',
+  none: 'bg-red-50/60 dark:bg-red-500/10',
   unknown: '',
 };
 
@@ -681,6 +681,9 @@ const SCAN_ROW_CLASSES: Record<ScanTone, string> = {
 // the scan page and backend gate — not on a possibly-underived box count.
 function getItemScanTone(row?: ItemScanRow): ScanTone {
   if (!row || row.expectedQuantity <= 0) return row && row.scanCount > 0 ? 'partial' : 'unknown';
+  // Packaging material carries no box label: painting it red says goods are missing when
+  // nothing was ever expected to be scanned.
+  if (!row.requiresScan) return 'unknown';
   if (row.isComplete) return 'complete';
   return row.scanCount > 0 ? 'partial' : 'none';
 }

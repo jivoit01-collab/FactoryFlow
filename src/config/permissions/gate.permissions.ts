@@ -16,8 +16,31 @@ export const GATE_PERMISSIONS = {
   // DASHBOARD
   // ============================================
   DASHBOARD: {
-    /** View gate dashboard */
+    /**
+     * The PERSON-GATE dashboard, despite the name — visitors and contractors.
+     * It is not the right that opens the gate wall board; that is
+     * `GATE_WALL.VIEW` below.
+     */
     VIEW: 'person_gatein.can_view_dashboard',
+  },
+
+  // ============================================
+  // GATE WALL BOARD (/dashboards/gate)
+  // ============================================
+  GATE_WALL: {
+    /**
+     * Open the gate wall board.
+     *
+     * Its own right on purpose. The board used to be gated on ANY of five
+     * unrelated operational rights, so being allowed to view a PO receipt or a
+     * sales dispatch gate-out silently carried permission to watch the whole
+     * gate — on live that was 41 of 107 active users, 13 of them QC chemists.
+     *
+     * Holding it opens the board but does not fill it in: every section is
+     * fetched under its own right, and one the viewer lacks reads "—" rather
+     * than a zero.
+     */
+    VIEW: 'gate_core.can_view_gate_dashboard',
   },
 
   // ============================================
@@ -48,6 +71,11 @@ export const GATE_PERMISSIONS = {
     COMPLETE: 'raw_material_gatein.can_complete_raw_material_entry',
     /** Receive PO */
     RECEIVE_PO: 'raw_material_gatein.can_receive_po',
+    /**
+     * Move a received PO onto another open PO — a post-QC correction for a PO
+     * that ran out between gate-in and GRPO, held apart from RECEIVE_PO.
+     */
+    REPOINT_PO: 'raw_material_gatein.can_repoint_po_receipt',
   },
 
   // ============================================
@@ -93,6 +121,20 @@ export const GATE_PERMISSIONS = {
     VIEW: 'person_gatein.can_view_dashboard',
     /** Mark an inward vehicle out empty */
     CREATE: 'person_gatein.can_view_dashboard',
+  },
+
+  /**
+   * Letting a dispatch truck in after the evening cutoff (5 PM by default).
+   *
+   * Only the approver's side has rights of its own. Asking is dispatch's job and
+   * rides on the Vehicle Linking right they already hold — raising the question is not
+   * the privilege, answering it is. The gate holds neither: it reads the answer.
+   */
+  LATE_DISPATCH_GATE_IN: {
+    /** See the queue of trucks waiting to be let in late (Admin) */
+    VIEW: 'gate_core.can_view_late_dispatch_gate_in',
+    /** Approve or reject a late dispatch gate-in */
+    APPROVE: 'gate_core.can_approve_late_dispatch_gate_in',
   },
 
   BST_OUT: {
@@ -361,6 +403,7 @@ export type GatePermission =
   | (typeof GATE_PERMISSIONS.REJECTED_QC_RETURN)[keyof typeof GATE_PERMISSIONS.REJECTED_QC_RETURN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_IN]
   | (typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT)[keyof typeof GATE_PERMISSIONS.EMPTY_VEHICLE_OUT]
+  | (typeof GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN)[keyof typeof GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN]
   | (typeof GATE_PERMISSIONS.BST_OUT)[keyof typeof GATE_PERMISSIONS.BST_OUT]
   | (typeof GATE_PERMISSIONS.BST_IN)[keyof typeof GATE_PERMISSIONS.BST_IN]
   | (typeof GATE_PERMISSIONS.BST_RETURN)[keyof typeof GATE_PERMISSIONS.BST_RETURN]

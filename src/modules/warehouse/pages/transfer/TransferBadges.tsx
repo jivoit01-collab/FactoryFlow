@@ -23,15 +23,15 @@ export function ApprovalBadge({ status }: { status: TransferRequestStatus }) {
     TransferRequestStatus,
     { label: string; className: string; icon: typeof Clock }
   > = {
-    PENDING: { label: 'Awaiting decision', className: 'bg-amber-100 text-amber-800', icon: Clock },
-    APPROVED: { label: 'Approved', className: 'bg-green-100 text-green-800', icon: CheckCircle2 },
+    PENDING: { label: 'Awaiting decision', className: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400', icon: Clock },
+    APPROVED: { label: 'Approved', className: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400', icon: CheckCircle2 },
     PARTIALLY_APPROVED: {
       label: 'Part approved',
-      className: 'bg-blue-100 text-blue-800',
+      className: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
       icon: AlertTriangle,
     },
-    REJECTED: { label: 'Rejected', className: 'bg-red-100 text-red-800', icon: XCircle },
-    CANCELLED: { label: 'Cancelled', className: 'bg-slate-100 text-slate-700', icon: XCircle },
+    REJECTED: { label: 'Rejected', className: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400', icon: XCircle },
+    CANCELLED: { label: 'Cancelled', className: 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground', icon: XCircle },
   };
   const c = config[status] ?? config.PENDING;
   const Icon = c.icon;
@@ -53,11 +53,11 @@ export function PostingBadge({
   if (status === 'NOT_POSTED') {
     // Deliberately not "not in SAP": the request document already exists there.
     // This badge is about the transfer, i.e. whether stock has actually moved.
-    return <span className={`${CHIP} bg-slate-100 text-slate-700`}>Stock not moved</span>;
+    return <span className={`${CHIP} bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground`}>Stock not moved</span>;
   }
   if (status === 'IN_TRANSIT') {
     return (
-      <span className={`${CHIP} bg-indigo-100 text-indigo-800`}>
+      <span className={`${CHIP} bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400`}>
         <Truck className="h-3 w-3" />
         In transit{intransitWarehouse ? ` · ${intransitWarehouse}` : ''}
       </span>
@@ -65,14 +65,14 @@ export function PostingBadge({
   }
   if (status === 'FAILED') {
     return (
-      <span className={`${CHIP} bg-red-100 text-red-800`}>
+      <span className={`${CHIP} bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400`}>
         <AlertTriangle className="h-3 w-3" />
         SAP refused the transfer
       </span>
     );
   }
   return (
-    <span className={`${CHIP} bg-green-100 text-green-800`}>
+    <span className={`${CHIP} bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400`}>
       <CheckCircle2 className="h-3 w-3" />
       Stock moved
     </span>
@@ -87,7 +87,7 @@ export function PostingBadge({
 export function RouteBadge({ routeType }: { routeType: TransferRouteType }) {
   if (routeType !== 'CROSS_BRANCH') return null;
   return (
-    <span className={`${CHIP} bg-purple-100 text-purple-800`}>
+    <span className={`${CHIP} bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400`}>
       <Split className="h-3 w-3" />
       Two legs
     </span>
@@ -97,10 +97,10 @@ export function RouteBadge({ routeType }: { routeType: TransferRouteType }) {
 export function SeverityBadge({ severity }: { severity: TransferFindingSeverity }) {
   const className =
     severity === 'critical'
-      ? 'bg-red-100 text-red-800'
+      ? 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400'
       : severity === 'warning'
-        ? 'bg-amber-100 text-amber-800'
-        : 'bg-slate-100 text-slate-700';
+        ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400'
+        : 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground';
   return <span className={`${CHIP} ${className}`}>{severity}</span>;
 }
 

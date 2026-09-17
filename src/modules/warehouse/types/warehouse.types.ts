@@ -29,6 +29,12 @@ export interface BOMRequestLine {
   required_qty: string;
   available_stock: number;
   available_qty?: number;
+  /**
+   * Which register `available_stock` was read from — the same one the approval
+   * is checked against. Raw material is settled against the Raw Material
+   * register, packing against SAP.
+   */
+  stock_source?: 'RM_REGISTER' | 'SAP';
   approved_qty: string;
   issued_qty: string;
   warehouse: string;

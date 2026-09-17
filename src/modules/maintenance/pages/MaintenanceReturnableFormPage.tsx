@@ -90,7 +90,7 @@ export default function MaintenanceReturnableFormPage() {
       </div>
 
       {isApproverEdit ? (
-        <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-200">
+        <div className="flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-300">
           <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             You are editing this pass as its approver. Every field is open, including the pass type.

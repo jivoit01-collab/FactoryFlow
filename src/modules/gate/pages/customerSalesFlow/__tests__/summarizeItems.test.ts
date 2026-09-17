@@ -9,12 +9,15 @@ import {
   getExpectedItemsLoose,
   isFullBox,
   isLooseItem,
+  isPmItemCode,
 } from '../salesDispatchBoxCounts';
 import {
   formatLooseScanNote,
   formatScannedBoxQuantities,
   getScanTargetPacking,
   groupItemsByItemCode,
+  hasScannableLines,
+  hasUnscannedGoods,
   mergeScanProgress,
   summarizeItems,
   summarizeScanProgress,
@@ -585,5 +588,87 @@ describe('getScanTargetPacking keys on (bill, item)', () => {
     ]);
     expect(target.boxes).toBe(1);
     expect(target.loose).toBe(0);
+  });
+});
+
+describe('packaging material is never part of the scan target', () => {
+  // Bill 626090324: 60 PCS of a 16-PCS olive oil (3 boxes + 12 loose) riding with 8 PCS of
+  // the carton itself. No box label is ever printed for a PM line, so counting its pieces
+  // as loose goods owed showed "12 / 20 PCS loose - Partial" on a finished bill.
+  const oil = item({ id: 1, item_code: 'FG0000042', quantity: '60', sal_factor2: '16' });
+  const cartons = item({
+    id: 2,
+    item_code: 'PM0000003',
+    item_name: 'CARTON 1 LTR POMACE 16 PCS',
+    quantity: '8',
+    sal_factor2: '1',
+    line_num: 1,
+  });
+
+  it('spots a PM item code', () => {
+    expect(isPmItemCode('PM0000003')).toBe(true);
+    expect(isPmItemCode(' pm0000003 ')).toBe(true);
+    expect(isPmItemCode('FG0000042')).toBe(false);
+    expect(isPmItemCode('')).toBe(false);
+  });
+
+  it('leaves PM pieces out of the expected boxes and loose', () => {
+    expect(getExpectedItemsBoxes([oil, cartons])).toBe(3);
+    expect(getExpectedItemsLoose([oil, cartons])).toBe(12);
+    expect(getScanTargetPacking([oil, cartons])).toEqual({ boxes: 3, loose: 12 });
+  });
+
+  it('marks the PM row scan-exempt and never gates the bill on it', () => {
+    const summary = summarizeItems(
+      [oil, cartons],
+      [
+        ...scans(3, { item_code: 'FG0000042', quantity: '16' }),
+        scan({ item_code: 'FG0000042', quantity: '12' }),
+      ],
+    );
+    const [oilRow, pmRow] = summary.items;
+
+    expect(oilRow.requiresScan).toBe(true);
+    expect(oilRow.isComplete).toBe(true);
+    expect(pmRow.requiresScan).toBe(false);
+    // No label to scan, so no progress bar to leave sitting at 0%.
+    expect(pmRow.progressPercent).toBeNull();
+    // The bill's own status reads the scannable rows only -- this one is finished.
+    const scanRows = summary.items.filter((row) => row.requiresScan);
+    expect(scanRows.every((row) => row.isComplete)).toBe(true);
+  });
+
+  it('still counts a real shortfall on the bill carrying the PM line', () => {
+    const summary = summarizeItems([oil, cartons], scans(3, { item_code: 'FG0000042' }));
+    expect(summary.items[0].isComplete).toBe(false); // 48 of 60 pieces
+    expect(hasUnscannedGoods(summary)).toBe(true);
+  });
+
+  it('owes nothing once the scannable lines are covered', () => {
+    const summary = summarizeItems(
+      [oil, cartons],
+      [
+        ...scans(3, { item_code: 'FG0000042', quantity: '16' }),
+        scan({ item_code: 'FG0000042', quantity: '12' }),
+      ],
+    );
+    // The load-wide lock reads this: counting the 8 carton pieces here is what held a
+    // fully loaded truck behind a partial-dispatch approval.
+    expect(hasUnscannedGoods(summary)).toBe(false);
+  });
+
+  it('treats a PM-only bill as having nothing to scan', () => {
+    // Bill 626090325 -- four carton lines, no scan possible. It can never leave "Open",
+    // so the bill is exempt rather than unfinished.
+    const pmOnly = summarizeItems(
+      [
+        cartons,
+        item({ id: 3, item_code: 'PM0000825', quantity: '5', sal_factor2: '1', line_num: 1 }),
+      ],
+      [],
+    );
+    expect(hasScannableLines(pmOnly)).toBe(false);
+    expect(hasUnscannedGoods(pmOnly)).toBe(false);
+    expect(hasScannableLines(summarizeItems([oil, cartons], []))).toBe(true);
   });
 });

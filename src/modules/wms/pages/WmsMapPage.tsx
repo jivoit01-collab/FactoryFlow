@@ -645,7 +645,7 @@ export default function WmsMapPage() {
 
       {/* Move-mode banner */}
       {moveSession ? (
-        <Card className="border-sky-400 bg-sky-50 dark:bg-sky-950/30">
+        <Card className="border-sky-400 bg-sky-50 dark:bg-sky-500/15">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div className="flex items-center gap-2 text-sm">
               <MoveRight className="h-4 w-4 text-sky-600" />

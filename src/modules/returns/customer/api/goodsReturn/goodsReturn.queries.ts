@@ -19,6 +19,7 @@ export const goodsReturnKeys = {
   gateHistory: (params: GoodsReturnGateHistoryParams) =>
     ['goods-return', 'gate', 'history', params] as const,
   warehouses: () => ['goods-return', 'warehouses'] as const,
+  customers: (search: string) => ['goods-return', 'customers', search] as const,
   returnableItems: (id: number, search: string) =>
     ['goods-return', 'returnable-items', id, search] as const,
 };
@@ -155,8 +156,12 @@ export function useSetGoodsReturnVehicle(id: number) {
 export function useUpdateGoodsReturnHeader(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { customer_code?: string; customer_name?: string; remarks?: string }) =>
-      goodsReturnApi.updateHeader(id, payload),
+    mutationFn: (payload: {
+      customer_code?: string;
+      customer_name?: string;
+      customer_ref_no?: string;
+      remarks?: string;
+    }) => goodsReturnApi.updateHeader(id, payload),
     onSuccess: (data) => qc.setQueryData(goodsReturnKeys.detail(id), data),
   });
 }
@@ -205,6 +210,21 @@ export function useSubmitGoodsReturn(id: number) {
   });
 }
 
+/**
+ * SAP customers for the header picker on a debit-note / letter-pad return.
+ *
+ * Only while the dropdown is open: the customer master runs to thousands of
+ * rows, so the search is server-side and there is no point holding it open.
+ */
+export function useGoodsReturnCustomers(search: string, enabled: boolean) {
+  return useQuery({
+    queryKey: goodsReturnKeys.customers(search),
+    queryFn: () => goodsReturnApi.searchCustomers(search || undefined),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useReturnWarehouses(enabled = true) {
   return useQuery({
     queryKey: goodsReturnKeys.warehouses(),
@@ -217,7 +237,10 @@ export function useReturnWarehouses(enabled = true) {
 export function useReceiveGoodsReturn(id: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (warehouseCode?: string) => goodsReturnApi.receive(id, warehouseCode),
+    mutationFn: (input?: string | { warehouseCode?: string; groups?: number[][] }) =>
+      typeof input === 'string' || input === undefined
+        ? goodsReturnApi.receive(id, input)
+        : goodsReturnApi.receive(id, input.warehouseCode, input.groups),
     onSuccess: (data) => {
       qc.setQueryData(goodsReturnKeys.detail(id), data);
       qc.invalidateQueries({ queryKey: goodsReturnKeys.all });

@@ -18,7 +18,7 @@ export const NON_MOVING_QUERY_KEYS = {
       ...NON_MOVING_QUERY_KEYS.all,
       'report',
       companyId,
-      { age: filters.age, item_group: filters.item_group },
+      { age: filters.age, item_group: filters.item_group, count_production: filters.count_production },
     ] as const,
 
   itemGroups: (companyId?: number | string) =>

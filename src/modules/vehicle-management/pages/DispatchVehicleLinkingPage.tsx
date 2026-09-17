@@ -4,6 +4,7 @@ import {
   ArrowRightLeft,
   Link2,
   LogOut,
+  MoonStar,
   PackagePlus,
   RefreshCw,
   Search,
@@ -17,6 +18,7 @@ import { toast } from 'sonner';
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { useAuth } from '@/core/auth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { type LateDispatchApproval, useLateDispatchApprovals } from '@/modules/admin/api';
 import { useDispatchBills, useLookupDispatchBill } from '@/modules/dashboards/dispatch-plans/api';
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -57,6 +59,8 @@ import {
 } from '../api';
 import {
   DispatchLinkingSheet,
+  LateDispatchApprovalDialog,
+  type LateDispatchApprovalTarget,
   LinkVehicleBillsDialog,
   type LinkVehicleBillsSelection,
 } from '../components';
@@ -103,6 +107,29 @@ function isBillLinkedToVehicle(bill: DispatchBill) {
     bill.plan.booking_status !== 'CANCELLED' &&
     bill.plan.booking_status !== 'DISPATCHED'
   );
+}
+
+/**
+ * How a late gate-in request reads on the truck card.
+ *
+ * An APPROVED row that has been spent is deliberately not "Approved": the
+ * clearance is gone, used by the entry it let through, and showing it as live
+ * would have dispatch believe the truck can still get in on it.
+ */
+function lateApprovalBadgeLabel(approval: LateDispatchApproval) {
+  if (approval.status === 'PENDING') return 'Late entry: awaiting approval';
+  if (approval.status === 'REJECTED') return 'Late entry: refused';
+  return approval.consumed_at ? 'Late entry: approval used' : 'Late entry: approved';
+}
+
+function lateApprovalBadgeClass(status: LateDispatchApproval['status']) {
+  if (status === 'PENDING') {
+    return 'border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400';
+  }
+  if (status === 'REJECTED') {
+    return 'border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-400';
+  }
+  return 'border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400';
 }
 
 function formatEntryDateTime(date: string | null, time: string | null) {
@@ -362,6 +389,8 @@ export default function DispatchVehicleLinkingPage() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [sheetBills, setSheetBills] = useState<DispatchBill[] | null>(null);
   const [sheetVehicle, setSheetVehicle] = useState<{ id: number; number: string } | null>(null);
+  // The truck whose late gate-in approval is open in the dialog.
+  const [approvalTarget, setApprovalTarget] = useState<LateDispatchApprovalTarget | null>(null);
 
   const vehiclesQuery = useInsideDispatchVehicles({ enabled: canViewInside });
   // One cross-company SAP read serves every list on the page: the booked trucks,
@@ -376,6 +405,25 @@ export default function DispatchVehicleLinkingPage() {
     [],
   );
   const billsQuery = useDispatchBills(billFilters);
+
+  // Every late gate-in request raised for today, in one call rather than one per
+  // expected truck. Cross-company for the same reason the bills feed is: a truck's
+  // request is filed under whichever company's bills it carries, which need not be
+  // the header this page is being read under. Only fetched for users who can raise
+  // one -- for anyone else it is a guaranteed 403 and a badge they cannot act on.
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const approvalsQuery = useLateDispatchApprovals(
+    { gate_in_date: today, all_companies: true },
+    { enabled: canLink },
+  );
+  // Latest request per vehicle; the feed is newest-first, so the first wins.
+  const approvalByVehicle = useMemo(() => {
+    const map = new Map<number, LateDispatchApproval>();
+    for (const approval of approvalsQuery.data ?? []) {
+      if (!map.has(approval.vehicle)) map.set(approval.vehicle, approval);
+    }
+    return map;
+  }, [approvalsQuery.data]);
 
   const addBill = useAddBillToInsideVehicle();
   const addBillToTruck = useAddBillToTruck();
@@ -755,7 +803,7 @@ export default function DispatchVehicleLinkingPage() {
       </div>
 
       {!canViewInside ? (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
           Showing booked trucks only — you do not have the Inside Vehicle Manager view permission,
           so trucks already inside the gate and the bills on their gate-ins are hidden. A truck that
           is at the gate still shows here as “Booked”. Ask an administrator for
@@ -790,6 +838,7 @@ export default function DispatchVehicleLinkingPage() {
             );
             const isTruckAddOpen = addTruckId === card.vehicleId;
             const totalBills = card.attachedBillCount + card.bookedBills.length;
+            const lateApproval = approvalByVehicle.get(card.vehicleId) ?? null;
 
             return (
               <Card key={card.vehicleId}>
@@ -804,14 +853,14 @@ export default function DispatchVehicleLinkingPage() {
                           variant="outline"
                           className={
                             card.isInside
-                              ? 'border-emerald-300 text-emerald-700'
-                              : 'border-slate-300 text-slate-600'
+                              ? 'border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                              : 'border-slate-300 dark:border-border text-slate-600 dark:text-muted-foreground'
                           }
                         >
                           {card.isInside ? 'At the gate' : 'Booked'}
                         </Badge>
                         {card.arrivalNo ? (
-                          <Badge variant="outline" className="border-blue-300 text-blue-700">
+                          <Badge variant="outline" className="border-blue-300 dark:border-blue-500/30 text-blue-700 dark:text-blue-400">
                             {card.arrivalNo}
                           </Badge>
                         ) : null}
@@ -820,6 +869,14 @@ export default function DispatchVehicleLinkingPage() {
                             {company}
                           </Badge>
                         ))}
+                        {lateApproval ? (
+                          <Badge
+                            variant="outline"
+                            className={lateApprovalBadgeClass(lateApproval.status)}
+                          >
+                            {lateApprovalBadgeLabel(lateApproval)}
+                          </Badge>
+                        ) : null}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {card.isInside
@@ -863,6 +920,30 @@ export default function DispatchVehicleLinkingPage() {
                         >
                           <PackagePlus className="mr-2 h-4 w-4" />
                           Add Bills
+                        </Button>
+                      )}
+                      {!card.isInside && canLink && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setApprovalTarget({
+                              vehicleId: card.vehicleId,
+                              vehicleNumber: compact(card.vehicleNumber),
+                              billDocNums: card.bookedBills.map((bill) => bill.doc_num),
+                              customers: Array.from(
+                                new Set(
+                                  card.bookedBills
+                                    .map((bill) => bill.card_name)
+                                    .filter((name): name is string => Boolean(name)),
+                                ),
+                              ),
+                            })
+                          }
+                        >
+                          <MoonStar className="mr-2 h-4 w-4" />
+                          {lateApproval ? 'Late Gate-In' : 'Late Gate-In Approval'}
                         </Button>
                       )}
                       {!card.isInside && canUnlink && card.bookedBills.length > 0 && (
@@ -1048,7 +1129,7 @@ export default function DispatchVehicleLinkingPage() {
                                     {bill.duplicate_on.length > 0 ? (
                                       <Badge
                                         variant="outline"
-                                        className="border-red-300 text-red-700"
+                                        className="border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-400"
                                         title={`Also on: ${bill.duplicate_on.join(', ')}`}
                                       >
                                         <AlertTriangle className="mr-1 h-3 w-3" />
@@ -1093,7 +1174,7 @@ export default function DispatchVehicleLinkingPage() {
                                           type="button"
                                           size="sm"
                                           variant="ghost"
-                                          className="text-red-600 hover:text-red-700"
+                                          className="text-red-600 hover:text-red-700 dark:hover:text-red-400"
                                           disabled={!bill.removable || removeBill.isPending}
                                           title={
                                             bill.removable
@@ -1264,7 +1345,7 @@ export default function DispatchVehicleLinkingPage() {
                                   type="button"
                                   size="sm"
                                   variant="ghost"
-                                  className="text-red-600 hover:text-red-700"
+                                  className="text-red-600 hover:text-red-700 dark:hover:text-red-400"
                                   disabled={
                                     bill.plan.is_vehicle_link_locked || unlinkPlan.isPending
                                   }
@@ -1301,6 +1382,15 @@ export default function DispatchVehicleLinkingPage() {
           })}
         </div>
       )}
+
+      <LateDispatchApprovalDialog
+        // Keyed on the truck so each truck opens with a fresh, empty form.
+        key={approvalTarget?.vehicleId ?? 'none'}
+        target={approvalTarget}
+        existing={approvalTarget ? approvalByVehicle.get(approvalTarget.vehicleId) ?? null : null}
+        today={today}
+        onClose={() => setApprovalTarget(null)}
+      />
 
       <LinkVehicleBillsDialog
         open={pickerFor !== null}

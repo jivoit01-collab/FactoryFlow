@@ -53,6 +53,8 @@ export default function BSTGateOutReviewPage() {
     ['SAP Doc', t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
     ['Invoice / Ref', t.invoice_no || '—'],
+    // Where the warehouse's work ends and the gate's begins.
+    ['Loaded at', formatBstDateTime(t.loaded_at)],
     // Vehicle + driver sit in their own card below: the gate is usually the one
     // that spots a swapped truck, and it can still be corrected until mark-out.
     ['Scanned boxes', String(t.box_scans.length)],
@@ -76,7 +78,7 @@ export default function BSTGateOutReviewPage() {
           description="Verify the load and the warehouse approval, then mark the vehicle out"
         >
           {isShort && (
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+            <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400">
               Partial load
             </Badge>
           )}
@@ -84,32 +86,38 @@ export default function BSTGateOutReviewPage() {
       </div>
 
       {/* Warehouse approval banner */}
-      <Card className={t.scan_approved_by_name ? 'border-green-200' : 'border-amber-300'}>
+      <Card className={t.scan_approved_by_name ? 'border-green-200 dark:border-green-500/30' : 'border-amber-300 dark:border-amber-500/30'}>
         <CardContent className="py-4 text-sm">
           {t.scan_approved_by_name ? (
-            <span className="inline-flex flex-wrap items-center gap-2 text-green-800">
+            <span className="inline-flex flex-wrap items-center gap-2 text-green-800 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
               Scanning approved by <span className="font-medium">
                 {t.scan_approved_by_name}
               </span> · {formatBstDateTime(t.scan_approved_at)}
               {partialApproved && (
-                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400">
                   on a partial approval
                 </Badge>
               )}
             </span>
           ) : (
-            <span className="text-amber-800">Not yet approved by the warehouse.</span>
+            <span className="text-amber-800 dark:text-amber-400">Not yet approved by the warehouse.</span>
+          )}
+          {t.loaded_at && (
+            <p className="mt-2 text-muted-foreground">
+              Loading finished {formatBstDateTime(t.loaded_at)} — the vehicle has been the
+              gate&rsquo;s from then on.
+            </p>
           )}
         </CardContent>
       </Card>
 
       {/* Short-load banner — why this truck is allowed to leave incomplete */}
       {isShort && (
-        <Card className={partialApproved ? 'border-amber-300' : 'border-red-300'}>
+        <Card className={partialApproved ? 'border-amber-300 dark:border-amber-500/30' : 'border-red-300 dark:border-red-500/30'}>
           <CardContent
             className={`space-y-2 py-4 text-sm ${
-              partialApproved ? 'text-amber-800' : 'text-red-800'
+              partialApproved ? 'text-amber-800 dark:text-amber-400' : 'text-red-800 dark:text-red-400'
             }`}
           >
             <div className="flex items-start gap-2">

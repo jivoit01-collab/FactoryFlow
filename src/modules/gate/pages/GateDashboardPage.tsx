@@ -1,4 +1,4 @@
-import { ArrowRight, ClipboardCheck, type LucideIcon,Search, Users } from 'lucide-react';
+import { ClipboardCheck, type LucideIcon, Search, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,6 +8,12 @@ import { usePermission } from '@/core/auth';
 import type { DateRange } from '@/core/store/filtersSlice';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import { useBSTGateOutwards } from '@/modules/warehouse/api';
+import {
+  ModuleTile,
+  ModuleTileGrid,
+  ModuleTileGroupLabel,
+  tileAccent,
+} from '@/shared/components/navigation';
 import { Card, CardContent, Input } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
@@ -105,12 +111,12 @@ interface EntryTypeStats {
 }
 
 const STAT_TONE_CLASSES: Record<StatTone, string> = {
-  total: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  open: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  completed: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-  cancelled: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  info: 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
-  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  total: 'bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground',
+  open: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+  completed: 'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+  cancelled: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  info: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  warning: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 };
 
 const FINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'REJECTED', 'FINAL_REJECTED']);
@@ -173,8 +179,8 @@ export default function GateDashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gate Management</h2>
-          <p className="text-muted-foreground">Complete gate control for all movements</p>
+          <h2 className="text-3xl font-semibold tracking-tight">Gate Management</h2>
+          <p className="mt-1.5 text-muted-foreground">Complete gate control for all movements</p>
         </div>
         <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
           <DateRangePicker
@@ -214,38 +220,30 @@ export default function GateDashboardPage() {
             const items = groupedEntryTypes[category];
             if (items.length === 0) return null;
             return (
-              <div key={category} className="space-y-2">
-                <h3 className="text-lg font-semibold tracking-tight">{category}</h3>
-                <Card>
-                  <CardContent className="p-0">
-                    <div className="divide-y">
-                      {items.map((entryType) => (
-                        <EntryTypeRow
-                          key={entryType.id}
-                          entryType={entryType}
-                          stats={statsByEntryType[entryType.id]}
-                          onOpen={() => navigate(entryType.dashboardRoute)}
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              <div key={category} className="space-y-3.5">
+                <ModuleTileGroupLabel label={category} count={items.length} />
+                <ModuleTileGrid>
+                  {items.map((entryType) => (
+                    <EntryTypeTile
+                      key={entryType.id}
+                      entryType={entryType}
+                      stats={statsByEntryType[entryType.id]}
+                      onOpen={() => navigate(entryType.dashboardRoute)}
+                    />
+                  ))}
+                </ModuleTileGrid>
               </div>
             );
           })}
 
           {filteredTools.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold tracking-tight">Labour</h3>
-              <Card>
-                <CardContent className="p-0">
-                  <div className="divide-y">
-                    {filteredTools.map((tool) => (
-                      <ToolRow key={tool.id} tool={tool} onOpen={() => navigate(tool.route)} />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="space-y-3.5">
+              <ModuleTileGroupLabel label="Labour" count={filteredTools.length} />
+              <ModuleTileGrid>
+                {filteredTools.map((tool) => (
+                  <ToolTile key={tool.id} tool={tool} onOpen={() => navigate(tool.route)} />
+                ))}
+              </ModuleTileGrid>
             </div>
           )}
         </>
@@ -254,36 +252,20 @@ export default function GateDashboardPage() {
   );
 }
 
-function ToolRow({ tool, onOpen }: { tool: GateToolConfig; onOpen: () => void }) {
+function ToolTile({ tool, onOpen }: { tool: GateToolConfig; onOpen: () => void }) {
   const Icon = tool.icon;
 
   return (
-    <button
-      type="button"
-      className="grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,1fr)_auto]"
+    <ModuleTile
+      title={tool.title}
+      icon={<Icon className="h-5 w-5" />}
+      accent={tileAccent(tool.colorClassName)}
       onClick={onOpen}
-    >
-      <span className="flex min-w-0 items-start gap-3">
-        <span className="rounded-md border p-2">
-          <Icon className={cn('h-4 w-4', tool.colorClassName)} />
-        </span>
-        <span className="min-w-0">
-          <span className="block font-medium">{tool.title}</span>
-          <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {tool.description}
-          </span>
-        </span>
-      </span>
-
-      <span className="hidden items-center text-sm font-medium text-muted-foreground md:flex">
-        Open
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </span>
-    </button>
+    />
   );
 }
 
-function EntryTypeRow({
+function EntryTypeTile({
   entryType,
   stats,
   onOpen,
@@ -295,30 +277,13 @@ function EntryTypeRow({
   const Icon = entryType.icon;
 
   return (
-    <button
-      type="button"
-      className="grid w-full gap-3 px-4 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,1fr)_auto_auto]"
+    <ModuleTile
+      title={entryType.title}
+      icon={<Icon className="h-5 w-5" />}
+      accent={tileAccent(entryType.colorClassName)}
       onClick={onOpen}
-    >
-      <span className="flex min-w-0 items-start gap-3">
-        <span className="rounded-md border p-2">
-          <Icon className={cn('h-4 w-4', entryType.colorClassName)} />
-        </span>
-        <span className="min-w-0">
-          <span className="block font-medium">{entryType.title}</span>
-          <span className="line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {entryType.description}
-          </span>
-        </span>
-      </span>
-
-      <EntryTypeStatsPills stats={stats} />
-
-      <span className="hidden items-center text-sm font-medium text-muted-foreground md:flex">
-        Open
-        <ArrowRight className="ml-2 h-4 w-4" />
-      </span>
-    </button>
+      footer={<EntryTypeStatsPills stats={stats} />}
+    />
   );
 }
 
@@ -327,7 +292,7 @@ function EntryTypeStatsPills({ stats }: { stats?: EntryTypeStats }) {
 
   if (stats.isLoading) {
     return (
-      <span className="flex items-center gap-2 lg:justify-end">
+      <span className="mt-auto flex items-center gap-2">
         <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
           Loading stats...
         </span>
@@ -336,7 +301,7 @@ function EntryTypeStatsPills({ stats }: { stats?: EntryTypeStats }) {
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-2 lg:justify-end">
+    <span className="mt-auto flex flex-wrap items-center gap-2">
       {stats.stats.map((stat) => (
         <span
           key={stat.label}

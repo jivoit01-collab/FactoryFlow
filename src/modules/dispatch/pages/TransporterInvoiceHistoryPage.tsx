@@ -18,14 +18,14 @@ const STATUS_LABELS: Record<TransporterAPInvoiceStatus, string> = {
 const statusClass = (status: TransporterAPInvoiceStatus) => {
   switch (status) {
     case 'POSTED':
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      return 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300';
     case 'FAILED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      return 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300';
     case 'CANCELLED':
-      return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300';
+      return 'bg-slate-100 text-slate-800 dark:bg-muted/40 dark:text-muted-foreground';
     case 'PENDING':
     default:
-      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300';
   }
 };
 

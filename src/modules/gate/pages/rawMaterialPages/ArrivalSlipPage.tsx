@@ -526,7 +526,7 @@ export default function ArrivalSlipPage() {
 
       {/* Show info message if all slips are submitted */}
       {itemForms.length > 0 && itemForms.every((form) => form.isSubmitted) && (
-        <div className="rounded-md bg-green-50 p-4 text-sm text-green-800 flex items-center gap-2">
+        <div className="rounded-md bg-green-50 dark:bg-green-500/10 p-4 text-sm text-green-800 dark:text-green-400 flex items-center gap-2">
           <Check className="h-5 w-5" />
           All arrival slips have been submitted to QA. Click Next to proceed to weighment.
         </div>
@@ -545,7 +545,7 @@ export default function ArrivalSlipPage() {
                   </span>
                 </CardTitle>
                 {form.isSubmitted && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 dark:bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:text-green-400">
                     <Check className="h-3 w-3" />
                     Submitted
                   </span>

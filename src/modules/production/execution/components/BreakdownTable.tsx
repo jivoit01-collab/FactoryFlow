@@ -40,7 +40,7 @@ export function BreakdownTable({ breakdowns, onAdd, readOnly }: BreakdownTablePr
             {breakdowns.map((b) => (
               <tr key={b.id} className="border-b hover:bg-muted/30">
                 <td className="p-2">
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
                     {b.breakdown_category_name || 'Unknown'}
                   </span>
                 </td>

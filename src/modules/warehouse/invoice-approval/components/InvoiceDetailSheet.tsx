@@ -17,6 +17,7 @@ import {
   SheetTitle,
   Textarea,
 } from '@/shared/components/ui';
+import { confirmSapPost } from '@/shared/components';
 import { cn, formatCurrency, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import {
@@ -88,6 +89,16 @@ function InvoiceDetailBody({
   };
 
   const approve = async () => {
+    const confirmed = await confirmSapPost({
+      title: `Approve invoice ${invoice.so_number}?`,
+      details: [
+        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Decision', value: 'Approve' },
+        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+      ],
+      confirmLabel: 'Approve',
+    });
+    if (!confirmed) return;
     try {
       await updateStatus.mutateAsync({
         id: invoice.id,
@@ -101,6 +112,17 @@ function InvoiceDetailBody({
   };
 
   const reject = async (data: RejectInvoiceFormData) => {
+    const confirmed = await confirmSapPost({
+      title: `Reject invoice ${invoice.so_number}?`,
+      details: [
+        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Decision', value: 'Reject' },
+        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+      ],
+      confirmLabel: 'Reject',
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await updateStatus.mutateAsync({
         id: invoice.id,
@@ -135,12 +157,12 @@ function InvoiceDetailBody({
       </dl>
 
       {invoice.rejection_reason ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
           <span className="font-medium">Rejection reason:</span> {invoice.rejection_reason}
         </div>
       ) : null}
       {invoice.error_message ? (
-        <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/40 dark:bg-orange-900/20 dark:text-orange-300">
+        <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
           <span className="font-medium">Error:</span> {invoice.error_message}
         </div>
       ) : null}
@@ -241,7 +263,7 @@ function InvoiceDetailBody({
               accepts a decision from that person only.
             </p>
           ) : invoice.is_mine && invoice.credentials_configured === false ? (
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
               This one is yours to decide, but your SAP password is not configured on the server yet
               — ask an administrator to add it, or decide it in SAP.
             </p>

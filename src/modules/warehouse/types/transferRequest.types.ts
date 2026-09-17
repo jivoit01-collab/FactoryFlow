@@ -68,6 +68,8 @@ export interface TransferRequestListItem {
   posting_status_display: string;
   sap_request_doc_num: string;
   sap_transfer_doc_num: string;
+  /** DocEntry of the posted transfer — null until it reaches SAP. */
+  sap_transfer_doc_entry: number | null;
   sap_leg2_doc_num: string;
   requested_by_name: string;
   line_count: number;
@@ -87,7 +89,8 @@ export interface TransferRequestDetail extends TransferRequestListItem {
   posting_error: string;
   sap_request_doc_entry: number | null;
   sap_request_closed_at: string | null;
-  sap_transfer_doc_entry: number | null;
+  // sap_transfer_doc_entry is inherited — the list carries it too, so the
+  // Inventory Transfer list can print without opening the request.
   sap_leg2_doc_entry: number | null;
   bst_transfer: number | null;
   bst_entry_no: string;
@@ -253,7 +256,21 @@ export interface SapTransferApproval {
   obj_type: string;
   doc_type_label: string;
   draft_entry: number;
+  /**
+   * The DRAFT's number — provisional. Open drafts share it (one Oil number
+   * sits on seven at once) and the add takes whatever the series is on then,
+   * so it is frequently not the number the document keeps and frequently
+   * already belongs to some other posted document. Never offer it as
+   * something to search for; `posted_doc_num` is the real one.
+   */
   doc_num: number | null;
+  /** The document the draft was added as, resolved through the draft entry. */
+  posted_doc_entry: number | null;
+  /**
+   * The number SAP actually gave it. For a transfer REQUEST this is what the
+   * Awaiting transfer tab lists it under; null while nothing has been added.
+   */
+  posted_doc_num: number | null;
   from_warehouse: string;
   to_warehouse: string;
   doc_date: string | null;
@@ -264,6 +281,10 @@ export interface SapTransferApproval {
   /** The single SAP user this request is waiting on. */
   approver_code: string | null;
   approver_name: string | null;
+  /** Who signed the decision in SAP, and when — null while still pending. */
+  decided_by: string | null;
+  decided_by_name: string | null;
+  decided_at: string | null;
   /** Whether we hold that user's SAP password. */
   credentials_configured: boolean;
   /** The caller's own mapped SAP account IS this request's authorizer. */
@@ -284,4 +305,160 @@ export interface SapApprovalDecisionResult {
   message: string;
   /** The SAP user the decision was signed as. */
   signed_as: string;
+}
+
+// ---------------------------------------------------------------------------
+// SAP transfer requests awaiting their actual transfer
+// ---------------------------------------------------------------------------
+// An approved inventory transfer request reserves stock but moves none. It
+// stays open, drawing OpenQty down, until enough inventory transfers are
+// posted against it — SAP allows that in several parts, and in practice it
+// usually takes more than one.
+
+export interface SapAwaitingTransferLine {
+  /** WTQ1.LineNum — the id a posted quantity is keyed on. */
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  /** Decimal strings: loose oil moves in fractions a float would round. */
+  quantity: string;
+  open_quantity: string;
+  served_quantity: string;
+  from_warehouse: string;
+  to_warehouse: string;
+}
+
+export interface SapAwaitingTransfer {
+  /** OWTQ.DocEntry. */
+  doc_entry: number;
+  doc_num: number | null;
+  /**
+   * The approval draft this request was added from (`OWTQ.draftKey`), when it
+   * went through SAP's approval procedure. The dependable way to match a row
+   * here to a row in the SAP approvals tab — the draft's own DocNum is not.
+   */
+  draft_entry: number | null;
+  doc_date: string | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  comments: string | null;
+  age_days: number;
+  /** Needs two legs through an in-transit warehouse, so not postable here. */
+  cross_branch: boolean;
+  can_post: boolean;
+  /** Why not, in words, when can_post is false. */
+  blocked_reason: string | null;
+  lines: SapAwaitingTransferLine[];
+}
+
+// ---------------------------------------------------------------------------
+// SAP transfer DRAFTS that are approved but were never added
+// ---------------------------------------------------------------------------
+// A transfer keyed in the SAP client on an approval-covered route is saved as
+// a draft, not a document. Approving it moves nothing either — somebody still
+// has to press Add. Until then the stock has not moved and no OWTR exists, so
+// these appear in no other queue here.
+
+export interface SapTransferDraftLine {
+  /** DRF1.LineNum. */
+  line_num: number;
+  item_code: string;
+  item_name: string;
+  uom: string;
+  /** Decimal strings — a float round-trip is how a tank ends up 0.001 out. */
+  quantity: string;
+  from_warehouse: string;
+  to_warehouse: string;
+  /** What the SOURCE warehouse holds today; these drafts sit for months. */
+  source_stock: string | null;
+  /** The source no longer holds the quantity, so SAP will refuse the add. */
+  short: boolean;
+  /** Holds none of it at all: the draft is stale, not merely short. */
+  source_empty: boolean;
+  batch_managed: boolean;
+  batches_allocated: number;
+  /** Pieces the draft's batches add up to — less than `quantity` is refused. */
+  allocated_quantity: string;
+  /** Batch-managed with no allocation on the draft — fix it in SAP first. */
+  batches_missing: boolean;
+  /** Allocated, but to fewer pieces than the line moves. */
+  allocation_partial: boolean;
+  /**
+   * Batches the draft allocates that no longer hold what it claims. SAP checks
+   * the BATCH, not the item total, so a line can look covered and still be
+   * refused: "10001153 - Insufficient quantity for item FG0000296 with batch
+   * LS1103".
+   */
+  batches_short: { batch: string; allocated: string; in_stock: string }[];
+  /**
+   * The last document that took this item out of the source warehouse. Read
+   * only for lines already short, and the answer to the question a stale draft
+   * really poses: has this move already been made another way?
+   */
+  last_issue: {
+    doc_num: string | null;
+    doc_type: string;
+    doc_date: string | null;
+    quantity: string;
+  } | null;
+}
+
+export interface SapTransferDraft {
+  /** ODRF.DocEntry — the id the add is keyed on. */
+  draft_entry: number;
+  /**
+   * Provisional, and usually NOT what the add ends up with — open drafts all
+   * carry the series' next number, and the add takes whatever is next then.
+   * The real number is read back from SAP after adding.
+   */
+  doc_num: number | null;
+  doc_date: string | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  comments: string | null;
+  journal_memo: string | null;
+  branch_id: number | null;
+  /** The SAP user who keyed the draft. */
+  created_by: string | null;
+  age_days: number;
+  /** ODRF.WddStatus — always 'Y' in this list. */
+  approval_status: string;
+  can_post: boolean;
+  /** Why not, in words, when can_post is false. */
+  blocked_reason: string | null;
+  /** What SAP would refuse: stock gone, batch allocation missing. */
+  warnings: string[];
+  /**
+   * The add cannot succeed as things stand. Separate from `warnings` being
+   * non-empty: this is what takes the Add button off the row, so it must mean
+   * "certain to be refused", not "worth reading".
+   */
+  will_be_refused: boolean;
+  lines: SapTransferDraftLine[];
+}
+
+export interface SapTransferDraftPostResult {
+  draft_entry: number;
+  /** The OWTR SAP created. */
+  doc_entry: number | null;
+  doc_num: number | null;
+  from_warehouse: string;
+  to_warehouse: string;
+  lines_moved: number;
+  /** SAP committed it but answered too late; the document was read back. */
+  confirmed_by_readback: boolean;
+  posted_at: string;
+  audit_id: number | null;
+}
+
+export interface SapTransferPostResult {
+  /** The inventory transfer SAP created. */
+  doc_entry: number | null;
+  doc_num: number | null;
+  request_doc_entry: number;
+  /** Whether that emptied the request, or it still owes stock. */
+  request_closed: boolean;
+  remaining_quantity: string;
+  lines_moved: number;
 }

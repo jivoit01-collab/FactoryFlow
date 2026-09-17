@@ -1,4 +1,10 @@
 export {
+  type LabourShiftSplit,
+  type LabourSummary,
+  PRODUCTION_OIL_DEPARTMENTS,
+  summariseLabour,
+} from './labour';
+export {
   buildLineBoard,
   isLineAlarming,
   LINE_STATE_ALARM,

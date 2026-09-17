@@ -74,6 +74,8 @@ export const API_ENDPOINTS = {
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/`,
     PO_RECEIPT_REPLACE: (entryId: number, poReceiptId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/replace/`,
+    PO_RECEIPT_REPOINT: (entryId: number, poReceiptId: number) =>
+      `/raw-material-gatein/gate-entries/${entryId}/po-receipts/${poReceiptId}/repoint/`,
     GATE_ENTRY_DELETE: (entryId: number) => `/raw-material-gatein/gate-entries/${entryId}/`,
     PO_RECEIPTS_VIEW: (entryId: number) =>
       `/raw-material-gatein/gate-entries/${entryId}/po-receipts/view`,
@@ -126,6 +128,13 @@ export const API_ENDPOINTS = {
     INSIDE_VEHICLE_REMOVE_BILL: '/gate-core/inside-dispatch-vehicles/remove-bill/',
     INSIDE_VEHICLE_MOVE_BILL: '/gate-core/inside-dispatch-vehicles/move-bill/',
     INSIDE_VEHICLE_UNLINK_ALL: '/gate-core/inside-dispatch-vehicles/unlink-all/',
+    LATE_DISPATCH_APPROVALS: '/gate-core/late-dispatch-approvals/',
+    LATE_DISPATCH_APPROVAL_BY_VEHICLE: (vehicleId: number) =>
+      `/gate-core/late-dispatch-approvals/by-vehicle/${vehicleId}/`,
+    LATE_DISPATCH_APPROVAL_APPROVE: (id: number) =>
+      `/gate-core/late-dispatch-approvals/${id}/approve/`,
+    LATE_DISPATCH_APPROVAL_REJECT: (id: number) =>
+      `/gate-core/late-dispatch-approvals/${id}/reject/`,
     ARRIVALS_EXPECTED: '/gate-core/arrivals/expected/',
     ARRIVALS: '/gate-core/arrivals/',
     ARRIVAL_DEPART_BY_ID: (id: number) => `/gate-core/arrivals/${id}/depart/`,
@@ -422,7 +431,16 @@ export const API_ENDPOINTS = {
     DRAFT_POST: (postingId: number) => `/grpo/draft/${postingId}/post/`,
     HISTORY: '/grpo/history/',
     DETAIL: (postingId: number) => `/grpo/${postingId}/`,
+    // SAP's own Goods Receipt Note, as data, for one posted GRPO
+    PRINT: (postingId: number) => `/grpo/${postingId}/print/`,
+    // SAP's own Purchase Order, as data, for one PO on a gate entry. Keyed on
+    // the PO receipt, so it prints before a GRPO is posted as well as after.
+    PO_PRINT: (poReceiptId: number) => `/grpo/po-receipt/${poReceiptId}/print/`,
     SERVICE_PENDING: '/grpo/service/pending/',
+    // The same queue counted rather than listed. SERVICE_PENDING is paginated
+    // and scoped to one month; this one is neither, which is what an age-banded
+    // count needs.
+    SERVICE_PENDING_SUMMARY: '/grpo/service/pending/summary/',
     SERVICE_OPTIONS: '/grpo/service/options/',
     SERVICE_PREVIEW: (dispatchPlanId: number) => `/grpo/service/preview/${dispatchPlanId}/`,
     SERVICE_POST: '/grpo/service/post/',
@@ -496,6 +514,27 @@ export const API_ENDPOINTS = {
     PURCHASE_ORDER_APPROVE: (id: number) => `/planning-purchase/purchase-orders/${id}/approve/`,
     PURCHASE_ORDER_POST: (id: number) => `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
   },
+  // Plant Control Board -- the four-band wall screen. ONE endpoint for the
+  // whole board on purpose: every tile re-runs on each refresh of a screen
+  // that never sleeps, so twenty panel requests a minute is how a wall board
+  // ends up switched off. Scope is always today and the current SAP plan
+  // month, computed server-side; there is nobody at a TV to pick a date.
+  PLANT_BOARD: {
+    BOARD: '/dashboards/plant-board/board/',
+    /** Head count and monthly wage bill — the one thing here an operator writes. */
+    WORKFORCE: '/dashboards/plant-board/workforce/',
+    /** Square feet per 1,000 pieces: the only way to turn stock into floor used. */
+    SPACE: '/dashboards/plant-board/space/',
+  },
+  // Admin Control Board -- output, storage, cost and the action centre on one
+  // executive screen. ONE endpoint for the same reason the plant board has one:
+  // every tile re-reads on each refresh, and the storage tiles alone span two
+  // SAP schemas. Scope is always the calendar month to date, computed
+  // server-side; the alerts are derived there too, so a second consumer of this
+  // payload cannot reach different conclusions from identical numbers.
+  ADMIN_BOARD: {
+    BOARD: '/dashboards/admin-board/board/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
@@ -510,6 +549,37 @@ export const API_ENDPOINTS = {
      * rather than SAP fact. Feeds the Production Control board.
      */
     OCCUPANCY: '/dashboards/stock/occupancy/',
+    /**
+     * One item's batches in one warehouse, with manufacturing and expiry dates
+     * off the SAP batch master — the drill-down behind a standing-stock row.
+     */
+    ITEM_BATCHES: (itemCode: string) => `/dashboards/stock/${itemCode}/batches/`,
+    /**
+     * The two facts about a warehouse SAP does not hold — its rated tonnage
+     * capacity and the date stock was last physically verified. Typed in by an
+     * operator, stored per company and warehouse. GET creates the row on first
+     * read and answers nulls, so a board renders "not configured" rather than
+     * failing on a warehouse nobody has set up.
+     */
+    WAREHOUSE_SETTINGS: '/dashboards/stock/warehouse-settings/',
+    /**
+     * Company-level operations-board figures nothing derives: the owned vehicle
+     * count, and the per-section employee headcount and salary. Ownership is not
+     * a field on the vehicle master, and the board's section names appear in
+     * neither department master.
+     */
+    BOARD_SETTINGS: '/dashboards/stock/board-settings/',
+    /**
+     * The company's own trucks and what each is doing today, derived from the
+     * configured registration list crossed with today's gate arrivals.
+     */
+    OWNED_VEHICLES: '/dashboards/stock/owned-vehicles/',
+    /**
+     * Stock dispatched from a godown and not yet received, split by how long it
+     * has been out. Read from the branch-transfer register; tonnage comes from
+     * the item master, since the register records pieces and no weight.
+     */
+    STOCK_IN_TRANSIT: '/dashboards/stock/stock-in-transit/',
   },
   // Budget Approvals Dashboard — Factory budget draft approvals read from
   // SAP's DRAFT_APPROVAL_Budget procedure (Oil + Beverages in one feed).
@@ -541,6 +611,10 @@ export const API_ENDPOINTS = {
   // all from FactoryFlow's own registers rather than SAP.
   FACTORY_EXPENSE: {
     BOARD: '/dashboards/factory-expense/board/',
+    // The same spend as a company x bucket grid, feeding the Company Expense
+    // board. Its own endpoint because the matrix has to split electricity and
+    // salary by ownership, which the wall board never does.
+    MATRIX: '/dashboards/factory-expense/matrix/',
     SETTINGS: '/dashboards/factory-expense/settings/',
     // Read-back only. Rates are owned by cost_master and edited in
     // Admin > Cost Master; the board never writes one.
@@ -567,10 +641,17 @@ export const API_ENDPOINTS = {
       `/sap-reports/reports/${slug}/parameters/${position}/options/`,
     REPORT_RUNS: (slug: string) => `/sap-reports/reports/${slug}/runs/`,
     RUNS: '/sap-reports/runs/',
+    RESOLVE_REFERENCES: '/sap-reports/resolve-references/',
     CATEGORIES: '/sap-reports/categories/',
     SYNC: '/sap-reports/sync/',
     ACCESS: '/sap-reports/access/',
     ACCESS_DETAIL: (id: number) => `/sap-reports/access/${id}/`,
+  },
+  // One number, looked up in every company's SAP and in this app at once.
+  UNIVERSAL_SEARCH: {
+    SEARCH: '/universal-search/search/',
+    DOCUMENT: '/universal-search/document/',
+    ITEM_STOCK: '/universal-search/item-stock/',
   },
   GOODS_RETURN: {
     LIST: '/goods-return/',
@@ -590,9 +671,23 @@ export const API_ENDPOINTS = {
     APPROVE: (id: number) => `/goods-return/${id}/approve/`,
     REJECT: (id: number) => `/goods-return/${id}/reject/`,
     WAREHOUSES: '/goods-return/warehouses/',
+    CUSTOMERS: '/goods-return/customers/',
     GATE_EXPECTED: '/goods-return/gate/expected/',
     GATE_HISTORY: '/goods-return/gate/history/',
     GATE_MARK_IN: (id: number) => `/goods-return/gate/${id}/mark-in/`,
+    /** Every figure the Customer Returns dashboard draws, in one payload. */
+    DASHBOARD: '/goods-return/dashboard/',
+  },
+  // Short Dispatch — the return note for stock a posted bill says went out but
+  // which never left the floor. `CREATE` posts the SAP A/R Return as part of the
+  // same call; there is no draft stage and no way back from the app.
+  SHORT_DISPATCH: {
+    LIST: '/short-dispatch/',
+    CREATE: '/short-dispatch/',
+    BY_ID: (id: number) => `/short-dispatch/${id}/`,
+    PRINT: (id: number) => `/short-dispatch/${id}/print/`,
+    INVOICE: '/short-dispatch/invoice/',
+    WAREHOUSES: '/short-dispatch/warehouses/',
   },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
@@ -622,8 +717,26 @@ export const API_ENDPOINTS = {
     BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
     BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
     BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
+    // The BILL itself — SAP's own TAX INVOICE, not the picking sheet. Keyed by
+    // the invoice, so it serves an app sheet and a SAP-stamped dispatch alike.
+    BILL_SUMMARY_INVOICE_PRINT: (docEntry: number) =>
+      `/dispatch/bill-summaries/invoice/${docEntry}/print/`,
+    // Dispatches stamped straight onto the invoice in SAP, with no app sheet.
+    BILL_SUMMARIES_SAP: '/dispatch/bill-summaries/sap/',
+    BILL_SUMMARY_SAP_DETAIL: (docEntry: number) =>
+      `/dispatch/bill-summaries/sap/${docEntry}/`,
+    BILL_SUMMARY_SAP_ADOPT: (docEntry: number) =>
+      `/dispatch/bill-summaries/sap/${docEntry}/adopt/`,
 
     OPEN_BILTIES: '/dispatch/open-bilties/',
+    // What the company still owes its hauliers, and what it has paid them,
+    // read live off SAP's A/P invoices and outgoing payments. One company per
+    // call -- SAP gives each its own HANA schema, so a combined figure is two
+    // calls added client-side.
+    TRANSPORTER_ACCOUNT: '/dispatch/transporter-account/',
+    // Freight per litre: the money from SAP's own service GRPOs, the litres
+    // from the posting lines that tie each SAP document back to its bills.
+    FREIGHT_RATE: '/dispatch/freight-rate/',
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
     BILTY_GRPO_PREVIEW: (dispatchPlanId: number) =>
@@ -661,21 +774,25 @@ export const API_ENDPOINTS = {
   // A/R Invoices (sales invoices raised from the factory app and posted to SAP)
   AR_INVOICE: {
     CUSTOMERS: '/ar-invoices/customers/',
+    CUSTOMER_CREDIT: '/ar-invoices/customer-credit/',
     OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',
     INVOICES: '/ar-invoices/invoices/',
+    // The cash sales as SAP holds them — including those raised in SAP directly.
+    SAP_INVOICES: '/ar-invoices/sap-invoices/',
     INVOICE_DETAIL: (id: number) => `/ar-invoices/invoices/${id}/`,
     INVOICE_POST: (id: number) => `/ar-invoices/invoices/${id}/post/`,
     INVOICE_REFRESH: (id: number) => `/ar-invoices/invoices/${id}/refresh/`,
     INVOICE_POST_DRAFT: (id: number) => `/ar-invoices/invoices/${id}/post-draft/`,
     INVOICE_CANCEL: (id: number) => `/ar-invoices/invoices/${id}/cancel/`,
     INVOICE_PRINT: (id: number) => `/ar-invoices/invoices/${id}/print/`,
-  },
-  // Daily Tasks — each user's job sheet for one day, derived from every other module
-  DAILY_TASKS: {
-    MY_TODAY: '/activity-center/me/today/',
-    TEAM_TODAY: '/activity-center/users/today/',
+    // The counter's own bills have no record here, so they print by SAP's DocEntry.
+    SAP_INVOICE_PRINT: (docEntry: number) =>
+      `/ar-invoices/sap-invoices/${docEntry}/print/`,
+    // Payment received — keyed by SAP's DocEntry for the same reason: one mark
+    // covers the bill in both History books, ours and the counter's.
+    PAYMENT: (docEntry: number) => `/ar-invoices/payments/${docEntry}/`,
   },
   // AI Assistant
   AI: {
@@ -1112,6 +1229,15 @@ export const API_ENDPOINTS = {
     RM_STOCK_ITEMS: '/warehouse/rm-stock/items/',
     RM_STOCK_IMPORT: '/warehouse/rm-stock/import/',
     RM_STOCK_DETAIL: (id: number) => `/warehouse/rm-stock/${id}/`,
+
+    // Godown outward movements — what a keeper declares he is sending out of
+    // his floor. Data entry only; nothing here posts to SAP.
+    PF_MOVEMENTS: '/warehouse/pf-movements/',
+    PF_MOVEMENT_ITEMS: '/warehouse/pf-movements/items/',
+    PF_MOVEMENT_DESTINATIONS: '/warehouse/pf-movements/destinations/',
+    PF_MOVEMENT_PASTE: '/warehouse/pf-movements/paste/',
+    PF_MOVEMENT_DETAIL: (id: number) => `/warehouse/pf-movements/${id}/`,
+    PF_MOVEMENT_RESTORE: (id: number) => `/warehouse/pf-movements/${id}/restore/`,
     // Branch Stock Transfer (BST)
     BST_SAP_TRANSFERS: '/warehouse/bst/sap-transfers/',
     BST_SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/bst/sap-transfers/${docEntry}/`,
@@ -1126,6 +1252,7 @@ export const API_ENDPOINTS = {
     // Hand-typed quantity for a scan-exempt (PM) line, which has no box scans
     BST_MANUAL_ENTRIES: (transferId: number) => `/warehouse/bst/${transferId}/manual-entries/`,
     BST_APPROVE: (transferId: number) => `/warehouse/bst/${transferId}/approve/`,
+    BST_LOADED_AT: (transferId: number) => `/warehouse/bst/${transferId}/loaded-at/`,
     BST_CANCEL: (transferId: number) => `/warehouse/bst/${transferId}/cancel/`,
     // Partial-transfer approval (seal a short scan with admin sign-off)
     BST_PARTIAL_TRANSFER_REQUEST: (transferId: number) =>
@@ -1150,6 +1277,12 @@ export const API_ENDPOINTS = {
     // writes the second document.
     // Warehouse managers (per-user warehouse scoping). MY_WAREHOUSES is not
     // admin-gated -- any screen may ask which warehouses the current user runs.
+    // Barcode receiving (godown gate). Activating a printed label is a
+    // warehouse action, gated by the same manager assignment MY_WAREHOUSES
+    // reports, so it lives under the warehouse API rather than barcode.
+    RECEIVE_SCAN: '/warehouse/receive/scan/',
+    RECEIVE_SESSION: '/warehouse/receive/session/',
+
     MY_WAREHOUSES: '/warehouse/my-warehouses/',
     USER_WAREHOUSES: '/warehouse/user-warehouses/',
     USER_WAREHOUSE_GAPS: '/warehouse/user-warehouses/gaps/',
@@ -1184,6 +1317,31 @@ export const API_ENDPOINTS = {
     SAP_TRANSFER_APPROVALS: '/warehouse/sap-transfer-approvals/',
     SAP_TRANSFER_APPROVAL_STATUS: (wddCode: number) =>
       `/warehouse/sap-transfer-approvals/${wddCode}/status/`,
+
+    // The same SAP queue on credit-note drafts (A/R + A/P). Raised in the SAP
+    // client, invisible outside it until they appear here.
+    CREDIT_NOTE_APPROVALS: '/warehouse/credit-note-approvals/',
+    CREDIT_NOTE_APPROVAL_PENDING_COUNT: '/warehouse/credit-note-approvals/pending-count/',
+    CREDIT_NOTE_APPROVAL_STATUS: (wddCode: number) =>
+      `/warehouse/credit-note-approvals/${wddCode}/status/`,
+
+    // Approving a transfer REQUEST clears the request; these move the stock
+    // against it, in as many parts as it takes.
+    SAP_TRANSFER_AWAITING: '/warehouse/sap-transfer-requests/awaiting/',
+    SAP_TRANSFER_POST: (docEntry: number) =>
+      `/warehouse/sap-transfer-requests/${docEntry}/post/`,
+
+    // An approved transfer DRAFT moves nothing either: in the SAP client
+    // somebody still has to press Add on it. These are that button.
+    SAP_TRANSFER_DRAFTS: '/warehouse/sap-transfer-drafts/',
+    SAP_TRANSFER_DRAFT_POST: (draftEntry: number) =>
+      `/warehouse/sap-transfer-drafts/${draftEntry}/post/`,
+
+    // Posted SAP inventory transfers (OWTR), for printing the document from the
+    // Inventory Transfer page — including transfers keyed straight into the SAP
+    // client, which have no record on this side at all.
+    SAP_TRANSFERS: '/warehouse/sap-transfers/',
+    SAP_TRANSFER_DETAIL: (docEntry: number) => `/warehouse/sap-transfers/${docEntry}/`,
   },
 
   // Which SAP B1 account each app user is, per company. Approval decisions
@@ -1197,6 +1355,20 @@ export const API_ENDPOINTS = {
   },
 
   BARCODE: {
+    // Activation — printed labels are inactive until received or approved.
+    // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).
+    ACTIVATION_SETTINGS: '/barcode/activation/settings/',
+    ACTIVATION_PENDING: '/barcode/activation/pending/',
+    ACTIVATION_PENDING_BOXES: '/barcode/activation/pending/boxes/',
+    ACTIVATION_VOID: '/barcode/activation/void/',
+    ACTIVATION_REQUESTS: '/barcode/activation/requests/',
+    ACTIVATION_REQUEST_DETAIL: (requestId: number) => `/barcode/activation/requests/${requestId}/`,
+    ACTIVATION_REQUEST_APPROVE: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/approve/`,
+    ACTIVATION_REQUEST_REJECT: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/reject/`,
+    ACTIVATION_REQUEST_CANCEL: (requestId: number) =>
+      `/barcode/activation/requests/${requestId}/cancel/`,
     // Boxes
     BOXES_GENERATE: '/barcode/boxes/generate/',
     BOXES: '/barcode/boxes/',
@@ -1329,6 +1501,8 @@ export const API_ENDPOINTS = {
     // Gate pass — the outward trip (vehicle, weighment, gatepass, out).
     GATE_PASSES: '/marketplace/gate-passes/',
     GATE_PASS_MANUAL: '/marketplace/gate-passes/manual/',
+    // Finishing a manual draft — the same form again, on the trip already open.
+    GATE_PASS_MANUAL_UPDATE: (id: number) => `/marketplace/gate-passes/${id}/manual/`,
     GATE_PASS_DETAIL: (id: number) => `/marketplace/gate-passes/${id}/`,
     GATE_PASS_WEIGHMENT: (id: number) => `/marketplace/gate-passes/${id}/weighment/`,
     GATE_PASS_PRINT: (id: number) => `/marketplace/gate-passes/${id}/print/`,
@@ -1378,6 +1552,23 @@ export const API_ENDPOINTS = {
     PACKING_COMPLETE: (id: number) => `/marketplace/packing/${id}/complete/`,
     PACK_BARCODE_PRINT: (id: number) => `/marketplace/packing/barcodes/${id}/print/`,
   },
+  // Label & carton artwork register — the controlled document, the barcode and
+  // the two files held for every packaging item that carries artwork. ITEMS is
+  // the only one that reads HANA (the SAP item master supplies the universe of
+  // items), so a HANA outage costs the gap list and not the artwork itself.
+  ARTWORK: {
+    ITEMS: '/artwork/items/',
+    OPTIONS: '/artwork/options/',
+    SUMMARY: '/artwork/summary/',
+    RECORDS: '/artwork/records/',
+    RECORD_DETAIL: (recordId: number) => `/artwork/records/${recordId}/`,
+    RECORD_REVISIONS: (recordId: number) => `/artwork/records/${recordId}/revisions/`,
+    RECORD_DOWNLOAD: (recordId: number, kind: 'pdf' | 'cdr') =>
+      `/artwork/records/${recordId}/download/${kind}/`,
+    REVISION_DOWNLOAD: (revisionId: number, kind: 'pdf' | 'cdr') =>
+      `/artwork/revisions/${revisionId}/download/${kind}/`,
+  },
+
   // ETP / STP — the treatment plants' QA registers. Masters first (the Settings
   // screen), then one endpoint set per register; every register list accepts
   // ?plant=&date=&date_from=&date_to=&company=.
@@ -1449,6 +1640,19 @@ export const API_ENDPOINTS = {
     CHART: '/org-chart/chart/',
   },
 
+  // Request Labour -- what each department needs on the NEXT day's shifts.
+  // The list call returns BOTH shifts for a date; the page switches between
+  // them locally, so changing shift never costs a round trip.
+  LABOUR_REQUEST: {
+    DAY: (date: string) => `/labour-request/?date=${date}`,
+    RAISE: '/labour-request/raise/',
+    DETAIL: (requestId: number) => `/labour-request/${requestId}/`,
+    AUDIT: (requestId: number) => `/labour-request/${requestId}/audit/`,
+    RESTORE: (requestId: number) => `/labour-request/${requestId}/restore/`,
+    DECISION: (requestId: number) => `/labour-request/${requestId}/decision/`,
+    REOPEN: (requestId: number) => `/labour-request/${requestId}/reopen/`,
+  },
+
   // Employee hierarchy & compensation. Everything is keyed by employee id
   // rather than employee code: codes are edited when somebody was entered
   // wrong, and a URL that changes under you is worse than one that is pretty.
@@ -1505,16 +1709,24 @@ export const API_ENDPOINTS = {
 
     SALARY_APPROVALS: '/employee-hierarchy/salary-approvals/',
     SALARY_REVISIONS: '/employee-hierarchy/salary-revisions/',
-    SALARY_APPROVE: (recordId: number) =>
-      `/employee-hierarchy/salary-records/${recordId}/approve/`,
+    SALARY_APPROVE: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/approve/`,
     SALARY_REJECT: (recordId: number) => `/employee-hierarchy/salary-records/${recordId}/reject/`,
 
     DEPARTMENTS: '/employee-hierarchy/departments/',
-    DEPARTMENT_DETAIL: (departmentId: number) =>
-      `/employee-hierarchy/departments/${departmentId}/`,
+    DEPARTMENT_DETAIL: (departmentId: number) => `/employee-hierarchy/departments/${departmentId}/`,
     DESIGNATIONS: '/employee-hierarchy/designations/',
     DESIGNATION_DETAIL: (designationId: number) =>
       `/employee-hierarchy/designations/${designationId}/`,
+
+    // Permanent labour: the strength on the rolls (GET/PUT) and the daily
+    // presence register (GET a window, POST one date + shift).
+    LABOUR_STRENGTH: '/employee-hierarchy/labour-strength/',
+    LABOUR_PRESENCE: '/employee-hierarchy/labour-presence/',
+    // The append-only trail behind each figure: both are overwritten in place,
+    // so what they used to say lives only here.
+    LABOUR_STRENGTH_AUDIT: '/employee-hierarchy/labour-strength/audit/',
+    LABOUR_PRESENCE_AUDIT: (presenceId: number) =>
+      `/employee-hierarchy/labour-presence/${presenceId}/audit/`,
   },
 
   // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),
@@ -1532,8 +1744,39 @@ export const API_ENDPOINTS = {
     UPLOADS: '/issues/uploads/',
     LABELS: '/issues/labels/',
     LABEL_DETAIL: (labelId: number) => `/issues/labels/${labelId}/`,
-    AREAS: '/issues/areas/',
-    AREA_DETAIL: (areaId: number) => `/issues/areas/${areaId}/`,
+  },
+
+  // The cash book — the factory's cash box. ENTRIES takes
+  // ?date_from=&date_to=&direction=&branch=&gl_account_code=&bunch=
+  // &approval_status=&search=&include_cancelled=&page=&page_size= and answers
+  // with a paged envelope that also carries the book's own balance.
+  // GL_ACCOUNTS is a type-ahead straight against SAP's chart of accounts and
+  // answers 503 when SAP is unreachable.
+  CASH_BOOK: {
+    OPTIONS: '/cash-book/options/',
+    SUMMARY: '/cash-book/summary/',
+    GL_ACCOUNTS: '/cash-book/gl-accounts/',
+    BRANCHES: '/cash-book/branches/',
+    // The imprest card the cash is drawn off. A withdrawal is not an
+    // endpoint here -- it is a cash-in entry naming the card.
+    ATM: '/cash-book/atm/',
+    ATM_DETAIL: (accountId: number) => `/cash-book/atm/${accountId}/`,
+    ATM_RECEIPTS: (accountId: number) => `/cash-book/atm/${accountId}/receipts/`,
+    ATM_RECEIPT_DETAIL: (receiptId: number) => `/cash-book/atm/receipts/${receiptId}/`,
+    // Cash out with somebody who has not yet said what it went on.
+    ADVANCES: '/cash-book/advances/',
+    ADVANCE_DETAIL: (entryId: number) => `/cash-book/advances/${entryId}/`,
+    ADVANCE_HOLDERS: '/cash-book/advances/holders/',
+    ADVANCE_STATEMENT: (personId: number) => `/cash-book/advances/holders/${personId}/`,
+    PEOPLE: '/cash-book/people/',
+    BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
+    ENTRIES: '/cash-book/entries/',
+    ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
+    BUNCHES: '/cash-book/bunches/',
+    BUNCH_DETAIL: (bunchId: number) => `/cash-book/bunches/${bunchId}/`,
+    BUNCH_APPROVE: (bunchId: number) => `/cash-book/bunches/${bunchId}/approve/`,
+    BUNCH_REJECT: (bunchId: number) => `/cash-book/bunches/${bunchId}/reject/`,
+    BUNCH_RESEND: (bunchId: number) => `/cash-book/bunches/${bunchId}/resend/`,
   },
 } as const;
 

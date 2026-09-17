@@ -62,8 +62,12 @@ export default function GoodsReturnListPage() {
     return entries.filter((entry) =>
       [
         entry.entry_no,
-        entry.customer_name,
+        // Every customer on the return, not only the header's: a truck can bring
+        // back several distributors' bills and any of them may be searched for.
+        ...(entry.customer_names ?? [entry.customer_name]),
         entry.customer_code,
+        // What the customer quotes on the phone: "my debit note 4471".
+        entry.customer_ref_no,
         entry.vehicle_no,
         ...entry.invoice_doc_nums,
       ]
@@ -106,7 +110,7 @@ export default function GoodsReturnListPage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total" value={counts.total} />
-        <StatCard label="Being Filled" value={counts.unfinished} tone="text-slate-600" />
+        <StatCard label="Being Filled" value={counts.unfinished} tone="text-slate-600 dark:text-muted-foreground" />
         <StatCard label="Awaiting Arrival" value={counts.awaiting} tone="text-amber-600" />
         <StatCard label="Arrived" value={counts.arrived} tone="text-emerald-600" />
       </div>
@@ -173,7 +177,11 @@ export default function GoodsReturnListPage() {
                       >
                         <td className="px-4 py-3 font-medium">{entry.entry_no}</td>
                         <td className="px-4 py-3 text-muted-foreground">{BASIS_LABELS[entry.basis]}</td>
-                        <td className="px-4 py-3">{entry.customer_name || entry.customer_code || '-'}</td>
+                        <td className="px-4 py-3">
+                          {entry.customer_names?.length
+                            ? entry.customer_names.join(', ')
+                            : entry.customer_name || entry.customer_code || '-'}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {entry.invoice_doc_nums.length ? entry.invoice_doc_nums.join(', ') : '-'}
                         </td>

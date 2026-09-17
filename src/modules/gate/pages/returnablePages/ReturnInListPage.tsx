@@ -208,19 +208,19 @@ export default function ReturnInListPage() {
       />
 
       {overdueCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+        <div className="flex items-center gap-2 rounded-md border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-900 dark:text-rose-400">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {overdueCount} gate pass{overdueCount === 1 ? ' is' : 'es are'} past their expected return
           date.
         </div>
       ) : arrivingCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900">
+        <div className="flex items-center gap-2 rounded-md border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 p-3 text-sm text-cyan-900 dark:text-cyan-400">
           <PackageOpen className="h-4 w-4 shrink-0" />
           {arrivingCount} purchased material indent{arrivingCount === 1 ? '' : 's'} waiting to be gated
           in.
         </div>
       ) : outstandingCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+        <div className="flex items-center gap-2 rounded-md border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-400">
           <Undo2 className="h-4 w-4 shrink-0" />
           {outstandingCount} gate pass{outstandingCount === 1 ? '' : 'es'} still outside the gate.
         </div>
@@ -306,11 +306,11 @@ export default function ReturnInListPage() {
                     return (
                       <tr
                         key={`rgp-${pass.id}`}
-                        className={cn('border-t hover:bg-muted/30', pass.is_overdue && 'bg-rose-50/60')}
+                        className={cn('border-t hover:bg-muted/30', pass.is_overdue && 'bg-rose-50/60 dark:bg-rose-500/10')}
                       >
                         <td className="px-3 py-2 font-medium">{pass.pass_no}</td>
                         <td className="px-3 py-2">
-                          <span className="inline-flex items-center whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700">
+                          <span className="inline-flex items-center whitespace-nowrap rounded-full border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-muted-foreground">
                             Returnable
                           </span>
                         </td>
@@ -365,7 +365,7 @@ export default function ReturnInListPage() {
                     <tr key={`mi-${indent.id}`} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-2 font-medium">{indent.indent_no}</td>
                       <td className="px-3 py-2">
-                        <span className="inline-flex items-center whitespace-nowrap rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                        <span className="inline-flex items-center whitespace-nowrap rounded-full border border-violet-200 dark:border-violet-500/30 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:text-violet-400">
                           Material Indent
                         </span>
                       </td>

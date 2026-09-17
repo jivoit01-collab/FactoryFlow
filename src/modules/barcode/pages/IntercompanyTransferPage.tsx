@@ -301,7 +301,7 @@ export default function IntercompanyTransferPage() {
           )}
 
           {destinationIsBeverages && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="flex items-start gap-2 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
                 Beverages stock is not barcoded. Transferring barcoded box/pallet ownership into{' '}
@@ -422,7 +422,7 @@ export default function IntercompanyTransferPage() {
                       {route.transfer_count} transfers, {route.total_qty} qty
                     </p>
                   </div>
-                  <Badge className="bg-blue-100 text-blue-800">
+                  <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">
                     {route.barcode_count} barcodes
                   </Badge>
                 </div>
@@ -467,7 +467,7 @@ export default function IntercompanyTransferPage() {
                 <div key={transfer.id} className="rounded border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <button
-                      className="font-mono text-xs text-blue-700 hover:underline"
+                      className="font-mono text-xs text-blue-700 dark:text-blue-400 hover:underline"
                       onClick={() => navigate(`/barcode/intercompany/${transfer.id}`)}
                     >
                       {transfer.transfer_number}
@@ -475,8 +475,8 @@ export default function IntercompanyTransferPage() {
                     <Badge
                       className={
                         transfer.status === 'REVERSED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400'
+                          : 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
                       }
                     >
                       {transfer.status}
@@ -573,7 +573,7 @@ export default function IntercompanyTransferPage() {
               )}
 
             {destinationIsBeverages && (
-              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="space-y-2 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
                 <div className="flex items-start gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <p>

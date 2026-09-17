@@ -146,17 +146,17 @@ function formatDate(value: string | null | undefined) {
 }
 
 function statusClass(status: PMExecutionStatus) {
-  if (status === 'COMPLETED') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (status === 'IN_PROGRESS') return 'border-blue-200 bg-blue-50 text-blue-700';
-  if (status === 'SKIPPED') return 'border-slate-200 bg-slate-50 text-slate-700';
-  if (status === 'OVERDUE') return 'border-rose-200 bg-rose-50 text-rose-700';
-  return 'border-amber-200 bg-amber-50 text-amber-700';
+  if (status === 'COMPLETED') return 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
+  if (status === 'IN_PROGRESS') return 'border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400';
+  if (status === 'SKIPPED') return 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground';
+  if (status === 'OVERDUE') return 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400';
+  return 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400';
 }
 
 function priorityClass(priority: MaintenancePriority) {
-  if (priority === 'CRITICAL') return 'border-rose-200 bg-rose-50 text-rose-700';
-  if (priority === 'HIGH') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-slate-200 bg-slate-50 text-slate-700';
+  if (priority === 'CRITICAL') return 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400';
+  if (priority === 'HIGH') return 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400';
+  return 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground';
 }
 
 function buildPlanPayload(form: PlanFormState): PreventiveMaintenancePlanPayload {
@@ -609,7 +609,7 @@ export default function MaintenancePMPage() {
                         <td className="px-4 py-3">
                           <div>{formatDate(plan.next_due_date)}</div>
                           {plan.is_due && (
-                            <div className="text-xs font-medium text-amber-700">Due</div>
+                            <div className="text-xs font-medium text-amber-700 dark:text-amber-400">Due</div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
@@ -711,7 +711,7 @@ export default function MaintenancePMPage() {
                         {item.safety_critical && (
                           <Badge
                             variant="outline"
-                            className="border-rose-200 bg-rose-50 text-rose-700"
+                            className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400"
                           >
                             Safety
                           </Badge>

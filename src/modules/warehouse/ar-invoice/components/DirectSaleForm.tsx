@@ -3,13 +3,14 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
-import { SearchableSelect } from '@/shared/components';
+import { confirmSapPost, SearchableSelect } from '@/shared/components';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@/shared/components/ui';
 import { formatCurrency, getErrorMessage } from '@/shared/utils';
 
 import { arInvoiceApi } from '../api/ar-invoice.api';
 import { useCreateArInvoice, useWarehouseItems } from '../api/ar-invoice.queries';
 import type { DirectSaleLine, WarehouseStockItem } from '../types';
+import { CustomerCreditPanel } from './CustomerCreditPanel';
 import { CustomerSelect } from './CustomerSelect';
 
 /** The org's tax codes embed their rate ("CG+SG@5", "IGST@12") — parse it to
@@ -120,6 +121,17 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
     if (!customerCode) return toast.error('Select a customer.');
     if (cart.length === 0) return toast.error('Add at least one line.');
 
+    const confirmed = await confirmSapPost({
+      title: 'Raise this cash sale in SAP?',
+      details: [
+        { label: 'Creates', value: 'A/R invoice' },
+        { label: 'Customer', value: customerCode },
+        { label: 'Lines', value: cart.length },
+      ],
+      confirmLabel: 'Raise the invoice',
+    });
+    if (!confirmed) return;
+
     try {
       const posting = await createInvoice.mutateAsync({
         data: {
@@ -170,6 +182,13 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
           />
         </div>
       </div>
+
+      {/* Shown as soon as the customer is known — before the warehouse, which
+          has nothing to do with their credit. The cart's pre-tax value is what
+          is projected, matching how the SO tab counts a selected line. */}
+      {customerCode ? (
+        <CustomerCreditPanel customerCode={customerCode} invoiceAmount={cartTotal} />
+      ) : null}
 
       {!customerCode || !warehouse ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">

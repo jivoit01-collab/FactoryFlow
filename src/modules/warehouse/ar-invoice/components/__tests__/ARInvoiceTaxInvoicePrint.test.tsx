@@ -157,6 +157,31 @@ describe('ARInvoiceTaxInvoicePrint', () => {
     expect(sheet).toContain('5 PCS');
   });
 
+  /* SAP's own x offsets assume SAP's glyph widths. Where a label and the figure
+     after it were placed as two runs at those offsets, the browser's wider Arial
+     ran one into the other — "2 Box0.00" in the grid, "Address :" over its own
+     address on the ship-to side. These pin the pieces that had to stop being two
+     absolutely-positioned runs. */
+  it('keeps the box count, the label and the loose figure apart', () => {
+    const sheet = text(invoice({ lines: [line({ boxes: 2, loose_qty: '4' })] }));
+
+    expect(sheet).toContain('2 Box 4.00 PCS');
+  });
+
+  it('keeps a party address clear of its own label', () => {
+    const sheet = text(invoice());
+
+    expect(sheet).toContain('Address : , SONIPAT, HR, IN');
+    expect(sheet).toContain('Address : , SONIPAT, HARYANA, 131028, India');
+  });
+
+  it('sets the godown heading on one line', () => {
+    const sheet = text(invoice());
+
+    expect(sheet).toContain('Godown');
+    expect(sheet).not.toContain('God own');
+  });
+
   it('carries the batch number under its item', () => {
     expect(text(invoice())).toContain('(Batch No: L3002361 082630 02)');
   });

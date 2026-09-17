@@ -149,8 +149,8 @@ export default function ReprintPage() {
                         <Badge
                           className={
                             b.status === 'ACTIVE'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
+                              : 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground'
                           }
                         >
                           {b.status}
@@ -199,8 +199,8 @@ export default function ReprintPage() {
                         <Badge
                           className={
                             p.status === 'ACTIVE'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
+                              : 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground'
                           }
                         >
                           {p.status}

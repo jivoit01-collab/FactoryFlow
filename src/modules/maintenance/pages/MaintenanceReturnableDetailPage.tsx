@@ -220,24 +220,24 @@ export default function MaintenanceReturnableDetailPage() {
       </div>
 
       {pass.approval_rejected_reason && pass.status === 'DRAFT' ? (
-        <Card className="border-rose-200 bg-rose-50">
-          <CardContent className="p-4 text-sm text-rose-900">
+        <Card className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10">
+          <CardContent className="p-4 text-sm text-rose-900 dark:text-rose-400">
             <strong>Rejected by the approver:</strong> {pass.approval_rejected_reason}
           </CardContent>
         </Card>
       ) : null}
 
       {pass.rejected_reason && pass.status === 'DRAFT' ? (
-        <Card className="border-rose-200 bg-rose-50">
-          <CardContent className="p-4 text-sm text-rose-900">
+        <Card className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10">
+          <CardContent className="p-4 text-sm text-rose-900 dark:text-rose-400">
             <strong>Rejected at the gate:</strong> {pass.rejected_reason}
           </CardContent>
         </Card>
       ) : null}
 
       {pass.short_close_reason ? (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4 text-sm text-amber-900">
+        <Card className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-400">
             <strong>Short closed:</strong> {pass.short_close_reason} — {pass.pending_return_qty}{' '}
             unit(s) never came back.
           </CardContent>
@@ -393,8 +393,8 @@ export default function MaintenanceReturnableDetailPage() {
                               <span
                                 className={
                                   Number(item.pending_return_qty) > 0
-                                    ? 'font-medium text-amber-700'
-                                    : 'text-emerald-700'
+                                    ? 'font-medium text-amber-700 dark:text-amber-400'
+                                    : 'text-emerald-700 dark:text-emerald-400'
                                 }
                               >
                                 {item.pending_return_qty}
@@ -459,11 +459,11 @@ export default function MaintenanceReturnableDetailPage() {
                         </p>
                       </div>
                       {event.is_acknowledged ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                        <span className="rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-800 dark:text-emerald-400">
                           Collected by {event.acknowledged_by_name}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                        <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-400">
                           Awaiting collection
                         </span>
                       )}

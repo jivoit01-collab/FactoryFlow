@@ -107,11 +107,11 @@ function SegmentCard({ segment, now }: { segment: BlowingSegment; now: number })
   const duration = segment.is_active ? minutesSince(segment.start_time, now) : segment.duration_minutes;
   const produced = parseFloat(segment.produced_pcs || '0');
   return (
-    <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/30">
+    <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-500/30 dark:bg-green-500/15">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Play className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
-          <span className="text-lg font-bold text-green-800 dark:text-green-200">Running</span>
+          <span className="text-lg font-bold text-green-800 dark:text-green-300">Running</span>
           {segment.is_active && (
             <span className="relative flex h-2.5 w-2.5 shrink-0">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
@@ -131,7 +131,7 @@ function SegmentCard({ segment, now }: { segment: BlowingSegment; now: number })
         <span className="whitespace-nowrap">End: {segment.end_time ? formatTime(segment.end_time) : '--:--'}</span>
       </div>
       {segment.remarks?.trim() && (
-        <div className="mt-3 flex items-start gap-2 rounded-md border border-green-200 bg-white/70 px-2.5 py-2 text-sm text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-200">
+        <div className="mt-3 flex items-start gap-2 rounded-md border border-green-200 bg-white/70 px-2.5 py-2 text-sm text-green-800 dark:border-green-500/30 dark:bg-green-500/20 dark:text-green-300">
           <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="break-words">{segment.remarks}</span>
         </div>
@@ -151,11 +151,11 @@ function BreakdownCard({
 }) {
   const duration = breakdown.is_active ? minutesSince(breakdown.start_time, now) : breakdown.breakdown_minutes;
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/15">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Wrench className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-          <span className="text-lg font-bold text-red-800 dark:text-red-200">Breakdown</span>
+          <span className="text-lg font-bold text-red-800 dark:text-red-300">Breakdown</span>
         </div>
         <span className="shrink-0 whitespace-nowrap text-sm text-muted-foreground">{formatDuration(duration)}</span>
       </div>

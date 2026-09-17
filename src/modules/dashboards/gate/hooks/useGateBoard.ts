@@ -15,6 +15,7 @@ import {
 } from '@/modules/gate/api/personGateIn/personGateIn.api';
 
 import {
+  GATE_ACTIVITIES,
   GATE_IN_ROUTES,
   GATE_INSIDE_DAYS_BACK,
   GATE_OUT_ROUTES,
@@ -65,6 +66,29 @@ export interface VehiclePlate {
   vehicle_no: string;
   count: number;
   stage_label?: string;
+}
+
+/**
+ * Which sections of the board the viewer's own rights actually cover.
+ *
+ * Every figure here is already permission-scoped at the query layer — a section
+ * the viewer cannot read is never fetched, so it arrives as a zero. That zero is
+ * a lie: "0 vehicles in" reads as "nothing came in today" when it means "you
+ * hold no inbound gate right". The board therefore has to know the difference
+ * between a real nought and a figure it was never allowed to ask for, and say
+ * which — the way the journey tile already does.
+ */
+export interface GateBoardAccess {
+  /** Any inbound activity right — the "vehicles in" total. */
+  inbound: boolean;
+  /** Any outbound activity right — the "vehicles out" total. */
+  outbound: boolean;
+  /** The labour-gate register: head-count and the department split. */
+  labour: boolean;
+  /** The person-gate register: visitors, inside-now and who is on site. */
+  persons: boolean;
+  /** The dispatch pipeline behind the road. */
+  journey: boolean;
 }
 
 /** One department's share of the day's contractor labour. */
@@ -118,6 +142,8 @@ export interface GateBoard {
   /** Newest successful read across every query — drives the staleness tell. */
   updatedAt: number;
   refetch: () => void;
+  /** What the viewer's rights cover, so a withheld figure can say so. */
+  access: GateBoardAccess;
 }
 
 function retry(failureCount: number, error: unknown): boolean {
@@ -308,6 +334,26 @@ export function useGateBoard(range: GateRange, canViewJourney: boolean): GateBoa
     GATE_PERMISSIONS.DASHBOARD.VIEW,
   ]);
 
+  // The two headline totals are sums over the activity counts, and each of those
+  // is fetched only for an activity the viewer can open. So a viewer holding no
+  // inbound right sums an empty set and gets a zero that means "not allowed"
+  // rather than "none". Derived from the activity table rather than listed again
+  // here, so a new activity is covered the day it is added.
+  const canViewInbound = useMemo(
+    () =>
+      GATE_ACTIVITIES.some(
+        (activity) => activity.flow === 'in' && hasAnyPermission([...activity.permissions]),
+      ),
+    [hasAnyPermission],
+  );
+  const canViewOutbound = useMemo(
+    () =>
+      GATE_ACTIVITIES.some(
+        (activity) => activity.flow === 'out' && hasAnyPermission([...activity.permissions]),
+      ),
+    [hasAnyPermission],
+  );
+
   const personQuery = useQuery({
     queryKey: ['gate-wall-person', currentCompany?.company_id, range.from, range.to],
     queryFn: () => personGateInApi.getDashboard({ from_date: range.from, to_date: range.to }),
@@ -428,6 +474,13 @@ export function useGateBoard(range: GateRange, canViewJourney: boolean): GateBoa
       void pipelineQuery.refetch();
       void insideQuery.refetch();
       void labourQuery.refetch();
+    },
+    access: {
+      inbound: canViewInbound,
+      outbound: canViewOutbound,
+      labour: canViewLabour,
+      persons: canViewPersons,
+      journey: canViewJourney,
     },
   };
 }

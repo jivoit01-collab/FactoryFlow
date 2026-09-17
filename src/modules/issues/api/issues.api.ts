@@ -1,8 +1,11 @@
-import { API_ENDPOINTS } from '@/config/constants';
+import {
+  API_ENDPOINTS,
+  SUPPORT_CONTACT_ENDPOINT,
+  type SupportContactPayload,
+} from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
-  IssueArea,
   IssueComment,
   IssueCreatePayload,
   IssueDetail,
@@ -31,6 +34,13 @@ function clean(filters?: object) {
 export const issuesApi = {
   async getMeta(): Promise<IssueMeta> {
     return (await apiClient.get<IssueMeta>(EP.META)).data;
+  },
+
+  /** Change the support number. Reading it is public and lives in
+   *  `useSupportContact`; only the write belongs to this module's screens. */
+  async saveSupportContact(phone: string): Promise<SupportContactPayload> {
+    return (await apiClient.patch<SupportContactPayload>(SUPPORT_CONTACT_ENDPOINT, { phone }))
+      .data;
   },
 
   async list(filters?: IssueListFilters): Promise<IssueListResponse> {
@@ -118,24 +128,5 @@ export const issuesApi = {
 
   async deleteLabel(labelId: number): Promise<void> {
     await apiClient.delete(EP.LABEL_DETAIL(labelId));
-  },
-
-  async getAreas(): Promise<IssueArea[]> {
-    return (await apiClient.get<IssueArea[]>(EP.AREAS)).data;
-  },
-
-  async createArea(payload: Partial<IssueArea> & { owner_ids?: number[] }): Promise<IssueArea> {
-    return (await apiClient.post<IssueArea>(EP.AREAS, payload)).data;
-  },
-
-  async updateArea(
-    areaId: number,
-    payload: Partial<IssueArea> & { owner_ids?: number[] },
-  ): Promise<IssueArea> {
-    return (await apiClient.patch<IssueArea>(EP.AREA_DETAIL(areaId), payload)).data;
-  },
-
-  async deleteArea(areaId: number): Promise<void> {
-    await apiClient.delete(EP.AREA_DETAIL(areaId));
   },
 };

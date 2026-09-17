@@ -1,6 +1,10 @@
-import { FileText, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
+import { BadgeIndianRupee, FileText, RefreshCw, Send, Upload, XCircle } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
+import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmSapPost, type SapPostConfirmOptions } from '@/shared/components';
 import {
   Button,
   Separator,
@@ -10,12 +14,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/shared/components/ui';
-import { formatCurrency, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
+import { formatCurrency, formatDate, formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import { useArInvoiceAction } from '../api/ar-invoice.queries';
 import type { ARInvoicePosting } from '../types';
 import { ARInvoicePrintButton } from './ARInvoicePrintButton';
 import { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
+import { ARPaymentBadge, ARPaymentDialog } from './ARPaymentControls';
 
 function amount(value?: string | null) {
   if (value == null || value === '') return '-';
@@ -49,6 +54,9 @@ export function ARInvoiceDetailSheet({
   onOpenChange: (open: boolean) => void;
   canAct: boolean;
 }) {
+  const { hasPermission } = usePermission();
+  const canMarkPayment = hasPermission(AR_INVOICE_PERMISSIONS.MARK_PAYMENT);
+  const [payOpen, setPayOpen] = useState(false);
   const postAction = useArInvoiceAction('post');
   const refreshAction = useArInvoiceAction('refresh');
   const postDraftAction = useArInvoiceAction('postDraft');
@@ -64,7 +72,10 @@ export function ARInvoiceDetailSheet({
     id: number,
     successMessage: (p: ARInvoicePosting) => string,
     fallback: string,
+    /** Omitted by the actions that only read SAP, like refreshing a status. */
+    warning?: SapPostConfirmOptions,
   ) => {
+    if (warning && !(await confirmSapPost(warning))) return;
     try {
       const updated = await action.mutateAsync(id);
       toast.success(successMessage(updated));
@@ -119,13 +130,81 @@ export function ARInvoiceDetailSheet({
               </div>
             ) : null}
 
+            {/* Whether the money came in — this app's own book, not SAP's.
+                Only once there is a bill: nothing collects against a draft. */}
+            {posting.sap_doc_entry ? (
+              <div className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Payment
+                    </p>
+                    <p className="mt-1 text-sm">
+                      {posting.payment ? (
+                        <>
+                          {posting.payment.status_display}
+                          {posting.payment.received_on
+                            ? ` on ${formatDate(posting.payment.received_on)}`
+                            : ''}
+                          {posting.payment.amount
+                            ? ` · ${amount(posting.payment.amount)}`
+                            : ''}
+                          {posting.payment.mode_display
+                            ? ` · ${posting.payment.mode_display}`
+                            : ''}
+                          {posting.payment.reference
+                            ? ` · ref ${posting.payment.reference}`
+                            : ''}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Nobody has recorded whether this bill was paid.
+                        </span>
+                      )}
+                    </p>
+                    {posting.payment?.remarks ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {posting.payment.remarks}
+                      </p>
+                    ) : null}
+                    {posting.payment?.marked_by_name ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Marked by {posting.payment.marked_by_name}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <ARPaymentBadge payment={posting.payment} />
+                    {canMarkPayment ? (
+                      <Button variant="outline" size="sm" onClick={() => setPayOpen(true)}>
+                        <BadgeIndianRupee className="mr-1 h-4 w-4" />
+                        {posting.payment ? 'Update' : 'Mark'}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {posting.sap_doc_entry ? (
+              <ARPaymentDialog
+                open={payOpen}
+                onOpenChange={setPayOpen}
+                docEntry={posting.sap_doc_entry}
+                docNum={posting.sap_doc_num}
+                docTotal={posting.sap_doc_total ? Number(posting.sap_doc_total) : null}
+                customerName={posting.customer_name || posting.customer_code}
+                payment={posting.payment}
+              />
+            ) : null}
+
             {posting.error_message ? (
-              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900/40 dark:bg-orange-900/20 dark:text-orange-300">
+              <div className="rounded-md border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
                 <span className="font-medium">Error:</span> {posting.error_message}
               </div>
             ) : null}
             {posting.approval_remarks ? (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300">
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
                 <span className="font-medium">Approver remarks:</span> {posting.approval_remarks}
               </div>
             ) : null}
@@ -214,6 +293,20 @@ export function ARInvoiceDetailSheet({
                               ? `Sent to SAP — awaiting approval (draft ${p.sap_draft_entry}).`
                               : `Posted to SAP as ${p.sap_doc_num}.`,
                           'Failed to post the invoice to SAP',
+                          {
+                            title: 'Post this invoice to SAP?',
+                            details: [
+                              { label: 'Creates', value: 'A/R invoice' },
+                              {
+                                label: 'Customer',
+                                value: posting.customer_name || posting.customer_code,
+                              },
+                              {
+                                label: 'Value before tax',
+                                value: amount(posting.selected_total),
+                              },
+                            ],
+                          },
                         )
                       }
                     >
@@ -247,6 +340,15 @@ export function ARInvoiceDetailSheet({
                           posting.id,
                           (p) => `Invoice posted to SAP as ${p.sap_doc_num}.`,
                           'Failed to post the approved draft',
+                          {
+                            title: 'Turn this approved draft into a real invoice?',
+                            details: [
+                              { label: 'Creates', value: 'A/R invoice from the approved draft' },
+                              { label: 'SAP draft', value: posting.sap_draft_entry },
+                              { label: 'Batches', value: 'Allocated onto the draft first' },
+                            ],
+                            confirmLabel: 'Post the invoice',
+                          },
                         )
                       }
                     >

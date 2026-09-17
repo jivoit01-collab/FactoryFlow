@@ -34,6 +34,18 @@ import type { BOMLineApproval, BOMRequestLine } from '../types';
 // Line Row Component
 // ============================================================================
 
+// Approved qty is stored with 3 decimals, but live SAP stock comes back with more
+// (e.g. 6197.0849). Floor rather than round so a prefilled "approve everything in
+// stock" can never land above the stock it was derived from.
+const QTY_DECIMALS = 3;
+
+function toStorableQty(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const factor = 10 ** QTY_DECIMALS;
+  // toFixed first: 1.005 * 1000 is 1004.999..., which would floor away a thousandth.
+  return Math.floor(Number((value * factor).toFixed(6))) / factor;
+}
+
 function LineRow({
   line,
   editable,
@@ -47,8 +59,8 @@ function LineRow({
 }) {
   const stock = line.available_stock ?? 0;
   const required = parseFloat(line.required_qty);
-  const maxApprovalQty = Math.max(stock, 0);
-  const defaultApprovalQty = Math.min(required, maxApprovalQty);
+  const maxApprovalQty = toStorableQty(Math.max(stock, 0));
+  const defaultApprovalQty = toStorableQty(Math.min(required, maxApprovalQty));
   const canApproveLine = maxApprovalQty > 0;
   const stockColor =
     stock >= required ? 'text-green-600' : stock > 0 ? 'text-amber-600' : 'text-red-600';
@@ -72,14 +84,16 @@ function LineRow({
               type="number"
               min={0}
               max={maxApprovalQty}
-              step="any"
+              step="0.001"
               className="w-24 h-8 text-sm"
               value={approval.approved_qty}
               disabled={!canApproveLine || approval.status === 'REJECTED'}
               onChange={(e) =>
                 onApprovalChange({
                   ...approval,
-                  approved_qty: Math.min(parseFloat(e.target.value) || 0, maxApprovalQty),
+                  approved_qty: toStorableQty(
+                    Math.min(parseFloat(e.target.value) || 0, maxApprovalQty),
+                  ),
                 })
               }
             />
@@ -95,7 +109,7 @@ function LineRow({
                 onClick={() => onApprovalChange({
                   ...approval,
                   approved_qty: approval.approved_qty > 0
-                    ? Math.min(approval.approved_qty, maxApprovalQty)
+                    ? toStorableQty(Math.min(approval.approved_qty, maxApprovalQty))
                     : defaultApprovalQty,
                   status: 'APPROVED',
                 })}
@@ -124,9 +138,9 @@ function LineRow({
               variant="outline"
               className={
                 line.status === 'APPROVED'
-                  ? 'bg-green-50 text-green-700 border-green-200'
+                  ? 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30'
                   : line.status === 'REJECTED'
-                    ? 'bg-red-50 text-red-700 border-red-200'
+                    ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30'
                     : ''
               }
             >
@@ -167,7 +181,7 @@ export default function BOMRequestDetailPage() {
     if (approvals[line.id]) return approvals[line.id];
     const stock = Math.max(line.available_stock ?? 0, 0);
     const required = parseFloat(line.required_qty);
-    const approvedQty = Math.min(required, stock);
+    const approvedQty = toStorableQty(Math.min(required, stock));
     return {
       line_id: line.id,
       approved_qty: approvedQty,
@@ -180,6 +194,20 @@ export default function BOMRequestDetailPage() {
   };
 
   const pendingApprovalLines = detail?.lines.map((line) => getApproval(line)) ?? [];
+  // Name the register the figures come from. The approval is checked against
+  // the same one, so an approver who reads a number here can trust it will be
+  // accepted — a SAP figure shown against an RM gate used to offer quantities
+  // the approval then refused.
+  const stockSources = new Set(
+    (detail?.lines ?? []).map((line) => line.stock_source).filter(Boolean),
+  );
+  const stockSourceLabel =
+    stockSources.size === 1
+      ? stockSources.has('RM_REGISTER')
+        ? 'Raw Material register'
+        : 'SAP stock'
+      : null;
+
   const hasApprovedLine = pendingApprovalLines.some((line) =>
     line.status === 'APPROVED' && line.approved_qty > 0
   );
@@ -193,7 +221,12 @@ export default function BOMRequestDetailPage() {
     try {
       const result = await approveMut.mutateAsync({
         requestId: detail.id,
-        data: { lines: pendingApprovalLines },
+        data: {
+          lines: pendingApprovalLines.map((line) => ({
+            ...line,
+            approved_qty: toStorableQty(line.approved_qty),
+          })),
+        },
       });
       toast.success(
         result.status === 'PARTIALLY_APPROVED'
@@ -278,10 +311,10 @@ export default function BOMRequestDetailPage() {
       </div>
 
       {detail.rejection_reason && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-red-800">Rejection Reason</p>
-            <p className="text-sm text-red-700">{detail.rejection_reason}</p>
+            <p className="text-sm font-medium text-red-800 dark:text-red-400">Rejection Reason</p>
+            <p className="text-sm text-red-700 dark:text-red-400">{detail.rejection_reason}</p>
           </CardContent>
         </Card>
       )}
@@ -300,7 +333,14 @@ export default function BOMRequestDetailPage() {
                 <tr className="border-b text-left">
                   <th className="py-2 px-2">Material</th>
                   <th className="py-2 px-2 text-right">Required</th>
-                  <th className="py-2 px-2 text-right">In Stock</th>
+                  <th className="py-2 px-2 text-right">
+                    In Stock
+                    {stockSourceLabel && (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {stockSourceLabel}
+                      </span>
+                    )}
+                  </th>
                   {isPending ? (
                     <>
                       <th className="py-2 px-2">Approve Qty</th>

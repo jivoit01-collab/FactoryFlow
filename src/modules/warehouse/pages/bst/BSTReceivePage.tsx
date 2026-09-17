@@ -38,9 +38,9 @@ const RECEIVABLE = ['IN_TRANSIT', 'ARRIVED', 'RECEIVING', 'PARTIALLY_RECEIVED'];
 
 function ReceiveBadge({ status }: { status: BSTReceiveStatus }) {
   const cfg: Record<BSTReceiveStatus, string> = {
-    PENDING: 'bg-slate-100 text-slate-700',
-    ACCEPTED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
+    PENDING: 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground',
+    ACCEPTED: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+    REJECTED: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${cfg[status]}`}>
@@ -258,14 +258,14 @@ export default function BSTReceivePage() {
           warehouse at all — it settles to a company — so there is nothing to
           check and nothing to warn about. */}
       {transfer.sap_to_warehouse && !scope.manages(transfer.sap_to_warehouse) && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
             This shipment is coming into <strong>{transfer.sap_to_warehouse}</strong>, which you
             do not manage — its manager receives it. Scanning here will be refused.
           </div>
         )}
 
       {senderStillScanning && (
-        <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
+        <div className="flex items-center gap-2 rounded-md border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-sm text-cyan-800 dark:text-cyan-400">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           <span>
             The sender is still sending — more boxes may keep arriving. You can accept them now,
@@ -312,9 +312,9 @@ export default function BSTReceivePage() {
       )}
 
       {failedScans.length > 0 && (
-        <Card className="border-red-200">
+        <Card className="border-red-200 dark:border-red-500/30">
           <CardContent className="pt-4">
-            <p className="text-sm font-medium text-red-700 mb-2">Failed scans ({failedScans.length})</p>
+            <p className="text-sm font-medium text-red-700 dark:text-red-400 mb-2">Failed scans ({failedScans.length})</p>
             <div className="space-y-1">
               {failedScans.map((f) => (
                 <div key={f.barcode} className="flex items-center justify-between text-sm">
@@ -345,9 +345,9 @@ export default function BSTReceivePage() {
               Pallets ({palletGroups.length}) · {scans.length} box{scans.length === 1 ? '' : 'es'}
             </p>
             <div className="flex gap-2 text-xs">
-              <Badge variant="outline" className="text-green-700">{accepted} accepted</Badge>
-              <Badge variant="outline" className="text-red-700">{rejected} rejected</Badge>
-              <Badge variant="outline" className="text-slate-600">{pending} pending</Badge>
+              <Badge variant="outline" className="text-green-700 dark:text-green-400">{accepted} accepted</Badge>
+              <Badge variant="outline" className="text-red-700 dark:text-red-400">{rejected} rejected</Badge>
+              <Badge variant="outline" className="text-slate-600 dark:text-muted-foreground">{pending} pending</Badge>
             </div>
           </div>
           {scans.length === 0 ? (
@@ -389,13 +389,13 @@ export default function BSTReceivePage() {
                           {g.scans.length} box{g.scans.length === 1 ? '' : 'es'}
                         </span>
                         {g.accepted > 0 && (
-                          <Badge variant="outline" className="text-green-700">{g.accepted} ✓</Badge>
+                          <Badge variant="outline" className="text-green-700 dark:text-green-400">{g.accepted} ✓</Badge>
                         )}
                         {g.rejected > 0 && (
-                          <Badge variant="outline" className="text-red-700">{g.rejected} ✕</Badge>
+                          <Badge variant="outline" className="text-red-700 dark:text-red-400">{g.rejected} ✕</Badge>
                         )}
                         {g.pending > 0 && (
-                          <Badge variant="outline" className="text-slate-600">{g.pending}</Badge>
+                          <Badge variant="outline" className="text-slate-600 dark:text-muted-foreground">{g.pending}</Badge>
                         )}
                       </div>
                       {receivable && g.palletCode && (
@@ -454,7 +454,7 @@ export default function BSTReceivePage() {
                                 <td className="py-2 px-3 font-medium">
                                   {s.box_barcode}
                                   {s.is_unexpected && (
-                                    <Badge variant="outline" className="ml-1 text-amber-700">unexpected</Badge>
+                                    <Badge variant="outline" className="ml-1 text-amber-700 dark:text-amber-400">unexpected</Badge>
                                   )}
                                 </td>
                                 <td className="py-2 px-3">{s.item_code}</td>

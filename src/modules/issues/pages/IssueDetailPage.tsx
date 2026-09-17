@@ -1,6 +1,6 @@
 /**
  * One issue: the header, the body, the timeline, the comment box, and a sidebar
- * that edits labels / assignees / area / priority.
+ * that edits labels / assignees / priority.
  *
  * The sidebar saves each field the moment it changes rather than behind a Save
  * button. Triage is done in passing — someone skims twenty issues and drops a
@@ -573,28 +573,6 @@ export default function IssueDetailPage() {
                   <LabelChip key={label.id} label={label} />
                 ))}
               </div>
-            )}
-          </SidebarSection>
-
-          <SidebarSection title="Area">
-            {canTriage ? (
-              <NativeSelect
-                value={data.area ? String(data.area) : ''}
-                onChange={(event) =>
-                  patch({ area: event.target.value ? Number(event.target.value) : null })
-                }
-              >
-                <SelectOption value="">Not set</SelectOption>
-                {(meta.data?.areas ?? []).map((area) => (
-                  <SelectOption key={area.id} value={String(area.id)}>
-                    {area.name}
-                  </SelectOption>
-                ))}
-              </NativeSelect>
-            ) : (
-              <p className={data.area_name ? undefined : 'text-muted-foreground'}>
-                {data.area_name || 'Not set'}
-              </p>
             )}
           </SidebarSection>
 

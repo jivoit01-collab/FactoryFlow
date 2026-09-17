@@ -329,7 +329,7 @@ function EmptyVehicleOutForm({
         </div>
 
         {sideEffectMessage ? (
-          <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <span>{sideEffectMessage} This happens when you complete the gate out.</span>
           </div>

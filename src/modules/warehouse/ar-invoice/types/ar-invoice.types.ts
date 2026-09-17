@@ -23,6 +23,38 @@ export interface Customer {
   customer_name: string;
 }
 
+/**
+ * A customer's credit position, read live from SAP's OCRD.
+ *
+ * The same four numbers SAP's own Account Balance panel shows on a sales
+ * document. `exposure` is `balance + open_orders + open_deliveries` — the total
+ * SAP's credit check weighs against the limit — and both it and `available` are
+ * computed on the server so the screen and the log cannot disagree.
+ *
+ * `credit_limit` of 0 means NO LIMIT IS SET, not a zero limit, and most of the
+ * master is in that state. Branch on `has_credit_limit`: rendering an unset
+ * limit as a currency-formatted 0 reads as "blocked" on a customer SAP invoices
+ * happily. `available` is null in that case for the same reason.
+ */
+export interface CustomerCredit {
+  customer_code: string;
+  customer_name: string;
+  credit_limit: number;
+  has_credit_limit: boolean;
+  /** Posted, unpaid A/R (OCRD.Balance). */
+  balance: number;
+  /** Ordered, not yet delivered (OCRD.OrdersBal). */
+  open_orders: number;
+  /** Delivered, not yet invoiced (OCRD.DNotesBal). */
+  open_deliveries: number;
+  exposure: number;
+  /** `credit_limit - exposure`, or null when no limit is set. */
+  available: number | null;
+  over_limit: boolean;
+  is_active: boolean;
+  is_frozen: boolean;
+}
+
 /** One open (invoiceable) Sales Order line, straight from SAP. */
 export interface OpenSOLine {
   so_doc_entry: number;
@@ -69,6 +101,56 @@ export interface ARInvoiceAttachment {
   file_url: string | null;
 }
 
+/**
+ * Whether an invoice has actually been paid, as this app records it.
+ *
+ * Deliberately the app's own book rather than SAP's: SAP calls an invoice
+ * "closed" only once accounts apply an incoming payment against it, which for a
+ * counter cash sale can be days after the cash was taken.
+ */
+export type ARPaymentStatus = 'PENDING' | 'PARTIAL' | 'RECEIVED';
+
+export type ARPaymentMode = 'CASH' | 'UPI' | 'BANK' | 'CHEQUE' | 'CARD' | 'OTHER';
+
+/**
+ * What the History screens colour and filter on.
+ *
+ * Coarser than the status: an untracked bill and one explicitly marked
+ * PENDING both land in UNPAID, because a bill nobody has looked at is not a
+ * paid one.
+ */
+export type PaymentBucket = 'UNPAID' | 'PARTIAL' | 'RECEIVED';
+
+/** One invoice's payment mark. Absent (`null`) means untracked. */
+export interface ARInvoicePayment {
+  id: number;
+  /** SAP's DocEntry — the key both History books share. */
+  sap_doc_entry: number;
+  sap_doc_num: number | null;
+  /** This app's record, when it raised the bill; null for the counter's. */
+  ar_invoice: number | null;
+  status: ARPaymentStatus;
+  status_display: string;
+  received_on: string | null;
+  amount: string | null;
+  mode: ARPaymentMode | '';
+  mode_display: string;
+  reference: string;
+  remarks: string;
+  marked_by_name: string | null;
+  updated_at: string;
+}
+
+/** Body of the mark-payment call. */
+export interface MarkARPaymentRequest {
+  status: ARPaymentStatus;
+  received_on?: string | null;
+  amount?: string | null;
+  mode?: ARPaymentMode | '';
+  reference?: string;
+  remarks?: string;
+}
+
 export interface ARInvoicePosting {
   id: number;
   customer_code: string;
@@ -95,6 +177,8 @@ export interface ARInvoicePosting {
   posted_by_name: string | null;
   lines: ARInvoiceLine[];
   attachments: ARInvoiceAttachment[];
+  /** The payment mark, or null while the bill is untracked. */
+  payment: ARInvoicePayment | null;
 }
 
 /** An item held in one warehouse — the direct-sale item picker's rows. */
@@ -175,7 +259,8 @@ export interface ARInvoicePrintParty {
 }
 
 export interface ARInvoicePrintPayload {
-  posting_id: number;
+  /** This app's record — null for a cash sale the counter raised in SAP itself. */
+  posting_id: number | null;
   doc_entry: number;
   doc_num: number | null;
   doc_date: string | null;
@@ -230,4 +315,74 @@ export interface ARInvoicePrintPayload {
     litres: string;
     gross_weight: string;
   };
+}
+
+/** One line of a cash-sale invoice as SAP holds it (INV1). */
+export interface SapCashSaleLine {
+  line_num: number;
+  item_code: string;
+  description: string;
+  quantity: number;
+  price: number;
+  line_total: number;
+  tax_code: string;
+  warehouse_code: string;
+  uom: string;
+  cost_center: string;
+}
+
+/**
+ * One posted cash-sale invoice, read live from SAP.
+ *
+ * The counter raises cash sales in SAP directly as well as through this app, so
+ * History reads SAP's own book back. `app_posting_id` is set only on the rows
+ * this app raised (matched on DocEntry) — everything else came straight from
+ * SAP, keyed by whoever `sap_user` names.
+ */
+export interface SapCashSaleInvoice {
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  doc_due_date: string | null;
+  tax_date: string | null;
+  created_date: string | null;
+  customer_code: string;
+  customer_name: string;
+  customer_ref: string;
+  comments: string;
+  doc_total: number;
+  tax_total: number;
+  paid_to_date: number;
+  /** 'O' open, 'C' closed — open until a receipt is applied, not "unpaid". */
+  doc_status: string;
+  is_cancelled: boolean;
+  branch_id: number | null;
+  branch_name: string;
+  /** The SAP user who keyed it in, blank for invoices posted by this app. */
+  sap_user: string;
+  draft_entry: number | null;
+  lines: SapCashSaleLine[];
+  app_posting_id: number | null;
+  /**
+   * This app's payment mark for the bill, which SAP knows nothing about. Joined
+   * on DocEntry — the counter's invoices have no other key here.
+   */
+  payment: ARInvoicePayment | null;
+}
+
+/** The SAP cash-sale history, with the window it was actually read over. */
+export interface SapCashSaleHistory {
+  date_from: string;
+  date_to: string;
+  count: number;
+  /** The window holds more invoices than the cap returned. */
+  truncated: boolean;
+  invoices: SapCashSaleInvoice[];
+}
+
+export interface SapCashSaleQuery {
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  limit?: number;
 }

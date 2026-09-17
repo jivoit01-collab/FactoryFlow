@@ -123,11 +123,11 @@ export function SecurityCheckFormShell({
 
       {/* Show not found error with Fill Data button */}
       {showFillDataAlert && onFillData && (
-        <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4">
+        <div className="rounded-md bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/30 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
                 {fillDataMessage}
               </p>
             </div>
@@ -345,11 +345,11 @@ export function SecurityCheckFormShell({
             </div>
 
             {/* Entry Time Info Box */}
-            <div className="mt-4 rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-4">
+            <div className="mt-4 rounded-md bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 p-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <div>
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
                     Entry Time (Auto-captured)
                   </p>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">

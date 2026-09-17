@@ -287,7 +287,7 @@ export default function QAProceduresPage() {
               className={cn(
                 'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors',
                 isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/30',
-                errors.file && 'border-red-400 bg-red-50',
+                errors.file && 'border-red-400 bg-red-50 dark:bg-red-500/10',
               )}
             >
               {file ? (
@@ -396,7 +396,7 @@ export default function QAProceduresPage() {
             </div>
 
             {errors.general && (
-              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <div className="rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
                 {errors.general}
               </div>
             )}

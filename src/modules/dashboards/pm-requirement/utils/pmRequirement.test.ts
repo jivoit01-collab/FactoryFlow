@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDay, formatWindow, planShortLabel } from '../constants/pm-requirement.constants';
+import {
+  DEFAULT_SORT,
+  DEFAULT_SORT_FOR_FILTER,
+  formatDay,
+  formatWindow,
+  planShortLabel,
+} from '../constants/pm-requirement.constants';
 import type { PmReqRow } from '../types';
 import {
   csvFilename,
@@ -10,6 +16,7 @@ import {
   formatSigned,
   isAtRisk,
   nextSort,
+  overPurchaseKind,
   rowStatus,
   searchRows,
   sortRows,
@@ -45,6 +52,10 @@ function row(overrides: Partial<PmReqRow> = {}): PmReqRow {
     issued_other_qty: 0,
     short_qty: 0,
     short_value: 0,
+    to_buy_qty: 0,
+    over_purchase_qty: 0,
+    over_purchase_value: 0,
+    over_purchased: false,
     sku_count: 1,
     po_lines: 0,
     po_earliest_due: null,
@@ -209,10 +220,7 @@ describe('filterRows', () => {
   it('surplus excludes over-issued rows so the two do not double up', () => {
     // The bottle is in surplus arithmetically, but it belongs under
     // over-issued: reporting it as comfortably covered hides the real fact.
-    expect(filterRows(ROWS, 'surplus').map((r) => r.item_code)).toEqual([
-      'PM0000468',
-      'PM0000469',
-    ]);
+    expect(filterRows(ROWS, 'surplus').map((r) => r.item_code)).toEqual(['PM0000468', 'PM0000469']);
   });
 
   it('all keeps every component on the plan', () => {
@@ -231,19 +239,13 @@ describe('searchRows', () => {
 
   it('narrows on every term rather than widening', () => {
     // "caps 5" must not also return the 1 LTR caps.
-    expect(searchRows(ROWS, 'caps 5').map((r) => r.item_code)).toEqual([
-      'PM0000468',
-      'PM0000469',
-    ]);
+    expect(searchRows(ROWS, 'caps 5').map((r) => r.item_code)).toEqual(['PM0000468', 'PM0000469']);
   });
 
   it('does not match a bare digit inside an item code', () => {
     // PM0000235 is CAPS 1 LTR, and its code contains a 5. Searching for the
     // 5 litre caps must not drag it in on a part-number coincidence.
-    expect(searchRows(ROWS, '5 ltr').map((r) => r.item_code)).toEqual([
-      'PM0000468',
-      'PM0000469',
-    ]);
+    expect(searchRows(ROWS, '5 ltr').map((r) => r.item_code)).toEqual(['PM0000468', 'PM0000469']);
   });
 
   it('still matches a code the buyer typed in full', () => {
@@ -330,6 +332,205 @@ describe('nextSort', () => {
   });
 });
 
+describe('the over-purchased filter', () => {
+  // The buyer's own test: 1,000 needed against 800 on hand needs 200 bought,
+  // so a 400 order is 200 over. The backend does the arithmetic; these check
+  // that the board reads the flag rather than re-deriving it, and that the
+  // row lands under the right chip.
+  const overPurchased = row({
+    item_code: 'PM0000469',
+    planning_qty: 1000,
+    on_hand_qty: 800,
+    req_qty: -200,
+    open_po_qty: 400,
+    req_after_po_qty: 200,
+    to_buy_qty: 200,
+    over_purchase_qty: 200,
+    over_purchase_value: 420,
+    over_purchased: true,
+    po_covers_shortage: true,
+    po_lines: 1,
+  });
+
+  const exact = row({
+    item_code: 'PM0000235',
+    req_qty: -200,
+    open_po_qty: 200,
+    req_after_po_qty: 0,
+    to_buy_qty: 200,
+    po_covers_shortage: true,
+  });
+
+  const stillShort = row({
+    item_code: 'PM0000003',
+    req_qty: -200,
+    open_po_qty: 150,
+    req_after_po_qty: -50,
+    short_qty: 50,
+    to_buy_qty: 200,
+  });
+
+  it('shows only the rows the backend flagged', () => {
+    const rows = [overPurchased, exact, stillShort];
+    expect(filterRows(rows, 'over-purchased').map((r) => r.item_code)).toEqual(['PM0000469']);
+  });
+
+  it('leaves a row that is still short off it', () => {
+    // Under-buying is the Still short chip's problem, not this one's.
+    expect(filterRows([stillShort], 'over-purchased')).toEqual([]);
+  });
+
+  it('does not change what the other chips show', () => {
+    // The row is over-purchased AND covered by its order. Both readings are
+    // true, and adding this filter must not have taken it off the old ones.
+    const rows = [overPurchased, exact, stillShort];
+    expect(filterRows(rows, 'short').map((r) => r.item_code)).toEqual(['PM0000003']);
+    expect(filterRows(rows, 'all')).toHaveLength(3);
+  });
+
+  it('keeps the status column answering "can I make the plan"', () => {
+    // Over-purchasing is a magnitude, not a state that replaces "on order":
+    // the buyer still needs to know the gap is covered.
+    expect(rowStatus(overPurchased)).toBe('po-covered');
+  });
+
+  it('sums only the flagged rows', () => {
+    // A row over by a thousandth of a carton is rounding in a BOM written
+    // per-bottle, and must not appear in a figure anybody is going to act on.
+    const noise = row({ over_purchase_qty: 0.004, over_purchase_value: 0.01 });
+    const totals = visibleTotals([overPurchased, noise, stillShort]);
+    expect(totals.over_purchased_count).toBe(1);
+    expect(totals.over_purchase_qty).toBe(200);
+    expect(totals.over_purchase_value).toBe(420);
+  });
+
+  it('is zero when nothing is over-purchased', () => {
+    const totals = visibleTotals([exact, stillShort]);
+    expect(totals.over_purchased_count).toBe(0);
+    expect(totals.over_purchase_qty).toBe(0);
+  });
+
+  it('carries the excess into the export', () => {
+    const csv = toCsv([overPurchased]);
+    const [header, line] = csv.split('\r\n');
+    expect(header).toContain('Over-purchased');
+    expect(header).toContain('To buy');
+    expect(line).toContain('200');
+    expect(line).toContain('420');
+  });
+});
+
+describe('what "worst first" means per chip', () => {
+  it('sorts the over-purchased chip on the excess, not on the shortfall', () => {
+    // Every over-purchased row has a shortfall of zero -- a row cannot be
+    // short after its order and over-bought on it -- so the shortfall column
+    // would order them alphabetically.
+    expect(DEFAULT_SORT_FOR_FILTER['over-purchased']).toEqual({
+      key: 'over_purchase_value',
+      dir: 'desc',
+    });
+  });
+
+  it('leaves every other chip on the shortfall', () => {
+    for (const filter of ['all', 'short', 'at-risk', 'surplus', 'over-issued'] as const) {
+      expect(DEFAULT_SORT_FOR_FILTER[filter]).toEqual(DEFAULT_SORT);
+    }
+  });
+
+  it('puts the biggest over-buy at the top', () => {
+    // The live September case: a Rs 71 L over-buy of 5 litre HDPE bottles sat
+    // behind 56 alphabetically luckier rows before this.
+    const rows = [
+      row({ item_code: 'PM0000851', over_purchase_value: 1609397, over_purchased: true }),
+      row({ item_code: 'PM0000053', over_purchase_value: 7133738, over_purchased: true }),
+      row({ item_code: 'PM0000080', over_purchase_value: 993240, over_purchased: true }),
+    ];
+    const sorted = sortRows(rows, DEFAULT_SORT_FOR_FILTER['over-purchased']);
+    expect(sorted.map((r) => r.item_code)).toEqual(['PM0000053', 'PM0000851', 'PM0000080']);
+  });
+});
+
+describe('the footer shortfall', () => {
+  // The cell under REQ after PO is the SHORTFALL of the rows on screen, not a
+  // sum of the column. Under the Over-purchased chip the column is full of
+  // positive numbers and this is zero, which is correct and needs saying.
+  const overBought = row({
+    item_code: 'PM0000385',
+    req_after_po_qty: 84000,
+    short_qty: 0,
+    over_purchase_qty: 56500,
+    over_purchase_value: 16950,
+    over_purchased: true,
+  });
+
+  const short = row({
+    item_code: 'PM0000003',
+    req_after_po_qty: -50,
+    short_qty: 50,
+    short_value: 400,
+  });
+
+  it('is zero when every row on screen is covered', () => {
+    const totals = visibleTotals([overBought, overBought]);
+    expect(totals.short_qty).toBe(0);
+    expect(totals.short_count).toBe(0);
+  });
+
+  it('counts the components the shortfall is spread across', () => {
+    const totals = visibleTotals([overBought, short, short]);
+    expect(totals.short_qty).toBe(100);
+    expect(totals.short_count).toBe(2);
+  });
+
+  it('adds the REQ after PO column straight down', () => {
+    const totals = visibleTotals([overBought, short]);
+    expect(totals.req_after_po_qty).toBe(83950);
+  });
+
+  it('keeps the shortfall as a magnitude beside the netted sum', () => {
+    // Both figures on one row, and they disagree on purpose: the column nets
+    // to a comfortable +83,950 while 50 cartons are still missing, and nobody
+    // makes the plan on 84,000 spare labels. The sum answers "where does the
+    // plan land", the shortfall answers "what has to be bought".
+    const totals = visibleTotals([overBought, short]);
+    expect(totals.req_after_po_qty).toBe(83950);
+    expect(totals.short_qty).toBe(50);
+  });
+
+  it('sums to a negative when the shown set is short overall', () => {
+    const totals = visibleTotals([short, short]);
+    expect(totals.req_after_po_qty).toBe(-100);
+    expect(totals.short_qty).toBe(100);
+  });
+});
+
+describe('overPurchaseKind', () => {
+  // An excess on an order landing after the plan closes is usually next
+  // month's stock bought early. Calling that the same thing as an excess
+  // arriving this month would make the chip untrustworthy.
+  it('calls an order due after the plan a forward buy', () => {
+    expect(overPurchaseKind(row({ over_purchased: true, po_due_after_plan: true }))).toBe(
+      'forward',
+    );
+  });
+
+  it('calls an order already past due what it is', () => {
+    expect(overPurchaseKind(row({ over_purchased: true, po_overdue: true }))).toBe('overdue');
+  });
+
+  it('says nothing special about an order due inside the plan', () => {
+    expect(overPurchaseKind(row({ over_purchased: true }))).toBe('now');
+  });
+
+  it('prefers the forward reading when an order is both', () => {
+    // A line due after the plan and another already late: the excess is the
+    // one arriving late, and "may be next month's" is the softer claim.
+    expect(
+      overPurchaseKind(row({ over_purchased: true, po_due_after_plan: true, po_overdue: true })),
+    ).toBe('forward');
+  });
+});
+
 describe('visibleTotals', () => {
   it('sums the columns of the rows on screen', () => {
     const totals = visibleTotals(ROWS);
@@ -378,9 +579,11 @@ describe('formatSigned', () => {
 describe('toCsv', () => {
   it('writes the buyer’s own nine columns first, in their order', () => {
     const header = toCsv([SMALL_CAPS]).split('\r\n')[0];
-    expect(header.startsWith('Item Code,Item Description,Planning,Issue (PC),Rest Planning,On hand,Req,PO,REQ after PO')).toBe(
-      true,
-    );
+    expect(
+      header.startsWith(
+        'Item Code,Item Description,Planning,Issue (PC),Rest Planning,On hand,Req,PO,REQ after PO',
+      ),
+    ).toBe(true);
   });
 
   it('writes quantities unrounded so Excel totals agree with ours', () => {

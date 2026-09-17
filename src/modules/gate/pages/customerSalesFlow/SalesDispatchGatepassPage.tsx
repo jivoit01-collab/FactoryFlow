@@ -360,7 +360,7 @@ export default function SalesDispatchGatepassPage() {
             error || (entryError ? getErrorMessage(entryError, 'Docking details not found') : null)
           }
         />
-        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-4 text-amber-900 dark:text-amber-400">
           <div className="flex items-center gap-3">
             <AlertCircle className="h-5 w-5" />
             <span className="font-medium">Docking details not found</span>
@@ -399,7 +399,7 @@ export default function SalesDispatchGatepassPage() {
         </div>
 
         {!isGateOutMode && isGatepassPrintLocked ? (
-          <div className="print-hide flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <div className="print-hide flex items-start gap-3 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-900 dark:text-red-400">
             <Lock className="mt-0.5 h-5 w-5" />
             <div>
               <p className="font-medium">Gate pass printing is locked</p>
@@ -501,7 +501,7 @@ export default function SalesDispatchGatepassPage() {
                   ) : null}
                   <div
                     className={cn(
-                      'print-hide rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900',
+                      'print-hide rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400',
                       gatepassReferenceFields.length && 'mt-4',
                     )}
                   >
@@ -566,11 +566,11 @@ export default function SalesDispatchGatepassPage() {
               <ReadinessItem label="SAP Items" ready={Boolean(readiness?.has_items)} />
 
               {readiness && !readiness.ready ? (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <div className="rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
                   Missing: {readiness.missing.join(', ')}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
+                <div className="flex items-center gap-2 rounded-md border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-sm text-emerald-900 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
                   Ready for gatepass
                 </div>

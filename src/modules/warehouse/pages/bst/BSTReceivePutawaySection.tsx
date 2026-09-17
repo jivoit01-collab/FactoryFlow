@@ -99,7 +99,7 @@ export function BSTReceivePutawaySection({ transfer }: { transfer: BSTTransferDe
                   </p>
                 </div>
                 {placedCode ? (
-                  <Badge variant="outline" className="shrink-0 text-emerald-700">
+                  <Badge variant="outline" className="shrink-0 text-emerald-700 dark:text-emerald-400">
                     <MapPin className="mr-1 h-3 w-3" /> {placedCode}
                   </Badge>
                 ) : wmsLoading ? (

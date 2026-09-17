@@ -60,7 +60,7 @@ describe('reading a search qualifier back', () => {
 
 describe('label chip contrast', () => {
   it('uses dark text on a light label', () => {
-    // A near-white "wont fix" chip has to stay readable.
+    // GitHub's "wontfix" is pure white; the chip has to stay readable.
     expect(labelTextColor('#ffffff')).toBe('#111827');
   });
 

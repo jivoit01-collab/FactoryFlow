@@ -26,7 +26,8 @@ import {
   useCreateGoodsReturn,
   useInvoiceSearch,
 } from '../api';
-import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS } from '../utils';
+import { ReturnCustomerPicker } from '../components/ReturnCustomerPicker';
+import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS, REF_NO_LABELS } from '../utils';
 
 interface AddedInvoice {
   doc_num: string;
@@ -58,13 +59,23 @@ export default function GoodsReturnStep1Page() {
   const [addedInvoices, setAddedInvoices] = useState<AddedInvoice[]>([]);
   const [customerCode, setCustomerCode] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerRefNo, setCustomerRefNo] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [remarks, setRemarks] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isInvoiceBasis = basis === 'INVOICE';
-  const derivedCustomer = addedInvoices[0];
+  // Every customer on the return, first-added first. One bill is the norm; the
+  // list exists because a truck can bring back several distributors' bills.
+  const derivedCustomers = addedInvoices.reduce<{ code: string; name: string }[]>(
+    (all, inv) => {
+      const name = inv.card_name || inv.card_code;
+      if (!name || all.some((seen) => (seen.code || seen.name) === (inv.card_code || name))) return all;
+      return [...all, { code: inv.card_code, name }];
+    },
+    [],
+  );
 
   function resetBasis(next: GoodsReturnBasis) {
     setBasis(next);
@@ -73,6 +84,7 @@ export default function GoodsReturnStep1Page() {
     setInvoiceNumber('');
     setCustomerCode('');
     setCustomerName('');
+    setCustomerRefNo('');
   }
 
   async function handleSearchInvoice() {
@@ -88,15 +100,10 @@ export default function GoodsReturnStep1Page() {
     setError(null);
     try {
       const result = await invoiceSearch.mutateAsync(number);
-      if (
-        addedInvoices.length > 0 &&
-        derivedCustomer &&
-        result.card_code &&
-        result.card_code !== derivedCustomer.card_code
-      ) {
-        setError('All invoices on a return must be for the same customer.');
-        return;
-      }
+      // Bills of different customers may ride one return: a return is a
+      // truckload, and a vehicle coming back off a market run carries the bills
+      // of whoever it called on. Each of them posts its own SAP A/R Return under
+      // its own customer, so there is nothing to keep them apart for.
       setAddedInvoices((prev) => [
         ...prev,
         {
@@ -130,8 +137,10 @@ export default function GoodsReturnStep1Page() {
       setError('Add at least one invoice.');
       return;
     }
-    if (!isInvoiceBasis && !customerName.trim()) {
-      setError('Enter the customer name.');
+    if (!isInvoiceBasis && !customerCode.trim()) {
+      // The code, not the name: step 2 offers only what this customer was
+      // invoiced, and the A/R Return posts against the code.
+      setError('Pick the returning customer from SAP.');
       return;
     }
     if (files.length === 0) {
@@ -148,6 +157,7 @@ export default function GoodsReturnStep1Page() {
         invoice_numbers: isInvoiceBasis ? addedInvoices.map((inv) => inv.doc_num) : undefined,
         customer_code: isInvoiceBasis ? undefined : customerCode.trim(),
         customer_name: isInvoiceBasis ? undefined : customerName.trim(),
+        customer_ref_no: isInvoiceBasis ? undefined : customerRefNo.trim(),
         remarks: remarks.trim(),
         requires_approval: requiresApproval,
       });
@@ -283,10 +293,16 @@ export default function GoodsReturnStep1Page() {
               </Button>
             </div>
 
-            {derivedCustomer && (
+            {derivedCustomers.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                Customer: <span className="font-medium text-foreground">{derivedCustomer.card_name}</span>{' '}
-                ({derivedCustomer.card_code})
+                {derivedCustomers.length === 1 ? 'Customer: ' : 'Customers: '}
+                {derivedCustomers.map((customer, index) => (
+                  <span key={customer.code || customer.name}>
+                    {index > 0 && ', '}
+                    <span className="font-medium text-foreground">{customer.name}</span>
+                    {customer.code && ` (${customer.code})`}
+                  </span>
+                ))}
               </p>
             )}
 
@@ -301,6 +317,14 @@ export default function GoodsReturnStep1Page() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">Invoice {inv.doc_num}</p>
+                        {/* Named per bill, not just in the summary above: on a
+                            return carrying several distributors' bills this is
+                            the only place that says which is whose. */}
+                        {(inv.card_name || inv.card_code) && (
+                          <p className="text-xs text-muted-foreground">
+                            {inv.card_name || inv.card_code}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {inv.line_count} items · qty {inv.total_quantity}
                         </p>
@@ -348,23 +372,32 @@ export default function GoodsReturnStep1Page() {
         <Card>
           <CardContent className="space-y-4 p-6">
             <SectionTitle icon={<ReceiptText className="h-4 w-4" />} title="Customer" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Customer Name *</Label>
-                <Input
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="Customer name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Customer Code</Label>
-                <Input
-                  value={customerCode}
-                  onChange={(event) => setCustomerCode(event.target.value)}
-                  placeholder="SAP business-partner code (optional)"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Customer *</Label>
+              <ReturnCustomerPicker
+                value={customerCode ? `${customerName} (${customerCode})` : ''}
+                onChange={(customer) => {
+                  setCustomerCode(customer?.customer_code ?? '');
+                  setCustomerName(customer?.customer_name ?? '');
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Picked from SAP, not typed: the next step offers only what this customer has
+                actually been invoiced, and the return posts against their business-partner code.
+              </p>
+            </div>
+
+            {/* Their number for the document, not ours. Optional — plenty of
+                letter pads carry no number, and the truck is already on the
+                road. Searchable afterwards, because it is what the customer
+                quotes on the phone. */}
+            <div className="space-y-2">
+              <Label>{REF_NO_LABELS[basis]}</Label>
+              <Input
+                value={customerRefNo}
+                onChange={(event) => setCustomerRefNo(event.target.value)}
+                placeholder={`${REF_NO_LABELS[basis]} (optional)`}
+              />
             </div>
           </CardContent>
         </Card>

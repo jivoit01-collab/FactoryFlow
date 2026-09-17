@@ -44,10 +44,10 @@ export interface ScanItemsTableRow {
 const ROW_TINTS: Record<ScanRowStatus, string> = {
   open: '',
   exempt: '',
-  partial: 'bg-amber-50/60',
-  complete: 'bg-emerald-50/60',
-  over: 'bg-orange-50/70',
-  offBill: 'bg-red-50/70',
+  partial: 'bg-amber-50/60 dark:bg-amber-500/10',
+  complete: 'bg-emerald-50/60 dark:bg-emerald-500/10',
+  over: 'bg-orange-50/70 dark:bg-orange-500/10',
+  offBill: 'bg-red-50/70 dark:bg-red-500/10',
 };
 
 /**
@@ -157,7 +157,7 @@ export function ScanItemsTable({
         </tbody>
       </table>
       {footnote ? (
-        <div className="border-t bg-red-50 p-2 text-xs text-red-700">{footnote}</div>
+        <div className="border-t bg-red-50 dark:bg-red-500/10 p-2 text-xs text-red-700 dark:text-red-400">{footnote}</div>
       ) : null}
     </div>
   );

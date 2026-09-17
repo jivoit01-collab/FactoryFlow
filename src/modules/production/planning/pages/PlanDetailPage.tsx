@@ -30,6 +30,7 @@ import {
   DialogTitle,
   Separator,
 } from '@/shared/components/ui';
+import { confirmSapPost } from '@/shared/components';
 import { cn } from '@/shared/utils';
 
 import {
@@ -350,6 +351,11 @@ export default function PlanDetailPage() {
           navigate('/production/planning');
           return;
         case 'postSap':
+          const confirmed = await confirmSapPost({
+            title: 'Post this plan to SAP?',
+            details: [{ label: 'Creates', value: 'A production order for each planned line' }],
+          });
+          if (!confirmed) return;
           await postToSap.mutateAsync();
           break;
         case 'close':

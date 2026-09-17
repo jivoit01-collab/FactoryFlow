@@ -22,26 +22,26 @@ export function ScanStatusBadge({ status, label }: { status: ScanRowStatus; labe
       );
     case 'partial':
       return (
-        <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+        <Badge variant="outline" className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
           {label ?? 'Partial'}
         </Badge>
       );
     case 'over':
       return (
-        <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
+        <Badge variant="outline" className="border-orange-200 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400">
           <AlertTriangle className="mr-1 h-3.5 w-3.5" />
           {label ?? 'Over'}
         </Badge>
       );
     case 'exempt':
       return (
-        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+        <Badge variant="outline" className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-600 dark:text-muted-foreground">
           {label ?? 'Scan not required'}
         </Badge>
       );
     case 'offBill':
       return (
-        <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
+        <Badge variant="outline" className="border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400">
           <AlertTriangle className="mr-1 h-3.5 w-3.5" />
           {label ?? 'Not on bill'}
         </Badge>

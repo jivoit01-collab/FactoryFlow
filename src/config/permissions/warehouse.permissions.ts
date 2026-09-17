@@ -64,6 +64,32 @@ export const WAREHOUSE_PERMISSIONS = {
   VIEW_RM_STOCK: 'warehouse.can_view_rm_stock',
   /** Set a raw-material quantity (store keeper) */
   SET_RM_STOCK: 'warehouse.can_set_rm_stock',
+
+  // Godown outward movements. Same shape as the register above, and the same
+  // second half: recording also requires a UserWarehouse assignment for the
+  // floor the stock is leaving.
+  /** Read the godown outward-movement register */
+  VIEW_PF_MOVEMENT: 'warehouse.can_view_pf_movement',
+  /** Declare what is leaving your floor (godown keeper) */
+  RECORD_PF_MOVEMENT: 'warehouse.can_record_pf_movement',
+
+  // SAP's own approval queue on credit-note drafts (A/R + A/P). Separate from
+  // the transfer permissions because it is a different queue for different
+  // people — a credit note is a finance document, and the service ones never
+  // touch a warehouse. Approving is further gated SAP-side: it accepts a
+  // decision only from the one authorizer it named on the current stage, which
+  // the user must be mapped to (Admin → SAP Identities).
+  // Scoped per family and enforced server-side, not just filtered in the UI:
+  // the list, the badge and the decision endpoint all narrow to the families
+  // the caller holds, so an A/R-only user never receives an A/P row.
+  /** Read the SAP A/R (customer) credit-note queue */
+  VIEW_AR_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_ar_credit_note_approval',
+  /** Approve or reject a SAP A/R (customer) credit note */
+  APPROVE_AR_CREDIT_NOTE: 'warehouse.can_approve_ar_credit_note',
+  /** Read the SAP A/P (vendor) credit-note queue */
+  VIEW_AP_CREDIT_NOTE_APPROVAL: 'warehouse.can_view_ap_credit_note_approval',
+  /** Approve or reject a SAP A/P (vendor) credit note */
+  APPROVE_AP_CREDIT_NOTE: 'warehouse.can_approve_ap_credit_note',
 } as const;
 
 export const WAREHOUSE_MODULE_PREFIX = 'warehouse';

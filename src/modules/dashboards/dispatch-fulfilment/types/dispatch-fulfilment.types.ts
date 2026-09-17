@@ -9,6 +9,12 @@ export interface DispatchFulfilmentFilters {
   from: string;
   /** inclusive end date, YYYY-MM-DD */
   to: string;
+  /**
+   * Narrow the aggregation to these company codes. Intersected server-side with
+   * the caller's own memberships, so it can only remove companies. Omit for
+   * every company the caller belongs to.
+   */
+  companies?: readonly string[];
 }
 
 export interface DispatchedTotals {
@@ -118,6 +124,14 @@ export interface BillRow {
   eway_bill: string;
   priority: string;
   product_variety: string;
+  /**
+   * Where the stock left from, as SAP aggregated it — one code per invoice
+   * LINE, repeats and all. Collapse it with `billWarehouse` before showing it.
+   *
+   * Optional because an older backend does not send it, and absent has to read
+   * as unknown rather than as no warehouse.
+   */
+  warehouses?: string;
   dispatches: BillDispatch[];
 }
 
@@ -149,4 +163,13 @@ export interface DispatchBillFilters {
   order?: 'newest' | 'oldest';
   /** Drop rows with no value AND no quantity — the abandoned plan stubs. */
   filled?: boolean;
+  /**
+   * Scope the rows to named companies.
+   *
+   * Omitted means every company the CALLER belongs to, which is right for this
+   * board's own page and wrong for a drill-down opened from a card headed
+   * "Oil + Mart": on a login that also holds Beverages, its bills would appear
+   * under a total that never counted them.
+   */
+  companies?: readonly string[];
 }

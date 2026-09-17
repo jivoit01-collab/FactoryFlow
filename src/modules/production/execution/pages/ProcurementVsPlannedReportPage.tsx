@@ -9,9 +9,9 @@ import { SearchableSelect } from '@/shared/components';
 import { useSAPOrders, useProcurementVsPlannedReport } from '../api';
 
 const STATUS_COLORS: Record<string, string> = {
-  fulfilled: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  shortage: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  excess: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  fulfilled: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  shortage: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+  excess: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
 };
 
 function ProcurementVsPlannedReportPage() {

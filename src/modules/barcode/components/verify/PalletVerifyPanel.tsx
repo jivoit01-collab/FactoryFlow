@@ -52,12 +52,12 @@ const FOREIGN_REASON_LABEL: Record<PalletReconcileForeignReason, string> = {
 };
 
 const FOREIGN_REASON_COLOR: Record<PalletReconcileForeignReason, string> = {
-  ON_OTHER_PALLET: 'bg-purple-100 text-purple-800',
-  UNPALLETIZED: 'bg-amber-100 text-amber-800',
-  DISPATCHED: 'bg-blue-100 text-blue-800',
-  VOID: 'bg-red-100 text-red-800',
-  PALLET_LABEL: 'bg-gray-100 text-gray-800',
-  NOT_FOUND: 'bg-red-100 text-red-800',
+  ON_OTHER_PALLET: 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400',
+  UNPALLETIZED: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  DISPATCHED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  VOID: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
+  PALLET_LABEL: 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground',
+  NOT_FOUND: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
 };
 
 const DEFAULT_REPRINT_REASON = 'Label fell off — recovered via pallet verify';
@@ -328,8 +328,8 @@ export default function PalletVerifyPanel({
 
       {/* Fully reconciled banner */}
       {result?.is_fully_reconciled && hasScanned && (
-        <Card className="border-green-300 bg-green-50">
-          <CardContent className="p-4 flex items-center gap-2 text-green-800">
+        <Card className="border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10">
+          <CardContent className="p-4 flex items-center gap-2 text-green-800 dark:text-green-400">
             <CheckCircle2 className="h-5 w-5" />
             <span className="text-sm font-medium">
               Pallet matches the system — every box accounted for.
@@ -340,9 +340,9 @@ export default function PalletVerifyPanel({
 
       {/* Recover missing labels */}
       {recover?.eligible && (
-        <Card className="border-green-300 bg-green-50">
+        <Card className="border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10">
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-green-800">
+            <div className="flex items-center gap-2 text-green-800 dark:text-green-400">
               <CheckCircle2 className="h-5 w-5" />
               <span className="text-sm font-medium">
                 {recover.unlabeled_count} unlabeled box(es) match {missing.length} missing record(s).
@@ -380,8 +380,8 @@ export default function PalletVerifyPanel({
 
       {/* Not-eligible hint: some missing boxes are unaccounted for */}
       {result && missing.length > 0 && unlabeled > 0 && !recover?.eligible && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 flex items-start gap-2 text-amber-800">
+        <Card className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <CardContent className="p-4 flex items-start gap-2 text-amber-800 dark:text-amber-400">
             <AlertTriangle className="h-5 w-5 mt-0.5" />
             <span className="text-sm">
               {unlabeled} unlabeled box(es) reported, but {missing.length} record(s) are missing.
@@ -394,9 +394,9 @@ export default function PalletVerifyPanel({
 
       {/* Apply — heal drift by moving stock (gated behind MANAGE_PALLET) */}
       {allowApply && result && (pullable.length > 0 || missing.length > 0) && (
-        <Card className="border-blue-300 bg-blue-50">
+        <Card className="border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10">
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-blue-800">
+            <div className="flex items-center gap-2 text-blue-800 dark:text-blue-400">
               <Wand2 className="h-5 w-5" />
               <span className="text-sm font-medium">Reconcile — move stock to match the scan</span>
             </div>
@@ -448,9 +448,9 @@ export default function PalletVerifyPanel({
 
       {/* Submit to barcode team (requester flow) */}
       {onSubmit && (
-        <Card className="border-slate-300">
+        <Card className="border-slate-300 dark:border-border">
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-slate-700">
+            <div className="flex items-center gap-2 text-slate-700 dark:text-muted-foreground">
               <Send className="h-5 w-5" />
               <span className="text-sm font-medium">Submit to barcode team</span>
             </div>
@@ -477,7 +477,7 @@ export default function PalletVerifyPanel({
       {result && missing.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 text-amber-700">Missing — expected but not scanned</h3>
+            <h3 className="font-semibold mb-3 text-amber-700 dark:text-amber-400">Missing — expected but not scanned</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -510,7 +510,7 @@ export default function PalletVerifyPanel({
       {foreign.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 text-purple-700">
+            <h3 className="font-semibold mb-3 text-purple-700 dark:text-purple-400">
               Foreign — scanned but not on this pallet
             </h3>
             <div className="overflow-x-auto">

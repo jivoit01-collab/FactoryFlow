@@ -291,7 +291,7 @@ export function ReturnableForm({
         action={
           <div className="flex items-center gap-3">
             <span
-              className={`text-xs font-medium ${isReturnable ? 'text-muted-foreground' : 'text-orange-700'}`}
+              className={`text-xs font-medium ${isReturnable ? 'text-muted-foreground' : 'text-orange-700 dark:text-orange-400'}`}
             >
               {isReturnable ? 'Returnable' : 'Non-returnable'}
             </span>
@@ -305,12 +305,12 @@ export function ReturnableForm({
         }
       >
         {typeLocked ? (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
             The type is fixed here — {gatePass!.pass_no} already carries its number series. Send the
             pass for approval and the approver can switch it, or cancel this one and raise a new one.
           </p>
         ) : isEdit ? (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-amber-700 dark:text-amber-400">
             {typeSwitched ? (
               <>
                 On save, {gatePass!.pass_no} is renumbered into the{' '}

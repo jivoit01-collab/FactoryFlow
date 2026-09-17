@@ -84,9 +84,15 @@ export interface ScanGateInput {
   scannedCount: number;
   /** The load still carries invoiced goods nobody scanned (judged load-wide). */
   isPartialScan: boolean;
-  /** Status of this docking's own scan-skip / partial-dispatch request. */
+  /** Status of this docking's own scan-skip request. */
   ownSkipStatus?: DockingRequestStatus;
-  ownPartialStatus?: DockingRequestStatus;
+  /**
+   * This docking's own partial-dispatch clearance, from its gatepass readiness — NOT the
+   * status of a single request. One approval no longer releases the load: an approval names
+   * one bill, and the backend only reports this true once EVERY short bill on the truck has
+   * one.
+   */
+  ownPartialApproved?: boolean;
   /** The other dockings on this truck, empty for a single-docking load. */
   loadDockings?: SalesDispatchGateOut[];
 }
@@ -94,25 +100,25 @@ export interface ScanGateInput {
 /**
  * Whether the operator may leave the scanning step, and which approval let them.
  *
- * The shortfall is judged LOAD-WIDE (one truck, every docking's bills), but an admin
- * approval is filed against the single docking it was raised from. So an approval sitting
- * on any docking of the truck releases all of them — otherwise the operator standing on
- * the fully scanned half of a split load is held for an approval that docking can't even
- * raise (a bill of PM cartons carries no box barcode to scan).
+ * The shortfall is judged LOAD-WIDE (one truck, every docking's bills), and so is the
+ * clearance: `partial_scan_approved` is the backend's verdict that every short bill on the
+ * truck carries an approval of its own. Read from any docking on the load, because the
+ * operator standing on the fully scanned half must be released by the approvals raised for
+ * its neighbour's bills — that docking cannot raise them itself.
  */
 export function resolveScanGate({
   boxScanOptional,
   scannedCount,
   isPartialScan,
   ownSkipStatus,
-  ownPartialStatus,
+  ownPartialApproved,
   loadDockings = [],
 }: ScanGateInput) {
   const skipApproved =
     ownSkipStatus === 'APPROVED' ||
     loadDockings.some((docking) => Boolean(docking.gatepass_readiness?.scan_skip_approved));
   const partialApproved =
-    ownPartialStatus === 'APPROVED' ||
+    Boolean(ownPartialApproved) ||
     loadDockings.some((docking) => Boolean(docking.gatepass_readiness?.partial_scan_approved));
   const satisfied =
     boxScanOptional ||
@@ -120,6 +126,43 @@ export function resolveScanGate({
     (scannedCount === 0 && skipApproved) ||
     (isPartialScan && partialApproved);
   return { skipApproved, partialApproved, satisfied };
+}
+
+export interface PartialRequestSummary {
+  /** Bills whose approval an admin has not answered yet. */
+  pending: string[];
+  /** Bills an admin approved. */
+  approved: string[];
+  /** Bills an admin refused. */
+  rejected: string[];
+}
+
+/**
+ * The truck's partial-dispatch requests, grouped by what the admin did with each bill.
+ *
+ * One request per short bill means the step is no longer "pending" or "approved" as a
+ * whole: two of three bills can be through while the third is still waiting, and the
+ * operator needs to be told which one is holding the truck.
+ */
+export function summarizePartialRequests(
+  requests: Array<{ status: DockingRequestStatus; sap_doc_num?: string; id?: number }> = [],
+): PartialRequestSummary {
+  const label = (request: { sap_doc_num?: string; id?: number }) =>
+    request.sap_doc_num || (request.id != null ? `#${request.id}` : '');
+  return {
+    pending: requests
+      .filter((r) => r.status === 'PENDING')
+      .map(label)
+      .filter(Boolean),
+    approved: requests
+      .filter((r) => r.status === 'APPROVED')
+      .map(label)
+      .filter(Boolean),
+    rejected: requests
+      .filter((r) => r.status === 'REJECTED')
+      .map(label)
+      .filter(Boolean),
+  };
 }
 
 export function formatDateTime(date?: string | null, time?: string | null) {

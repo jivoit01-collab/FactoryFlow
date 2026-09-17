@@ -176,11 +176,11 @@ export default function SpecMasterPage() {
                   <td className="px-4 py-2.5 text-muted-foreground">{spec.validation_type}</td>
                   <td className="px-4 py-2.5">
                     {spec.scope === 'COMPANY' ? (
-                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
                         Custom
                       </Badge>
                     ) : (
-                      <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      <Badge className="bg-gray-100 text-gray-700 dark:bg-muted dark:text-muted-foreground">
                         Default
                       </Badge>
                     )}

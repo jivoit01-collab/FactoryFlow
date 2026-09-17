@@ -106,11 +106,11 @@ function SummaryTile({
   tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
 }) {
   const toneClass = {
-    slate: 'border-slate-200 bg-white',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    rose: 'border-rose-200 bg-rose-50/70',
-    cyan: 'border-cyan-200 bg-cyan-50/70',
+    slate: 'border-slate-200 dark:border-border bg-white',
+    emerald: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-500/10',
+    amber: 'border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10',
+    rose: 'border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-rose-500/10',
+    cyan: 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/70 dark:bg-cyan-500/10',
   }[tone];
 
   return (
@@ -138,7 +138,7 @@ function FilterPanel({
   return (
     <section className="rounded-md border bg-white p-4 shadow-sm">
       <div className="mb-4 flex items-center gap-2">
-        <Filter className="h-4 w-4 text-slate-700" />
+        <Filter className="h-4 w-4 text-slate-700 dark:text-muted-foreground" />
         <h2 className="text-base font-semibold">Filters</h2>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-8">
@@ -257,9 +257,9 @@ function ReportShell({
     <Card className="rounded-md">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-slate-700" />
+          <FileSpreadsheet className="h-4 w-4 text-slate-700 dark:text-muted-foreground" />
           <h2 className="text-base font-semibold">{title}</h2>
-          <Badge className="border-slate-200 bg-slate-50 text-slate-700">{count.toLocaleString('en-IN')}</Badge>
+          <Badge className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground">{count.toLocaleString('en-IN')}</Badge>
         </div>
         <Button variant="outline" size="sm" onClick={onExport}>
           <Download className="h-4 w-4" />
@@ -293,7 +293,7 @@ function DispatchSummaryList({
           type="button"
           onClick={() => onSelect(row.session_id)}
           className={cn(
-            'grid w-full gap-4 p-4 text-left transition hover:bg-slate-50 xl:grid-cols-[minmax(0,1.2fr)_420px]',
+            'grid w-full gap-4 p-4 text-left transition hover:bg-slate-50 dark:hover:bg-muted/40 xl:grid-cols-[minmax(0,1.2fr)_420px]',
             selectedSessionId === row.session_id && 'bg-cyan-50/60 ring-1 ring-inset ring-cyan-200',
           )}
         >
@@ -301,7 +301,7 @@ function DispatchSummaryList({
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-mono text-sm font-semibold">{row.bill_number}</p>
               <Badge>{row.status}</Badge>
-              <Badge className="border-cyan-200 bg-cyan-50 text-cyan-800">
+              <Badge className="border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-800 dark:text-cyan-400">
                 <Eye className="mr-1 h-3 w-3" />
                 Full report
               </Badge>
@@ -331,7 +331,7 @@ function PalletReportList({ rows, loading }: { rows: DispatchPalletReportRow[]; 
   return (
     <div className="grid gap-3 p-4 lg:grid-cols-2">
       {rows.map((row) => (
-        <div key={row.pallet_id} className="rounded-md border bg-slate-50/50 p-4">
+        <div key={row.pallet_id} className="rounded-md border bg-slate-50/50 dark:bg-muted/40 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-mono text-sm font-semibold">{row.pallet_barcode}</p>
@@ -364,7 +364,7 @@ function BoxReportList({ rows, loading }: { rows: DispatchBoxReportRow[]; loadin
               <p className="truncate font-mono text-sm font-semibold">{row.box_barcode}</p>
               <Badge>{row.box_status}</Badge>
               {row.removed_from_pallet && (
-                <Badge className="border-amber-200 bg-amber-50 text-amber-700">Removed from pallet</Badge>
+                <Badge className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">Removed from pallet</Badge>
               )}
             </div>
             <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -392,7 +392,7 @@ function RejectedReportList({ rows, loading }: { rows: DispatchRejectedScanRepor
         <div key={row.scan_id} className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-rose-700" />
+              <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-400" />
               <p className="truncate font-mono text-sm font-semibold">{row.barcode}</p>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -400,7 +400,7 @@ function RejectedReportList({ rows, loading }: { rows: DispatchRejectedScanRepor
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <Badge className="border-rose-200 bg-rose-50 text-rose-700">{row.scan_type}</Badge>
+            <Badge className="border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400">{row.scan_type}</Badge>
             <span className="text-xs text-muted-foreground">{row.bill_number}</span>
             <span className="text-xs text-muted-foreground">{formatDateTime(row.scan_time)}</span>
           </div>
@@ -432,13 +432,13 @@ function DispatchDetailPanel({
   const palletUnits = detail.scanned_units.filter((unit) => unit.pallet_barcode);
 
   return (
-    <Card className="rounded-md border-cyan-200">
+    <Card className="rounded-md border-cyan-200 dark:border-cyan-500/30">
       <div className="flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold">Full dispatch report</h2>
             <Badge>{detail.session.status}</Badge>
-            <Badge className="border-slate-200 bg-slate-50 text-slate-700">{detail.session.bill_number}</Badge>
+            <Badge className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground">{detail.session.bill_number}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {detail.session.customer_name || detail.session.customer_code || '-'} · Completed by{' '}
@@ -463,7 +463,7 @@ function DispatchDetailPanel({
         <section>
           <h3 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">Bill items</h3>
           <div className="overflow-x-auto rounded-md border">
-            <div className="grid min-w-[760px] grid-cols-[120px_minmax(220px,1fr)_110px_110px_110px_80px] bg-slate-50 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <div className="grid min-w-[760px] grid-cols-[120px_minmax(220px,1fr)_110px_110px_110px_80px] bg-slate-50 dark:bg-muted/40 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
               <span>Item Code</span>
               <span>Item Name</span>
               <span>Expected</span>
@@ -494,7 +494,7 @@ function DispatchDetailPanel({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className={unit.status_after_scan === 'Partial Dispatch' ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}>
+                      <Badge className={unit.status_after_scan === 'Partial Dispatch' ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400' : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400'}>
                         {unit.status_after_scan}
                       </Badge>
                       <span className="font-mono text-sm font-semibold">

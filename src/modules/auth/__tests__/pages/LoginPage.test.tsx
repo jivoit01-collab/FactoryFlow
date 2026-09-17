@@ -60,9 +60,17 @@ vi.mock('@/shared/components/ui', () => ({
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
+// The number is configuration now, fetched through this hook.
+vi.mock('@/shared/hooks', () => ({
+  useSupportContact: () => ({ phone: '+91 9218179324', telHref: 'tel:+919218179324' }),
+  // LoginForm reaches for this one from the same barrel.
+  useScrollToError: vi.fn(),
+}));
+
 vi.mock('lucide-react', () => ({
   Eye: () => <span data-testid="eye-icon" />,
   EyeOff: () => <span data-testid="eye-off-icon" />,
+  Headset: () => <span data-testid="headset-icon" />,
 }));
 
 import LoginPage from '../../pages/LoginPage';
@@ -75,6 +83,12 @@ describe('LoginPage', () => {
   it('renders the app name', () => {
     render(<LoginPage />);
     expect(screen.getByText('Jivo Wellness')).toBeInTheDocument();
+  });
+
+  it('shows the support number as a dialable link', () => {
+    render(<LoginPage />);
+    const link = screen.getByRole('link', { name: '+91 9218179324' });
+    expect(link).toHaveAttribute('href', 'tel:+919218179324');
   });
 
   it('renders the description text', () => {

@@ -82,6 +82,24 @@ function buildQuery<T extends object>(params?: T) {
   return s ? `?${s}` : '';
 }
 
+/**
+ * The manual gate-out form as multipart — the delivery-note PDF rides with it.
+ *
+ * Only `undefined`/`null` are dropped, NOT an empty string: on the edit form a
+ * cleared box means "clear this field", and skipping it would silently keep the
+ * mistyped note number the gate person just deleted. A field that must be left
+ * alone is passed as `undefined` by the caller instead — which is how a blank
+ * weighbridge box stays "never weighed" rather than becoming a zero.
+ */
+function manualGateOutForm(payload: MpManualGateOutPayload): FormData {
+  const form = new FormData();
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    form.append(key, value instanceof File ? value : String(value));
+  });
+  return form;
+}
+
 /** Report filters — shared by the on-screen preview and the CSV download. */
 export type ReportParams = {
   channel: MarketplaceChannel;
@@ -388,14 +406,29 @@ export const marketplaceApi = {
     channel: MarketplaceChannel,
     payload: MpManualGateOutPayload,
   ): Promise<MpGatePass> {
-    const form = new FormData();
-    Object.entries(payload).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      form.append(key, value instanceof File ? value : String(value));
-    });
     const { data } = await apiClient.post<MpGatePass>(
       `${EP.GATE_PASS_MANUAL}${buildQuery({ channel })}`,
-      form,
+      manualGateOutForm(payload),
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return data;
+  },
+  /**
+   * Finish a manual draft — the same form again, on the trip already open.
+   *
+   * The draft used to be write-once: the gate screen could only mark it out, so
+   * a mistyped note number or a weighbridge reading taken later had nowhere to
+   * go. Sent as one multipart PATCH for the same reason the create is one POST
+   * — the server applies details, weighment, note and mark-out in a single
+   * transaction.
+   */
+  async gatePassManualUpdate(
+    id: number,
+    payload: MpManualGateOutPayload,
+  ): Promise<MpGatePass> {
+    const { data } = await apiClient.patch<MpGatePass>(
+      EP.GATE_PASS_MANUAL_UPDATE(id),
+      manualGateOutForm(payload),
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;

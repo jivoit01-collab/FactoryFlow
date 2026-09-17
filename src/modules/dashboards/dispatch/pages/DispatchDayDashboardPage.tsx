@@ -112,7 +112,7 @@ function DispatchDayBoard() {
       />
 
       {canSeeValues && totals.isError && (
-        <p className="shrink-0 rounded-xl border border-rose-600/30 dark:border-rose-400/30 bg-rose-500/10 dark:bg-rose-400/10 px-4 py-2 text-sm text-rose-700 dark:text-rose-200">
+        <p className="shrink-0 rounded-xl border border-rose-600/30 dark:border-rose-400/30 bg-rose-500/10 dark:bg-rose-400/10 px-4 py-2 text-sm text-rose-700 dark:text-rose-300">
           {getErrorMessage(totals.error, "Today's dispatched totals could not be read.")}
         </p>
       )}

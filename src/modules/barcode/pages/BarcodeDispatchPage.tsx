@@ -157,14 +157,14 @@ function getProgress(session: DispatchSession | null) {
 }
 
 function statusBadgeClass(status: DispatchSessionStatus) {
-  if (status === 'COMPLETED') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  if (status === 'READY_TO_DISPATCH') return 'border-cyan-200 bg-cyan-50 text-cyan-700';
+  if (status === 'COMPLETED') return 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
+  if (status === 'READY_TO_DISPATCH') return 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400';
   if (status === 'SAP_SYNC_FAILED' || status === 'CANCELLED') {
-    return 'border-rose-200 bg-rose-50 text-rose-700';
+    return 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400';
   }
-  if (status === 'CLOSED') return 'border-slate-200 bg-slate-50 text-slate-700';
-  if (status === 'PARTIAL') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+  if (status === 'CLOSED') return 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground';
+  if (status === 'PARTIAL') return 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400';
+  return 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400';
 }
 
 function StatTile({
@@ -177,11 +177,11 @@ function StatTile({
   tone?: 'slate' | 'emerald' | 'amber' | 'rose' | 'cyan';
 }) {
   const toneClass = {
-    slate: 'border-slate-200 bg-white',
-    emerald: 'border-emerald-200 bg-emerald-50/70',
-    amber: 'border-amber-200 bg-amber-50/70',
-    rose: 'border-rose-200 bg-rose-50/70',
-    cyan: 'border-cyan-200 bg-cyan-50/70',
+    slate: 'border-slate-200 dark:border-border bg-white',
+    emerald: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-500/10',
+    amber: 'border-amber-200 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-500/10',
+    rose: 'border-rose-200 dark:border-rose-500/30 bg-rose-50/70 dark:bg-rose-500/10',
+    cyan: 'border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/70 dark:bg-cyan-500/10',
   }[tone];
 
   return (
@@ -194,7 +194,7 @@ function StatTile({
 
 function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
-    <div className={cn('h-2 overflow-hidden rounded-full bg-slate-200', className)}>
+    <div className={cn('h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-muted', className)}>
       <div
         className="h-full rounded-full bg-emerald-500 transition-all"
         style={{ width: `${Math.max(0, Math.min(value, 100))}%` }}
@@ -212,9 +212,9 @@ function BillLookupSummary({ bill }: { bill: DispatchBillLookupResponse }) {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">SAP bill loaded</Badge>
+            <Badge className="border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">SAP bill loaded</Badge>
             {bill.already_dispatched && (
-              <Badge className="border-amber-200 bg-amber-50 text-amber-700">
+              <Badge className="border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
                 Already dispatched
               </Badge>
             )}
@@ -247,7 +247,7 @@ function BillLinePreview({ lines }: { lines: DispatchBillLine[] }) {
       {lines.map((line) => (
         <div
           key={`${line.sap_line_no}-${line.sequence_no}`}
-          className="grid gap-2 rounded-md border bg-slate-50/60 p-3 md:grid-cols-[72px_minmax(0,1fr)_140px_120px]"
+          className="grid gap-2 rounded-md border bg-slate-50/60 dark:bg-muted/40 p-3 md:grid-cols-[72px_minmax(0,1fr)_140px_120px]"
         >
           <div>
             <p className="text-xs text-muted-foreground">Seq</p>
@@ -281,7 +281,7 @@ function SessionHero({ session }: { session: DispatchSession | null }) {
       <section className="rounded-md border bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <Badge className="border-slate-200 bg-slate-50 text-slate-700">
+            <Badge className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground">
               No active bill selected
             </Badge>
             <h2 className="mt-3 text-2xl font-semibold">Dispatch cockpit</h2>
@@ -357,14 +357,14 @@ function SessionHero({ session }: { session: DispatchSession | null }) {
 function ActiveLineFocus({ activeLine }: { activeLine: DispatchSessionLine | null }) {
   if (!activeLine) {
     return (
-      <section className="rounded-md border border-emerald-200 bg-emerald-50 p-5">
+      <section className="rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 p-5">
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-emerald-700" />
+          <CheckCircle2 className="h-6 w-6 text-emerald-700 dark:text-emerald-400" />
           <div>
-            <h3 className="text-lg font-semibold text-emerald-900">
+            <h3 className="text-lg font-semibold text-emerald-900 dark:text-emerald-400">
               Ready for dispatch confirmation
             </h3>
-            <p className="text-sm text-emerald-800">
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">
               All bill lines have reached the required scanned quantity.
             </p>
           </div>
@@ -380,7 +380,7 @@ function ActiveLineFocus({ activeLine }: { activeLine: DispatchSessionLine | nul
     <section className="rounded-md border bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700">
+          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-700 dark:text-cyan-400">
             <ScanLine className="h-4 w-4" />
             Active line {activeLine.sequence_no}
           </div>
@@ -441,7 +441,7 @@ function ScannerDock({
   };
 
   return (
-    <section className="rounded-md border border-cyan-200 bg-cyan-50/70 p-4 shadow-sm">
+    <section className="rounded-md border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/70 dark:bg-cyan-500/10 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded-md bg-cyan-600 text-white">
@@ -453,9 +453,9 @@ function ScannerDock({
           </div>
         </div>
         {disabled ? (
-          <Badge className="border-slate-200 bg-white text-slate-700">Locked</Badge>
+          <Badge className="border-slate-200 dark:border-border bg-white text-slate-700 dark:text-muted-foreground">Locked</Badge>
         ) : (
-          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Ready</Badge>
+          <Badge className="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Ready</Badge>
         )}
       </div>
       <form onSubmit={submit} className="flex gap-2">
@@ -518,7 +518,7 @@ function ScannerDock({
         <PalletVerifyDialog triggerClassName="w-full bg-white" />
       </div>
 
-      {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-700 dark:text-rose-400">{error}</p>}
     </section>
   );
 }
@@ -551,7 +551,7 @@ function ActionPanel({
   return (
     <section className="rounded-md border bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-emerald-700" />
+        <ShieldCheck className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
         <h3 className="text-base font-semibold">Dispatch control</h3>
       </div>
 
@@ -667,8 +667,8 @@ function LineRow({
       onClick={canSelect ? onSelect : undefined}
       className={cn(
         'grid w-full gap-3 p-4 text-left lg:grid-cols-[80px_minmax(0,1fr)_260px]',
-        active && 'bg-cyan-50/50 ring-1 ring-inset ring-cyan-300',
-        canSelect && 'transition hover:bg-cyan-50/40',
+        active && 'bg-cyan-50/50 dark:bg-cyan-500/10 ring-1 ring-inset ring-cyan-300',
+        canSelect && 'transition hover:bg-cyan-50/40 dark:hover:bg-cyan-500/25',
       )}
     >
       <div>
@@ -678,9 +678,9 @@ function LineRow({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate font-mono text-sm font-semibold">{line.material_code}</p>
-          {active && <Badge className="border-cyan-200 bg-cyan-50 text-cyan-700">Active</Badge>}
+          {active && <Badge className="border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400">Active</Badge>}
           {complete && (
-            <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Complete</Badge>
+            <Badge className="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Complete</Badge>
           )}
         </div>
         <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -725,7 +725,7 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
     <section className="rounded-md border bg-white shadow-sm">
       <div className="flex items-center justify-between border-b p-4">
         <h3 className="text-base font-semibold">Recent scans</h3>
-        <Badge className="border-slate-200 bg-slate-50 text-slate-700">
+        <Badge className="border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground">
           {logs.length.toLocaleString('en-IN')}
         </Badge>
       </div>
@@ -742,9 +742,9 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   {accepted ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-rose-700" />
+                    <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-400" />
                   )}
                   <p className="truncate font-mono text-sm font-semibold">{log.raw_barcode}</p>
                 </div>
@@ -756,8 +756,8 @@ function RecentScanStream({ logs }: { logs: DispatchScanLog[] }) {
                 <Badge
                   className={
                     accepted
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                      ? 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : 'border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400'
                   }
                 >
                   {log.result}
@@ -864,8 +864,8 @@ function ScannedBoxesSection({
                 id={`scanned-box-${unit.id}`}
                 className={cn(
                   'grid gap-4 p-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_220px]',
-                  highlighted && 'bg-amber-50 ring-2 ring-inset ring-amber-300',
-                  removed && 'bg-slate-50 opacity-75',
+                  highlighted && 'bg-amber-50 dark:bg-amber-500/10 ring-2 ring-inset ring-amber-300',
+                  removed && 'bg-slate-50 dark:bg-muted/40 opacity-75',
                 )}
               >
                 <div className="min-w-0">
@@ -876,10 +876,10 @@ function ScannedBoxesSection({
                     <Badge
                       className={
                         removed
-                          ? 'border-slate-200 bg-slate-50 text-slate-700'
+                          ? 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground'
                           : partial
-                            ? 'border-amber-200 bg-amber-50 text-amber-700'
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                            : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                       }
                     >
                       {removed
@@ -1028,7 +1028,7 @@ function SessionQueue({
                 type="button"
                 onClick={() => onOpen(session.id)}
                 className={cn(
-                  'block w-full p-4 text-left transition hover:bg-slate-50',
+                  'block w-full p-4 text-left transition hover:bg-slate-50 dark:hover:bg-muted/40',
                   selectedId === session.id && 'bg-cyan-50/70',
                 )}
               >
@@ -1101,14 +1101,14 @@ function DispatchSettingsPanel() {
   return (
     <section className="rounded-md border bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2">
-        <Settings className="h-4 w-4 text-slate-700" />
+        <Settings className="h-4 w-4 text-slate-700 dark:text-muted-foreground" />
         <h3 className="text-base font-semibold">Controls</h3>
       </div>
       <div className="mt-4 grid gap-2">
         {rows.map(([key, label]) => (
           <div
             key={key}
-            className="flex items-center justify-between gap-3 rounded-md border bg-slate-50/60 p-3"
+            className="flex items-center justify-between gap-3 rounded-md border bg-slate-50/60 dark:bg-muted/40 p-3"
           >
             <span className="text-sm font-medium">{label}</span>
             <Switch
@@ -1483,7 +1483,7 @@ export default function BarcodeDispatchPage() {
 
           <section className="rounded-md border bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
-              <TimerReset className="h-4 w-4 text-slate-700" />
+              <TimerReset className="h-4 w-4 text-slate-700 dark:text-muted-foreground" />
               <h3 className="text-base font-semibold">Dispatch queue</h3>
             </div>
             <div className="grid grid-cols-2 gap-2">

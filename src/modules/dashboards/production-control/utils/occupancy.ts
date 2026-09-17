@@ -62,6 +62,17 @@ export interface Occupancy {
   palletsFromBoxes: number;
   /** Pallets from loose SKUs — the estimated half. */
   palletsFromLoose: number;
+  /**
+   * The two halves as whole numbers that ALWAYS sum to `pallets`.
+   *
+   * Rounding each half on its own lets a board display "263 measured, 103
+   * estimated" beside a total of 365 and invite the reader to think something
+   * is being double-counted. So the measured half rounds and the estimated half
+   * takes whatever remains of the total — the arithmetic on screen adds up, and
+   * the rounding error lands on the number that was an estimate to begin with.
+   */
+  measuredShown: number;
+  estimatedShown: number;
   /** How many SKUs were converted on a loose estimate. */
   looseSkus: number;
 }
@@ -128,6 +139,10 @@ export function summariseOccupancy(
   const pallets = Math.ceil(palletsFromBoxes + palletsFromLoose);
   const percent = capacity > 0 ? (pallets / capacity) * 100 : 0;
 
+  // Never round the two halves independently — see `measuredShown`.
+  const measuredShown = Math.min(Math.round(palletsFromBoxes), pallets);
+  const estimatedShown = pallets - measuredShown;
+
   return {
     rows: rows.sort((a, b) => b.pallets - a.pallets),
     pallets,
@@ -139,6 +154,8 @@ export function summariseOccupancy(
     boxes: rows.reduce((sum, row) => sum + (row.boxes ?? 0), 0),
     palletsFromBoxes,
     palletsFromLoose,
+    measuredShown,
+    estimatedShown,
     looseSkus: rows.filter((row) => row.boxes == null).length,
   };
 }

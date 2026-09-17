@@ -1,8 +1,8 @@
 /**
  * Issues module — the software's own bug list, inside the software.
  *
- * Four pages: the list, the new-issue form, one issue, and the label / area
- * masters. Gated on `issues.*` permissions rather than a module prefix, so
+ * Four pages: the list, the new-issue form, one issue, and the settings
+ * screen (labels and the support number). Gated on `issues.*` permissions rather than a module prefix, so
  * granting the read right is all it takes to put Issues in someone's sidebar —
  * and the intent is that nearly everyone gets the reporting right, since the
  * people who hit the bugs are the ones who should be filing them.
@@ -46,7 +46,7 @@ export const issuesModuleConfig: ModuleConfig = {
       element: <IssueSettingsPage />,
       layout: 'main',
       permissions: ISSUE_SETTINGS_ACCESS,
-      breadcrumb: { label: 'Labels & areas' },
+      breadcrumb: { label: 'Settings' },
     },
     {
       path: '/issues/:number',
@@ -75,7 +75,7 @@ export const issuesModuleConfig: ModuleConfig = {
         },
         {
           path: '/issues/labels',
-          title: 'Labels & areas',
+          title: 'Settings',
           icon: Tags,
           permissions: ISSUE_SETTINGS_ACCESS,
         },

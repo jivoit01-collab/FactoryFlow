@@ -12,6 +12,10 @@ import {
   useRejectDockingScanSkipRequest,
 } from '@/modules/admin/api';
 import {
+  ApprovalAttachmentLinks,
+  ReviewAttachmentPicker,
+} from '@/modules/admin/components/ReviewAttachments';
+import {
   Badge,
   Button,
   Card,
@@ -55,6 +59,7 @@ export default function DockingScanApprovalsPage() {
   const [reviewTarget, setReviewTarget] = useState<DockingScanSkipRequest | null>(null);
   const [reviewMode, setReviewMode] = useState<'approve' | 'reject'>('approve');
   const [notes, setNotes] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [reviewError, setReviewError] = useState('');
 
   const isSaving = approveRequest.isPending || rejectRequest.isPending;
@@ -63,6 +68,7 @@ export default function DockingScanApprovalsPage() {
     setReviewTarget(request);
     setReviewMode(mode);
     setNotes('');
+    setAttachments([]);
     setReviewError('');
   };
 
@@ -81,10 +87,16 @@ export default function DockingScanApprovalsPage() {
     setReviewError('');
     try {
       if (reviewMode === 'approve') {
-        await approveRequest.mutateAsync({ id: reviewTarget.id, data: { notes: trimmed } });
+        await approveRequest.mutateAsync({
+          id: reviewTarget.id,
+          data: { notes: trimmed, attachments },
+        });
         toast.success('Scan skip request approved');
       } else {
-        await rejectRequest.mutateAsync({ id: reviewTarget.id, data: { notes: trimmed } });
+        await rejectRequest.mutateAsync({
+          id: reviewTarget.id,
+          data: { notes: trimmed, attachments },
+        });
         toast.success('Scan skip request rejected');
       }
       setReviewTarget(null);
@@ -215,6 +227,10 @@ export default function DockingScanApprovalsPage() {
                             Note: {request.review_notes}
                           </div>
                         ) : null}
+                        <ApprovalAttachmentLinks
+                          attachments={request.attachments}
+                          className="max-w-[260px]"
+                        />
                       </td>
                       <td className="p-3">
                         <div className="font-medium">{request.requested_by_name || '-'}</div>
@@ -247,7 +263,7 @@ export default function DockingScanApprovalsPage() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="border-red-200 text-red-700 hover:bg-red-50"
+                              className="border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
                               disabled={isSaving}
                               onClick={() => openReview(request, 'reject')}
                             >
@@ -301,6 +317,12 @@ export default function DockingScanApprovalsPage() {
             />
             {reviewError ? <p className="text-sm text-destructive">{reviewError}</p> : null}
           </div>
+          <ReviewAttachmentPicker
+            files={attachments}
+            onChange={setAttachments}
+            disabled={isSaving}
+            onError={setReviewError}
+          />
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
             <Button
               type="button"
@@ -378,6 +400,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
       {request.reviewed_by_name ? (
         <p className="mt-1 text-xs text-muted-foreground">by {request.reviewed_by_name}</p>
       ) : null}
+      <ApprovalAttachmentLinks attachments={request.attachments} />
 
       {isPending && canApprove ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -393,7 +416,7 @@ function RequestCard({ request, canApprove, isSaving, onReview }: RequestCardPro
           <Button
             type="button"
             variant="outline"
-            className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+            className="h-11 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
             disabled={isSaving}
             onClick={() => onReview(request, 'reject')}
           >
@@ -416,9 +439,9 @@ function StatusBadge({ status }: { status: DockingScanSkipStatus }) {
       variant="outline"
       className={cn(
         'shrink-0',
-        status === 'PENDING' && 'border-amber-200 bg-amber-50 text-amber-700',
-        status === 'APPROVED' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        status === 'REJECTED' && 'border-red-200 bg-red-50 text-red-700',
+        status === 'PENDING' && 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        status === 'APPROVED' && 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        status === 'REJECTED' && 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
       )}
     >
       {status}

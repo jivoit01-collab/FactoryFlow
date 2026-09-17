@@ -65,7 +65,7 @@ function BillRow({
           'flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none',
           // Gone out — kept on the board as a record, tinted so it does not read
           // as work still to do. The status badge says which.
-          isDispatched && 'bg-emerald-50/50 dark:bg-emerald-950/20',
+          isDispatched && 'bg-emerald-50/50 dark:bg-emerald-500/10',
         )}
       >
         <div className="min-w-0">

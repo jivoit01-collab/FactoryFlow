@@ -202,7 +202,7 @@ export default function OpenBiltiesPage() {
       )}
 
       {formError && (
-        <div className="flex items-start gap-3 rounded-md border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-300">
+        <div className="flex items-start gap-3 rounded-md border border-amber-400/50 bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <span>{formError}</span>
         </div>
@@ -337,7 +337,7 @@ export default function OpenBiltiesPage() {
             </Button>
 
             {isPreviewFresh && preview && (
-              <div className="rounded-md border bg-emerald-50 p-3 text-sm dark:bg-emerald-950/20">
+              <div className="rounded-md border bg-emerald-50 p-3 text-sm dark:bg-emerald-500/10">
                 <div className="flex items-start gap-2 text-emerald-800 dark:text-emerald-300">
                   <CheckCircle2 className="mt-0.5 h-4 w-4" />
                   <div>

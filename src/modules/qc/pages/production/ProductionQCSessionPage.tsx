@@ -55,23 +55,23 @@ interface ParameterState {
 const WORKFLOW_BADGE: Record<string, { label: string; className: string }> = {
   PENDING: {
     label: 'Pending',
-    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400',
   },
   DRAFT: {
     label: 'Draft',
-    className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+    className: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
   },
   SUBMITTED: {
     label: 'Submitted',
-    className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    className: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400',
   },
   APPROVED: {
     label: 'Approved',
-    className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    className: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
   },
   REJECTED: {
     label: 'Rejected',
-    className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
   },
 };
 
@@ -261,8 +261,8 @@ export default function ProductionQCSessionPage() {
             {session.workflow_status === 'SUBMITTED' && session.overall_result && (
               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                 session.overall_result === 'PASS'
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                  ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400'
+                  : 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400'
               }`}>
                 {session.overall_result === 'PASS' ? (
                   <CheckCircle2 className="h-3 w-3" />
@@ -285,8 +285,8 @@ export default function ProductionQCSessionPage() {
       {session.workflow_status === 'SUBMITTED' && session.submitted_by_name && (
         <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
           session.overall_result === 'PASS'
-            ? 'bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800'
-            : 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800'
+            ? 'bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30'
+            : 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30'
         }`}>
           {session.overall_result === 'PASS' ? (
             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -350,7 +350,7 @@ export default function ProductionQCSessionPage() {
                           handleParameterChange(parameterId, 'is_within_spec', e.target.checked)
                         }
                         disabled={!isEditable || isSaving || param.parameter_type === 'BOOLEAN' || param.parameter_type === 'RANGE'}
-                        className="h-4 w-4 rounded border-gray-300"
+                        className="h-4 w-4 rounded border-gray-300 dark:border-border"
                       />
                       <span className="text-muted-foreground">Within Spec</span>
                     </label>
@@ -458,7 +458,7 @@ export default function ProductionQCSessionPage() {
                           checked={currentValue.is_within_spec}
                           onChange={(e) => handleParameterChange(parameterId, 'is_within_spec', e.target.checked)}
                           disabled={!isEditable || isSaving || param.parameter_type === 'BOOLEAN' || param.parameter_type === 'RANGE'}
-                          className="h-4 w-4 rounded border-gray-300"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-border"
                         />
                       </td>
                       <td className="p-3">

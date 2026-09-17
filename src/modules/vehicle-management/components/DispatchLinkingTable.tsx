@@ -32,7 +32,7 @@ function hasQuantity(value: number): boolean {
 function getDispatchLinkingRowClassName(bill: DispatchBill) {
   switch (bill.plan.booking_status) {
     case 'BOOKED':
-      return 'bg-slate-50 hover:bg-slate-100/80';
+      return 'bg-slate-50 dark:bg-muted/40 hover:bg-slate-100/80';
     case 'DISPATCHED':
       return 'bg-emerald-50/75 hover:bg-emerald-100/80';
     case 'CANCELLED':

@@ -2,12 +2,17 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  ARInvoicePayment,
   ARInvoicePosting,
   ARInvoicePrintPayload,
   CreateARInvoiceRequest,
   Customer,
+  CustomerCredit,
   LineDefaults,
+  MarkARPaymentRequest,
   OpenSOLine,
+  SapCashSaleHistory,
+  SapCashSaleQuery,
   WarehouseStockItem,
 } from '../types';
 
@@ -16,6 +21,20 @@ export const arInvoiceApi = {
     const response = await apiClient.get<Customer[]>(API_ENDPOINTS.AR_INVOICE.CUSTOMERS, {
       params: search ? { search } : {},
     });
+    return response.data;
+  },
+
+  /** The customer's credit limit and what is already drawn against it. */
+  async getCustomerCredit(customerCode: string): Promise<CustomerCredit> {
+    const response = await apiClient.get<CustomerCredit>(
+      API_ENDPOINTS.AR_INVOICE.CUSTOMER_CREDIT,
+      {
+        params: { customer_code: customerCode },
+        // The panel degrades to nothing on its own; a toast on top of the
+        // invoice being raised would be noise about a read that only informs.
+        suppressErrorToast: true,
+      },
+    );
     return response.data;
   },
 
@@ -67,6 +86,19 @@ export const arInvoiceApi = {
     return response.data;
   },
 
+  /**
+   * The cash sales SAP holds for this company — ours and the ones the counter
+   * raised in SAP directly. Read live, so the response carries the window it
+   * was actually read over.
+   */
+  async listSapCashSales(params: SapCashSaleQuery): Promise<SapCashSaleHistory> {
+    const response = await apiClient.get<SapCashSaleHistory>(
+      API_ENDPOINTS.AR_INVOICE.SAP_INVOICES,
+      { params },
+    );
+    return response.data;
+  },
+
   /** Retry sending a PENDING/FAILED record to SAP. */
   async postInvoice(id: number): Promise<ARInvoicePosting> {
     const response = await apiClient.post<ARInvoicePosting>(
@@ -97,6 +129,42 @@ export const arInvoiceApi = {
       API_ENDPOINTS.AR_INVOICE.INVOICE_PRINT(id),
     );
     return response.data;
+  },
+
+  /**
+   * The same TAX INVOICE for a cash sale off SAP's own book, by DocEntry.
+   *
+   * Most of that book was raised in SAP directly and has no record here to
+   * print from, which is why this is keyed by SAP's id rather than ours.
+   */
+  async getSapCashSalePrint(docEntry: number): Promise<ARInvoicePrintPayload> {
+    const response = await apiClient.get<ARInvoicePrintPayload>(
+      API_ENDPOINTS.AR_INVOICE.SAP_INVOICE_PRINT(docEntry),
+    );
+    return response.data;
+  },
+
+  /**
+   * Record whether a bill has been paid.
+   *
+   * Keyed by SAP's DocEntry, not this app's id: the same mark covers the bill
+   * in both History books, and most of the cash-sale book was raised in SAP
+   * directly and has no record here to hang a mark off.
+   */
+  async markPayment(
+    docEntry: number,
+    data: MarkARPaymentRequest,
+  ): Promise<ARInvoicePayment> {
+    const response = await apiClient.put<ARInvoicePayment>(
+      API_ENDPOINTS.AR_INVOICE.PAYMENT(docEntry),
+      data,
+    );
+    return response.data;
+  },
+
+  /** Drop the mark back to untracked — for one made against the wrong bill. */
+  async clearPayment(docEntry: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.AR_INVOICE.PAYMENT(docEntry));
   },
 
   /** Abandon a PENDING/FAILED record and release its SO lines. */

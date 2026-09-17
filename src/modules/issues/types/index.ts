@@ -22,7 +22,6 @@ export type IssueTimelineEventKind =
   | 'RENAMED'
   | 'EDITED'
   | 'PRIORITY_CHANGED'
-  | 'AREA_CHANGED'
   | 'MARKED_DUPLICATE'
   | 'PINNED'
   | 'UNPINNED'
@@ -46,15 +45,6 @@ export interface IssueLabel {
   sequence: number;
   /** Only present on the label master responses. */
   open_issues?: number;
-}
-
-export interface IssueArea {
-  id: number;
-  name: string;
-  code: string;
-  description: string;
-  sequence: number;
-  owners: UserBrief[];
 }
 
 export interface IssueAttachment {
@@ -88,9 +78,6 @@ export interface IssueListItem {
   author: UserBrief | null;
   assignees: UserBrief[];
   labels: IssueLabel[];
-  area: number | null;
-  area_name: string;
-  area_code: string;
   company: number | null;
   company_code: string;
   pinned: boolean;
@@ -155,7 +142,6 @@ export interface IssueListResponse {
 
 export interface IssueMeta {
   labels: IssueLabel[];
-  areas: IssueArea[];
   users: UserBrief[];
   companies: { id: number; code: string; name: string }[];
   priorities: { value: IssuePriority; label: string }[];
@@ -177,7 +163,6 @@ export interface IssueCreatePayload {
   title: string;
   body?: string;
   priority?: IssuePriority;
-  area?: number | null;
   company?: number | null;
   label_ids?: number[];
   assignee_ids?: number[];
@@ -189,7 +174,6 @@ export interface IssueUpdatePayload {
   title?: string;
   body?: string;
   priority?: IssuePriority;
-  area?: number | null;
   company?: number | null;
   label_ids?: number[];
   assignee_ids?: number[];

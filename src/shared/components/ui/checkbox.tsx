@@ -9,10 +9,12 @@ export interface CheckboxProps {
   disabled?: boolean;
   className?: string;
   id?: string;
+  /** A tick with no visible label of its own still has to say what it selects. */
+  'aria-label'?: string;
 }
 
 const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
-  ({ checked = false, onCheckedChange, disabled, className, id }, ref) => {
+  ({ checked = false, onCheckedChange, disabled, className, id, 'aria-label': ariaLabel }, ref) => {
     return (
       <button
         ref={ref}
@@ -20,6 +22,7 @@ const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
         type="button"
         role="checkbox"
         aria-checked={checked}
+        aria-label={ariaLabel}
         disabled={disabled}
         onClick={() => onCheckedChange?.(!checked)}
         className={cn(

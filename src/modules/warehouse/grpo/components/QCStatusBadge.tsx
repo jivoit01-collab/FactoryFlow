@@ -6,14 +6,14 @@ import type { QCStatus } from '../types';
 type Verdict = QCStatus | InspectionDecision;
 
 const VERDICT_STYLES: Record<string, string> = {
-  ACCEPTED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  APPROVED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  HOLD: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
-  PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  INSPECTION_PENDING: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  ARRIVAL_SLIP_PENDING: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  NO_ARRIVAL_SLIP: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  ACCEPTED: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  APPROVED: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  REJECTED: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
+  HOLD: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400',
+  PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400',
+  INSPECTION_PENDING: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
+  ARRIVAL_SLIP_PENDING: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
+  NO_ARRIVAL_SLIP: 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground',
 };
 
 const VERDICT_LABELS: Record<string, string> = {
@@ -27,7 +27,7 @@ const VERDICT_LABELS: Record<string, string> = {
   NO_ARRIVAL_SLIP: 'No QC Slip',
 };
 
-const FALLBACK_STYLE = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+const FALLBACK_STYLE = 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground';
 
 interface QCStatusBadgeProps {
   status: QCStatus;

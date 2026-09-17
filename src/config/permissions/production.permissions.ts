@@ -108,6 +108,12 @@ export const EXECUTION_PERMISSIONS = {
   /** Manage machines */
   MANAGE_MACHINES: 'production_execution.can_manage_machines',
 
+  // Line configuration (Line Management page)
+  /** Read the line configuration — the page and nothing else */
+  VIEW_LINE_CONFIG: 'production_execution.can_view_line_config',
+  /** Edit the line configuration. Held by no group — superusers only. */
+  MANAGE_LINE_CONFIG: 'production_execution.can_manage_line_config',
+
   // Waste Management
   /** View waste logs */
   VIEW_WASTE: 'production_execution.can_view_waste_log',

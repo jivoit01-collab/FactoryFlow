@@ -284,7 +284,7 @@ function LineClearanceQAPage() {
 
               {/* Manager override hint */}
               {decided && canOverride && (
-                <p className="text-xs text-muted-foreground rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 p-2">
+                <p className="text-xs text-muted-foreground rounded-md border border-amber-300/60 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-2">
                   This clearance is already decided. Choosing a decision below changes it — the previous
                   decision is kept in the history above. Allowed until the line starts.
                 </p>

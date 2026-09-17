@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { confirmSapPost } from '@/shared/components';
 import { Button, Card, Input } from '@/shared/components/ui';
 
 import { useFGGRPOPreview, usePostFGGRPO } from '../api/fgGrpo.queries';
@@ -14,6 +15,10 @@ interface ItemForm {
   unit_price: number;
   tax_code: string;
   gl_account: string;
+  // Traded finished goods are batch-managed in SAP, which rejects the whole
+  // receipt (-4014) unless the document names the lot. One lot per line here;
+  // a receipt split across lots is posted from the material GRPO screen.
+  batch_number: string;
 }
 
 export default function FGGRPOPreviewPage() {
@@ -48,6 +53,7 @@ export default function FGGRPOPreviewPage() {
           unit_price: Number(it.unit_price) || 0,
           tax_code: it.tax_code || '',
           gl_account: it.gl_account || '',
+          batch_number: it.is_batch_managed ? (it.suggested_batch_number ?? '') : '',
         };
       }
     }
@@ -63,7 +69,11 @@ export default function FGGRPOPreviewPage() {
   const updateItem = (id: number, field: keyof ItemForm, value: string) => {
     setItemForms((prev) => ({
       ...prev,
-      [id]: { ...prev[id], [field]: field === 'accepted_qty' || field === 'unit_price' ? Number(value) || 0 : value },
+      [id]: {
+        ...prev[id],
+        [field]:
+          field === 'accepted_qty' || field === 'unit_price' ? Number(value) || 0 : value,
+      },
     }));
   };
 
@@ -82,24 +92,56 @@ export default function FGGRPOPreviewPage() {
     }
 
     const items: PostGRPOItemRequest[] = [];
+    const missingBatch: string[] = [];
     for (const po of postablePOs) {
       for (const it of po.items) {
         const form = itemForms[it.po_item_receipt_id];
         if (!form || form.accepted_qty <= 0) continue;
+        const batchNumber = form.batch_number.trim();
+        if (it.is_batch_managed && !batchNumber) {
+          missingBatch.push(it.item_code);
+          continue;
+        }
         items.push({
           po_item_receipt_id: it.po_item_receipt_id,
           accepted_qty: form.accepted_qty,
           unit_price: form.unit_price || undefined,
           tax_code: form.tax_code || undefined,
           gl_account: form.gl_account || undefined,
+          batches: batchNumber
+            ? [{ batch_number: batchNumber, quantity: form.accepted_qty }]
+            : undefined,
         });
       }
+    }
+
+    if (missingBatch.length > 0) {
+      // SAP would reject the whole receipt with an unreadable -4014.
+      setError(
+        `Enter the batch (lot) number for ${missingBatch.join(', ')} — SAP manages ` +
+          `${missingBatch.length > 1 ? 'these items' : 'this item'} by batch.`,
+      );
+      return;
     }
 
     if (items.length === 0) {
       setError('Enter an accepted quantity for at least one item.');
       return;
     }
+
+    const confirmed = await confirmSapPost({
+      title: 'Post this FG receipt to SAP?',
+      details: [
+        { label: 'Creates', value: 'Goods Receipt PO' },
+        {
+          label: postablePOs.length > 1 ? 'POs' : 'PO',
+          value: postablePOs.map((po) => po.po_number).join(', ') || 'the purchase order',
+        },
+        { label: 'Warehouse', value: warehouseCode || 'the warehouse' },
+        { label: 'Lines received', value: items.length },
+      ],
+    });
+    if (!confirmed) return;
 
     try {
       const response = await postGRPO.mutateAsync({
@@ -152,7 +194,7 @@ export default function FGGRPOPreviewPage() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-400">
           {error}
         </div>
       )}
@@ -179,6 +221,7 @@ export default function FGGRPOPreviewPage() {
                       <th className="p-2 text-right font-medium">Received</th>
                       <th className="p-2 text-right font-medium">Accepted</th>
                       <th className="p-2 text-right font-medium">Unit Price</th>
+                      <th className="p-2 text-left font-medium">Batch / Lot</th>
                       <th className="p-2 text-left font-medium">Tax Code</th>
                       <th className="p-2 text-left font-medium">GL Account</th>
                       <th className="p-2 text-left font-medium">UOM</th>
@@ -217,6 +260,21 @@ export default function FGGRPOPreviewPage() {
                                 updateItem(it.po_item_receipt_id, 'unit_price', e.target.value)
                               }
                             />
+                          </td>
+                          <td className="p-2">
+                            {it.is_batch_managed ? (
+                              <Input
+                                className="w-40"
+                                maxLength={36}
+                                placeholder="Supplier lot / invoice no."
+                                value={form?.batch_number ?? ''}
+                                onChange={(e) =>
+                                  updateItem(it.po_item_receipt_id, 'batch_number', e.target.value)
+                                }
+                              />
+                            ) : (
+                              <span className="text-xs text-muted-foreground">&mdash;</span>
+                            )}
                           </td>
                           <td className="p-2">
                             <Input

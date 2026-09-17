@@ -9,3 +9,4 @@ export {
   summarisePalletSpace,
 } from './palletSpace';
 export { buildScheduledQueue, type ScheduledQueueInput } from './scheduledBills';
+export { shortWarehouseTags } from './warehouseTag';

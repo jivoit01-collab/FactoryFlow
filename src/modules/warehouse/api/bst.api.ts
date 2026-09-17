@@ -108,6 +108,14 @@ export const bstApi = {
     return res.data;
   },
 
+  /** Correct when loading finished (the dispatch → gate handoff stamp). */
+  async setLoadedAt(transferId: number, loadedAt: string): Promise<BSTTransferDetail> {
+    const res = await apiClient.put<BSTTransferDetail>(EP.BST_LOADED_AT(transferId), {
+      loaded_at: loadedAt,
+    });
+    return res.data;
+  },
+
   async cancel(transferId: number, cancelReason: string): Promise<BSTTransferDetail> {
     const res = await apiClient.post<BSTTransferDetail>(EP.BST_CANCEL(transferId), {
       cancel_reason: cancelReason,

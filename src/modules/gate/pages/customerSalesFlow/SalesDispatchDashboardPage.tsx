@@ -220,7 +220,7 @@ export default function SalesDispatchDashboardPage() {
   const statCards = [
     {
       filter: 'ALL' as const,
-      icon: <List className="h-5 w-5 text-slate-600" />,
+      icon: <List className="h-5 w-5 text-slate-600 dark:text-muted-foreground" />,
       label: 'All',
       value: allCount,
     },
@@ -832,7 +832,7 @@ function DockingLockDialog({
         <div
           className={cn(
             'flex items-start gap-3 rounded-lg border p-4',
-            isLocked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50',
+            isLocked ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10' : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10',
           )}
         >
           {isLocked ? (

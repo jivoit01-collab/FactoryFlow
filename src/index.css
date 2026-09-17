@@ -54,29 +54,61 @@
     --emp-series-3: #1baf7a;
   }
 
+  /*
+   * Dark theme. The stock shadcn dark set painted near-white (#F8FAFC) on
+   * near-black (#020817) — 19:1, above what Windows High Contrast Black uses,
+   * which is why it read as an accessibility mode rather than a theme. It also
+   * gave --card the same value as --background, so every card, dialog and
+   * sidebar sat on one flat plane and only a hard 1 px border told them apart.
+   *
+   * This set fixes both: text steps back from white and the canvas steps up off
+   * black (13.4:1 body text — still past AAA's 7:1, without the glare), and the
+   * surfaces are a real elevation ladder, each rung reachable without a border:
+   *
+   *   background #171A21  page canvas, sidebar, header  (recedes)
+   *   card       #20242C  cards, tables, panels
+   *   popover    #272B35  dialogs, sheets, menus        (floats)
+   *
+   * Inputs keep bg-background, so inside a card they now read as inset wells.
+   * Light mode is deliberately untouched — every value below is dark-only.
+   */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --background: 222 18% 11%;
+    --foreground: 213 22% 89%;
+    --card: 222 16% 15%;
+    --card-foreground: 213 22% 89%;
+    --popover: 222 15% 18%;
+    --popover-foreground: 213 22% 89%;
+    /* Was 98% — a solid button in that near-white was a light source on a black
+     * page. Stepped down; still 11.9:1 against its own foreground. */
+    --primary: 213 25% 85%;
+    --primary-foreground: 222 24% 12%;
+    --secondary: 220 14% 22%;
+    --secondary-foreground: 213 22% 89%;
+    --muted: 220 14% 22%;
+    --muted-foreground: 217 14% 65%;
+    /* Hover/selected fill, one rung above card so it reads on cards and rows. */
+    --accent: 220 14% 26%;
+    --accent-foreground: 213 25% 93%;
+    /*
+     * --destructive is used ~670x as *text* (text-destructive) and only ~6x as a
+     * fill. The old dark maroon (#7F1D1D) was built for the fill case and left
+     * error text at 2.0:1 on the page — effectively unreadable. It is now a
+     * light red that clears AA as text (4.8:1), and --destructive-foreground
+     * flips dark so the handful of bg-destructive buttons and badges stay
+     * legible (4.9:1) instead of white-on-pink.
+     */
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 0 35% 12%;
+    --border: 220 13% 25%;
+    --input: 220 13% 28%;
+    /* Was a near-white halo; softened to sit with the new surfaces. */
+    --ring: 213 20% 60%;
     color-scheme: dark;
 
-    /* Re-stepped for the dark surface (#020817) and validated there. */
+    /* Stepped for the dark surface and validated there. Re-checked against the
+     * lighter #171A21 canvas and #20242C card above: worst case 4.1:1, so all
+     * three still clear the 3:1 bar on both. */
     --trail-stock: #3987e5;
     --trail-wip: #d95926;
     --trail-produce: #9085e9;
@@ -1048,6 +1080,16 @@
   font-weight: 700;
   padding-top: 2mm;
   text-align: center;
+}
+
+/* A cancelled transfer still prints — somebody may need the copy — so the sheet
+   has to announce it loudly enough that nobody works from it by mistake. */
+.bst-doc-cancelled {
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-top: 1mm;
 }
 
 .bst-doc-barcode {

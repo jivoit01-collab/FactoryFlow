@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -97,6 +98,17 @@ export default function BillSummaryNewPage() {
 
   async function handleGenerate() {
     if (!lookup) return;
+    const confirmed = await confirmSapPost({
+      title: `Generate the sheet and stamp bill ${lookup.doc_num}?`,
+      details: [
+        { label: 'SAP invoice', value: lookup.doc_num },
+        { label: 'Dispatch date', value: form.dispatch_date },
+        { label: 'Bilty', value: form.bilty_no.trim() },
+        { label: 'In SAP', value: 'Date, bilty, vehicle and driver can only be set once' },
+      ],
+      confirmLabel: 'Generate and stamp',
+    });
+    if (!confirmed) return;
     try {
       const summary = await generate.mutateAsync({
         sap_invoice_doc_entry: lookup.doc_entry,
@@ -169,7 +181,7 @@ export default function BillSummaryNewPage() {
       {lookup && (
         <>
           {lookup.existing_summary && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
               <span>
                 <AlertTriangle className="mr-1 inline h-4 w-4" />
                 {lookup.existing_summary} already covers this bill.
@@ -211,7 +223,7 @@ export default function BillSummaryNewPage() {
               <div className="flex items-center gap-2 text-sm font-semibold">
                 Dispatch details
                 {lookup.missing.length > 0 && (
-                  <Badge variant="outline" className="border-amber-400 text-amber-700">
+                  <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
                     {lookup.missing.length} to fill in
                   </Badge>
                 )}

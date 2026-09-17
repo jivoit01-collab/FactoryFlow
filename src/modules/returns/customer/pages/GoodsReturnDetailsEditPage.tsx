@@ -28,7 +28,14 @@ import {
   useUpdateGoodsReturnHeader,
   useUploadAttachment,
 } from '../api';
-import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS, formatDateTime, toDateInputValue } from '../utils';
+import { ReturnCustomerPicker } from '../components/ReturnCustomerPicker';
+import {
+  ATTACHMENT_TYPE_BY_BASIS,
+  BASIS_LABELS,
+  formatDateTime,
+  REF_NO_LABELS,
+  toDateInputValue,
+} from '../utils';
 
 export default function GoodsReturnDetailsEditPage() {
   const { entryId } = useParams<{ entryId: string }>();
@@ -60,6 +67,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [customerName, setCustomerName] = useState(detail.customer_name);
   const [customerCode, setCustomerCode] = useState(detail.customer_code);
+  const [customerRefNo, setCustomerRefNo] = useState(detail.customer_ref_no);
   const [vehicleId, setVehicleId] = useState<number | null>(detail.vehicle);
   const [vehicleNo, setVehicleNo] = useState(detail.vehicle_no);
   const [driverId, setDriverId] = useState<number | null>(detail.driver);
@@ -113,8 +121,10 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
       setError('Add at least one invoice.');
       return;
     }
-    if (!isInvoiceBasis && !customerName.trim()) {
-      setError('Enter the customer name.');
+    if (!isInvoiceBasis && !customerCode.trim()) {
+      // Returns booked before the code was mandatory land here with a name
+      // only — and an empty item list on the next step until it is set.
+      setError('Pick the returning customer from SAP.');
       return;
     }
     if (detail.attachments.length === 0) {
@@ -126,6 +136,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
         await updateHeader.mutateAsync({
           customer_name: customerName.trim(),
           customer_code: customerCode.trim(),
+          customer_ref_no: customerRefNo.trim(),
         });
       }
       const vehicleChanged =
@@ -241,12 +252,6 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
               </Button>
             </div>
 
-            {detail.customer_name && (
-              <p className="text-sm text-muted-foreground">
-                Customer: <span className="font-medium text-foreground">{detail.customer_name}</span>{' '}
-                ({detail.customer_code})
-              </p>
-            )}
 
             {detail.invoice_refs.length === 0 ? (
               <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
@@ -261,6 +266,14 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
                   >
                     <div>
                       <p className="font-medium">Invoice {ref.sap_invoice_doc_num}</p>
+                      {/* The customer sits on the bill, not on the return: one
+                          truck brings back several distributors' bills, and this
+                          is where the clerk sees which bill is whose. */}
+                      {(ref.customer_name || ref.customer_code) && (
+                        <p className="text-xs text-muted-foreground">
+                          {ref.customer_name || ref.customer_code}
+                        </p>
+                      )}
                       {/* Each invoice posts its own A/R Return, so the split is
                           worth stating where the invoices are chosen. */}
                       <p className="text-xs text-muted-foreground">
@@ -287,23 +300,31 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
         <Card>
           <CardContent className="space-y-4 p-6">
             <SectionTitle icon={<ReceiptText className="h-4 w-4" />} title="Customer" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Customer Name *</Label>
-                <Input
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="Customer name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Customer Code</Label>
-                <Input
-                  value={customerCode}
-                  onChange={(event) => setCustomerCode(event.target.value)}
-                  placeholder="SAP business-partner code (optional)"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Customer *</Label>
+              <ReturnCustomerPicker
+                value={customerCode ? `${customerName} (${customerCode})` : customerName}
+                onChange={(customer) => {
+                  setCustomerCode(customer?.customer_code ?? '');
+                  setCustomerName(customer?.customer_name ?? '');
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {customerCode
+                  ? 'The next step offers only what this customer has actually been invoiced.'
+                  : 'This return has a customer name but no SAP code, so the next step has no purchase history to offer. Pick the customer to fix it.'}
+              </p>
+            </div>
+
+            {/* Their number for the document, not ours — optional, and
+                searchable afterwards from the returns list. */}
+            <div className="space-y-2">
+              <Label>{REF_NO_LABELS[detail.basis]}</Label>
+              <Input
+                value={customerRefNo}
+                onChange={(event) => setCustomerRefNo(event.target.value)}
+                placeholder={`${REF_NO_LABELS[detail.basis]} (optional)`}
+              />
             </div>
           </CardContent>
         </Card>

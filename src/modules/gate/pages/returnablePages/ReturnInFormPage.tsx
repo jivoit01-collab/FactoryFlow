@@ -162,7 +162,7 @@ export default function ReturnInFormPage() {
       </div>
 
       {pass.is_overdue && isOutstanding ? (
-        <div className="flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+        <div className="flex items-center gap-2 rounded-md border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-3 text-sm text-rose-900 dark:text-rose-400">
           <AlertTriangle className="h-4 w-4" />
           This pass is {pass.days_overdue} day(s) past its expected return date.
         </div>
@@ -326,11 +326,11 @@ export default function ReturnInFormPage() {
                     </p>
                   </div>
                   {event.is_acknowledged ? (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                    <span className="rounded-full bg-emerald-100 dark:bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-800 dark:text-emerald-400">
                       Collected by {event.acknowledged_by_name}
                     </span>
                   ) : (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                    <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-400">
                       Awaiting collection
                     </span>
                   )}

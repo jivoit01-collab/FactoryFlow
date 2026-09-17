@@ -21,9 +21,9 @@ const fmt = (v: number | null | undefined, d = 2) =>
   v === null || v === undefined ? '—' : Number(v).toLocaleString('en-IN', { maximumFractionDigits: d });
 
 const VERDICT_BADGE: Record<MakeVsBuyVerdict, string> = {
-  MAKE: 'bg-green-100 text-green-700',
-  BUY: 'bg-amber-100 text-amber-700',
-  NO_BUY_PRICE: 'bg-gray-100 text-gray-600',
+  MAKE: 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400',
+  BUY: 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  NO_BUY_PRICE: 'bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground',
 };
 const VERDICT_LABEL: Record<MakeVsBuyVerdict, string> = {
   MAKE: 'Make in‑house',

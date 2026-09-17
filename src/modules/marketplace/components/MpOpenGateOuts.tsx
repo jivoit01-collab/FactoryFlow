@@ -7,10 +7,15 @@
  * to finish, no row to cancel, and the gate person's own record unreachable.
  * This is where an unfinished trip lives until it leaves or is called off.
  *
- * A manual draft is finished here — it has no sheet and no parcels to look up,
- * so marking it out asks only who let it through. A draft raised against a
- * SHEET belongs to the linear send-out screen instead (vehicle → weighment →
- * out), so its row hands over to that rather than duplicating those steps.
+ * A manual draft is finished here, through the SAME form that raised it, filled
+ * in with what is already on the trip. It used to be offered nothing but a
+ * Security box, because marking out was the only write this screen had: the
+ * real note number, the boxes actually loaded and the weighbridge reading taken
+ * in the meantime were all unreachable, so the truck left on whatever was known
+ * when the draft was opened — and a manual trip is exempt from needing a weight,
+ * so nothing stopped it. A draft raised against a SHEET belongs to the linear
+ * send-out screen instead (vehicle → weighment → out), so its row hands over to
+ * that rather than duplicating those steps.
  */
 import { useMutation } from '@tanstack/react-query';
 import { Loader2, Printer, ShieldAlert, Truck } from 'lucide-react';
@@ -29,12 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Label,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import type { MarketplaceChannel, MpGatePass } from '../types/marketplace.types';
+import { MpManualGateOutDialog } from './MpManualGateOutDialog';
 
 const kg = (v: string | null) => (v === null ? '—' : `${Number(v).toLocaleString('en-IN')} kg`);
 
@@ -49,24 +54,14 @@ interface Props {
 
 export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
   const navigate = useNavigate();
-  const [markOut, setMarkOut] = useState<MpGatePass | null>(null);
-  const [security, setSecurity] = useState('');
+  // The draft being finished — handed to the same form that raised it, so the
+  // gate person checks and corrects the whole trip rather than only naming the
+  // security who let it through.
+  const [finishing, setFinishing] = useState<MpGatePass | null>(null);
   const [cancelTrip, setCancelTrip] = useState<MpGatePass | null>(null);
   const [reason, setReason] = useState('');
 
   const fail = (msg: string) => (e: unknown) => toast.error(getErrorMessage(e, msg));
-
-  const dispatch = useMutation({
-    mutationFn: () =>
-      marketplaceApi.gatePassDispatch(markOut!.id, { security_name: security.trim() }),
-    onSuccess: (p) => {
-      toast.success(`${p.vehicle_no} marked out — gatepass ${p.gatepass_no}.`);
-      setMarkOut(null);
-      setSecurity('');
-      onDone();
-    },
-    onError: fail('Could not mark the trip out.'),
-  });
 
   const cancel = useMutation({
     mutationFn: () => marketplaceApi.gatePassCancel(cancelTrip!.id, reason.trim()),
@@ -101,7 +96,7 @@ export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
   }
   if (passes.length === 0) return null;
 
-  const busy = dispatch.isPending || cancel.isPending || print.isPending;
+  const busy = cancel.isPending || print.isPending;
 
   return (
     <Card className="border-amber-500/40">
@@ -152,7 +147,10 @@ export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
                 )}
               </div>
               {/* The server's own reason, so the gate person reads it instead of
-                  discovering it by pressing the button. */}
+                  discovering it by pressing the button. It no longer disables
+                  Mark out: on a manual trip the only reason is a mis-keyed
+                  weighment, and the form behind that button is where it gets
+                  corrected — the server still refuses the mark-out until it is. */}
               {p.weight_error && <p className="mt-1 text-xs text-amber-600">{p.weight_error}</p>}
             </div>
 
@@ -162,14 +160,7 @@ export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
               )}
               {p.is_manual ? (
                 <>
-                  <Button
-                    size="sm"
-                    disabled={busy || !!p.weight_error}
-                    onClick={() => {
-                      setSecurity('');
-                      setMarkOut(p);
-                    }}
-                  >
+                  <Button size="sm" disabled={busy} onClick={() => setFinishing(p)}>
                     <Truck className="mr-1.5 h-4 w-4" /> Mark out
                   </Button>
                   <Button
@@ -208,39 +199,21 @@ export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
         ))}
       </CardContent>
 
-      {/* Mark out — security is the only thing left to record on a manual trip. */}
-      <Dialog open={!!markOut} onOpenChange={(o) => !o && setMarkOut(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Mark out {markOut?.vehicle_no}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This sends the trip out and takes its gatepass number.
-          </p>
-          <div className="space-y-1.5">
-            <Label>Security</Label>
-            <Input
-              autoFocus
-              value={security}
-              onChange={(e) => setSecurity(e.target.value)}
-              placeholder="Who is letting it out"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setMarkOut(null)}
-              disabled={dispatch.isPending}
-            >
-              Not now
-            </Button>
-            <Button disabled={dispatch.isPending} onClick={() => dispatch.mutate()}>
-              {dispatch.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Mark out
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Finishing a draft — the same form that raised it, filled in. The weight
+          and the security boxes are on it, so the gate person is asked for what
+          the trip is actually leaving with instead of only who waved it out. */}
+      {finishing && (
+        <MpManualGateOutDialog
+          channel={channel}
+          open
+          trip={finishing}
+          onOpenChange={(o) => !o && setFinishing(null)}
+          onDone={() => {
+            setFinishing(null);
+            onDone();
+          }}
+        />
+      )}
 
       {/* Cancel — a reason is required, so the record says why it never left. */}
       <Dialog open={!!cancelTrip} onOpenChange={(o) => !o && setCancelTrip(null)}>

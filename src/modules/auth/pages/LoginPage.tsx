@@ -1,3 +1,4 @@
+import { Headset } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +10,7 @@ import { authService } from '@/core/auth/services/auth.service';
 import { indexedDBService } from '@/core/auth/services/indexedDb.service';
 import { useAppDispatch } from '@/core/store';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
+import { useSupportContact } from '@/shared/hooks';
 
 import { LoginForm } from '../components/LoginForm';
 import type { LoginFormData } from '../schemas/login.schema';
@@ -18,6 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const contact = useSupportContact();
 
   const handleSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -74,6 +77,21 @@ export default function LoginPage() {
           </div>
         )}
         <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
+
+        {/* Someone who cannot sign in cannot reach the support menu inside
+            the app, so the number has to be on this screen too. It is fetched
+            from a public endpoint, which is why it can be absent here. */}
+        {contact && (
+          <p className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Headset className="h-4 w-4" />
+            <span>
+              Trouble signing in? Call support at{' '}
+              <a href={contact.telHref} className="font-medium text-foreground hover:underline">
+                {contact.phone}
+              </a>
+            </span>
+          </p>
+        )}
       </CardContent>
     </Card>
   );

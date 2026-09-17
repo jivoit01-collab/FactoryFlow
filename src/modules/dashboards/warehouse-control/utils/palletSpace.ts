@@ -23,7 +23,12 @@ import {
   NON_OCCUPYING_PALLET_STATUSES,
   UNAVAILABLE_LOCATION_STATUSES,
 } from '../constants';
-import type { PalletSpaceSummary, PalletSpaceWarehouseRow, StoredGoodsRow } from '../types';
+import type {
+  PalletSpaceSummary,
+  PalletSpaceWarehouseRow,
+  StoredGoodsRow,
+  StoredGoodsWarehouseRow,
+} from '../types';
 
 export interface PalletSpaceInput {
   warehouses: Warehouse[];
@@ -73,6 +78,7 @@ function emptyAccumulator(): WarehouseAccumulator {
 
 export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummary {
   const purposesById = new Map(input.purposes.map((purpose) => [purpose.id, purpose]));
+  const warehouseNames = new Map(input.warehouses.map((warehouse) => [warehouse.id, warehouse]));
 
   // Only cells that can actually take a pallet count as space.
   const storageLocations = input.locations.filter(
@@ -122,22 +128,42 @@ export function summarisePalletSpace(input: PalletSpaceInput): PalletSpaceSummar
     const itemCode = pallet.itemCode?.trim() ?? '';
     const itemName = pallet.itemName?.trim() ?? '';
     const key = itemCode || itemName || 'UNIDENTIFIED';
-    const existing = goodsByItem.get(key);
-    if (existing) {
-      existing.pallets += 1;
-      existing.boxes += boxes;
+    let row = goodsByItem.get(key);
+    if (row) {
+      row.pallets += 1;
+      row.boxes += boxes;
       // Earlier pallets may carry only a code; take a name from whichever has one.
-      if (!existing.itemName && itemName) existing.itemName = itemName;
+      if (!row.itemName && itemName) row.itemName = itemName;
     } else {
-      goodsByItem.set(key, { itemCode, itemName, pallets: 1, boxes });
+      row = { itemCode, itemName, pallets: 1, boxes, warehouses: [] };
+      goodsByItem.set(key, row);
+    }
+
+    // A handful of warehouses at most, so a scan beats a second map.
+    const tag = row.warehouses.find((entry) => entry.warehouseId === location.warehouseId);
+    if (tag) {
+      tag.pallets += 1;
+      tag.boxes += boxes;
+    } else {
+      const warehouse = warehouseNames.get(location.warehouseId);
+      row.warehouses.push({
+        warehouseId: location.warehouseId,
+        code: warehouse?.code ?? '-',
+        name: warehouse?.name ?? 'Unknown warehouse',
+        pallets: 1,
+        boxes,
+      });
     }
   }
 
-  const goods = [...goodsByItem.values()].sort(
-    (a, b) => b.boxes - a.boxes || b.pallets - a.pallets || a.itemName.localeCompare(b.itemName),
-  );
+  const byBoxes = (a: StoredGoodsWarehouseRow, b: StoredGoodsWarehouseRow) =>
+    b.boxes - a.boxes || b.pallets - a.pallets || a.name.localeCompare(b.name);
 
-  const warehouseNames = new Map(input.warehouses.map((warehouse) => [warehouse.id, warehouse]));
+  const goods = [...goodsByItem.values()]
+    .map((row) => ({ ...row, warehouses: [...row.warehouses].sort(byBoxes) }))
+    .sort(
+      (a, b) => b.boxes - a.boxes || b.pallets - a.pallets || a.itemName.localeCompare(b.itemName),
+    );
 
   const rows: PalletSpaceWarehouseRow[] = [...byWarehouse.entries()]
     .map(([warehouseId, accumulator]) => {

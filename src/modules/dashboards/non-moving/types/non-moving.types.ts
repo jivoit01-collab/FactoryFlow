@@ -1,3 +1,5 @@
+import type { MovementStatus } from '../utils/movementStatus';
+
 // ============================================================================
 // Filters
 // ============================================================================
@@ -5,14 +7,49 @@
 export interface NonMovingFilters {
   age: number;
   item_group: number;
+  /**
+   * Whether a production entry counts as movement. True is the board's
+   * standing rule and how the page opens. False ages every row on its last
+   * Goods Receipt PO instead, so only a purchase resets the clock.
+   */
+  count_production: boolean;
   search?: string;
   warehouse?: string[];
   sub_group?: string[];
+  status?: MovementStatus[];
 }
+
+export type NonMovingSortCol =
+  | 'item_code'
+  | 'item_name'
+  | 'warehouse'
+  | 'quantity'
+  | 'value'
+  | 'days_since_last_movement'
+  | 'consumption_ratio';
 
 // ============================================================================
 // Non-Moving Item
 // ============================================================================
+
+/**
+ * Which rule aged the row.
+ *
+ * With the production rule ON — the board's default:
+ * - `production` is packing material: only an issue to a production order, or
+ *   a receipt from one, resets its clock. Being carried from one godown to
+ *   another does not.
+ * - `any` is every other item group — days since that warehouse last saw a
+ *   movement of any kind.
+ *
+ * With it OFF, nothing internal counts and every row is aged on purchases:
+ * - `grpo` — dated by the item's last Goods Receipt PO.
+ * - `none` — the item has never been bought in this company at all, so there
+ *   is no purchase to age it from and the date fell back to when the item was
+ *   created in SAP. Common, and not an error: bottles the factory blows
+ *   itself and stock that only ever arrived by transfer both land here.
+ */
+export type MovementBasis = 'production' | 'any' | 'grpo' | 'none';
 
 export interface NonMovingItem {
   branch: string;
@@ -21,11 +58,37 @@ export interface NonMovingItem {
   item_group_name: string;
   sub_group: string;
   warehouse: string;
+  warehouse_name?: string;
+  /** SAP has this warehouse decommissioned. The stock in it is real, and counted. */
+  warehouse_inactive?: boolean;
   quantity: number;
   value: number;
   last_movement_date: string | null;
   days_since_last_movement: number;
   consumption_ratio: number;
+  /** Older backends omit it; absent reads as `any`. */
+  movement_basis?: MovementBasis;
+  /** The warehouse's own last movement, transfers included. */
+  last_warehouse_movement_date?: string | null;
+  days_since_warehouse_movement?: number;
+  /**
+   * The warehouse the movement behind `last_movement_date` happened in. On a
+   * packing-material row that is usually NOT this row's warehouse — the age is
+   * the item's last production, which happens on the floor the godown feeds.
+   * Blank where the age fell back to the item's creation date.
+   */
+  last_movement_warehouse?: string;
+  last_movement_warehouse_name?: string;
+}
+
+/**
+ * One table line: either a single (item, warehouse) row, or every warehouse
+ * holding that item folded into one line.
+ */
+export interface NonMovingRow extends NonMovingItem {
+  /** Warehouse codes folded into this line, in code order. */
+  warehouses: string[];
+  warehouse_count: number;
 }
 
 // ============================================================================
@@ -79,6 +142,8 @@ export interface ReportSummary {
 export interface NonMovingMeta {
   age_days: number;
   item_group: number;
+  /** Which clock the ages in `data` were measured on. */
+  count_production?: boolean;
   fetched_at: string;
 }
 

@@ -381,7 +381,7 @@ export default function EmptyVehicleOutNewPage() {
           )}
 
           {siblingEntries.length > 0 && (
-            <div className="flex items-start gap-3 rounded-md border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+            <div className="flex items-start gap-3 rounded-md border border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-400">
               <Truck className="mt-0.5 h-4 w-4 shrink-0" />
               <div className="min-w-0 space-y-2">
                 <p className="font-medium">
@@ -395,12 +395,12 @@ export default function EmptyVehicleOutNewPage() {
                 <ul className="space-y-1">
                   {siblingEntries.map((entry) => (
                     <li key={entry.id} className="flex flex-wrap items-center gap-x-2">
-                      <span className="inline-flex whitespace-nowrap rounded-full border border-blue-300 bg-white px-2 py-0.5 text-xs font-medium">
+                      <span className="inline-flex whitespace-nowrap rounded-full border border-blue-300 dark:border-blue-500/30 bg-white px-2 py-0.5 text-xs font-medium">
                         {entry.company_name || entry.company_code || 'Company'}
                       </span>
                       <span className="font-mono text-xs">{entry.entry_no}</span>
                       {entry.release_invoice_count > 0 ? (
-                        <span className="text-xs text-blue-800">
+                        <span className="text-xs text-blue-800 dark:text-blue-400">
                           releases {entry.release_invoice_count} bill
                           {entry.release_invoice_count === 1 ? '' : 's'}
                         </span>
@@ -413,7 +413,7 @@ export default function EmptyVehicleOutNewPage() {
           )}
 
           {sideEffectMessage && (
-            <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="flex items-start gap-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{sideEffectMessage}</span>
             </div>

@@ -37,6 +37,22 @@ export interface StoredGoodsRow {
   pallets: number;
   /** Boxes across those pallets. */
   boxes: number;
+  /**
+   * Which warehouses the item is standing in, heaviest first.
+   *
+   * The line totals the whole building, so without this a reader cannot tell a
+   * Gupta item from a Basement one — or see that a line is split across both.
+   */
+  warehouses: StoredGoodsWarehouseRow[];
+}
+
+/** One warehouse's share of a stored-goods line. */
+export interface StoredGoodsWarehouseRow {
+  warehouseId: string;
+  code: string;
+  name: string;
+  pallets: number;
+  boxes: number;
 }
 
 /** Company-wide pallet space, plus the per-warehouse rows behind it. */

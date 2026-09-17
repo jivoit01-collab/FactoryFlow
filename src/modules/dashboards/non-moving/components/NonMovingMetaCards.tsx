@@ -1,11 +1,18 @@
-import { Boxes, Building2, IndianRupee, Package } from 'lucide-react';
+import { AlertTriangle, Clock, Package, ShieldAlert } from 'lucide-react';
 
 import { Card, CardContent } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
-import type { ReportSummary } from '../types';
+import { NON_MOVING_ALL_STATUSES } from '../constants';
+import type { MovementStatus } from '../utils/movementStatus';
+import type { NonMovingStatusTotals, NonMovingTotals } from '../utils/nonMovingRows';
 
 interface NonMovingMetaCardsProps {
-  summary?: ReportSummary;
+  /** Totals per movement status, ignoring the status filter itself. */
+  totals?: NonMovingStatusTotals;
+  overall?: NonMovingTotals;
+  activeStatuses?: MovementStatus[];
+  onStatusSelect?: (statuses: MovementStatus[]) => void;
 }
 
 function formatCurrency(value: number): string {
@@ -16,45 +23,88 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function NonMovingMetaCards({ summary }: NonMovingMetaCardsProps) {
+function sameStatusSet(a: MovementStatus[] = [], b: MovementStatus[] = []): boolean {
+  return a.length === b.length && a.every((value) => b.includes(value));
+}
+
+export function NonMovingMetaCards({
+  totals,
+  overall,
+  activeStatuses = NON_MOVING_ALL_STATUSES,
+  onStatusSelect,
+}: NonMovingMetaCardsProps) {
   const cards = [
     {
       label: 'Total Items',
-      value: summary?.total_items?.toLocaleString('en-IN') ?? '-',
+      totals: overall,
       icon: Package,
+      statuses: NON_MOVING_ALL_STATUSES,
     },
     {
-      label: 'Total Quantity',
-      value: summary?.total_quantity?.toLocaleString('en-IN') ?? '-',
-      icon: Boxes,
+      label: 'Recently Moved',
+      totals: totals?.recent,
+      icon: Clock,
+      statuses: ['recent'],
     },
     {
-      label: 'Total Value',
-      value: summary ? formatCurrency(summary.total_value) : '-',
-      icon: IndianRupee,
+      label: 'Slow Moving',
+      totals: totals?.['slow-moving'],
+      icon: AlertTriangle,
+      statuses: ['slow-moving'],
     },
     {
-      label: 'Branches',
-      value: summary?.by_branch?.length?.toString() ?? '-',
-      icon: Building2,
+      label: 'Non Moving',
+      totals: totals?.['non-moving'],
+      icon: ShieldAlert,
+      statuses: ['non-moving'],
     },
-  ];
+  ] satisfies Array<{
+    label: string;
+    totals?: NonMovingTotals;
+    icon: typeof Package;
+    statuses: MovementStatus[];
+  }>;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => (
-        <Card key={card.label}>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-primary/5 p-2">
-              <card.icon className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{card.label}</p>
-              <p className="text-2xl font-bold">{card.value}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {cards.map((card) => {
+        const isActive = sameStatusSet(activeStatuses, card.statuses);
+
+        return (
+          <Card
+            key={card.label}
+            role="button"
+            tabIndex={0}
+            className={cn(
+              'cursor-pointer transition-colors hover:border-primary/40 hover:bg-muted/20',
+              isActive && 'border-primary/60 bg-primary/5',
+            )}
+            onClick={() => onStatusSelect?.([...card.statuses])}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onStatusSelect?.([...card.statuses]);
+              }
+            }}
+            aria-pressed={isActive}
+          >
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="rounded-md bg-primary/5 p-2">
+                <card.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">{card.label}</p>
+                <p className="text-2xl font-bold">
+                  {card.totals ? card.totals.item_count.toLocaleString('en-IN') : '-'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {card.totals ? formatCurrency(card.totals.total_value) : '-'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

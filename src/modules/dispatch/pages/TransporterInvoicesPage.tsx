@@ -87,7 +87,7 @@ export default function TransporterInvoicesPage() {
       ) : (
         <>
           {apiError && (
-            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-900/10">
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/50 bg-yellow-50 p-4 dark:bg-yellow-500/10">
               <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-600" />
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -159,7 +159,7 @@ export default function TransporterInvoicesPage() {
             <h3 className="mb-3 text-sm font-medium text-muted-foreground">Posting History</h3>
             <div className="grid gap-3 sm:grid-cols-3">
               <Card
-                className="cursor-pointer border border-yellow-200 bg-yellow-50 transition-shadow hover:shadow-md dark:border-yellow-800 dark:bg-yellow-900/20"
+                className="cursor-pointer border border-yellow-200 bg-yellow-50 transition-shadow hover:shadow-md dark:border-yellow-500/30 dark:bg-yellow-500/10"
                 onClick={() => navigate('/dispatch/transporter-invoices/history?status=pending')}
               >
                 <CardContent className="p-3">
@@ -175,7 +175,7 @@ export default function TransporterInvoicesPage() {
                 </CardContent>
               </Card>
               <Card
-                className="cursor-pointer border border-green-200 bg-green-50 transition-shadow hover:shadow-md dark:border-green-800 dark:bg-green-900/20"
+                className="cursor-pointer border border-green-200 bg-green-50 transition-shadow hover:shadow-md dark:border-green-500/30 dark:bg-green-500/10"
                 onClick={() => navigate('/dispatch/transporter-invoices/history?status=posted')}
               >
                 <CardContent className="p-3">
@@ -191,7 +191,7 @@ export default function TransporterInvoicesPage() {
                 </CardContent>
               </Card>
               <Card
-                className="cursor-pointer border border-red-200 bg-red-50 transition-shadow hover:shadow-md dark:border-red-800 dark:bg-red-900/20"
+                className="cursor-pointer border border-red-200 bg-red-50 transition-shadow hover:shadow-md dark:border-red-500/30 dark:bg-red-500/10"
                 onClick={() => navigate('/dispatch/transporter-invoices/history?status=failed')}
               >
                 <CardContent className="p-3">

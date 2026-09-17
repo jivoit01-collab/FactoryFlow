@@ -236,7 +236,7 @@ export default function PlanningDashboardPage() {
 
           {/* General API Error */}
           {error && !isPermissionError && (
-            <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+            <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
               <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-yellow-800 dark:text-yellow-400">
@@ -426,14 +426,14 @@ export default function PlanningDashboardPage() {
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-16 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                            <div className="h-2 w-16 rounded-full bg-gray-200 dark:bg-muted overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all ${
                                   plan.progress_percent >= 100
                                     ? 'bg-green-500'
                                     : plan.progress_percent > 0
                                       ? 'bg-blue-500'
-                                      : 'bg-gray-300'
+                                      : 'bg-gray-300 dark:bg-muted'
                                 }`}
                                 style={{
                                   width: `${Math.min(plan.progress_percent, 100)}%`,
@@ -543,7 +543,7 @@ export default function PlanningDashboardPage() {
             </DialogDescription>
           </DialogHeader>
           {isBulkDeleting && (
-            <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+            <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-muted overflow-hidden">
               <div
                 className="h-full rounded-full bg-destructive transition-all"
                 style={{ width: `${(bulkDeleteProgress / selectedIds.size) * 100}%` }}

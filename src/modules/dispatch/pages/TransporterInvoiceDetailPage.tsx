@@ -32,14 +32,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 const statusClass = (status: TransporterAPInvoiceStatus) => {
   switch (status) {
     case 'POSTED':
-      return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      return 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300';
     case 'FAILED':
-      return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      return 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300';
     case 'CANCELLED':
-      return 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300';
+      return 'bg-slate-100 text-slate-800 dark:bg-muted/40 dark:text-muted-foreground';
     case 'PENDING':
     default:
-      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300';
   }
 };
 
@@ -217,7 +217,7 @@ export default function TransporterInvoiceDetailPage() {
                 </div>
 
                 {posting.attachments.length > 0 ? (
-                  <div className="flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/20 dark:text-green-300">
+                  <div className="flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
                     <span>{posting.attachments.length} invoice attachment(s) ready for SAP.</span>
                   </div>

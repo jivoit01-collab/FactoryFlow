@@ -226,7 +226,7 @@ export default function BSTScanPage() {
       </DashboardHeader>
 
       {liveActive && transfer.status !== 'SCANNING' && (
-        <div className="flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-800">
+        <div className="flex items-center gap-2 rounded-md border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-2 text-sm text-cyan-800 dark:text-cyan-400">
           <Truck className="h-4 w-4 shrink-0" />
           <span>
             This transfer is live — the destination can receive these boxes as you scan. Keep
@@ -236,7 +236,7 @@ export default function BSTScanPage() {
       )}
 
       {!requiresScanning && (
-        <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <div className="flex items-start gap-2 rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 px-3 py-2 text-sm text-slate-700 dark:text-muted-foreground">
           <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             <span className="font-medium">No scanning required.</span> This transfer is packaging
@@ -248,7 +248,7 @@ export default function BSTScanPage() {
       )}
 
       {scanStatus?.is_partial && transfer.partial_transfer?.is_approved && (
-        <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <div className="flex items-start gap-2 rounded-md border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-400">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             <span className="font-medium">Partial transfer approved.</span> You can finish sending
@@ -257,7 +257,7 @@ export default function BSTScanPage() {
         </div>
       )}
       {scanStatus?.is_partial && !transfer.partial_transfer?.is_approved && (
-        <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="space-y-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-400">
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
@@ -410,8 +410,8 @@ export default function BSTScanPage() {
 
           {/* Failed scans */}
           {failedScans.length > 0 && (
-            <div className="overflow-hidden rounded-md border border-red-200">
-              <div className="flex items-center gap-2 border-b border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">
+            <div className="overflow-hidden rounded-md border border-red-200 dark:border-red-500/30">
+              <div className="flex items-center gap-2 border-b border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm font-semibold text-red-700 dark:text-red-400">
                 <AlertCircle className="h-4 w-4" />
                 Failed scans ({failedScans.length})
               </div>
@@ -534,7 +534,7 @@ export default function BSTScanPage() {
                         {!billItemCodes.has(s.item_code) && (
                           <Badge
                             variant="outline"
-                            className="ml-1 border-red-200 bg-red-50 text-red-700"
+                            className="ml-1 border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400"
                           >
                             off-bill
                           </Badge>

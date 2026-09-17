@@ -1198,7 +1198,10 @@ export interface MpManualGateOutPayload {
   /** The delivery note itself, filed against the trip. */
   file?: File | null;
 
-  /** Defaults true — one action opens the trip and sends it out. */
+  /** Opening a trip defaults true — one action raises it and sends it out.
+   *  Finishing a draft defaults FALSE: that screen offers Save alongside Mark
+   *  out, so an edit must never send the truck away by itself. Both paths send
+   *  it explicitly. */
   mark_out?: boolean;
   security_name?: string;
   out_date?: string | null;

@@ -3,6 +3,18 @@
 
 import type { CompanyCode } from '@/config/constants';
 
+/** Where a main meter's electricity comes from. Mirrors the backend choices. */
+export type SupplySource = 'GRID' | 'DG' | 'SOLAR';
+
+/** Label per source, so the register and its dialogs never spell one twice. */
+export const SUPPLY_SOURCE_LABELS: Record<SupplySource, string> = {
+  GRID: 'Grid',
+  DG: 'DG Set',
+  SOLAR: 'Solar',
+};
+
+export const SUPPLY_SOURCE_LIST: SupplySource[] = ['GRID', 'DG', 'SOLAR'];
+
 export interface ElectricityMeter {
   id: number;
   name: string;
@@ -13,6 +25,16 @@ export interface ElectricityMeter {
   // attributed to any company yet.
   company_codes: CompanyCode[];
   companies_display: string;
+  // A main meter is an incoming supply every other meter draws from, so the
+  // register reports it on its own and leaves it out of the total.
+  is_main: boolean;
+  // Which supply a main measures. Blank on a sub-meter, which measures
+  // whatever the plant ran on that day.
+  supply_source: SupplySource | '';
+  supply_source_display: string;
+  // False for a main that measures a supply another meter already counts —
+  // KVAH is the grid's KWH as apparent energy, so adding both doubles the grid.
+  counts_as_supply: boolean;
   // Read-only: resolved from the admin Cost Master (value "meter:<name>").
   rate_per_unit: string;
   // Grid multiplying factor: the dial difference is multiplied by it to get the
@@ -32,6 +54,9 @@ export interface ElectricityMeterPayload {
   meter_number?: string;
   location?: string;
   company_codes?: CompanyCode[];
+  is_main?: boolean;
+  supply_source?: SupplySource | '';
+  counts_as_supply?: boolean;
   // ₹/unit is not writable here — it is set on the admin Cost Master page.
   multiplying_factor?: string;
   is_active?: boolean;
@@ -43,12 +68,20 @@ export interface ElectricityMeterFilters {
   // Keeps only meters tagged with this company (shared meters match each of
   // theirs); untagged meters drop out.
   company?: CompanyCode | 'ALL';
+  is_main?: boolean;
+  supply_source?: SupplySource;
 }
 
 export interface DailyElectricityReading {
   id: number;
   meter: number;
   meter_name: string;
+  // Mirrors the meter's flags: main-meter readings are totalled separately,
+  // and per supply, because grid and DG swap over day to day.
+  meter_is_main: boolean;
+  meter_supply_source: SupplySource | '';
+  meter_supply_source_display: string;
+  meter_counts_as_supply: boolean;
   meter_companies_display: string;
   date: string;
   opening_reading: string;
@@ -86,6 +119,9 @@ export interface DailyElectricityReadingFilters {
   date_to?: string;
   meter?: number | 'ALL';
   company?: CompanyCode | 'ALL';
+  // Ask for one side of the main/sub split; omit to get both.
+  is_main?: boolean;
+  supply_source?: SupplySource;
 }
 
 export interface DailyWastageLog {

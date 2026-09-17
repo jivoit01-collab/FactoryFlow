@@ -3,8 +3,9 @@
 Tracks casual daily labour brought in by **contractors**, an informational split of that labour
 across **departments**, and labour going **out** — all by headcount (no per-person identity).
 
-Backend app: `factory_app/labour_gate` · Frontend: `src/modules/gate/pages/labourGatePages/*` and the
-top-level **Labour** sidebar module (`src/modules/labour`).
+Backend app: `factory_app/labour_gate` · Frontend: `src/modules/gate/pages/labourGatePages/*`, reached
+from the **Organisation → Allocate labour** sidebar entry (route registered in
+`src/modules/organization/module.config.tsx`).
 
 ---
 
@@ -13,11 +14,11 @@ top-level **Labour** sidebar module (`src/modules/labour`).
 | Screen | Where | Purpose |
 |---|---|---|
 | **Labour In** | Gate dashboard → Gate In → "Labour In" (`/gate/labour-in`) | The gate counts how many labourers each **contractor** brought in. Source of truth. |
-| **Labour** (module) | "Labour" sidebar (`/labour`) | An **informational** split of each contractor's labour across **departments**. Must sum to the gate intake. |
+| **Allocate labour** | Organisation → "Allocate labour" (`/labour`) | An **informational** split of each contractor's labour across **departments**. Must sum to the gate intake. |
 | **Labour Out** | Gate dashboard → Gate Out → "Labour Out" (`/gate/labour-out`) | Mark labour **out per contractor** as they leave; department breakdown shown read-only; full out **audit log**. |
 
 ```
-Gate Labour In            Labour module                 Labour Out
+Gate Labour In            Allocate labour               Labour Out
 (contractor totals)       (informational dept split)    (contractor-wise out)
 ┌───────────────┐         ┌────────────────────┐        ┌────────────────────┐
 │ Gaurav   = 10 │────┬───▶│ QC      Gaurav  8  │        │ In 10 · Out 0 · In 10
@@ -50,7 +51,7 @@ API base `/api/v1/labour-gate/`: `GET /?date=` (day list), `POST /in/` (upsert g
 - **Department split ≤ gate intake** (enforced front + backend in `LabourInAPI`): a contractor's
   total active department allocations can't exceed their gate `count_in`. Over-allocating shows a
   pop-up — `entered · used · left` — and is blocked (`HTTP 400` with `{entered, used, left}`).
-- **Labour module contractor dropdown** lists only contractors with labour **still inside** (`remaining > 0`).
+- **Allocate labour contractor dropdown** lists only contractors with labour **still inside** (`remaining > 0`).
 - **Out is contractor-wise**: the gate physically counts heads leaving by contractor, not by department.
   The department breakdown on Labour Out is read-only.
 - **10-minute grace windows** (constant `UNDO_WINDOW_MINUTES`):
@@ -64,7 +65,7 @@ API base `/api/v1/labour-gate/`: `GET /?date=` (day list), `POST /in/` (upsert g
 
 ## Example
 
-Gaurav brings **10** (Labour In). In the Labour module you split: QC **8**, Packing **2** (totals 10 ✓).
+Gaurav brings **10** (Labour In). On Allocate labour you split: QC **8**, Packing **2** (totals 10 ✓).
 Trying to add Packing **3** instead → pop-up "Gaurav: entered 10 · used 8 · left 2", blocked.
 At day end on Labour Out: In 10 · Out 0 · Inside 10; the department breakdown shows QC 8 / Packing 2
 (read-only); you mark Gaurav **3** out via the form → Inside 7, and the out log records `+3 · Gaurav · time · user`

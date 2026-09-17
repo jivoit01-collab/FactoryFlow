@@ -7,15 +7,22 @@ import {
   GATE_PERMISSIONS,
   GRPO_PERMISSIONS,
   INVOICE_APPROVAL_PERMISSIONS,
+  SHORT_DISPATCH_ACCESS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
 import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.config';
+import {
+  creditNoteApprovalNavChildren,
+  creditNoteApprovalRoutes,
+} from './credit-note-approval/module.config';
 import { grpoNavChildren, grpoRoutes } from './grpo/module.config';
 import { invoiceApprovalNavChildren, invoiceApprovalRoutes } from './invoice-approval/module.config';
 import { LegacyBillSummaryRedirect } from './pages/billSummary/LegacyBillSummaryRedirect';
+import { LegacyTransferRequestRedirect } from './pages/transfer/LegacyTransferRequestRedirect';
+import { shortDispatchNavChildren, shortDispatchRoutes } from './short-dispatch/module.config';
 
 const WarehouseDashboardPage = lazy(() => import('./pages/WarehouseDashboardPage'));
 const BillSummaryListPage = lazy(() => import('./pages/billSummary/BillSummaryListPage'));
@@ -35,6 +42,9 @@ const billSummaryViewPermissions = [
 // The raw-material stock register — what each store states it is holding, as
 // distinct from SAP's own on-hand.
 const RawMaterialStockPage = lazy(() => import('./pages/rmStock/RawMaterialStockPage'));
+// What a godown keeper declares he is sending out of his floor, and to where.
+// Data entry only — the dashboard that reads it against SAP comes later.
+const GodownMovementPage = lazy(() => import('./pages/pfMovement/GodownMovementPage'));
 const BOMRequestListPage = lazy(() => import('./pages/BOMRequestListPage'));
 const BOMRequestDetailPage = lazy(() => import('./pages/BOMRequestDetailPage'));
 const FGReceiptListPage = lazy(() => import('./pages/FGReceiptListPage'));
@@ -48,7 +58,9 @@ const BSTDetailPage = lazy(() => import('./pages/bst/BSTDetailPage'));
 const BSTReceivePage = lazy(() => import('./pages/bst/BSTReceivePage'));
 const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprovalsPage'));
 
-// Warehouse Transfer Requests — raise → approve → post to SAP → BST
+// Inventory Transfer — raise → approve → post to SAP → BST. This is the
+// DOCUMENT side of a branch move; the physical side is BST, and the two are
+// deliberately kept apart.
 const TransferRequestListPage = lazy(() => import('./pages/transfer/TransferRequestListPage'));
 const TransferRequestNewPage = lazy(() => import('./pages/transfer/TransferRequestNewPage'));
 const TransferRequestDetailPage = lazy(() => import('./pages/transfer/TransferRequestDetailPage'));
@@ -114,6 +126,16 @@ export const warehouseModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Raw Material Stock' },
     },
     {
+      path: '/warehouse/godown-movements',
+      element: <GodownMovementPage />,
+      layout: 'main',
+      // View only: recording is gated per row and per godown, so a reader
+      // reaches the page and finds it read-only rather than being refused the
+      // route.
+      permissions: [WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT],
+      breadcrumb: { label: 'Godown Movements' },
+    },
+    {
       path: '/warehouse/bom-requests',
       element: <BOMRequestListPage />,
       layout: 'main',
@@ -152,24 +174,37 @@ export const warehouseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
     },
-    // Transfer Request Routes ('new' registered before `:requestId`)
+    // Inventory Transfer Routes ('new' registered before `:requestId`)
     {
-      path: '/warehouse/transfer-requests',
+      path: '/warehouse/inventory-transfer',
       element: <TransferRequestListPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
     },
     {
-      path: '/warehouse/transfer-requests/new',
+      path: '/warehouse/inventory-transfer/new',
       element: <TransferRequestNewPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
     },
     {
-      path: '/warehouse/transfer-requests/:requestId',
+      path: '/warehouse/inventory-transfer/:requestId',
       element: <TransferRequestDetailPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
+    },
+    {
+      // Legacy: the page was called Transfer Requests and lived at
+      // `/warehouse/transfer-requests`. Forwards old bookmarks and deep links
+      // (path tail + query) to the new prefix; the destination route gates.
+      path: '/warehouse/transfer-requests/*',
+      element: <LegacyTransferRequestRedirect />,
+      layout: 'main',
+    },
+    {
+      path: '/warehouse/transfer-requests',
+      element: <Navigate to="/warehouse/inventory-transfer" replace />,
+      layout: 'main',
     },
     // BST Routes
     {
@@ -219,8 +254,12 @@ export const warehouseModuleConfig: ModuleConfig = {
     ...grpoRoutes,
     // Invoice Approval submodule route (/warehouse/invoice-approval)
     ...invoiceApprovalRoutes,
+    // Credit Note Approval submodule route (/warehouse/credit-note-approval)
+    ...creditNoteApprovalRoutes,
     // A/R invoice submodule route (/warehouse/ar-invoices)
     ...arInvoiceRoutes,
+    // Short Dispatch submodule routes (/warehouse/short-dispatch/*)
+    ...shortDispatchRoutes,
   ],
   navigation: [
     {
@@ -230,11 +269,12 @@ export const warehouseModuleConfig: ModuleConfig = {
       showInSidebar: true,
       // Any of these shows the Warehouse group; the children filter individually,
       // so an FG-only user sees the group with just "FG Receipts", a BST-only user
-      // with just "Branch Transfer", and a GRPO-only user with just "Material GRPO".
+      // with just "BST Scanning", and a GRPO-only user with just "Material GRPO".
       // Keep this list in sync with the union of the children's permissions below.
       permissions: [
         WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST,
         WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK,
+        WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT,
         WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT,
         WAREHOUSE_PERMISSIONS.VIEW_BST,
         WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL,
@@ -242,7 +282,10 @@ export const warehouseModuleConfig: ModuleConfig = {
         GATE_PERMISSIONS.SALES_DISPATCH.VIEW,
         GRPO_PERMISSIONS.VIEW_PENDING,
         INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE,
+        WAREHOUSE_PERMISSIONS.VIEW_AR_CREDIT_NOTE_APPROVAL,
+        WAREHOUSE_PERMISSIONS.VIEW_AP_CREDIT_NOTE_APPROVAL,
         AR_INVOICE_PERMISSIONS.VIEW,
+        ...SHORT_DISPATCH_ACCESS,
         // A floor picker may hold only the bill-summary permissions; without
         // these the Warehouse menu would not appear for them at all.
         ...billSummaryViewPermissions,
@@ -254,6 +297,9 @@ export const warehouseModuleConfig: ModuleConfig = {
           title: 'Bill Summaries',
           permissions: billSummaryViewPermissions,
         },
+        // Directly under Bill Summaries: posting one is what takes the stock out
+        // of SAP, and this is how the part that never went comes back.
+        ...shortDispatchNavChildren,
         {
           path: '/warehouse/dispatch-loading',
           title: 'Dispatch Loading',
@@ -263,6 +309,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/rm-stock',
           title: 'Raw Material Stock',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
+        },
+        {
+          path: '/warehouse/godown-movements',
+          title: 'Godown Movements',
+          permissions: [WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT],
         },
         {
           path: '/warehouse/bom-requests',
@@ -275,13 +326,13 @@ export const warehouseModuleConfig: ModuleConfig = {
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
         },
         {
-          path: '/warehouse/transfer-requests',
-          title: 'Transfer Requests',
+          path: '/warehouse/inventory-transfer',
+          title: 'Inventory Transfer',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
         },
         {
           path: '/warehouse/bst',
-          title: 'Branch Transfer',
+          title: 'BST Scanning',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
         },
         {
@@ -293,6 +344,9 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...grpoNavChildren,
         // Invoice Approval submodule — nested under the Warehouse group
         ...invoiceApprovalNavChildren,
+        // Credit Note Approval submodule — SAP's queue on credit-note drafts,
+        // directly under the invoice queue it is the mirror image of.
+        ...creditNoteApprovalNavChildren,
         // A/R invoice submodule — nested under the Warehouse group
         ...arInvoiceNavChildren,
       ],

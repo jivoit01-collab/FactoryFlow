@@ -237,7 +237,7 @@ export default function DispatchBillsLinkingPage() {
                   'gap-2',
                   hasOverdueVehicles &&
                     !isActive &&
-                    'border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800',
+                    'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400',
                   hasOverdueVehicles && isActive && 'bg-red-600 text-white hover:bg-red-700',
                 )}
                 onClick={() => setFilters((current) => ({ ...current, bucket: option.value }))}
@@ -249,7 +249,7 @@ export default function DispatchBillsLinkingPage() {
                     isActive
                       ? 'bg-primary-foreground/20 text-primary-foreground'
                       : 'bg-muted text-foreground',
-                    hasOverdueVehicles && !isActive && 'bg-red-100 text-red-700',
+                    hasOverdueVehicles && !isActive && 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
                     hasOverdueVehicles && isActive && 'bg-white/20 text-white',
                   )}
                 >

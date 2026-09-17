@@ -182,7 +182,7 @@ export default function QCRecordDetailPage() {
       </div>
 
       {isApproved && (
-        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+        <div className="rounded-md border border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 p-3 text-sm text-green-800 dark:text-green-400">
           Approved{record.approved_by_name ? ` by ${record.approved_by_name}` : ''} — this sheet is
           locked and can no longer be edited.
         </div>
@@ -238,7 +238,7 @@ export default function QCRecordDetailPage() {
             )}
 
             {dirtyCount > 0 && (
-              <span className="text-sm text-amber-700">
+              <span className="text-sm text-amber-700 dark:text-amber-400">
                 {dirtyCount} unsaved cell{dirtyCount === 1 ? '' : 's'}
               </span>
             )}

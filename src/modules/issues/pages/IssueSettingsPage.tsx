@@ -1,5 +1,9 @@
 /**
- * The label and area masters.
+ * The issue tracker's settings: the support number and the label master.
+ *
+ * The support number is here rather than in the Django admin because the
+ * people who answer the phone are not the people with a database login, and
+ * the number is printed on the login screen of every user.
  *
  * Both are editable in place, and both are deactivated rather than deleted —
  * a label's name and colour are frozen into every "labelled bug" line on every
@@ -9,7 +13,7 @@
  * Each label row shows how many open issues carry it, which is the number that
  * tells you whether a label is doing any work.
  */
-import { Palette, Plus, Trash2 } from 'lucide-react';
+import { Headset, Palette, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,18 +27,15 @@ import {
   CardTitle,
   Input,
   Label,
-  MultiSelect,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { useSupportContactSetting } from '@/shared/hooks';
+import { formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import {
-  useDeleteArea,
   useDeleteLabel,
-  useIssueAreas,
   useIssueLabels,
-  useIssueMeta,
-  useSaveArea,
   useSaveLabel,
+  useSaveSupportContact,
 } from '../api';
 import { LabelChip } from '../components/IssueBits';
 import { sortLabels } from '../utils';
@@ -57,15 +58,33 @@ const SWATCHES = [
 
 export default function IssueSettingsPage() {
   const labels = useIssueLabels();
-  const areas = useIssueAreas();
-  const meta = useIssueMeta();
   const saveLabel = useSaveLabel();
   const deleteLabel = useDeleteLabel();
-  const saveArea = useSaveArea();
-  const deleteArea = useDeleteArea();
+
+  const supportSetting = useSupportContactSetting();
+  const saveSupport = useSaveSupportContact();
 
   const [newLabel, setNewLabel] = useState({ name: '', color: '#6b7280', description: '' });
-  const [newArea, setNewArea] = useState({ name: '', code: '', description: '' });
+  // `null` means "whatever the server says"; typing takes over from there, and
+  // saving hands control back. No effect syncing a field to a fetch.
+  const [phoneDraft, setPhoneDraft] = useState<string | null>(null);
+
+  const savedPhone = supportSetting.data?.phone ?? '';
+  const phone = phoneDraft ?? savedPhone;
+  const phoneChanged = phone.trim() !== savedPhone;
+
+  function saveSupportNumber() {
+    saveSupport.mutate(phone.trim(), {
+      onSuccess: (payload) => {
+        setPhoneDraft(null);
+        toast.success(
+          payload.phone ? 'Support number updated.' : 'Support number removed from the app.',
+        );
+      },
+      onError: (error) =>
+        toast.error(getErrorMessage(error, 'The support number was not saved.')),
+    });
+  }
 
   function addLabel() {
     if (!newLabel.name.trim()) return;
@@ -77,23 +96,6 @@ export default function IssueSettingsPage() {
           toast.success('Label added.');
         },
         onError: (error) => toast.error(getErrorMessage(error, 'The label was not added.')),
-      },
-    );
-  }
-
-  function addArea() {
-    if (!newArea.name.trim() || !newArea.code.trim()) {
-      toast.error('An area needs both a name and a short code.');
-      return;
-    }
-    saveArea.mutate(
-      { ...newArea, name: newArea.name.trim(), code: newArea.code.trim().toLowerCase() },
-      {
-        onSuccess: () => {
-          setNewArea({ name: '', code: '', description: '' });
-          toast.success('Area added.');
-        },
-        onError: (error) => toast.error(getErrorMessage(error, 'The area was not added.')),
       },
     );
   }
@@ -114,27 +116,14 @@ export default function IssueSettingsPage() {
     });
   }
 
-  async function removeArea(id: number, name: string) {
-    const confirmed = await confirmDialog({
-      title: `Remove the "${name}" area?`,
-      description: 'Issues already filed against it keep it; it just stops being offered.',
-      confirmLabel: 'Remove area',
-      destructive: true,
-    });
-    if (!confirmed) return;
-    deleteArea.mutate(id, {
-      onSuccess: () => toast.success('Area removed.'),
-      onError: (error) => toast.error(getErrorMessage(error, 'The area was not removed.')),
-    });
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Labels &amp; areas</h1>
+          <h1 className="text-2xl font-semibold">Issue settings</h1>
           <p className="text-sm text-muted-foreground">
-            What issues can be tagged with, and which part of the software they belong to.
+            The support number every user sees, what issues can be tagged with, and which part
+            of the software they belong to.
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
@@ -142,7 +131,55 @@ export default function IssueSettingsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Headset className="h-4 w-4" />
+            Support number
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Shown on the login screen and behind the support button in the header, to every
+            user. Leave it blank to take the support line off those screens.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[220px] flex-1 space-y-1">
+              <Label htmlFor="support-phone">Phone</Label>
+              <Input
+                id="support-phone"
+                value={phone}
+                onChange={(event) => setPhoneDraft(event.target.value)}
+                placeholder="+91 9218179324"
+                maxLength={32}
+                inputMode="tel"
+                disabled={supportSetting.isLoading}
+              />
+            </div>
+            <Button
+              onClick={saveSupportNumber}
+              disabled={!phoneChanged || saveSupport.isPending || supportSetting.isLoading}
+            >
+              {saveSupport.isPending ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Users tap it to dial, so type it the way it should be dialled — spaces and
+            brackets are fine.
+            {supportSetting.data?.updated_at && (
+              <>
+                {' '}Last changed {formatDateTimeShort(supportSetting.data.updated_at)}
+                {supportSetting.data.updated_by_name
+                  ? ` by ${supportSetting.data.updated_by_name}`
+                  : ''}
+                .
+              </>
+            )}
+          </p>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -251,98 +288,6 @@ export default function IssueSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Areas of the software</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 rounded-md border p-3">
-              <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
-                <div className="space-y-1">
-                  <Label htmlFor="new-area-name">Name</Label>
-                  <Input
-                    id="new-area-name"
-                    value={newArea.name}
-                    onChange={(event) =>
-                      setNewArea((current) => ({ ...current, name: event.target.value }))
-                    }
-                    placeholder="Dispatch"
-                    maxLength={100}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="new-area-code">Search code</Label>
-                  <Input
-                    id="new-area-code"
-                    value={newArea.code}
-                    onChange={(event) =>
-                      setNewArea((current) => ({ ...current, code: event.target.value }))
-                    }
-                    placeholder="dispatch"
-                    className="font-mono"
-                    maxLength={40}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                The code is what people type in the search box:{' '}
-                <code className="font-mono">area:dispatch</code>.
-              </p>
-              <div className="flex justify-end">
-                <Button size="sm" onClick={addArea} disabled={saveArea.isPending}>
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Add area
-                </Button>
-              </div>
-            </div>
-
-            {areas.isLoading ? (
-              <div className="h-24 animate-pulse rounded bg-muted" />
-            ) : (
-              <ul className="divide-y">
-                {(areas.data ?? []).map((area) => (
-                  <li key={area.id} className="space-y-1.5 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{area.name}</span>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{area.code}</code>
-                      <button
-                        type="button"
-                        className="ml-auto text-muted-foreground hover:text-destructive"
-                        onClick={() => removeArea(area.id, area.name)}
-                        aria-label={`Remove ${area.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-muted-foreground">
-                        Suggested assignees for new issues here
-                      </span>
-                      <MultiSelect
-                        options={(meta.data?.users ?? []).map((user) => ({
-                          value: String(user.id),
-                          label: user.name,
-                        }))}
-                        selected={area.owners.map((owner) => String(owner.id))}
-                        onChange={(values) =>
-                          saveArea.mutate(
-                            { id: area.id, owner_ids: values.map(Number) },
-                            {
-                              onError: (error) =>
-                                toast.error(getErrorMessage(error, 'The owners were not saved.')),
-                            },
-                          )
-                        }
-                        placeholder="Nobody"
-                        searchable
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

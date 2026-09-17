@@ -133,6 +133,7 @@ export default function GateDashboardPage() {
         vehiclesIn={board.vehiclesIn}
         vehiclesOut={board.vehiclesOut}
         insideNow={board.insideNow}
+        access={board.access}
         isFetching={board.isFetching}
         updatedAt={board.updatedAt}
         onRefresh={board.refetch}

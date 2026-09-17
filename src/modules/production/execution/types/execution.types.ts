@@ -214,6 +214,9 @@ export interface ProductionRun {
   date: string;
   line: number;
   line_name: string;
+  /** The line configuration the run was planned from; null when planned without one. */
+  line_config: number | null;
+  line_config_name: string;
   product: string;
   item_code: string;
   required_qty: string | null;
@@ -231,13 +234,21 @@ export interface ProductionRun {
   live_status: LiveStatus;
   created_by: number | null;
   created_at: string;
-}
-
-export interface ProductionRunDetail extends ProductionRun {
+  /** Litres in one piece (SAP SalPackUn); null when the SKU holds no liquid. */
+  litres_per_piece: string | null;
+  /** ISO datetime the run is planned to start — null on runs entered as they start. */
+  planned_start_at: string | null;
+  planned_end_at: string | null;
+  planned_end_is_manual: boolean;
+  /** Why the plan was saved despite a shortfall or a clash. */
+  planning_remark: string;
   labour_count: number;
   other_manpower_count: number;
   supervisor: string;
   operators: string;
+}
+
+export interface ProductionRunDetail extends ProductionRun {
   machine_ids: number[];
   updated_at: string;
   segments: ProductionSegment[];
@@ -931,6 +942,8 @@ export interface CreateTemplateRequest {
 export interface CreateRunRequest {
   sap_doc_entry?: number | null;
   line_id: number;
+  /** The preset the plan was made from, so reopening it shows the same choice. */
+  line_config_id?: number | null;
   date: string;
   product?: string;
   item_code?: string;
@@ -953,6 +966,18 @@ export interface CreateRunRequest {
 }
 
 export interface UpdateRunRequest {
+  /**
+   * Re-planning fields. The API accepts these only while the run is a draft —
+   * once it is running, the line, day, product and quantity are what the floor
+   * is working to.
+   */
+  line_id?: number;
+  line_config_id?: number | null;
+  date?: string;
+  item_code?: string;
+  required_qty?: number | null;
+  /** Replaces the run's material lines wholesale. */
+  materials?: MaterialInput[];
   product?: string;
   rated_speed?: string;
   pieces_per_case?: number | null;
@@ -961,6 +986,10 @@ export interface UpdateRunRequest {
   other_manpower_count?: number;
   supervisor?: string;
   operators?: string;
+  planned_start_at?: string | null;
+  planned_end_at?: string | null;
+  planned_end_is_manual?: boolean;
+  planning_remark?: string;
 }
 
 export interface AddBreakdownRequest {

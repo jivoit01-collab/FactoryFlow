@@ -24,6 +24,9 @@ import type {
   EmployeeEditPayload,
   EmployeeFilters,
   EmployeePayload,
+  LabourDepartmentChoice,
+  LabourPresencePayload,
+  LabourStrengthPayload,
   ManagerChangePayload,
   PromotionPayload,
   SalaryPayload,
@@ -41,8 +44,7 @@ export const EMPLOYEE_KEYS = {
   history: (employeeId: number) =>
     ['employee-hierarchy', 'employee', employeeId, 'history'] as const,
   audit: (employeeId: number) => ['employee-hierarchy', 'employee', employeeId, 'audit'] as const,
-  salary: (employeeId: number) =>
-    ['employee-hierarchy', 'employee', employeeId, 'salary'] as const,
+  salary: (employeeId: number) => ['employee-hierarchy', 'employee', employeeId, 'salary'] as const,
   tree: (params: Record<string, unknown>) => ['employee-hierarchy', 'tree', params] as const,
   departments: () => ['employee-hierarchy', 'departments'] as const,
   designations: () => ['employee-hierarchy', 'designations'] as const,
@@ -50,6 +52,16 @@ export const EMPLOYEE_KEYS = {
   revisions: (params: Record<string, unknown>) =>
     ['employee-hierarchy', 'salary-revisions', params] as const,
   reports: (includePast: boolean) => ['employee-hierarchy', 'reports', includePast] as const,
+  // The department is part of every labour key: the same page reads one
+  // department's figure and the plant total, and they are different answers.
+  labourStrength: (department: LabourDepartmentChoice) =>
+    ['employee-hierarchy', 'labour-strength', department] as const,
+  labourPresence: (range: { from?: string; to?: string; department?: LabourDepartmentChoice }) =>
+    ['employee-hierarchy', 'labour-presence', range] as const,
+  labourStrengthAudit: (department: LabourDepartmentChoice) =>
+    ['employee-hierarchy', 'labour-strength', 'audit', department] as const,
+  labourPresenceAudit: (presenceId: number) =>
+    ['employee-hierarchy', 'labour-presence', 'audit', presenceId] as const,
 };
 
 /** The masters and this user's rights. Stable enough to keep for a while. */
@@ -189,8 +201,7 @@ export function useCreateEmployee() {
 export function useUpdateEmployee(employeeId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: EmployeeEditPayload) =>
-      employeesApi.updateEmployee(employeeId, payload),
+    mutationFn: (payload: EmployeeEditPayload) => employeesApi.updateEmployee(employeeId, payload),
     onSuccess: (employee) => {
       queryClient.setQueryData(EMPLOYEE_KEYS.detail(employeeId), employee);
       queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'list'] });
@@ -203,8 +214,7 @@ export function useUpdateEmployee(employeeId: number) {
 export function useChangeManager(employeeId: number) {
   const invalidate = useInvalidateModule();
   return useMutation({
-    mutationFn: (payload: ManagerChangePayload) =>
-      employeesApi.changeManager(employeeId, payload),
+    mutationFn: (payload: ManagerChangePayload) => employeesApi.changeManager(employeeId, payload),
     onSuccess: invalidate,
   });
 }
@@ -313,5 +323,79 @@ export function useRetireDesignation() {
   return useMutation({
     mutationFn: (designationId: number) => employeesApi.retireDesignation(designationId),
     onSuccess: invalidate,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Permanent labour
+// ---------------------------------------------------------------------------
+
+/** The strength on the rolls. A master — it moves when somebody is hired. */
+export function useLabourStrength(department: LabourDepartmentChoice = 'ALL') {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourStrength(department),
+    queryFn: () => employeesApi.getLabourStrength(department),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSetLabourStrength() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LabourStrengthPayload) => employeesApi.setLabourStrength(payload),
+    onSuccess: () => {
+      // Every scope of the figure moves at once: the department's own row, and
+      // the plant total it is part of. Writing one into the cache by hand would
+      // leave the total reading its old sum, so the prefix is invalidated
+      // instead.
+      queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'labour-strength'] });
+      // Every presence response carries the strength alongside its rows, so a
+      // new figure makes those windows stale even though no count changed.
+      queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'labour-presence'] });
+    },
+  });
+}
+
+export function useLabourPresence(
+  range: { from?: string; to?: string; department?: LabourDepartmentChoice } = {},
+) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourPresence(range),
+    queryFn: () => employeesApi.getLabourPresence(range),
+  });
+}
+
+export function useRecordLabourPresence() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: LabourPresencePayload) => employeesApi.recordLabourPresence(payload),
+    // Which window a recorded day falls in depends on the window, so every
+    // presence query is invalidated rather than the one on screen — and that
+    // prefix covers the shift's own audit trail, which the write just extended.
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['employee-hierarchy', 'labour-presence'] }),
+  });
+}
+
+/**
+ * The trail behind a figure. Only fetched once somebody asks to see it — it is
+ * a dialog nobody opens most days, and the page is already two requests.
+ */
+export function useLabourStrengthAudit(
+  enabled: boolean,
+  department: LabourDepartmentChoice = 'ALL',
+) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourStrengthAudit(department),
+    queryFn: () => employeesApi.getLabourStrengthAudit(department),
+    enabled,
+  });
+}
+
+export function useLabourPresenceAudit(presenceId: number | null) {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.labourPresenceAudit(presenceId ?? 0),
+    queryFn: () => employeesApi.getLabourPresenceAudit(presenceId as number),
+    enabled: presenceId !== null,
   });
 }

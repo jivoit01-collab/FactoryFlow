@@ -12,11 +12,11 @@ export const ACTIVITY_ICONS: Record<
   BarcodeActivityKind,
   { icon: typeof Package; color: string }
 > = {
-  LABEL_PRINT: { icon: Printer, color: 'text-blue-600 bg-blue-50' },
-  PALLET_MOVEMENT: { icon: Package, color: 'text-purple-600 bg-purple-50' },
-  DISPATCH_SCAN: { icon: ScanLine, color: 'text-green-600 bg-green-50' },
-  BST_SCAN: { icon: ArrowRightLeft, color: 'text-cyan-700 bg-cyan-50' },
-  BST_RECEIVE: { icon: PackageCheck, color: 'text-emerald-600 bg-emerald-50' },
+  LABEL_PRINT: { icon: Printer, color: 'text-blue-600 bg-blue-50 dark:bg-blue-500/10' },
+  PALLET_MOVEMENT: { icon: Package, color: 'text-purple-600 bg-purple-50 dark:bg-purple-500/10' },
+  DISPATCH_SCAN: { icon: ScanLine, color: 'text-green-600 bg-green-50 dark:bg-green-500/10' },
+  BST_SCAN: { icon: ArrowRightLeft, color: 'text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10' },
+  BST_RECEIVE: { icon: PackageCheck, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10' },
 };
 
 export const ACTIVITY_KIND_LABELS: Record<BarcodeActivityKind, string> = {

@@ -1,0 +1,192 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+import { DEFAULT_COUNT_PRODUCTION, DEFAULT_NON_MOVING_AGE } from '../../constants';
+import type { NonMovingFilters as NonMovingFiltersType } from '../../types';
+import { NonMovingFilters } from '../NonMovingFilters';
+
+const OIL_WAREHOUSES = ['BH-BS', 'BH-FG', 'BH-NM', 'BH-PC', 'BH-PM', 'GP-NM'];
+
+const baseFilters: NonMovingFiltersType = {
+  age: DEFAULT_NON_MOVING_AGE,
+  item_group: 105,
+  status: ['slow-moving', 'non-moving'],
+  count_production: DEFAULT_COUNT_PRODUCTION,
+};
+
+function renderFilters(warehousePreset: string[], warehouses = OIL_WAREHOUSES) {
+  const onFiltersChange = vi.fn();
+  const view = render(
+    <NonMovingFilters
+      onFiltersChange={onFiltersChange}
+      defaultValues={baseFilters}
+      itemGroups={[{ item_group_code: 105, item_group_name: 'PACKAGING MATERIAL' }]}
+      warehouses={warehouses}
+      warehousePreset={warehousePreset}
+    />,
+  );
+  return { onFiltersChange, view };
+}
+
+/** The warehouse values of every call the filter bar made. */
+function warehouseCalls(spy: ReturnType<typeof vi.fn>): (string[] | undefined)[] {
+  return spy.mock.calls.map(([filters]) => (filters as NonMovingFiltersType).warehouse);
+}
+
+describe('NonMovingFilters warehouse preset', () => {
+  it('opens on the four default stores once the report says they exist', async () => {
+    const { onFiltersChange } = renderFilters(['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']);
+
+    await waitFor(() => expect(onFiltersChange).toHaveBeenCalled());
+    expect(warehouseCalls(onFiltersChange).at(-1)).toEqual(['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']);
+    // The chips have to say what is actually being filtered on.
+    expect(screen.getByText('4 selected')).toBeTruthy();
+  });
+
+  it('leaves a company holding none of them on every warehouse', async () => {
+    const { onFiltersChange } = renderFilters([], ['WH-01', 'WH-02']);
+
+    // Nothing to apply, so nothing is filtered out — not an empty table.
+    await waitFor(() => expect(screen.getAllByText('All').length).toBeGreaterThan(0));
+    expect(warehouseCalls(onFiltersChange).every((value) => value === undefined)).toBe(true);
+  });
+
+  it('survives a refetch: a new array of the same stores is not re-applied', async () => {
+    // The parent rebuilds the preset from the report rows, so every click on
+    // the day buttons hands over a fresh array saying the same thing. Treating
+    // that as a new preset would undo the user's own warehouse choice.
+    const { onFiltersChange, view } = renderFilters(['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']);
+
+    await waitFor(() => expect(onFiltersChange).toHaveBeenCalled());
+    const callsAfterPreset = onFiltersChange.mock.calls.length;
+
+    view.rerender(
+      <NonMovingFilters
+        onFiltersChange={onFiltersChange}
+        defaultValues={baseFilters}
+        itemGroups={[{ item_group_code: 105, item_group_name: 'PACKAGING MATERIAL' }]}
+        warehouses={[...OIL_WAREHOUSES]}
+        warehousePreset={['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM']}
+      />,
+    );
+
+    expect(onFiltersChange.mock.calls.length).toBe(callsAfterPreset);
+  });
+
+  it('applies the preset once, not on every later render', async () => {
+    const preset = ['BH-BS', 'BH-NM', 'BH-PM', 'GP-NM'];
+    const { onFiltersChange, view } = renderFilters(preset);
+
+    await waitFor(() => expect(onFiltersChange).toHaveBeenCalled());
+    const callsAfterPreset = onFiltersChange.mock.calls.length;
+
+    // Same preset identity re-rendered: the selection must not be re-applied,
+    // or a user who cleared it would have it grow back under them.
+    view.rerender(
+      <NonMovingFilters
+        onFiltersChange={onFiltersChange}
+        defaultValues={baseFilters}
+        itemGroups={[{ item_group_code: 105, item_group_name: 'PACKAGING MATERIAL' }]}
+        warehouses={OIL_WAREHOUSES}
+        warehousePreset={preset}
+      />,
+    );
+
+    expect(onFiltersChange.mock.calls.length).toBe(callsAfterPreset);
+  });
+});
+
+describe('the idle-age dropdown', () => {
+  it('opens on 45 days', () => {
+    renderFilters([]);
+
+    expect(DEFAULT_NON_MOVING_AGE).toBe(45);
+    expect(screen.getByLabelText('Idle At Least')).toHaveProperty('value', '45');
+  });
+
+  it('offers every age, with All Stock as the way back to the full split', () => {
+    renderFilters([]);
+
+    const options = [...screen.getByLabelText<HTMLSelectElement>('Idle At Least').options];
+
+    expect(options.map((option) => option.textContent)).toEqual([
+      'All Stock',
+      '15 Days',
+      '30 Days',
+      '45 Days',
+      '90 Days',
+      '180 Days',
+      '365 Days',
+    ]);
+  });
+
+  it('reports the chosen age to the parent', async () => {
+    const { onFiltersChange } = renderFilters([]);
+    const select = screen.getByLabelText<HTMLSelectElement>('Idle At Least');
+
+    fireEvent.change(select, { target: { value: '180' } });
+
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ age: 180 })),
+    );
+  });
+});
+
+describe('the production rule toggle', () => {
+  it('opens with the rule on — the board’s standing behaviour', () => {
+    renderFilters([]);
+
+    expect(DEFAULT_COUNT_PRODUCTION).toBe(true);
+    const toggle = screen.getByRole('switch', { name: /production counts as movement/i });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('On')).toBeTruthy();
+  });
+
+  it('reports the rule switched off, and says what the ages now mean', async () => {
+    const { onFiltersChange } = renderFilters([]);
+
+    fireEvent.click(screen.getByRole('switch', { name: /production counts as movement/i }));
+
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({ count_production: false }),
+      ),
+    );
+    // The label has to say which clock the table is on, not just that a
+    // switch moved — the same stock reads 45 days one way and 272 the other.
+    expect(screen.getByText('Aged on last GRPO')).toBeTruthy();
+  });
+
+  it('switches back on', async () => {
+    const { onFiltersChange } = renderFilters([]);
+    const toggle = screen.getByRole('switch', { name: /production counts as movement/i });
+
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+
+    await waitFor(() =>
+      expect(
+        (onFiltersChange.mock.calls.at(-1)?.[0] as NonMovingFiltersType).count_production,
+      ).toBe(true),
+    );
+  });
+
+  it('Reset puts the rule back on', async () => {
+    const { onFiltersChange } = renderFilters([]);
+
+    fireEvent.click(screen.getByRole('switch', { name: /production counts as movement/i }));
+    await waitFor(() =>
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({ count_production: false }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+    await waitFor(() =>
+      expect(
+        (onFiltersChange.mock.calls.at(-1)?.[0] as NonMovingFiltersType).count_production,
+      ).toBe(true),
+    );
+  });
+});

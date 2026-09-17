@@ -32,6 +32,7 @@ import {
 } from '../api';
 import type { BoxLabelData } from '../components/BoxLabel';
 import BoxLabel from '../components/BoxLabel';
+import CreateEmptyPalletDialog from '../components/CreateEmptyPalletDialog';
 import { DEFAULT_THERMAL_PRINTER_NAME, getLabelPrintPageStyle } from '../components/labelPrint';
 import type { PalletLabelData } from '../components/PalletLabel';
 import PalletLabel from '../components/PalletLabel';
@@ -76,7 +77,11 @@ export default function LabelGeneratePage() {
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
   const { data: lineConfigs = [] } = useLineConfigs(selectedLineId ?? undefined);
 
-  const { data: whData } = useWMSWarehouses();
+  const {
+    data: whData,
+    isLoading: loadingWarehouses,
+    isError: warehouseLoadFailed,
+  } = useWMSWarehouses();
   const warehouses: WarehouseOption[] = whData?.warehouses ?? [];
 
   const handlePrint = useReactToPrint({
@@ -283,7 +288,7 @@ export default function LabelGeneratePage() {
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs font-medium">{pallet.pallet_id}</span>
                     {pallet.box_count === 0 && (
-                      <Badge className="bg-amber-100 text-amber-800">EMPTY</Badge>
+                      <Badge className="bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400">EMPTY</Badge>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -306,6 +311,25 @@ export default function LabelGeneratePage() {
               onItemSelect={handlePalletSelect}
               onClear={() => setSelectedPallet(null)}
               onSearchChange={setPalletSearch}
+              addNewLabel="Create new empty pallet"
+              renderCreateDialog={(open, onOpenChange, updateSelection) => (
+                <CreateEmptyPalletDialog
+                  open={open}
+                  onOpenChange={onOpenChange}
+                  warehouses={warehouses}
+                  warehousesLoading={loadingWarehouses}
+                  warehousesError={warehouseLoadFailed}
+                  defaultWarehouse={form.warehouse}
+                  onCreated={(pallets) => {
+                    // Print runs against one pallet at a time, so a batch just
+                    // selects the first and leaves the rest in the list.
+                    const [first] = pallets;
+                    if (!first) return;
+                    updateSelection(first.id, first.pallet_id);
+                    handlePalletSelect(first);
+                  }}
+                />
+              )}
             />
 
             <SearchableSelect<OitmItemRow>
@@ -318,14 +342,12 @@ export default function LabelGeneratePage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-xs">
                     <span className="font-mono font-medium">{item.item_code}</span>
-                    {item.inventory_uom && (
-                      <Badge variant="secondary">{item.inventory_uom}</Badge>
-                    )}
+                    {item.inventory_uom && <Badge variant="secondary">{item.inventory_uom}</Badge>}
                     {item.manage_batch_numbers && (
-                      <Badge className="bg-emerald-100 text-emerald-800">Batch</Badge>
+                      <Badge className="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400">Batch</Badge>
                     )}
                     {item.manage_serial_numbers && (
-                      <Badge className="bg-blue-100 text-blue-800">Serial</Badge>
+                      <Badge className="bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400">Serial</Badge>
                     )}
                   </div>
                   <div className="truncate text-sm">{item.item_name}</div>
@@ -448,9 +470,7 @@ export default function LabelGeneratePage() {
                   onChange={(e) => updateForm('qty', e.target.value)}
                   readOnly={qtyLocked}
                   title={
-                    qtyLocked
-                      ? 'Locked to the item master pack size — cannot be edited'
-                      : undefined
+                    qtyLocked ? 'Locked to the item master pack size — cannot be edited' : undefined
                   }
                 />
                 <select

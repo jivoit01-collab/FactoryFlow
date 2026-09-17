@@ -2,6 +2,7 @@ import { ArrowLeft, Plus, Send, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -95,6 +96,17 @@ export default function TransferRequestNewPage() {
 
   async function submit() {
     setError('');
+    const confirmed = await confirmSapPost({
+      title: 'Raise this request in SAP?',
+      details: [
+        { label: 'Creates', value: 'Inventory Transfer Request' },
+        { label: 'From', value: fromWarehouse },
+        { label: 'To', value: toWarehouse },
+        { label: 'Lines', value: filledLines.length },
+      ],
+      confirmLabel: 'Raise the request',
+    });
+    if (!confirmed) return;
     try {
       const created = await createRequest.mutateAsync({
         from_warehouse: fromWarehouse,
@@ -109,7 +121,7 @@ export default function TransferRequestNewPage() {
           quantity: Number(line.quantity),
         })),
       });
-      navigate(`/warehouse/transfer-requests/${created.id}`);
+      navigate(`/warehouse/inventory-transfer/${created.id}`);
     } catch (err) {
       // The backend refuses routes SAP would reject and says why, so surface its
       // message verbatim rather than a generic failure.
@@ -126,7 +138,7 @@ export default function TransferRequestNewPage() {
         title="Raise a Transfer Request"
         description="Ask another warehouse to send you stock. It is reserved while they decide."
       >
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -275,7 +287,7 @@ export default function TransferRequestNewPage() {
                   {line.item_code && available !== undefined && (
                     <p
                       className={`pl-1 text-xs tabular-nums ${
-                        overRequested ? 'text-amber-700' : 'text-muted-foreground'
+                        overRequested ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
                       }`}
                     >
                       {available < 0 ? (
@@ -309,13 +321,13 @@ export default function TransferRequestNewPage() {
       </Card>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+        <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">
           {error}
         </div>
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => navigate('/warehouse/transfer-requests')}>
+        <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           Cancel
         </Button>
         <Button onClick={submit} disabled={!canSubmit || createRequest.isPending}>

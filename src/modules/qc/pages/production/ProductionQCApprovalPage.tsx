@@ -105,16 +105,16 @@ export default function ProductionQCApprovalPage() {
                       </span>
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                         session.session_type === 'FINAL'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                          : 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400'
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-400'
+                          : 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-400'
                       }`}>
                         {session.session_type === 'FINAL' ? 'Final' : 'In-Process'}
                       </span>
                       {session.overall_result && (
                         <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                           session.overall_result === 'PASS'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400'
                         }`}>
                           {session.overall_result}
                         </span>
@@ -131,7 +131,7 @@ export default function ProductionQCApprovalPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
                       onClick={() => setActionDialog({ type: 'reject', sessionId: session.id })}
                     >
                       <XCircle className="h-3.5 w-3.5 mr-1" />

@@ -307,7 +307,7 @@ export default function MaterialIndentApprovalsPage() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="border-red-200 text-red-700 hover:bg-red-50"
+                              className="border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
                               disabled={isSaving}
                               onClick={() => openReview(indent, 'reject')}
                             >
@@ -476,7 +476,7 @@ function IndentCard({ indent, canApprove, isSaving, onReview }: IndentCardProps)
           <Button
             type="button"
             variant="outline"
-            className="h-11 border-red-200 text-red-700 hover:bg-red-50"
+            className="h-11 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25"
             disabled={isSaving}
             onClick={() => onReview(indent, 'reject')}
           >
@@ -499,9 +499,9 @@ function StatusBadge({ status }: { status: MaterialIndentStatus }) {
       variant="outline"
       className={cn(
         'shrink-0',
-        status === 'PENDING_APPROVAL' && 'border-amber-200 bg-amber-50 text-amber-700',
-        status === 'APPROVED' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        status === 'REJECTED' && 'border-red-200 bg-red-50 text-red-700',
+        status === 'PENDING_APPROVAL' && 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        status === 'APPROVED' && 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        status === 'REJECTED' && 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400',
       )}
     >
       {status === 'PENDING_APPROVAL'

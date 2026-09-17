@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, FileText, ReceiptText, RefreshCw, Upload, X } from 'lucide-react';
+import { Copy, Download, FileText, ReceiptText, RefreshCw, Upload, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Button,
@@ -13,13 +14,14 @@ import {
   Checkbox,
   Input,
   Label,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   Textarea,
 } from '@/shared/components/ui';
-import { formatCurrency, getErrorMessage } from '@/shared/utils';
+import { buildTsv, copyToClipboard, formatCurrency, getErrorMessage } from '@/shared/utils';
 
 import {
   AR_INVOICE_QUERY_KEYS,
@@ -28,10 +30,15 @@ import {
   useOpenSoLines,
 } from '../api/ar-invoice.queries';
 import { ARInvoiceDetailSheet } from '../components/ARInvoiceDetailSheet';
-import { ARInvoiceStatusBadge } from '../components/ARInvoiceStatusBadge';
+import { ARInvoiceHistoryTable } from '../components/ARInvoiceHistoryTable';
+import { ARPaymentFilter } from '../components/ARPaymentControls';
+import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
-import type { ARInvoicePosting, OpenSOLine } from '../types';
+import { SapCashSaleList } from '../components/SapCashSaleList';
+import type { ARInvoicePosting, OpenSOLine, PaymentBucket } from '../types';
+import { exportArInvoices, toClipboardRows } from '../utils/arInvoiceExport';
+import { countPaymentBuckets, paymentBucket } from '../utils/payment';
 
 const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
 
@@ -92,6 +99,17 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
     if (!customerCode) return toast.error('Select a customer.');
     if (selected.length === 0) return toast.error('Select at least one Sales Order line.');
 
+    const confirmed = await confirmSapPost({
+      title: 'Raise this invoice in SAP?',
+      details: [
+        { label: 'Creates', value: 'A/R invoice' },
+        { label: 'Customer', value: customerCode },
+        { label: 'Sales Order lines', value: selected.length },
+      ],
+      confirmLabel: 'Raise the invoice',
+    });
+    if (!confirmed) return;
+
     try {
       const posting = await createInvoice.mutateAsync({
         data: {
@@ -146,6 +164,12 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
           />
         </div>
       </div>
+
+      {/* The selected lines' value is projected onto the exposure, so the
+          panel answers "does this invoice fit?" as lines are ticked. */}
+      {customerCode ? (
+        <CustomerCreditPanel customerCode={customerCode} invoiceAmount={selectedTotal} />
+      ) : null}
 
       {!customerCode ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
@@ -315,9 +339,34 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+/**
+ * History — two books, one screen.
+ *
+ * This app's own records by default; behind the toggle, the cash sales as SAP
+ * holds them, which also covers the ones the counter raised in SAP directly and
+ * this app therefore has no record of.
+ */
 function HistoryTab({ canAct }: { canAct: boolean }) {
+  const [showSap, setShowSap] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-end gap-2">
+        <Switch id="ar-history-source" checked={showSap} onChange={setShowSap} />
+        <label htmlFor="ar-history-source" className="cursor-pointer text-sm">
+          Show SAP cash sales
+        </label>
+      </div>
+      {showSap ? <SapCashSaleList /> : <AppHistoryList canAct={canAct} />}
+    </div>
+  );
+}
+
+/** The invoices this app raised, with their SAP approval state. */
+function AppHistoryList({ canAct }: { canAct: boolean }) {
   const { data, isLoading, isError } = useArInvoices();
   const [selected, setSelected] = useState<ARInvoicePosting | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentBucket | 'ALL'>('ALL');
 
   // Keep the sheet showing the fresh record after an action refetches the list.
   const current = useMemo(
@@ -335,61 +384,65 @@ function HistoryTab({ canAct }: { canAct: boolean }) {
       </p>
     );
   }
-  const rows = data ?? [];
-  if (rows.length === 0) {
+  const all = data ?? [];
+  const counts = countPaymentBuckets(all);
+  const rows =
+    paymentFilter === 'ALL'
+      ? all
+      : all.filter((posting) => paymentBucket(posting.payment) === paymentFilter);
+
+  if (all.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
         <ReceiptText className="h-8 w-8" />
-        <p className="text-sm">No A/R invoices raised yet.</p>
+        <p className="max-w-md text-sm">
+          No A/R invoices raised from this app yet. Turn on &quot;Show SAP cash sales&quot; to
+          see the cash sales raised in SAP directly.
+        </p>
       </div>
     );
   }
 
+  const copyRows = async () => {
+    // Rows only, no heading line: they are meant to land inside a sheet the
+    // user has already built, under their own headings.
+    const copied = await copyToClipboard(buildTsv(toClipboardRows(rows)));
+    if (!copied) {
+      toast.error('The browser would not let us reach the clipboard. Use the Excel export instead.');
+      return;
+    }
+    toast.success(`${rows.length} row${rows.length === 1 ? '' : 's'} copied — paste into your sheet.`);
+  };
+
   return (
     <>
-      <div className="space-y-2">
-        {rows.map((posting) => (
-          <Card
-            key={posting.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => setSelected(posting)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                setSelected(posting);
-              }
-            }}
-            className="cursor-pointer transition-colors hover:bg-muted/50"
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+        <ARPaymentFilter value={paymentFilter} onChange={setPaymentFilter} counts={counts} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {rows.length} of {all.length}
+          </span>
+          {/* Both act on the rows in view — whatever the payment filter left. */}
+          <Button variant="outline" size="sm" onClick={copyRows} disabled={rows.length === 0}>
+            <Copy className="mr-2 h-4 w-4" /> Copy table
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => exportArInvoices(rows)}
+            disabled={rows.length === 0}
           >
-            <CardContent className="flex items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <p className="truncate font-medium">
-                  {posting.customer_name || posting.customer_code}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {posting.customer_ref ? `Ref ${posting.customer_ref} · ` : ''}
-                  {posting.sap_doc_num ? `SAP ${posting.sap_doc_num}` : ''}
-                  {posting.sap_draft_entry && !posting.sap_doc_num
-                    ? `draft ${posting.sap_draft_entry}`
-                    : ''}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className="text-sm font-semibold tabular-nums">
-                  {posting.sap_doc_total
-                    ? formatCurrency(Number(posting.sap_doc_total))
-                    : posting.selected_total
-                      ? formatCurrency(Number(posting.selected_total))
-                      : '-'}
-                </span>
-                <ARInvoiceStatusBadge status={posting.status} />
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            <Download className="mr-2 h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
+      {rows.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          No invoices in this payment state.
+        </p>
+      ) : (
+        <ARInvoiceHistoryTable rows={rows} onSelect={setSelected} />
+      )}
 
       <ARInvoiceDetailSheet
         posting={current}

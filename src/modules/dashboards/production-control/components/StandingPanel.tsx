@@ -1,4 +1,5 @@
-import { CalendarOff, Hourglass } from 'lucide-react';
+import { CalendarOff, ChevronRight, Hourglass } from 'lucide-react';
+import { useState } from 'react';
 
 import type { NonMovingItem } from '@/modules/dashboards/non-moving/types';
 import { getMovementStatus } from '@/modules/dashboards/non-moving/utils/movementStatus';
@@ -22,6 +23,7 @@ import {
   PANEL_ACCENT,
   STANDING_AGE_DAYS,
 } from '../constants';
+import { ItemBatchDialog } from './ItemBatchDialog';
 
 export interface StandingPanelProps {
   items: NonMovingItem[];
@@ -33,35 +35,44 @@ export interface StandingPanelProps {
   className?: string;
 }
 
-function StandingRow({ item }: { item: NonMovingItem }) {
+function StandingRow({ item, onOpen }: { item: NonMovingItem; onOpen: () => void }) {
   const days = item.days_since_last_movement;
   const tone = MOVEMENT_AGE_TONE[getMovementStatus(days)];
 
   return (
-    <li className="px-3 py-2 transition-colors hover:bg-muted/40">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{item.item_name || item.item_code}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {item.item_code}
-            {item.sub_group ? ` · ${item.sub_group}` : ''}
-          </p>
+    <li>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{item.item_name || item.item_code}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {item.item_code}
+              {item.sub_group ? ` · ${item.sub_group}` : ''}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="text-right">
+              <p
+                className={cn(
+                  'flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
+                  tone,
+                )}
+              >
+                <CalendarOff className="h-3 w-3" />
+                {formatCount(days)}d
+              </p>
+              <p className="text-xs tabular-nums text-muted-foreground">
+                {formatCompactCurrency(item.value)} · {formatCount(item.quantity)} pcs
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
         </div>
-        <div className="shrink-0 text-right">
-          <p
-            className={cn(
-              'flex items-center justify-end gap-1 text-sm font-semibold tabular-nums',
-              tone,
-            )}
-          >
-            <CalendarOff className="h-3 w-3" />
-            {formatCount(days)}d
-          </p>
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {formatCompactCurrency(item.value)} · {formatCount(item.quantity)} pcs
-          </p>
-        </div>
-      </div>
+      </button>
     </li>
   );
 }
@@ -85,6 +96,7 @@ export function StandingPanel({
   onRetry,
   className,
 }: StandingPanelProps) {
+  const [openItem, setOpenItem] = useState<NonMovingItem | null>(null);
   const visible = items.slice(0, MAX_RENDERED_ROWS);
   const hidden = items.length - visible.length;
   const oldest = items.reduce((max, item) => Math.max(max, item.days_since_last_movement), 0);
@@ -121,7 +133,11 @@ export function StandingPanel({
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           <ControlScrollList grow>
             {visible.map((item) => (
-              <StandingRow key={`${item.item_code}-${item.warehouse}`} item={item} />
+              <StandingRow
+                key={`${item.item_code}-${item.warehouse}`}
+                item={item}
+                onOpen={() => setOpenItem(item)}
+              />
             ))}
           </ControlScrollList>
 
@@ -133,11 +149,17 @@ export function StandingPanel({
             )}
             <p>
               {CONTROL_WAREHOUSE} turns over about every 3 days, so this is a shipping queue rather
-              than dead stock.
+              than dead stock. Open a row for its batches and manufacturing dates.
             </p>
           </div>
         </div>
       )}
+
+      <ItemBatchDialog
+        item={openItem}
+        open={openItem !== null}
+        onOpenChange={(next) => !next && setOpenItem(null)}
+      />
     </ControlSection>
   );
 }

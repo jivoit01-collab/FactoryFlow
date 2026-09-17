@@ -33,6 +33,7 @@ export function useDockingPartialScanRequests(
   });
 }
 
+/** Every partial-dispatch request on this docking's truck (one per short bill). */
 export function useDockingPartialScanRequestByDispatch(entryId?: number | null) {
   return useQuery({
     queryKey: PARTIAL_SCAN_APPROVAL_QUERY_KEYS.byDispatch(entryId),

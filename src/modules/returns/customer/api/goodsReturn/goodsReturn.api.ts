@@ -31,7 +31,9 @@ export type GoodsReturnStatus =
   | 'PARTIALLY_POSTED'
   | 'POSTED'
   | 'CANCELLED';
-export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'EXPIRED' | 'OTHER';
+/** Mirrors `goods_return.GoodsReturnItemCondition`. `LEAKED` was added after the
+ *  fact, so returns booked before it carry `DAMAGED` with the word in `reason`. */
+export type GoodsReturnItemCondition = 'GOOD' | 'DAMAGED' | 'LEAKED' | 'EXPIRED' | 'OTHER';
 export type GoodsReturnApprovalStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
 export type GoodsReturnAttachmentType = 'INVOICE_COPY' | 'DEBIT_NOTE' | 'LETTER_PAD' | 'OTHER';
 
@@ -40,8 +42,13 @@ export interface GoodsReturnListItem {
   entry_no: string;
   basis: GoodsReturnBasis;
   status: GoodsReturnStatus;
+  /** The FIRST bill's customer — a return may carry several (`customer_names`). */
   customer_code: string;
   customer_name: string;
+  /** Every customer on the return, distinct, in the order the bills were added. */
+  customer_names: string[];
+  /** The customer's own debit-note / letter-pad number, if they gave one. */
+  customer_ref_no: string;
   vehicle_no: string;
   driver_name: string;
   company_code: string;
@@ -75,6 +82,10 @@ export interface GoodsReturnInvoiceRef {
   id: number;
   sap_invoice_doc_entry: number;
   sap_invoice_doc_num: string;
+  /** The customer THIS bill was raised on. A return is a truckload, so it may
+   *  carry several distributors' bills; each posts under its own. */
+  customer_code: string;
+  customer_name: string;
   /** Null until this invoice's own return is in SAP. */
   sap_gr_doc_entry: number | null;
   sap_gr_doc_num: string;
@@ -130,8 +141,13 @@ export interface GoodsReturnDetail {
   entry_no: string;
   basis: GoodsReturnBasis;
   status: GoodsReturnStatus;
+  /** The FIRST bill's customer — a return may carry several (`customer_names`). */
   customer_code: string;
   customer_name: string;
+  /** Every customer on the return, distinct, in the order the bills were added. */
+  customer_names: string[];
+  /** The customer's own debit-note / letter-pad number, if they gave one. */
+  customer_ref_no: string;
   vehicle: number | null;
   vehicle_no: string;
   driver: number | null;
@@ -205,6 +221,19 @@ export interface ReturnWarehouse {
   warehouse_name: string;
 }
 
+/**
+ * A SAP customer for the header picker on a debit-note / letter-pad return.
+ *
+ * An invoice-basis return reads its customer off the invoice; these two have to
+ * be told. The code, not the name, is what everything downstream runs on — the
+ * returning-items picker reads this customer's invoice history and the posted
+ * A/R Return carries it as CardCode — so it is picked from SAP, not typed.
+ */
+export interface ReturnCustomer {
+  customer_code: string;
+  customer_name: string;
+}
+
 export interface CreateGoodsReturnPayload {
   basis: GoodsReturnBasis;
   /** Required: saving this page puts the return in the gate's arrival queue, and
@@ -215,6 +244,8 @@ export interface CreateGoodsReturnPayload {
   invoice_numbers?: string[];
   customer_code?: string;
   customer_name?: string;
+  /** Optional: many letter pads carry no number at all. */
+  customer_ref_no?: string;
   remarks?: string;
   requires_approval?: boolean;
 }
@@ -302,7 +333,12 @@ export const goodsReturnApi = {
 
   async updateHeader(
     id: number,
-    payload: { customer_code?: string; customer_name?: string; remarks?: string },
+    payload: {
+      customer_code?: string;
+      customer_name?: string;
+      customer_ref_no?: string;
+      remarks?: string;
+    },
   ): Promise<GoodsReturnDetail> {
     const response = await apiClient.patch<GoodsReturnDetail>(
       API_ENDPOINTS.GOODS_RETURN.BY_ID(id),
@@ -419,6 +455,14 @@ export const goodsReturnApi = {
     return response.data;
   },
 
+  /** SAP customers for the header picker (debit-note / letter-pad returns). */
+  async searchCustomers(search?: string): Promise<ReturnCustomer[]> {
+    const response = await apiClient.get<ReturnCustomer[]>(API_ENDPOINTS.GOODS_RETURN.CUSTOMERS, {
+      params: search ? { search } : undefined,
+    });
+    return response.data;
+  },
+
   async listReturnWarehouses(): Promise<ReturnWarehouse[]> {
     const response = await apiClient.get<ReturnWarehouse[]>(API_ENDPOINTS.GOODS_RETURN.WAREHOUSES);
     return response.data;
@@ -430,10 +474,18 @@ export const goodsReturnApi = {
    *  refused — the documents it did accept cannot be withdrawn, so they stand and
    *  the record returned already carries them.
    */
-  async receive(id: number, warehouseCode?: string): Promise<GoodsReturnReceiveResult> {
+  /** `groups` is one list of invoice-ref ids per return note. Omit it for the
+   *  default — a note per bill — which is what every return posted before the
+   *  choice existed. The server validates it as a partition of the bills still
+   *  owing a document. */
+  async receive(
+    id: number,
+    warehouseCode?: string,
+    groups?: number[][],
+  ): Promise<GoodsReturnReceiveResult> {
     const response = await apiClient.post<GoodsReturnReceiveResult>(
       API_ENDPOINTS.GOODS_RETURN.RECEIVE(id),
-      { warehouse_code: warehouseCode ?? '' },
+      { warehouse_code: warehouseCode ?? '', ...(groups ? { groups } : {}) },
     );
     return response.data;
   },

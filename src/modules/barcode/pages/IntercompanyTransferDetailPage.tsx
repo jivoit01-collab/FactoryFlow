@@ -69,8 +69,8 @@ export default function IntercompanyTransferDetailPage() {
             <Badge
               className={
                 transfer.status === 'REVERSED'
-                  ? 'mt-1 bg-red-100 text-red-800'
-                  : 'mt-1 bg-green-100 text-green-800'
+                  ? 'mt-1 bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400'
+                  : 'mt-1 bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
               }
             >
               {transfer.status}

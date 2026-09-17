@@ -11,6 +11,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import { PLANNING_PURCHASE_PERMISSIONS } from '@/config/permissions';
 import { useAuth, usePermission } from '@/core/auth';
+import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
@@ -104,7 +105,18 @@ export default function PurchaseOrderDetailPage() {
           {postable ? (
             <Button
               size="sm"
-              onClick={() => post.mutate(order.id)}
+              onClick={async () => {
+                const confirmed = await confirmSapPost({
+                  title: 'Post this purchase order to SAP?',
+                  details: [
+                    { label: 'Creates', value: 'Purchase Order' },
+                    { label: 'Vendor', value: order.vendor_name || order.vendor_code },
+                    { label: 'Value', value: `${order.total_value} ${order.currency}` },
+                    { label: 'Lines', value: order.line_count },
+                  ],
+                });
+                if (confirmed) post.mutate(order.id);
+              }}
               disabled={post.isPending}
             >
               <Send className="mr-1.5 h-4 w-4" />

@@ -59,22 +59,22 @@ export const RETURNABLE_STATUS_LABELS: Record<ReturnableStatus, string> = {
 /** Tailwind classes for the status badge, one per status. */
 export const RETURNABLE_STATUS_STYLES: Record<ReturnableStatus, string> = {
   DRAFT: 'bg-muted text-muted-foreground border-border',
-  PENDING_APPROVAL: 'bg-purple-100 text-purple-800 border-purple-200',
-  PENDING_GATE_OUT: 'bg-amber-100 text-amber-800 border-amber-200',
-  OUT: 'bg-blue-100 text-blue-800 border-blue-200',
-  PARTIALLY_RETURNED: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  RETURNED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-  CLOSED: 'bg-slate-100 text-slate-700 border-slate-200',
-  CANCELLED: 'bg-rose-100 text-rose-800 border-rose-200',
+  PENDING_APPROVAL: 'bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-500/30',
+  PENDING_GATE_OUT: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-500/30',
+  OUT: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-500/30',
+  PARTIALLY_RETURNED: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30',
+  RETURNED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30',
+  CLOSED: 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground border-slate-200 dark:border-border',
+  CANCELLED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-500/30',
 };
 
 export const RETURN_CONDITION_STYLES: Record<ItemReturnCondition, string> = {
-  OK: 'bg-emerald-100 text-emerald-800',
-  REPAIRED: 'bg-emerald-100 text-emerald-800',
-  REPLACED: 'bg-blue-100 text-blue-800',
-  NOT_REPAIRED: 'bg-amber-100 text-amber-800',
-  DAMAGED: 'bg-rose-100 text-rose-800',
-  SCRAP: 'bg-rose-100 text-rose-800',
+  OK: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  REPAIRED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  REPLACED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+  NOT_REPAIRED: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  DAMAGED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
+  SCRAP: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
 };
 
 export const ATTACHMENT_DOC_TYPE_OPTIONS = [

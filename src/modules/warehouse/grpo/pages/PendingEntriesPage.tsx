@@ -9,7 +9,7 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { usePendingGRPOEntries } from '../api';
-import { GRPOMonthFilter } from '../components';
+import { GRPOMonthFilter, POPrintButton } from '../components';
 
 // Format date/time for display
 const formatDateTime = (dateTime?: string) => {
@@ -117,7 +117,7 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -196,9 +196,9 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
                   <tbody>
                     {pendingEntries.map((entry) => {
                       const suppliers = entry.suppliers ?? [];
-                      const poNumbers = suppliers.flatMap((s) =>
-                        s.po_receipts.map((r) => r.po_number),
-                      );
+                      // The receipts themselves, not just their numbers: each
+                      // chip prints its own order straight from SAP.
+                      const poReceipts = suppliers.flatMap((s) => s.po_receipts);
                       return (
                         <tr
                           key={entry.vehicle_entry_id}
@@ -227,15 +227,16 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
                             )}
                           </td>
                           <td className="p-3 text-sm text-muted-foreground">
-                            {poNumbers.length > 0 ? (
+                            {poReceipts.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {poNumbers.map((po) => (
-                                  <span
-                                    key={po}
-                                    className="inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono bg-muted/40"
-                                  >
-                                    {po}
-                                  </span>
+                                {poReceipts.map((r) => (
+                                  <POPrintButton
+                                    key={r.po_receipt_id}
+                                    receipt={{ id: r.po_receipt_id, po_number: r.po_number }}
+                                    label={r.po_number}
+                                    size="sm"
+                                    className="h-6 px-1.5 font-mono text-xs bg-muted/40"
+                                  />
                                 ))}
                               </div>
                             ) : (
@@ -243,7 +244,7 @@ export default function PendingEntriesPage({ embedded = false }: { embedded?: bo
                             )}
                           </td>
                           <td className="p-3 text-sm whitespace-nowrap">
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400">
                               {entry.pending_po_count}/{entry.total_po_count} POs
                             </span>
                           </td>

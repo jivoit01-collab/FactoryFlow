@@ -220,7 +220,7 @@ export function MaterialIndentQuotations({
       </div>
 
       {indent.quotation_remarks && (
-        <p className="rounded-md border bg-amber-50/60 p-2 text-sm">
+        <p className="rounded-md border bg-amber-50/60 dark:bg-amber-500/10 p-2 text-sm">
           <span className="font-medium">Note from approver: </span>
           {indent.quotation_remarks}
         </p>
@@ -437,7 +437,7 @@ function QuotationCard({
     <div
       className={cn(
         'rounded-md border p-3',
-        isSelected && 'border-emerald-300 bg-emerald-50/50',
+        isSelected && 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/10',
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -445,13 +445,13 @@ function QuotationCard({
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{quotation.company_name}</span>
             {isSelected && (
-              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+              <Badge variant="outline" className="border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="mr-1 h-3 w-3" />
                 Selected
               </Badge>
             )}
             {isCheapest && !isSelected && (
-              <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+              <Badge variant="outline" className="border-sky-200 dark:border-sky-500/30 bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400">
                 <Award className="mr-1 h-3 w-3" />
                 Lowest
               </Badge>
@@ -581,7 +581,7 @@ function QuotationCard({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-10 flex-1 border-red-200 text-red-700 hover:bg-red-50 sm:h-9 sm:flex-none"
+                className="h-10 flex-1 border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/25 sm:h-9 sm:flex-none"
                 onClick={onDelete}
                 disabled={busy || isSelected}
                 title={isSelected ? 'The selected company cannot be removed' : undefined}

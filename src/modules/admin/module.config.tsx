@@ -3,6 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import {
   ADMIN_PERMISSIONS,
   COST_MASTER_PERMISSIONS,
+  GATE_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
@@ -16,6 +17,7 @@ import type { ModuleConfig } from '@/core/types';
 import { BstApprovalsBadge } from './components/BstApprovalsBadge';
 import { DockingApprovalsBadge } from './components/DockingApprovalsBadge';
 import { GoodsReturnApprovalsBadge } from './components/GoodsReturnApprovalsBadge';
+import { LateDispatchApprovalsBadge } from './components/LateDispatchApprovalsBadge';
 import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
 import { PartialApprovalsBadge } from './components/PartialApprovalsBadge';
 import { ReturnableApprovalsBadge } from './components/ReturnableApprovalsBadge';
@@ -25,6 +27,7 @@ const DockingScanApprovalsPage = lazy(() => import('./pages/DockingScanApprovals
 const DockingPartialScanApprovalsPage = lazy(
   () => import('./pages/DockingPartialScanApprovalsPage'),
 );
+const LateDispatchApprovalsPage = lazy(() => import('./pages/LateDispatchApprovalsPage'));
 const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
@@ -46,6 +49,14 @@ const dockingApprovalPermissions = [
 const partialApprovalPermissions = [
   ADMIN_PERMISSIONS.DOCKING.VIEW_PARTIAL_SCAN,
   ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
+] as const;
+
+// Approve-only: VIEW is what an approver holds anyway, and nothing else in the app
+// grants it — but keeping the pair here means an auditor-style "can see the queue,
+// cannot decide" grant still reaches the page.
+const lateDispatchApprovalPermissions = [
+  GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN.VIEW,
+  GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN.APPROVE,
 ] as const;
 
 // Approve-only: this admin queue is for approvers. VIEW_MATERIAL_INDENT is held
@@ -86,6 +97,7 @@ const adminPermissions = [
   ...costMasterPermissions,
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
+  ...lateDispatchApprovalPermissions,
   ...materialIndentApprovalPermissions,
   ...returnableApprovalPermissions,
   ...bstApprovalPermissions,
@@ -115,6 +127,13 @@ export const adminModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: partialApprovalPermissions,
       breadcrumb: { label: 'Partial Dispatch Approvals' },
+    },
+    {
+      path: '/admin/late-dispatch-approvals',
+      element: <LateDispatchApprovalsPage />,
+      layout: 'main',
+      permissions: lateDispatchApprovalPermissions,
+      breadcrumb: { label: 'Late Dispatch Gate-In Approvals' },
     },
     {
       path: '/admin/material-indent-approvals',
@@ -194,6 +213,12 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'Partial Dispatch Approvals',
           permissions: partialApprovalPermissions,
           badge: PartialApprovalsBadge,
+        },
+        {
+          path: '/admin/late-dispatch-approvals',
+          title: 'Late Dispatch Gate-In Approvals',
+          permissions: lateDispatchApprovalPermissions,
+          badge: LateDispatchApprovalsBadge,
         },
         {
           path: '/admin/material-indent-approvals',

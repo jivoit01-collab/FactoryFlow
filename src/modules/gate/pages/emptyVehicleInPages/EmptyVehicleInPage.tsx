@@ -1,7 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
   Clock,
   FileText,
+  Loader2,
   Plus,
   RefreshCw,
   Search,
@@ -14,6 +16,11 @@ import { toast } from 'sonner';
 
 import { ENTRY_TYPES } from '@/config/constants';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import {
+  LATE_DISPATCH_APPROVAL_QUERY_KEYS,
+  lateDispatchApprovalApi,
+  type LateDispatchVehicleStatus,
+} from '@/modules/admin/api';
 import { PipelineStatusBadge } from '@/modules/dashboards/dispatch-pipeline/components';
 import { getPipelineStageRowClass } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import { useDispatchBills } from '@/modules/dashboards/dispatch-plans/api';
@@ -37,15 +44,23 @@ import {
   buildEmptyVehicleGroups,
   buildExpectedDispatchVehicles,
   type EmptyVehicleGroup,
+  type ExpectedDispatchVehicle,
   formatDispatchNumber,
 } from './emptyVehicleInDispatch';
+import { LateDispatchBlockedDialog } from './LateDispatchBlockedDialog';
 
 export default function EmptyVehicleInPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'inside'>('all');
   const expectedDispatchRef = useRef<HTMLElement>(null);
+  // The truck whose "Start Entry" click ran into the evening cutoff, with the
+  // server's verdict on it. Both are cleared when the notice is dismissed.
+  const [lateVehicle, setLateVehicle] = useState<ExpectedDispatchVehicle | null>(null);
+  const [lateStatus, setLateStatus] = useState<LateDispatchVehicleStatus | null>(null);
+  const [checkingVehicleId, setCheckingVehicleId] = useState<number | null>(null);
 
   const showInsideOnly = () =>
     setStatusFilter((current) => (current === 'inside' ? 'all' : 'inside'));
@@ -171,6 +186,50 @@ export default function EmptyVehicleInPage() {
   // cross-company gate-in shows as a single vehicle entry; single-entry groups
   // render exactly as before.
   const vehicleGroups = useMemo(() => buildEmptyVehicleGroups(filteredEntries), [filteredEntries]);
+
+  /**
+   * Start a gate-in for an expected dispatch vehicle — unless the evening cutoff
+   * stands in the way.
+   *
+   * The cutoff is server configuration and dispatch's approval may already be in
+   * hand, so the board asks the server rather than reading a clock of its own; the
+   * check runs on the click (one call) instead of once per listed vehicle. Being
+   * stopped here is the end of the road for the gate: only dispatch can ask for the
+   * truck to be let in, so the notice names them rather than offering a button.
+   *
+   * A check that fails outright lets the click through: the gate-in endpoint
+   * enforces the same rule and refuses on submit, so the truck still cannot get in,
+   * and a flaky lookup should not strand the gate.
+   */
+  const startEntryForExpectedVehicle = async (vehicle: ExpectedDispatchVehicle) => {
+    const href =
+      `/gate/empty-vehicle-in/new?expectedVehicleId=${vehicle.vehicleId}` +
+      `&dispatchDocEntry=${vehicle.docEntries[0]}`;
+
+    setCheckingVehicleId(vehicle.vehicleId);
+    try {
+      const status = await queryClient.fetchQuery({
+        queryKey: LATE_DISPATCH_APPROVAL_QUERY_KEYS.byVehicle(vehicle.vehicleId),
+        queryFn: () => lateDispatchApprovalApi.byVehicle(vehicle.vehicleId),
+        staleTime: 0,
+      });
+      if (status.requires_approval) {
+        setLateVehicle(vehicle);
+        setLateStatus(status);
+        return;
+      }
+    } catch {
+      // Fall through to the entry form; the backend refuses a late entry anyway.
+    } finally {
+      setCheckingVehicleId(null);
+    }
+    navigate(href);
+  };
+
+  const closeLateDialog = () => {
+    setLateVehicle(null);
+    setLateStatus(null);
+  };
 
   const formatOutDateTime = (date?: string, time?: string) =>
     [date, time ? time.slice(0, 5) : ''].filter(Boolean).join(' ') || '-';
@@ -470,7 +529,7 @@ export default function EmptyVehicleInPage() {
                 </thead>
                 <tbody>
                   {expectedDispatchVehicles.map((vehicle) => {
-                    const href = `/gate/empty-vehicle-in/new?expectedVehicleId=${vehicle.vehicleId}&dispatchDocEntry=${vehicle.docEntries[0]}`;
+                    const isChecking = checkingVehicleId === vehicle.vehicleId;
                     return (
                       <tr
                         key={vehicle.vehicleId}
@@ -485,14 +544,15 @@ export default function EmptyVehicleInPage() {
                             );
                             return;
                           }
-                          navigate(href);
+                          if (isChecking) return;
+                          void startEntryForExpectedVehicle(vehicle);
                         }}
                       >
                         <td className="whitespace-nowrap p-3 text-sm font-medium">
                           <div className="flex items-center gap-2">
                             {vehicle.vehicleNo}
                             {vehicle.alreadyInside ? (
-                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                              <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400">
                                 Already inside
                               </Badge>
                             ) : null}
@@ -527,11 +587,12 @@ export default function EmptyVehicleInPage() {
                         </td>
                         <td className="p-3 text-right text-sm">
                           {vehicle.alreadyInside ? (
-                            <span className="text-xs font-medium text-amber-700">
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
                               Inside — can't start
                             </span>
                           ) : (
-                            <Button type="button" size="sm" variant="outline">
+                            <Button type="button" size="sm" variant="outline" disabled={isChecking}>
+                              {isChecking ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                               Start Entry
                             </Button>
                           )}
@@ -599,6 +660,12 @@ export default function EmptyVehicleInPage() {
           </div>
         )}
       </section>
+
+      <LateDispatchBlockedDialog
+        vehicle={lateVehicle}
+        status={lateStatus}
+        onClose={closeLateDialog}
+      />
     </div>
   );
 }

@@ -332,7 +332,7 @@ export default function WmsReceivePage() {
             <CardTitle className="text-base">Already in the warehouse</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+            <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm dark:bg-amber-500/15">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <p>
                 This pallet is already placed at{' '}
@@ -402,7 +402,7 @@ export default function WmsReceivePage() {
 
       {/* Print the just-placed pallet's QR label (TSC DA310, 100x40mm). */}
       {lastPalletLabel ? (
-        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30">
+        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div className="text-sm">
               Pallet <span className="font-mono font-semibold">{lastPalletLabel.title}</span> placed.

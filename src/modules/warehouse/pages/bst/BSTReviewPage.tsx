@@ -209,7 +209,7 @@ export default function BSTReviewPage() {
               'This transfer can no longer be approved.'
             )}
             {t.requires_gate && (
-              <Badge variant="outline" className="ml-2 text-amber-700">
+              <Badge variant="outline" className="ml-2 text-amber-700 dark:text-amber-400">
                 awaiting gate-out
               </Badge>
             )}
@@ -218,7 +218,7 @@ export default function BSTReviewPage() {
       ) : (
         <div className="space-y-3">
           {!requiresScanning && (
-            <div className="flex items-start gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <div className="flex items-start gap-2 rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 px-3 py-2 text-sm text-slate-700 dark:text-muted-foreground">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 <span className="font-medium">No scanning required.</span> This transfer is
@@ -228,7 +228,7 @@ export default function BSTReviewPage() {
             </div>
           )}
           {partial?.is_approved && (
-            <div className="flex items-start gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            <div className="flex items-start gap-2 rounded-md border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-400">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 <span className="font-medium">Partial transfer approved</span>
@@ -238,7 +238,7 @@ export default function BSTReviewPage() {
             </div>
           )}
           {shortLocked && (
-            <div className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            <div className="space-y-3 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-400">
               <div className="flex items-start gap-2">
                 <Lock className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
@@ -262,7 +262,7 @@ export default function BSTReviewPage() {
               </div>
 
               {requestPending ? (
-                <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-white/60 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-md border border-amber-300 dark:border-amber-500/30 bg-white/60 px-3 py-2">
                   <Clock className="h-4 w-4 shrink-0" />
                   <span>
                     Partial-transfer approval requested
@@ -295,6 +295,15 @@ export default function BSTReviewPage() {
                 </div>
               )}
             </div>
+          )}
+          {/* Approving closes the dispatch team's side of a vehicle load, so say
+              what time that puts on the record before they press it. An internal
+              lift-move has no such handover, so it gets no note. */}
+          {t.requires_gate && (
+            <p className="text-xs text-muted-foreground">
+              This stamps the loaded time — now — and hands the vehicle to the gate. A
+              supervisor can correct the time afterwards from the transfer page.
+            </p>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => navigate(`/warehouse/bst/${transferId}/scan`)}>

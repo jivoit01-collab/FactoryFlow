@@ -197,14 +197,12 @@ const GATE_NAVIGATION_PERMISSIONS = Array.from(
   new Set([
     ...GATE_DASHBOARD_ACCESS_PERMISSIONS,
     ...GATE_ENTRY_CREATE_PERMISSIONS,
-    // BST gate-out is a gate-stage function (the permission lives in the warehouse
-    // app for model cohesion). Include it so the dedicated "BST Gate" role
-    // (warehouse.can_gate_bst) can see the Gate module and reach its BST Out page.
-    GATE_PERMISSIONS.BST_OUT.VIEW,
-    // NOTE: barcode.can_view_barcode_dispatch_reports intentionally NOT included
-    // here — it would surface the whole Gate module to barcode-only users. The
-    // report stays reachable via the Barcode module (/barcode/dispatch/reports)
-    // and via the gate sales-dispatch child for users with gate perms.
+    // NOTE: neither warehouse.can_gate_bst nor
+    // barcode.can_view_barcode_dispatch_reports belongs here. BST Out and the
+    // barcode dispatch reports were taken off the sidebar, so a user holding
+    // only one of them has nothing to open here — listing either would surface
+    // an empty Gate menu. Both routes still exist and stay reachable from the
+    // Warehouse and Barcode modules.
   ]),
 );
 
@@ -1116,21 +1114,6 @@ export const gateModuleConfig: ModuleConfig = {
           path: '/gate/new',
           title: 'New Entry',
           permissions: GATE_ENTRY_CREATE_PERMISSIONS,
-        },
-        {
-          path: '/gate/arrivals',
-          title: 'Cross-Company Arrivals',
-          permissions: [GATE_PERMISSIONS.EMPTY_VEHICLE_IN.CREATE],
-        },
-        {
-          path: '/gate/bst-out',
-          title: 'BST Out',
-          permissions: [GATE_PERMISSIONS.BST_OUT.VIEW],
-        },
-        {
-          path: '/gate/sales-dispatch/barcode-reports',
-          title: 'Barcode Dispatch Reports',
-          permissions: [BARCODE_PERMISSIONS.VIEW_DISPATCH_REPORTS],
         },
         {
           // Marketplace out-gate check — parcels ready to leave, approved from the gate.

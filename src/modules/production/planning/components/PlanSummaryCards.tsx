@@ -20,28 +20,28 @@ export function PlanSummaryCards({ summary }: PlanSummaryCardsProps) {
       value: summary.total_plans,
       icon: ClipboardList,
       color: 'text-blue-600 dark:text-blue-400',
-      bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+      bg: 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30',
     },
     {
       label: 'Planned Qty',
       value: formatQty(summary.total_planned_qty),
       icon: Target,
       color: 'text-violet-600 dark:text-violet-400',
-      bg: 'bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800',
+      bg: 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-500/30',
     },
     {
       label: 'Produced Qty',
       value: formatQty(summary.total_produced_qty),
       icon: Factory,
       color: 'text-emerald-600 dark:text-emerald-400',
-      bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
+      bg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30',
     },
     {
       label: 'Overall Progress',
       value: `${Math.round(summary.overall_progress_percent)}%`,
       icon: CheckCircle2,
       color: 'text-amber-600 dark:text-amber-400',
-      bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+      bg: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30',
     },
   ];
 
@@ -67,7 +67,7 @@ export function PlanSummaryCards({ summary }: PlanSummaryCardsProps) {
       </div>
 
       {sapFailed > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-500/10 dark:border-red-500/30">
           <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
           <span className="text-sm font-medium text-red-700 dark:text-red-400">
             {sapFailed} plan{sapFailed > 1 ? 's' : ''} failed to post to SAP

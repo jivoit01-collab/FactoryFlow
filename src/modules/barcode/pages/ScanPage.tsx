@@ -63,7 +63,7 @@ export default function ScanPage() {
                 return (
                   <div
                     key={scan.scan_id}
-                    className={`p-3 rounded-lg border ${scan.result === 'SUCCESS' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                    className={`p-3 rounded-lg border ${scan.result === 'SUCCESS' ? 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/30' : 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30'}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -72,13 +72,13 @@ export default function ScanPage() {
                         <Badge
                           className={
                             scan.result === 'SUCCESS'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400'
+                              : 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400'
                           }
                         >
                           {scan.result}
                         </Badge>
-                        <Badge className="bg-gray-100 text-gray-800">{scan.entity_type}</Badge>
+                        <Badge className="bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground">{scan.entity_type}</Badge>
                       </div>
                       {detailUrl && (
                         <Button size="sm" variant="ghost" onClick={() => navigate(detailUrl)}>

@@ -164,12 +164,12 @@ function SegmentCard({ segment, now, ratedSpeed, onClick }: { segment: Productio
   const remarks = trimmedRemarks(segment.remarks);
 
   return (
-    <div className="rounded-lg border bg-green-50 border-green-200 p-4 dark:bg-green-950/30 dark:border-green-800 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
+    <div className="rounded-lg border bg-green-50 border-green-200 p-4 dark:bg-green-500/15 dark:border-green-500/30 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
       {/* Row 1: Title + duration */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Play className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
-          <span className="text-lg font-bold text-green-800 dark:text-green-200">
+          <span className="text-lg font-bold text-green-800 dark:text-green-300">
             Running
           </span>
           {segment.is_active && (
@@ -237,16 +237,16 @@ function BreakdownCard({
   const remarks = trimmedRemarks(breakdown.remarks);
 
   return (
-    <div className="rounded-lg border bg-red-50 border-red-200 p-4 dark:bg-red-950/30 dark:border-red-800 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
+    <div className="rounded-lg border bg-red-50 border-red-200 p-4 dark:bg-red-500/15 dark:border-red-500/30 cursor-pointer hover:shadow-md transition-shadow" onClick={onClick}>
       {/* Row 1: Title + duration */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Wrench className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-          <span className="text-lg font-bold text-red-800 dark:text-red-200">
+          <span className="text-lg font-bold text-red-800 dark:text-red-300">
             Breakdown
           </span>
           {breakdown.maintenance_work_order_no && (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-200">
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">
               {breakdown.maintenance_work_order_no}
             </span>
           )}
@@ -310,7 +310,7 @@ function BreakdownCard({
 function ManualBadge() {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+      className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300"
       title="Added manually via backfill — not recorded live"
     >
       <PencilLine className="h-3 w-3" />
@@ -324,11 +324,11 @@ function RemarksBadge({ remarks, tone }: { remarks: string; tone: 'green' | 'red
   const toneClass =
     tone === 'green'
       ? hasRemarks
-        ? 'border-green-300 bg-white/80 text-green-800 dark:border-green-700 dark:bg-green-950/60 dark:text-green-200'
-        : 'border-green-200 bg-white/60 text-green-600 dark:border-green-800 dark:bg-green-950/40 dark:text-green-400'
+        ? 'border-green-300 bg-white/80 text-green-800 dark:border-green-500/30 dark:bg-green-500/20 dark:text-green-300'
+        : 'border-green-200 bg-white/60 text-green-600 dark:border-green-500/30 dark:bg-green-500/15 dark:text-green-400'
       : hasRemarks
-        ? 'border-red-300 bg-white/80 text-red-800 dark:border-red-700 dark:bg-red-950/60 dark:text-red-200'
-        : 'border-red-200 bg-white/60 text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400';
+        ? 'border-red-300 bg-white/80 text-red-800 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300'
+        : 'border-red-200 bg-white/60 text-red-600 dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-400';
   const Icon = hasRemarks ? MessageSquareText : MessageSquareOff;
 
   return (
@@ -347,8 +347,8 @@ function RemarksPreview({ remarks, tone }: { remarks: string; tone: 'green' | 'r
 
   const toneClass =
     tone === 'green'
-      ? 'border-green-200 bg-white/70 text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-200'
-      : 'border-red-200 bg-white/70 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200';
+      ? 'border-green-200 bg-white/70 text-green-800 dark:border-green-500/30 dark:bg-green-500/20 dark:text-green-300'
+      : 'border-red-200 bg-white/70 text-red-800 dark:border-red-500/30 dark:bg-red-500/20 dark:text-red-300';
 
   return (
     <div className={`mt-3 flex items-start gap-2 rounded-md border px-2.5 py-2 text-sm ${toneClass}`}>

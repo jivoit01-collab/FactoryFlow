@@ -394,7 +394,7 @@ export default function BulkImportPage() {
                   {rows.map((row, idx) => (
                     <tr
                       key={idx}
-                      className={`border-b ${row.status === 'failed' ? 'bg-destructive/5' : row.status === 'success' ? 'bg-green-50 dark:bg-green-950/20' : ''}`}
+                      className={`border-b ${row.status === 'failed' ? 'bg-destructive/5' : row.status === 'success' ? 'bg-green-50 dark:bg-green-500/10' : ''}`}
                     >
                       <td className="py-2 px-3 text-muted-foreground">{idx + 1}</td>
                       <td className="py-2 px-3 font-mono text-xs">{row.item_code}</td>

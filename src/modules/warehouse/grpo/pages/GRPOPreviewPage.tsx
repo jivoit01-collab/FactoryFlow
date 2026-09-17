@@ -2,6 +2,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRightLeft,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -16,7 +17,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
+import { GATE_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
+import { usePermission } from '@/core/auth/hooks/usePermission';
 import { isPmItemCode } from '@/modules/warehouse/pages/bst/bstBoxCounts';
 import {
   Badge,
@@ -43,14 +46,24 @@ import {
   useSaveGRPODraft,
 } from '../api';
 import {
+  BatchNumbersInput,
   ExtraChargesSection,
+  POPrintButton,
   QCReportButton,
   QCStatusBadge,
+  RepointPODialog,
   useQCReportPrint,
   WarehouseSelect,
 } from '../components';
 import { DEFAULT_BRANCH_ID, GRPO_STATUS, PM_WAREHOUSE_CODE } from '../constants';
-import type { ExtraCharge, GRPOAttachment, PostGRPOResponse, PreviewPOReceipt } from '../types';
+import type {
+  ExtraCharge,
+  GRPOAttachment,
+  GRPOBatchInput,
+  PostGRPOResponse,
+  PreviewPOReceipt,
+} from '../types';
+import { validateBatches } from '../utils';
 
 // Per-item form state
 interface ItemFormState {
@@ -59,7 +72,22 @@ interface ItemFormState {
   tax_code?: string;
   gl_account?: string;
   variety?: string;
+  // Lots received on this line. Only ever filled for batch-managed items —
+  // SAP rejects the whole receipt (-4014) without them, and rejects a batch
+  // block on an item it does not manage by batch.
+  batches: GRPOBatchInput[];
 }
+
+// A batch-managed line starts with one row for the whole quantity, defaulted to
+// the supplier lot QC already recorded, so the usual case is a glance and a post.
+const seedBatches = (item: {
+  is_batch_managed?: boolean;
+  suggested_batch_number?: string;
+  received_qty: number;
+}): GRPOBatchInput[] =>
+  item.is_batch_managed
+    ? [{ batch_number: item.suggested_batch_number ?? '', quantity: item.received_qty }]
+    : [];
 
 // Merged form state (shared across all selected POs)
 interface MergedFormState {
@@ -201,6 +229,9 @@ export default function GRPOPreviewPage() {
   const deleteAttachment = useDeleteGRPOAttachment(draftId ?? 0);
 
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
+  // The PO whose receipt is being moved onto a different open PO, if any. Its own
+  // PO can run out between gate-in and posting — see RepointPODialog.
+  const [repointPO, setRepointPO] = useState<PreviewPOReceipt | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [successResult, setSuccessResult] = useState<PostGRPOResponse | null>(null);
   const [lastPostedQCReports, setLastPostedQCReports] = useState<PrintableQCReportItem[]>([]);
@@ -213,6 +244,8 @@ export default function GRPOPreviewPage() {
   const totalAttachmentCount = (mergedForm?.attachments.length ?? 0) + savedAttachments.length;
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
+  const { hasPermission } = usePermission();
+  const canRepointPO = hasPermission(GATE_PERMISSIONS.RAW_MATERIAL.REPOINT_PO);
 
   // Separate posted and unposted POs
   const unpostedPOs = useMemo(
@@ -316,6 +349,7 @@ export default function GRPOPreviewPage() {
             tax_code: item.tax_code || undefined,
             gl_account: item.gl_account || undefined,
             variety: item.variety || undefined,
+            batches: seedBatches(item),
           };
         });
       });
@@ -358,6 +392,7 @@ export default function GRPOPreviewPage() {
         tax_code: it.tax_code || undefined,
         gl_account: it.gl_account || undefined,
         variety: it.variety || undefined,
+        batches: it.batches ?? [],
       };
     });
 
@@ -432,12 +467,19 @@ export default function GRPOPreviewPage() {
     const qty = value === '' ? 0 : parseFloat(value);
     setMergedForm((prev) => {
       if (!prev) return prev;
-      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0 };
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
+      const acceptedQty = isNaN(qty) ? 0 : qty;
+      // With a single lot there is nothing to apportion, so it simply follows
+      // the accepted quantity. Splits are left alone — the operator typed them.
+      const batches =
+        currentItem.batches?.length === 1
+          ? [{ ...currentItem.batches[0], quantity: acceptedQty }]
+          : (currentItem.batches ?? []);
       return {
         ...prev,
         items: {
           ...prev.items,
-          [poItemReceiptId]: { ...currentItem, accepted_qty: isNaN(qty) ? 0 : qty },
+          [poItemReceiptId]: { ...currentItem, accepted_qty: acceptedQty, batches },
         },
       };
     });
@@ -458,7 +500,7 @@ export default function GRPOPreviewPage() {
   ) => {
     setMergedForm((prev) => {
       if (!prev) return prev;
-      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0 };
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
       return {
         ...prev,
         items: {
@@ -467,6 +509,25 @@ export default function GRPOPreviewPage() {
         },
       };
     });
+  };
+
+  const updateItemBatches = (poItemReceiptId: number, batches: GRPOBatchInput[]) => {
+    setMergedForm((prev) => {
+      if (!prev) return prev;
+      const currentItem = prev.items[poItemReceiptId] || { accepted_qty: 0, batches: [] };
+      return {
+        ...prev,
+        items: { ...prev.items, [poItemReceiptId]: { ...currentItem, batches } },
+      };
+    });
+    const errorKey = `batch_${poItemReceiptId}`;
+    if (apiErrors[errorKey]) {
+      setApiErrors((prev) => {
+        const next = { ...prev };
+        delete next[errorKey];
+        return next;
+      });
+    }
   };
 
   const updateFormField = useCallback(
@@ -534,6 +595,9 @@ export default function GRPOPreviewPage() {
     const items = selectedPOs.flatMap((po) =>
       po.items.map((item) => {
         const itemForm = mergedForm.items[item.po_item_receipt_id];
+        const batches = (itemForm?.batches ?? []).filter((batch) =>
+          batch.batch_number.trim(),
+        );
         return {
           po_item_receipt_id: item.po_item_receipt_id,
           accepted_qty: itemForm?.accepted_qty ?? item.received_qty,
@@ -541,6 +605,7 @@ export default function GRPOPreviewPage() {
           tax_code: itemForm?.tax_code || undefined,
           gl_account: itemForm?.gl_account || undefined,
           variety: itemForm?.variety || undefined,
+          batches: batches.length > 0 ? batches : undefined,
         };
       }),
     );
@@ -579,6 +644,13 @@ export default function GRPOPreviewPage() {
         const accepted = itemForm?.accepted_qty ?? item.received_qty;
         if (accepted < 0) {
           errors[`item_${item.po_item_receipt_id}`] = 'Cannot be negative';
+        }
+        // Only at post time: a half-filled batch must not block saving a draft.
+        // A batch-managed line with nothing to receive posts no line at all.
+        if (!forPost || !item.is_batch_managed || accepted <= 0) return;
+        const batchError = validateBatches(itemForm?.batches ?? [], accepted);
+        if (batchError) {
+          errors[`batch_${item.po_item_receipt_id}`] = batchError;
         }
       });
     });
@@ -758,7 +830,7 @@ export default function GRPOPreviewPage() {
 
       {/* General Error */}
       {error && !isPermissionError && (
-        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/10">
+        <div className="flex items-start gap-3 p-4 rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-500/10">
           <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
@@ -889,6 +961,24 @@ export default function GRPOPreviewPage() {
                             {po.branch_id != null && ` | Branch: ${po.branch_id}`}
                           </p>
                         </div>
+                        <POPrintButton
+                          receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                        />
+                        {canRepointPO && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            title="Move this receipt onto another open PO"
+                            onClick={() => setRepointPO(po)}
+                          >
+                            <ArrowRightLeft className="h-3.5 w-3.5 mr-1" />
+                            Move PO
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -974,7 +1064,7 @@ export default function GRPOPreviewPage() {
           {blockedPOs.map((po) => (
             <Card
               key={po.po_receipt_id}
-              className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-900/10"
+              className="border-amber-300/60 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10"
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
@@ -991,10 +1081,18 @@ export default function GRPOPreviewPage() {
                       Invoice: {po.invoice_no || '-'} | Challan: {po.challan_no || '-'}
                     </p>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 whitespace-nowrap">
-                    <AlertCircle className="h-3 w-3" />
-                    QC not passed
-                  </span>
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <POPrintButton
+                      receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs"
+                    />
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400 whitespace-nowrap">
+                      <AlertCircle className="h-3 w-3" />
+                      QC not passed
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (
@@ -1038,7 +1136,7 @@ export default function GRPOPreviewPage() {
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="font-semibold text-sm">{po.po_number}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400">
                       <CheckCircle2 className="h-3 w-3" />
                       Posted (SAP #{po.sap_doc_num})
                     </span>
@@ -1047,6 +1145,13 @@ export default function GRPOPreviewPage() {
                     {po.supplier_name}
                     {formatPODate(po.po_date) && ` · PO Date: ${formatPODate(po.po_date)}`}
                   </p>
+                  <div className="mt-2">
+                    <POPrintButton
+                      receipt={{ id: po.po_receipt_id, po_number: po.po_number }}
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {po.items.map((item) => (
@@ -1105,10 +1210,12 @@ export default function GRPOPreviewPage() {
                   {po.items.map((item) => {
                     const itemForm = mergedForm.items[item.po_item_receipt_id] || {
                       accepted_qty: item.received_qty,
+                      batches: seedBatches(item),
                     };
                     const acceptedQty = itemForm.accepted_qty;
                     const rejectedQty = Math.max(0, item.received_qty - acceptedQty);
                     const errorKey = `item_${item.po_item_receipt_id}`;
+                    const batchErrorKey = `batch_${item.po_item_receipt_id}`;
 
                     return (
                       <div
@@ -1231,6 +1338,20 @@ export default function GRPOPreviewPage() {
                             />
                           </div>
                         </div>
+
+                        {/* SAP will not receive a batch-managed item without
+                            its lot — collected here rather than dying on -4014. */}
+                        {item.is_batch_managed && (
+                          <BatchNumbersInput
+                            batches={itemForm.batches ?? []}
+                            acceptedQty={acceptedQty}
+                            uom={item.uom}
+                            error={apiErrors[batchErrorKey]}
+                            onChange={(batches) =>
+                              updateItemBatches(item.po_item_receipt_id, batches)
+                            }
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -1624,15 +1745,24 @@ export default function GRPOPreviewPage() {
                     {po.items.map((item) => {
                       const itemForm = mergedForm.items[item.po_item_receipt_id];
                       const accepted = itemForm?.accepted_qty ?? item.received_qty;
+                      const batchNumbers = (itemForm?.batches ?? [])
+                        .map((batch) => batch.batch_number.trim())
+                        .filter(Boolean);
                       return (
-                        <div
-                          key={item.po_item_receipt_id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span className="text-muted-foreground">{item.item_name}</span>
-                          <span className="font-medium">
-                            {accepted} {item.uom}
-                          </span>
+                        <div key={item.po_item_receipt_id} className="text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">{item.item_name}</span>
+                            <span className="font-medium">
+                              {accepted} {item.uom}
+                            </span>
+                          </div>
+                          {/* The batch is written into SAP's stock ledger and
+                              cannot be corrected afterwards — show it here. */}
+                          {batchNumbers.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Batch: {batchNumbers.join(', ')}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -1792,6 +1922,17 @@ export default function GRPOPreviewPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Move a receipt onto another open PO when its own has run out */}
+      {repointPO && (
+        <RepointPODialog
+          po={repointPO}
+          open
+          onOpenChange={(next) => {
+            if (!next) setRepointPO(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -193,7 +193,7 @@ export default function WmsOutboundPage() {
       </Card>
 
       {lastShippedLabel ? (
-        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30">
+        <Card className="border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
             <div className="text-sm">
               Pallet <span className="font-mono font-semibold">{lastShippedLabel.title}</span> shipped.

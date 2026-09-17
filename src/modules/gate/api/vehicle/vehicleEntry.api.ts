@@ -4,11 +4,27 @@ import { apiClient } from '@/core/api';
 import type { Driver } from '../driver/driver.api';
 import type { Vehicle } from './vehicle.api';
 
+/** RM/PM split of the stock on one entry, derived from the PO item-code prefixes. */
+export type MaterialTypeCode = 'RM' | 'PM' | 'BOTH' | 'OTHER';
+
+export interface MaterialType {
+  code: MaterialTypeCode;
+  label: string;
+}
+
+export interface EntrySupplier {
+  supplier_code: string;
+  supplier_name: string;
+}
+
 export interface VehicleEntry {
   id: number;
   entry_no: string;
   status: string;
   entry_type?: string;
+  suppliers: EntrySupplier[];
+  /** Null until the entry has PO lines to classify. */
+  material_type?: MaterialType | null;
   qc_final_status?: {
     code: string;
     display: string;

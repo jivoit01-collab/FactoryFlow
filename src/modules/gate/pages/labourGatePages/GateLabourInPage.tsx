@@ -249,9 +249,9 @@ export default function GateLabourInPage() {
                     key={entry.id}
                     className={cn(
                       'flex items-center justify-between gap-4 rounded-lg border border-l-4 p-3',
-                      allIn && 'border-l-green-500 bg-green-50/50 dark:bg-green-950/15',
-                      partial && 'border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/15',
-                      allOut && 'border-l-red-500 bg-red-50/50 dark:bg-red-950/15',
+                      allIn && 'border-l-green-500 bg-green-50/50 dark:bg-green-500/10',
+                      partial && 'border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-500/10',
+                      allOut && 'border-l-red-500 bg-red-50/50 dark:bg-red-500/10',
                     )}
                   >
                     <div className="min-w-0">

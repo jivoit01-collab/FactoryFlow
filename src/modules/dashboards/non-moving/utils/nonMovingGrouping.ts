@@ -1,9 +1,11 @@
 import { FACTORY_WAREHOUSE_PREFIXES } from '../constants';
-import type { NonMovingItem, WarehouseGroup, WarehouseSummary } from '../types';
+import type { NonMovingItem, NonMovingRow, WarehouseGroup, WarehouseSummary } from '../types';
 
 interface GroupedNonMovingItem {
   item: NonMovingItem;
   warehouses: Set<string>;
+  /** True only while every warehouse folded in is decommissioned in SAP. */
+  allInactive: boolean;
 }
 
 function shouldUseMovementFrom(candidate: NonMovingItem, current: NonMovingItem): boolean {
@@ -15,7 +17,13 @@ function shouldUseMovementFrom(candidate: NonMovingItem, current: NonMovingItem)
   );
 }
 
-export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[] {
+/**
+ * Folds every warehouse holding an item into one line, the way the table shows
+ * it when more than one warehouse is in view. The line keeps the *freshest*
+ * movement of the group, so an item consumed in one store does not read as
+ * dead because a pallet of it sits untouched in another.
+ */
+export function groupNonMovingRowsBySku(items: NonMovingItem[]): NonMovingRow[] {
   const grouped = new Map<string, GroupedNonMovingItem>();
 
   for (const item of items) {
@@ -26,6 +34,7 @@ export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[
       grouped.set(key, {
         item: { ...item },
         warehouses: new Set(item.warehouse ? [item.warehouse] : []),
+        allInactive: Boolean(item.warehouse_inactive),
       });
       continue;
     }
@@ -33,23 +42,42 @@ export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[
     existing.warehouses.add(item.warehouse);
     existing.item.quantity += item.quantity;
     existing.item.value += item.value;
+    existing.allInactive = existing.allInactive && Boolean(item.warehouse_inactive);
 
     if (shouldUseMovementFrom(item, existing.item)) {
       existing.item.days_since_last_movement = item.days_since_last_movement;
       existing.item.last_movement_date = item.last_movement_date;
       existing.item.consumption_ratio = item.consumption_ratio;
+      existing.item.movement_basis = item.movement_basis;
+      existing.item.last_warehouse_movement_date = item.last_warehouse_movement_date;
+      existing.item.days_since_warehouse_movement = item.days_since_warehouse_movement;
+      existing.item.last_movement_warehouse = item.last_movement_warehouse;
+      existing.item.last_movement_warehouse_name = item.last_movement_warehouse_name;
     }
   }
 
-  return [...grouped.values()].map(({ item, warehouses }) => {
-    const warehouseList = [...warehouses].filter(Boolean);
+  return [...grouped.values()].map(({ item, warehouses, allInactive }) => {
+    const warehouseList = [...warehouses].filter(Boolean).sort();
     return {
       ...item,
+      warehouse_inactive: allInactive,
       warehouse:
         warehouseList.length > 1
           ? `${warehouseList.length} warehouses`
           : (warehouseList[0] ?? item.warehouse),
+      warehouses: warehouseList,
+      warehouse_count: warehouseList.length,
     };
+  });
+}
+
+/** The same fold, without the table-only columns. */
+export function groupNonMovingItemsBySku(items: NonMovingItem[]): NonMovingItem[] {
+  return groupNonMovingRowsBySku(items).map((row): NonMovingItem => {
+    const { warehouses, warehouse_count, ...item } = row;
+    void warehouses;
+    void warehouse_count;
+    return item;
   });
 }
 
@@ -84,6 +112,11 @@ export function buildNonMovingWarehouseGroups(
       existing.days_since_last_movement = item.days_since_last_movement;
       existing.last_movement_date = item.last_movement_date;
       existing.consumption_ratio = item.consumption_ratio;
+      existing.movement_basis = item.movement_basis;
+      existing.last_warehouse_movement_date = item.last_warehouse_movement_date;
+      existing.days_since_warehouse_movement = item.days_since_warehouse_movement;
+      existing.last_movement_warehouse = item.last_movement_warehouse;
+      existing.last_movement_warehouse_name = item.last_movement_warehouse_name;
     }
   }
 

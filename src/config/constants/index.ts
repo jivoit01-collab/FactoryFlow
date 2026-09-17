@@ -5,6 +5,7 @@ export * from './company.constants';
 export * from './controlledDocuments';
 export * from './idProof.constants';
 export * from './status.constants';
+export * from './support.constants';
 export * from './ui.constants';
 export * from './validation.constants';
 export * from './vehicle.constants';

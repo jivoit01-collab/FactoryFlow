@@ -18,13 +18,6 @@ export {
   type CostMasterPermission,
 } from './admin.permissions';
 
-// Daily Tasks Module (per-user daily job sheet, derived from every other module)
-export {
-  DAILY_TASKS_MODULE_PREFIX,
-  DAILY_TASKS_PERMISSIONS,
-  type DailyTasksPermission,
-} from './daily-tasks.permissions';
-
 // Attendance Module (punch-machine daily sheet + manual overrides)
 export {
   ATTENDANCE_ACCESS,
@@ -45,6 +38,14 @@ export {
   LABOUR_PERMISSIONS,
   type LabourPermission,
 } from './labour.permissions';
+
+// Request Labour (Organisation module; backed by the `labour_request` Django app)
+export {
+  LABOUR_REQUEST_ACCESS,
+  LABOUR_REQUEST_MODULE_PREFIX,
+  LABOUR_REQUEST_PERMISSIONS,
+  type LabourRequestPermission,
+} from './labour-request.permissions';
 
 // Quality Control Module
 export { QC_MODULE_PREFIX, QC_PERMISSIONS, type QCPermission } from './qc.permissions';
@@ -74,6 +75,14 @@ export {
   SAP_REPORTS_PERMISSIONS,
   type SapReportsPermission,
 } from './sap-reports.permissions';
+
+// Universal Search (one number, looked up across SAP and this app)
+export {
+  UNIVERSAL_SEARCH_ACCESS,
+  UNIVERSAL_SEARCH_MODULE_PREFIX,
+  UNIVERSAL_SEARCH_PERMISSIONS,
+  type UniversalSearchPermission,
+} from './universal-search.permissions';
 
 // Production Module
 export {
@@ -134,6 +143,14 @@ export {
   type ARInvoicePermission,
 } from './ar-invoice.permissions';
 
+// Short Dispatch Module (SAP Return Note for short-picked bills; nav under Warehouse)
+export {
+  SHORT_DISPATCH_ACCESS,
+  SHORT_DISPATCH_MODULE_PREFIX,
+  SHORT_DISPATCH_PERMISSIONS,
+  type ShortDispatchPermission,
+} from './short-dispatch.permissions';
+
 // Vehicle Management Module
 export {
   VEHICLE_MANAGEMENT_MODULE_PREFIX,
@@ -155,6 +172,14 @@ export {
   MAINTENANCE_PERMISSIONS,
   type MaintenancePermission,
 } from './maintenance.permissions';
+
+// Artwork Module (label + carton artwork register)
+export {
+  ARTWORK_ACCESS,
+  ARTWORK_MODULE_PREFIX,
+  ARTWORK_PERMISSIONS,
+  type ArtworkPermission,
+} from './artwork.permissions';
 
 // ETP / STP Module (effluent + sewage treatment plant registers)
 export {
@@ -228,3 +253,13 @@ export {
   ORG_CHART_PERMISSIONS,
   type OrgChartPermission,
 } from './org-chart.permissions';
+
+// Cash Book (the factory's cash box: money in, money out, bunches for approval)
+export {
+  CASH_BOOK_ACCESS,
+  CASH_BOOK_APPROVALS_ACCESS,
+  CASH_BOOK_MODULE_PREFIX,
+  CASH_BOOK_PERMISSIONS,
+  CASH_BOOK_SETTINGS_ACCESS,
+  type CashBookPermission,
+} from './cash-book.permissions';

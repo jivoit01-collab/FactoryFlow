@@ -226,8 +226,8 @@ function VariancesTab() {
                       <td className="py-2 pr-4"><VarCell cell={r.units_per_bottle} digits={5} /></td>
                       <td className="py-2 pr-4">
                         {r.any_breach
-                          ? <Badge className="bg-red-100 text-red-700">Breach</Badge>
-                          : <Badge className="bg-green-100 text-green-700">OK</Badge>}
+                          ? <Badge className="bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400">Breach</Badge>
+                          : <Badge className="bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400">OK</Badge>}
                       </td>
                     </tr>
                   ))}

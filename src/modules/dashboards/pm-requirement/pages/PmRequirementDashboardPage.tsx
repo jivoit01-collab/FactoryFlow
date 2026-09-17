@@ -13,7 +13,7 @@ import {
   PmReqRowDialog,
   PmReqTable,
 } from '../components';
-import { DEFAULT_FILTER, DEFAULT_SORT } from '../constants';
+import { DEFAULT_FILTER, DEFAULT_SORT, DEFAULT_SORT_FOR_FILTER } from '../constants';
 import type { PmReqFilter, PmReqRow, PmReqSortKey } from '../types';
 import {
   csvFilename,
@@ -100,6 +100,7 @@ export default function PmRequirementDashboardPage() {
         'at-risk': filterRows(searched, 'at-risk').length,
         surplus: filterRows(searched, 'surplus').length,
         'over-issued': filterRows(searched, 'over-issued').length,
+        'over-purchased': filterRows(searched, 'over-purchased').length,
       }) as Record<PmReqFilter, number>,
     [searched],
   );
@@ -113,6 +114,18 @@ export default function PmRequirementDashboardPage() {
     (key: PmReqSortKey) => setSort((current) => nextSort(current, key)),
     [],
   );
+
+  /**
+   * Choosing a chip also chooses what "worst first" means under it.
+   *
+   * Over-purchased rows all have a shortfall of zero — a row cannot be short
+   * after its order and over-bought on it — so leaving the sort on the
+   * shortfall column would list them alphabetically. See the constant.
+   */
+  const handleFilterChange = useCallback((next: PmReqFilter) => {
+    setFilter(next);
+    setSort(DEFAULT_SORT_FOR_FILTER[next] ?? DEFAULT_SORT);
+  }, []);
 
   const refreshAll = useCallback(() => {
     void plansQuery.refetch();
@@ -180,7 +193,7 @@ export default function PmRequirementDashboardPage() {
       {/* A plan that is not there is said so, never shown as an empty table:
           no rows and no message reads as "the plan needs no packaging". */}
       {noPlan && (
-        <p className="rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+        <p className="rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           SAP has no production plan for this company, or the one selected has been deleted.
           Planners author it in SAP as a sales forecast (OFCT); once one exists it appears in the
           picker above.
@@ -190,7 +203,7 @@ export default function PmRequirementDashboardPage() {
       <PmReqHeadline
         totals={requirementQuery.data?.totals}
         isLoading={requirementQuery.isLoading}
-        onFilter={setFilter}
+        onFilter={handleFilterChange}
       />
 
       <PmReqNotes
@@ -202,7 +215,7 @@ export default function PmRequirementDashboardPage() {
       <div className="space-y-3">
         <PmReqFilters
           filter={filter}
-          onFilterChange={setFilter}
+          onFilterChange={handleFilterChange}
           search={search}
           onSearchChange={setSearch}
           family={family}
@@ -224,7 +237,9 @@ export default function PmRequirementDashboardPage() {
                 ? 'This plan explodes to no packing material. Check that its products have bills of material in SAP.'
                 : filter === 'short'
                   ? 'Nothing is short once open orders are counted. Switch to Everything to see the whole plan.'
-                  : 'No component matches these filters.'
+                  : filter === 'over-purchased'
+                    ? 'Nothing is on order beyond what the plan still needs. Every open order is sized against the requirement less stock.'
+                    : 'No component matches these filters.'
           }
         />
       </div>

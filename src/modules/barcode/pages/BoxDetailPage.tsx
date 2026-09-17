@@ -120,13 +120,13 @@ export default function BoxDetailPage() {
             <Badge
               className={`mt-1 ${
                 {
-                  ACTIVE: 'bg-green-100 text-green-800',
-                  PARTIAL: 'bg-amber-100 text-amber-800',
-                  INSIDE_VEHICLE: 'bg-indigo-100 text-indigo-800',
-                  DISPATCHED: 'bg-blue-100 text-blue-800',
-                  DISMANTLED: 'bg-orange-100 text-orange-800',
-                  VOID: 'bg-red-100 text-red-800',
-                }[box.status] || 'bg-gray-100 text-gray-800'
+                  ACTIVE: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400',
+                  PARTIAL: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+                  INSIDE_VEHICLE: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400',
+                  DISPATCHED: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400',
+                  DISMANTLED: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-400',
+                  VOID: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
+                }[box.status] || 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground'
               }`}
             >
               {box.status}
@@ -228,18 +228,18 @@ export default function BoxDetailPage() {
       {box.dismantled_into && box.dismantled_into.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 text-orange-700">Dismantled Into (Loose Stock)</h3>
+            <h3 className="font-semibold mb-3 text-orange-700 dark:text-orange-400">Dismantled Into (Loose Stock)</h3>
             <div className="space-y-2">
               {box.dismantled_into.map((ls) => (
                 <div
                   key={ls.id}
-                  className="flex items-center justify-between p-2 bg-orange-50 rounded text-sm"
+                  className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-500/10 rounded text-sm"
                 >
                   <div>
                     <span className="font-medium">{ls.qty} units</span>
                     <span className="ml-2 text-muted-foreground">Reason: {ls.reason}</span>
                     <Badge
-                      className={`ml-2 ${ls.status === 'REPACKED' ? 'bg-blue-100 text-blue-800' : ls.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
+                      className={`ml-2 ${ls.status === 'REPACKED' ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400' : ls.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400' : 'bg-gray-100 dark:bg-muted text-gray-800 dark:text-foreground'}`}
                     >
                       {ls.status}
                     </Badge>
@@ -268,12 +268,12 @@ export default function BoxDetailPage() {
       {box.repacked_from && box.repacked_from.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold mb-3 text-blue-700">Repacked From (Source Boxes)</h3>
+            <h3 className="font-semibold mb-3 text-blue-700 dark:text-blue-400">Repacked From (Source Boxes)</h3>
             <div className="space-y-2">
               {box.repacked_from.map((ls) => (
                 <div
                   key={ls.id}
-                  className="flex items-center justify-between p-2 bg-blue-50 rounded text-sm"
+                  className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-500/10 rounded text-sm"
                 >
                   <div>
                     <span className="font-medium">{ls.qty} units</span>
@@ -306,7 +306,7 @@ export default function BoxDetailPage() {
               {box.movements.map((m) => (
                 <div key={m.id} className="flex items-start gap-3 p-2 bg-muted/30 rounded">
                   <div
-                    className={`text-xs font-bold uppercase ${MOVEMENT_COLORS[m.movement_type] ?? 'text-gray-600'}`}
+                    className={`text-xs font-bold uppercase ${MOVEMENT_COLORS[m.movement_type] ?? 'text-gray-600 dark:text-muted-foreground'}`}
                   >
                     {m.movement_type}
                   </div>
@@ -368,7 +368,7 @@ export default function BoxDetailPage() {
                       <span className="font-mono text-xs font-medium">{p.pallet_id}</span>
                       <span className="ml-2 text-sm">{p.item_name || p.item_code}</span>
                       <span
-                        className={`ml-1 text-xs ${batchMatch ? 'text-muted-foreground' : 'text-amber-700'}`}
+                        className={`ml-1 text-xs ${batchMatch ? 'text-muted-foreground' : 'text-amber-700 dark:text-amber-400'}`}
                       >
                         Batch: {p.batch_number}
                       </span>

@@ -4,10 +4,10 @@
  * These constants map to Django permissions defined in the backend.
  * Format: 'app_label.permission_codename'
  *
- * The standalone Labour module (`/labour`) renders the labour-gate
- * contractor/department split screen, which is backed by the `labour_gate`
- * Django app. Granting only these permissions gives a user Labour-module access
- * and nothing else. The screen also loads the contractor master, so
+ * Allocate labour (`/labour`, under the Organisation module) renders the
+ * labour-gate contractor/department split screen, which is backed by the
+ * `labour_gate` Django app. Granting only these permissions gives a user that
+ * one screen and nothing else. The screen also loads the contractor master, so
  * `person_gatein.view_contractor` is required on the backend to populate the
  * contractor dropdown (that permission is defined under the gate module).
  *
@@ -17,7 +17,7 @@
  *
  * Note: the same `labour_gate` codenames are also surfaced under
  * `GATE_PERMISSIONS.LABOUR_GATE` for the in-module gate routes. This file is
- * the canonical home for the standalone Labour module.
+ * the canonical home for the Allocate labour screen.
  *
  * @see gate.permissions.ts (GATE_PERMISSIONS.LABOUR_GATE, PERSON_GATE_IN)
  */
@@ -29,13 +29,15 @@ export const LABOUR_PERMISSIONS = {
   IN: 'labour_gate.can_record_labour_in',
   /** Record labour leaving at the gate (gate person) */
   OUT: 'labour_gate.can_record_labour_out',
-  /** Split a contractor's gate labour across departments (HOD / Labour module) */
+  /** Split a contractor's gate labour across departments (HOD / Allocate labour) */
   ALLOCATE: 'labour_gate.can_allocate_labour_department',
 } as const;
 
 /**
- * Module prefix for sidebar filtering. The Labour module maps to a single
- * Django app, so granting anything under `labour_gate` lights up the module.
+ * Module prefix for sidebar filtering. Allocate labour maps to a single Django
+ * app, so granting anything under `labour_gate` lights up the screen. Kept for
+ * callers that filter by prefix — the sidebar entry itself lists its two
+ * permissions explicitly (see `organization/module.config.tsx`).
  */
 export const LABOUR_MODULE_PREFIX = ['labour_gate'] as const;
 

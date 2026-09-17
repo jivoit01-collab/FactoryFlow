@@ -75,11 +75,11 @@ export default function PersonGateInAllPage() {
   const getPersonTypeBadgeClass = (personType?: string) => {
     switch (personType?.toUpperCase()) {
       case 'VISITOR':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-400';
       case 'LABOUR':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+        return 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-muted-foreground';
     }
   };
 

@@ -41,8 +41,8 @@ function VarianceTag({ variance }: { variance: number }) {
       className={cn(
         'rounded px-1.5 py-0.5 text-xs font-semibold',
         variance === 0
-          ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+          ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300'
+          : 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
       )}
     >
       {variance > 0 ? '+' : ''}

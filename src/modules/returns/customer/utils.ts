@@ -12,6 +12,17 @@ export const BASIS_LABELS: Record<GoodsReturnBasis, string> = {
   LETTER_PAD: 'Against Letter Pad',
 };
 
+/** What to call the customer's own reference number, per basis.
+ *
+ *  An invoice-basis return already carries the bill numbers, so its label is
+ *  never shown — it is here only to keep the record total.
+ */
+export const REF_NO_LABELS: Record<GoodsReturnBasis, string> = {
+  INVOICE: 'Reference Number',
+  DEBIT_NOTE: 'Debit Note Number',
+  LETTER_PAD: 'Letter Pad Number',
+};
+
 export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
   DRAFT: 'Draft',
   AWAITING_ARRIVAL: 'Awaiting Arrival',
@@ -23,17 +34,17 @@ export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
 };
 
 export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
-  DRAFT: 'bg-slate-100 text-slate-700',
-  AWAITING_ARRIVAL: 'bg-amber-100 text-amber-800',
-  ARRIVED: 'bg-sky-100 text-sky-800',
+  DRAFT: 'bg-slate-100 dark:bg-muted text-slate-700 dark:text-muted-foreground',
+  AWAITING_ARRIVAL: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  ARRIVED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-400',
   // Deliberately not the same green as POSTED: the goods are in, but there is
   // no SAP document behind it yet.
-  RECEIVED: 'bg-teal-100 text-teal-800',
+  RECEIVED: 'bg-teal-100 dark:bg-teal-500/15 text-teal-800 dark:text-teal-400',
   // Some of its invoices are in SAP and some are not — read as unfinished, not
   // as a failure: the documents SAP took are real.
-  PARTIALLY_POSTED: 'bg-orange-100 text-orange-800',
-  POSTED: 'bg-emerald-100 text-emerald-800',
-  CANCELLED: 'bg-rose-100 text-rose-800',
+  PARTIALLY_POSTED: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-400',
+  POSTED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  CANCELLED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
 };
 
 export const APPROVAL_LABELS: Record<GoodsReturnApprovalStatus, string> = {
@@ -44,14 +55,24 @@ export const APPROVAL_LABELS: Record<GoodsReturnApprovalStatus, string> = {
 };
 
 export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
-  NOT_REQUIRED: 'bg-slate-100 text-slate-600',
-  PENDING: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-emerald-100 text-emerald-800',
-  REJECTED: 'bg-rose-100 text-rose-800',
+  NOT_REQUIRED: 'bg-slate-100 dark:bg-muted text-slate-600 dark:text-muted-foreground',
+  PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
 };
 
+/**
+ * The condition picker, most-used first — `DAMAGED` is the default the line is
+ * created with, and `LEAKED` sits next to it because the two are what the clerk
+ * is choosing between on nearly every line.
+ *
+ * `LEAKED` is deliberately its own option rather than a word typed into the
+ * reason box: oil coming back wet is the commonest return and the only one that
+ * points at a specific cause, so it has to be countable without reading prose.
+ */
 export const CONDITION_OPTIONS: { value: GoodsReturnItemCondition; label: string }[] = [
   { value: 'DAMAGED', label: 'Damaged' },
+  { value: 'LEAKED', label: 'Leaked' },
   { value: 'GOOD', label: 'Good' },
   { value: 'EXPIRED', label: 'Expired' },
   { value: 'OTHER', label: 'Other' },

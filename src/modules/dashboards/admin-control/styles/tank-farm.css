@@ -1,0 +1,451 @@
+/*
+ * The tank farm overlay.
+ *
+ * WHY IT IS NOT A PORTAL
+ * The board runs fullscreen on a wall (`useFullscreen(shellRef)`), and a
+ * portal to document.body renders OUTSIDE the fullscreen element — the panel
+ * would simply not appear on the wall, which is the one place it matters. So
+ * it is absolutely positioned inside the board shell instead. That is also why
+ * the units here are the board's own `--u`: the panel scales with the wall.
+ */
+
+/*
+ * The shell is the scrim's containing block. Without this the overlay escapes
+ * to whichever ancestor happens to be positioned — in the app shell that is not
+ * the board, so the panel would cover the nav rail and the header instead of
+ * the board it belongs to. `container-type` alone does NOT do this.
+ */
+.admin-board {
+  position: relative;
+}
+
+.admin-board .tf-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: calc(1.2 * var(--u));
+  background: rgba(14, 23, 38, 0.55);
+  backdrop-filter: blur(calc(0.2 * var(--u)));
+  animation: tf-in 160ms ease-out;
+}
+
+.admin-board .tf-panel {
+  /* The Storage band's hue, so the panel reads as that tile opened up rather
+     than as a different screen. */
+  --tf-d1: #0e7490;
+  --tf-d2: #06b6d4;
+  --tf-d3: #67e8f9;
+  --tf-d4: #cffafe;
+
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border-radius: calc(0.9 * var(--u));
+  background: #fff;
+  box-shadow: 0 calc(0.5 * var(--u)) calc(2 * var(--u)) rgba(14, 23, 38, 0.25);
+  overflow: hidden;
+  animation: tf-rise 200ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ───────── head ───────── */
+
+.admin-board .tf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--u);
+  padding: calc(0.9 * var(--u)) calc(1.1 * var(--u));
+  border-bottom: 1px solid var(--hair);
+}
+.admin-board .tf-head h2 {
+  margin: 0;
+  font-size: calc(1.5 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.admin-board .tf-head p {
+  margin: calc(0.15 * var(--u)) 0 0;
+  font-size: calc(0.95 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.admin-board .tf-close {
+  display: grid;
+  place-items: center;
+  width: calc(2.1 * var(--u));
+  height: calc(2.1 * var(--u));
+  border: 1px solid var(--hair);
+  border-radius: calc(0.45 * var(--u));
+  background: #fff;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.admin-board .tf-close:hover {
+  background: var(--hair);
+  color: var(--ink);
+}
+.admin-board .tf-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ───────── groups ───────── */
+
+.admin-board .tf-body {
+  overflow: auto;
+  padding: calc(0.9 * var(--u)) calc(1.1 * var(--u));
+}
+.admin-board .tf-group + .tf-group {
+  margin-top: calc(1.1 * var(--u));
+}
+.admin-board .tf-group h3 {
+  margin: 0 0 calc(0.6 * var(--u));
+  font-size: calc(1 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+}
+.admin-board .tf-group h3 em {
+  margin-left: calc(0.4 * var(--u));
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+/*
+ * THREE ACROSS, FIXED — not `auto-fill`.
+ *
+ * A responsive column count would make the tank size depend on the window,
+ * and these are vessels: the reader is comparing one tank's level against the
+ * next, which only works if every tank is the same size on every screen. Three
+ * is also the count the farm was drawn for, so each vessel gets enough width
+ * to carry its dome, sight glass and ladder legibly. 28 tanks therefore make
+ * ten rows and the panel scrolls, which is the right trade — a farm squeezed
+ * to fit one screen is a farm nobody can read.
+ */
+.admin-board .tf-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: calc(1 * var(--u)) calc(0.8 * var(--u));
+}
+
+/* ───────── one vessel ─────────
+ *
+ * An SVG cylinder per vessel rather than one scene holding all 32: they have
+ * to wrap and scroll, and a single scene would need its own layout engine to
+ * do what CSS grid already does.
+ */
+
+.admin-board .tf-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.admin-board .tf-vessel {
+  margin: 0;
+  display: grid;
+  gap: calc(0.3 * var(--u));
+  justify-items: center;
+  min-width: 0;
+}
+
+/*
+ * A FIXED HEIGHT, with `preserveAspectRatio="… meet"` doing the rest.
+ *
+ * Height is what the eye compares across vessels, so it is pinned and the
+ * glyph centres itself in whatever width the column happens to be. Sizing off
+ * the width instead would make a tank in a wide window taller than a tank in a
+ * narrow one, and the levels would stop being comparable between screens.
+ */
+.admin-board .tf-glyph {
+  width: 100%;
+  height: calc(24 * var(--u));
+  display: block;
+  overflow: visible;
+}
+
+/* ── the steel ── */
+
+.admin-board .tf-steel {
+  fill: url(#tfSteel);
+}
+/* The shell BEHIND the oil, so an empty tank reads as an empty tank rather
+   than as a hole cut in the page. */
+.admin-board .tf-behind {
+  opacity: 0.55;
+}
+.admin-board .tf-shell {
+  fill: none;
+  stroke: #8595a5;
+  stroke-width: 1.6;
+}
+.admin-board .tf-seam {
+  stroke: #a7b4c1;
+  stroke-width: 0.8;
+  opacity: 0.7;
+}
+.admin-board .tf-rig {
+  fill: none;
+  stroke: #9aa8b6;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.admin-board .tf-thin {
+  stroke-width: 1;
+}
+.admin-board .tf-ground {
+  stroke: #c3cdd8;
+  stroke-width: 1.2;
+}
+.admin-board .tf-gauge {
+  fill: #edf1f6;
+  stroke: #8595a5;
+  stroke-width: 0.9;
+}
+/* Drawn OVER the oil: the highlight and shadow that make it look contained. */
+.admin-board .tf-spec {
+  fill: url(#tfSpec);
+  pointer-events: none;
+}
+
+/* ── the oil ── */
+
+.admin-board .tf-liquid {
+  /* The pour. Long enough to read as filling, short enough not to hold up the
+     number beside it. */
+  transition: transform 1050ms cubic-bezier(0.35, 0.9, 0.35, 1);
+}
+.admin-board .tf-wallshade {
+  fill: url(#tfWall);
+  opacity: 0.5;
+}
+/* The meniscus where the oil meets the wall. */
+.admin-board .tf-cling {
+  fill: none;
+  stroke: #07485a;
+  stroke-width: 1.6;
+  opacity: 0.2;
+}
+
+/*
+ * The idle swell. A degree of rotation and a third of a pixel of drift — far
+ * too little to be read as a value, which is the point: it says "fluid" and
+ * nothing else.
+ */
+.admin-board .tf-surface,
+.admin-board .tf-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tf-idle 6s ease-in-out infinite;
+}
+.admin-board .tf-ripple {
+  animation-duration: 8.5s;
+  animation-direction: reverse;
+}
+
+/*
+ * Three ripple lines crossing the surface at three periods and two directions.
+ * Each path is drawn a whole period wider than the vessel on both sides, so
+ * scrolling it by exactly one period loops with no seam.
+ */
+.admin-board .tf-wv {
+  fill: none;
+  stroke-linecap: round;
+}
+.admin-board .tf-w1 {
+  stroke: #8cedfb;
+  stroke-width: 1.3;
+  opacity: 0.75;
+  animation: tf-w1 3.6s linear infinite;
+}
+.admin-board .tf-w2 {
+  stroke: #0a6076;
+  stroke-width: 1.1;
+  opacity: 0.34;
+  animation: tf-w2 2.7s linear infinite;
+}
+.admin-board .tf-w3 {
+  stroke: #c9f6fe;
+  stroke-width: 0.8;
+  opacity: 0.5;
+  animation: tf-w3 5.2s linear infinite;
+}
+
+/* ── the readouts ── */
+
+.admin-board .tf-level {
+  font-size: 15px;
+  font-weight: 700;
+  /* Text wears ink tokens, never the series colour. */
+  fill: #0e1726;
+}
+
+.admin-board .tf-vessel figcaption {
+  display: grid;
+  justify-items: center;
+  gap: calc(0.04 * var(--u));
+  text-align: center;
+  line-height: 1.2;
+  min-width: 0;
+  width: 100%;
+}
+.admin-board .tf-vessel figcaption b {
+  font-size: calc(1.1 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+}
+.admin-board .tf-item {
+  font-size: calc(0.95 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-board .tf-qty {
+  font-size: calc(1 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+}
+.admin-board .tf-qty i {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+/* ───────── the two states ─────────
+ * Reserved status tokens, and each is labelled in the legend — colour is never
+ * carrying the meaning on its own. */
+
+.admin-board .tf-vessel.is-near .tf-shell {
+  stroke: var(--wa1);
+  stroke-width: 2;
+}
+.admin-board .tf-vessel.is-empty .tf-shell {
+  stroke: var(--mu1);
+  stroke-dasharray: 3 3;
+}
+.admin-board .tf-vessel.is-empty .tf-item {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+/* ───────── legend ───────── */
+
+.admin-board .tf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  padding: calc(0.7 * var(--u)) calc(1.1 * var(--u));
+  border-top: 1px solid var(--hair);
+  font-size: calc(0.88 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.admin-board .tf-lk {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.35 * var(--u));
+}
+.admin-board .tf-lk::before {
+  content: '';
+  width: calc(0.7 * var(--u));
+  height: calc(0.7 * var(--u));
+  border-radius: calc(0.16 * var(--u));
+}
+.admin-board .tf-lk-fill::before {
+  background: linear-gradient(180deg, var(--tf-d2), var(--tf-d1));
+}
+.admin-board .tf-lk-near::before {
+  background: #fff;
+  box-shadow: inset 0 0 0 calc(0.14 * var(--u)) var(--wa1);
+}
+.admin-board .tf-lk-empty::before {
+  background: #fff;
+  box-shadow: inset 0 0 0 calc(0.14 * var(--u)) var(--mu1);
+}
+.admin-board .tf-lk-note {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+/* ───────── the tile that opens it ─────────
+ * The drillable affordance itself is OpsGroup's (`data-drill`), already styled
+ * by ops-board.css. Only the hint line is new. */
+
+.admin-board .adm-open-hint {
+  margin-top: calc(0.3 * var(--u));
+  font-size: calc(0.82 * var(--u));
+  font-weight: 700;
+  color: var(--d1);
+}
+
+/* ───────── motion ───────── */
+
+@keyframes tf-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes tf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(0.8 * var(--u))) scale(0.99);
+  }
+}
+@keyframes tf-idle {
+  0%,
+  100% {
+    transform: rotate(-0.18deg) translateX(-0.35px);
+  }
+  50% {
+    transform: rotate(0.18deg) translateX(0.35px);
+  }
+}
+/* Each scrolls by exactly one period of its own sine, so the loop has no seam. */
+@keyframes tf-w1 {
+  to {
+    transform: translateX(-20px);
+  }
+}
+@keyframes tf-w2 {
+  to {
+    transform: translateX(-14px);
+  }
+}
+@keyframes tf-w3 {
+  to {
+    transform: translateX(26px);
+  }
+}
+
+/*
+ * Someone who has asked for less motion still gets the whole reading — the
+ * liquid is simply already at its level and the surface is still. Nothing here
+ * is decorative-only, so nothing is lost.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .admin-board .tf-scrim,
+  .admin-board .tf-panel {
+    animation: none;
+  }
+  .admin-board .tf-liquid {
+    transition: none;
+  }
+  .admin-board .tf-surface,
+  .admin-board .tf-ripple,
+  .admin-board .tf-wv {
+    animation: none;
+  }
+}

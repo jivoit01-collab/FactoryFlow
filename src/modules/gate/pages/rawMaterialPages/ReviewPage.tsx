@@ -436,7 +436,7 @@ export default function ReviewPage() {
               </div>
             )}
             {blockedForMissingWeighment && (
-              <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   This is a raw material (RM) load, so the loaded gross weight is required.

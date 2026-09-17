@@ -3,11 +3,12 @@ import type { Reducer } from '@reduxjs/toolkit';
 import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 // Module configuration imports
 // Each module exports its own routes, navigation, and reducers
+import { accountsModuleConfig } from '@/modules/accounts/module.config';
 import { adminModuleConfig } from '@/modules/admin/module.config';
+import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { attendanceModuleConfig } from '@/modules/attendance/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
-import { dailyTasksModuleConfig } from '@/modules/daily-tasks/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
@@ -16,7 +17,6 @@ import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
-import { labourModuleConfig } from '@/modules/labour/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
@@ -39,15 +39,15 @@ export const moduleRegistry: ModuleConfig[] = [
   authModuleConfig,
   adminModuleConfig,
   dashboardModuleConfig,
-  // High in the sidebar on purpose: this is the one page every user is meant to open daily.
-  dailyTasksModuleConfig,
   dashboardsModuleConfig,
   dispatchModuleConfig,
   gateModuleConfig,
   returnsModuleConfig,
-  labourModuleConfig,
   vehicleManagementModuleConfig,
   qcModuleConfig,
+  // Sits after QC: the artwork on a label is a controlled document, and QA
+  // is who holds it. One page, gated on artwork.* alone.
+  artworkModuleConfig,
   productionModuleConfig,
   // Sits next to Production: it reads the plan SAP holds and turns its bill of
   // materials into purchase orders.
@@ -62,17 +62,21 @@ export const moduleRegistry: ModuleConfig[] = [
   marketplaceModuleConfig,
   sapReportsModuleConfig,
   notificationsModuleConfig,
-  // Reference, not a workflow: the department ownership chart lives near the
-  // bottom with the other look-it-up pages.
+  // The department ownership chart. Route only — its sidebar entry is the
+  // Organisation module's, which opens on it.
   organizationModuleConfig,
   // Attendance sits immediately above the directory: same people, read daily
   // rather than looked up. Its permissions are separate from the directory's,
   // so gate supervisors can see who turned up without seeing the org tree.
   attendanceModuleConfig,
-  // The people themselves — the directory, the reporting tree and compensation.
-  // Sits next to the ownership chart: same subject, but real employees, real
-  // salaries and its own access control.
+  // Organisation: the ownership chart plus the people themselves — the
+  // directory, the reporting tree and compensation, each with its own access
+  // control.
   employeesModuleConfig,
+  // The cash box and its approvals. Sits after the people modules: it is the
+  // other thing the office keeps a book of, and it is nobody's shop-floor
+  // screen.
+  accountsModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

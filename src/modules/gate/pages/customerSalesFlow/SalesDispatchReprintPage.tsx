@@ -593,7 +593,7 @@ function SalesDispatchReprintSearchPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedEntry && !selectedEntry.printed_at ? (
-                <p className="text-sm text-amber-700">
+                <p className="text-sm text-amber-700 dark:text-amber-400">
                   A gatepass can be reprinted only after the original print is recorded.
                 </p>
               ) : null}
@@ -696,7 +696,7 @@ function StatusNotice({
   const className =
     tone === 'danger'
       ? 'border-destructive/30 bg-destructive/10 text-destructive'
-      : 'border-amber-300 bg-amber-50 text-amber-900';
+      : 'border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-900 dark:text-amber-400';
 
   return (
     <div className={`flex items-start gap-3 rounded-md border p-4 ${className}`}>
@@ -794,7 +794,7 @@ const PrintableGatepass = ({
           <div>
             <p className="text-sm font-medium uppercase text-slate-500">Gatepass Reprint</p>
             <h1 className="text-2xl font-bold">{companyName}</h1>
-            <p className="mt-1 text-sm text-slate-600">{formatValue(entry.sap_branch_name)}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-muted-foreground">{formatValue(entry.sap_branch_name)}</p>
           </div>
           <div className="text-sm sm:text-right">
             <div className="font-semibold">{formatValue(entry.gatepass_no)}</div>
@@ -823,7 +823,7 @@ const PrintableGatepass = ({
         </div>
 
         <div>
-          <h2 className="mb-2 text-sm font-semibold uppercase text-slate-600">Loaded Items</h2>
+          <h2 className="mb-2 text-sm font-semibold uppercase text-slate-600 dark:text-muted-foreground">Loaded Items</h2>
           <div className="space-y-3">
             {documents.map((document) => (
               <PrintableDocumentItemsTable
@@ -922,7 +922,7 @@ function PrintableDocumentItemsTable({
 
   if (!items.length) {
     return (
-      <div className="rounded-md border p-3 text-sm text-slate-600">
+      <div className="rounded-md border p-3 text-sm text-slate-600 dark:text-muted-foreground">
         No item lines found for {formatDocumentType(document.document_type)}{' '}
         {formatValue(document.sap_doc_num)}
       </div>
@@ -931,16 +931,16 @@ function PrintableDocumentItemsTable({
 
   return (
     <div className="overflow-hidden rounded-md border">
-      <div className="flex flex-col gap-1 border-b bg-slate-50 p-2 text-sm sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-1 border-b bg-slate-50 dark:bg-muted/40 p-2 text-sm sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="font-semibold">
             {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
           </div>
           {showCustomer ? (
-            <div className="text-xs text-slate-600">{formatValue(document.customer_name)}</div>
+            <div className="text-xs text-slate-600 dark:text-muted-foreground">{formatValue(document.customer_name)}</div>
           ) : null}
         </div>
-        <div className="text-xs text-slate-600">
+        <div className="text-xs text-slate-600 dark:text-muted-foreground">
           {contextLabels.length ? contextLabels.join(' | ') : null}
         </div>
       </div>
@@ -956,7 +956,7 @@ function PrintableDocumentItemsTable({
             <col className="sales-dispatch-reprint-col-weight" />
             {showWarehouseColumn ? <col className="sales-dispatch-reprint-col-warehouse" /> : null}
           </colgroup>
-          <thead className="bg-slate-100">
+          <thead className="bg-slate-100 dark:bg-muted">
             <tr>
               <th className="border p-2 text-left">Item Code</th>
               <th className="border p-2 text-left">Item</th>

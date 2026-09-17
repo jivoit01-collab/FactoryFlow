@@ -460,7 +460,7 @@ function SheetRow({
             {sheet.gate_hold > 0 && <Badge variant="destructive">{sheet.gate_hold} hold</Badge>}
             {allDone && <Badge className="bg-emerald-600">All approved</Badge>}
             {sentOut > 0 && (
-              <Badge variant="outline" className="border-emerald-600 text-emerald-700">
+              <Badge variant="outline" className="border-emerald-600 text-emerald-700 dark:text-emerald-400">
                 <Truck className="mr-1 h-3 w-3" />
                 {sentOut} sent out
               </Badge>

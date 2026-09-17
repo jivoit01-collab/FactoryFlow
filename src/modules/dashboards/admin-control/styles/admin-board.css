@@ -1,0 +1,514 @@
+/* ══════════════════════════════════════════════════════════════
+   ADMIN CONTROL BOARD — what this board ADDS
+
+   Everything structural comes from `logistics-control/styles/ops-board.css`,
+   which this file is loaded after and never forks. The four colour rules hold
+   here unchanged:
+
+     1. Domain hue  = the band. Output blue · Storage teal · Cost violet —
+                      and all three are the OPERATIONS vocabulary's existing
+                      hues, not new ones. See `AdminBand` for why.
+     2. Composition = two or three tints of the SAME domain hue.
+     3. Condition   = the tag pill, never the bar. A store at 90% wears a
+                      `ops-t-bad` pill and a normal domain-tinted bar, because
+                      a red bar in a teal band reads as a fifth colour rather
+                      than as an alarm.
+     4. Grey        = the part that isn't there: remainder, free space, idle.
+
+   THE ONE LICENSED EXCEPTION is the cost donut, whose four slices are
+   categorical identity rather than a composition. Its palette is named in
+   `constants/admin-control.constants.ts` and validated there; nothing in this
+   file hard-codes one of those hues.
+
+   A FIGURE THAT CANNOT BE COMPUTED RENDERS AS A RULE, NEVER AS ZERO — which is
+   why `.adm-unknown` exists at all.
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-board {
+  /*
+   * THE UNIT MEASURES THIS BOARD, NOT THE WINDOW.
+   *
+   * Same reasoning as the plant board: in the app this is never the whole
+   * viewport — the nav rail and the shell header take roughly 260px and 190px —
+   * so a unit read off `vw` came out about a third too large and the big
+   * figures wrapped into their own unit labels.
+   *
+   * `cqw` is this element's own content width, so the horizontal term is true
+   * in a tab, in a narrow window and with the rail collapsed. Height stays on
+   * `vh`: `cqh` would need `container-type: size` and therefore a definite
+   * height, which this board does not always have inside a scrolling shell.
+   *
+   * Three bands rather than the plant board's four, so the vertical
+   * coefficient sits between the two: 1.34vh.
+   */
+  container-type: inline-size;
+  /* Ceiling raised with the others — see ops-board.css for why a cap that
+     binds on a large screen is what pulls the board apart. */
+  --u: clamp(6px, min(0.833cqw, 1.34vh), 32px);
+}
+
+/* Three bands, and the last is taller: it carries the action centre, which is
+   a list and gains a row every time the plant does something wrong. The first
+   two hold four fixed rows each and do not grow. */
+.admin-board .ops-stack {
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+}
+
+/* No workforce strip on this board, so the band is rail + tiles. */
+.admin-board .adm-band {
+  grid-template-columns: calc(2.5 * var(--u)) 1fr;
+}
+
+/* A figure is never broken across lines: "₹3.39 Cr" split after the decimal is
+   two numbers, neither of them true. When figure and unit cannot share a line
+   the UNIT moves down — it is the half that survives a line break. */
+.admin-board .ops-val {
+  flex-wrap: wrap;
+}
+.admin-board .ops-val b {
+  white-space: nowrap;
+}
+
+/* ───────── the corner badge ───────── */
+
+/*
+ * The tile's second figure, over the name row.
+ *
+ * The name row is given a right padding to match, rather than the badge being
+ * allowed to overlap: a long tile name sliding under the badge is how "Total
+ * production" becomes "Total produc…" on exactly the screens nobody is standing
+ * at to notice.
+ */
+.admin-board .adm-corner {
+  position: absolute;
+  top: calc(0.7 * var(--u));
+  right: calc(0.8 * var(--u));
+  text-align: right;
+  line-height: 1;
+  padding: calc(0.36 * var(--u)) calc(0.6 * var(--u)) calc(0.42 * var(--u));
+  border-radius: calc(0.55 * var(--u));
+  background: var(--tint2);
+  box-shadow: inset 0 0 0 1px var(--tint1);
+  max-width: calc(9.4 * var(--u));
+}
+.admin-board .adm-corner em {
+  display: block;
+  font-style: normal;
+  font-size: calc(0.86 * var(--u));
+  font-weight: 600;
+  color: var(--d1);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.admin-board .adm-corner b {
+  display: block;
+  margin-top: calc(0.2 * var(--u));
+  font-size: calc(1.66 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.admin-board .adm-corner b u {
+  text-decoration: none;
+  font-size: calc(0.9 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-left: calc(0.14 * var(--u));
+}
+.admin-board .adm-corner s {
+  display: block;
+  text-decoration: none;
+  margin-top: calc(0.12 * var(--u));
+  font-size: calc(0.84 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+  /* Two lines at most, then clipped: the note is a comparison, and a long one
+     pushes the badge over the tile's figure. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The name row yields the width the badge takes. */
+.admin-board .adm-has-corner .ops-grow {
+  padding-right: calc(9.8 * var(--u));
+}
+
+/* ───────── an unmeasurable track ───────── */
+
+/*
+ * Hatched, not empty.
+ *
+ * This is the visual half of the board's one hard rule. A flat grey track reads
+ * as "0% full"; a hatched one reads as "this cannot be measured", which is what
+ * an unrated warehouse actually is. The tile's figure says the same thing in
+ * words — both, because either alone gets missed.
+ */
+.admin-board .adm-unknown {
+  background: repeating-linear-gradient(
+    135deg,
+    #edf1f6 0 calc(0.5 * var(--u)),
+    #e2e8f0 calc(0.5 * var(--u)) calc(1 * var(--u))
+  );
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+/* ───────── the cost donut ───────── */
+
+.admin-board .adm-donut-wrap {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(1 * var(--u));
+  min-width: 0;
+}
+
+.admin-board .adm-donut {
+  position: relative;
+  width: calc(10.6 * var(--u));
+  height: calc(10.6 * var(--u));
+  flex: none;
+}
+.admin-board .adm-donut svg {
+  width: 100%;
+  height: 100%;
+  /* Start the first slice at twelve o'clock, which is where a reader's eye
+     begins on a ring. */
+  transform: rotate(-90deg);
+}
+.admin-board .adm-donut circle {
+  fill: none;
+  /* Butt, not round: a rounded cap overhangs its own arc and makes a small
+     slice look larger than its share. */
+  stroke-linecap: butt;
+}
+.admin-board .adm-donut .adm-track {
+  stroke: #e6ebf2;
+}
+
+.admin-board .adm-hole {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.05;
+}
+.admin-board .adm-hole b {
+  font-size: calc(1.9 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.admin-board .adm-hole em {
+  font-style: normal;
+  font-size: calc(0.86 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-top: calc(0.2 * var(--u));
+}
+
+.admin-board .adm-legend {
+  display: grid;
+  gap: calc(0.38 * var(--u));
+  align-content: center;
+  min-width: 0;
+}
+.admin-board .adm-lrow {
+  display: grid;
+  grid-template-columns: calc(0.6 * var(--u)) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: calc(0.55 * var(--u));
+  font-size: calc(1 * var(--u));
+}
+.admin-board .adm-sw {
+  width: calc(0.6 * var(--u));
+  height: calc(0.6 * var(--u));
+  border-radius: calc(0.18 * var(--u));
+  background: var(--lc);
+}
+.admin-board .adm-lrow em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-board .adm-lrow strong {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  min-width: calc(4.4 * var(--u));
+  text-align: right;
+  white-space: nowrap;
+}
+.admin-board .adm-lrow span {
+  font-size: calc(0.88 * var(--u));
+  font-weight: 600;
+  color: var(--ink-2);
+  min-width: calc(3 * var(--u));
+  text-align: right;
+  white-space: nowrap;
+}
+
+/*
+ * A nil line, drawn as an outline rather than a fill.
+ *
+ * It has no arc on the ring, so a solid swatch would promise a slice that is
+ * not there. The hollow swatch and the grey text say "this line exists and is
+ * empty", which is the honest reading — and its share column carries the reason
+ * in the condition colour, because an unsourced cost line is a gap somebody has
+ * to close rather than a quiet zero.
+ */
+.admin-board .adm-zero .adm-sw {
+  background: transparent;
+  box-shadow: inset 0 0 0 calc(0.13 * var(--u)) var(--mu1);
+}
+.admin-board .adm-zero em,
+.admin-board .adm-zero strong {
+  color: var(--ink-3);
+}
+.admin-board .adm-zero span {
+  color: var(--ba1);
+  font-weight: 700;
+}
+
+/*
+ * The unit line under a cost line's money.
+ *
+ * Column 2 to the end, so it sits under the label and the money columns above
+ * it stay aligned. Muted and a size down: it is evidence for the figure above,
+ * never a second figure competing with it.
+ */
+.admin-board .adm-ldet {
+  grid-column: 2 / -1;
+  margin-top: calc(-0.16 * var(--u));
+  font-size: calc(0.8 * var(--u));
+  font-weight: 600;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-board .adm-foot {
+  margin-top: calc(0.4 * var(--u));
+}
+
+/* ───────── the action centre ───────── */
+
+.admin-board .adm-actions {
+  border-radius: calc(0.75 * var(--u));
+  background: #fff;
+  padding: calc(0.75 * var(--u)) calc(0.9 * var(--u)) calc(0.8 * var(--u));
+  min-height: 0;
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: calc(0.45 * var(--u));
+  overflow: hidden;
+}
+
+.admin-board .adm-acap {
+  display: flex;
+  align-items: center;
+  gap: calc(0.45 * var(--u));
+  font-size: calc(1.2 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.024em;
+}
+.admin-board .adm-acap svg {
+  width: calc(1.25 * var(--u));
+  height: calc(1.25 * var(--u));
+  stroke: var(--d1);
+  stroke-width: 1.9;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+.admin-board .adm-cnt {
+  margin-left: auto;
+  display: flex;
+  gap: calc(0.32 * var(--u));
+}
+.admin-board .adm-cnt i {
+  font-style: normal;
+  font-size: calc(0.86 * var(--u));
+  font-weight: 700;
+  padding: calc(0.2 * var(--u)) calc(0.48 * var(--u));
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.admin-board .adm-c-critical {
+  background: rgba(244, 63, 94, 0.13);
+  color: var(--ba1);
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.3);
+}
+.admin-board .adm-c-warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.34);
+}
+.admin-board .adm-c-info {
+  background: #f1f4f8;
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+/*
+ * Rows share the height evenly and each is clipped to it.
+ *
+ * `1fr` auto-rows rather than `auto`: the list is inside a fixed band, and a
+ * long detail on one alert must cost that alert a line rather than pushing the
+ * last alert off the bottom. Which alert gets dropped would otherwise depend on
+ * how wordy the one above it was.
+ */
+.admin-board .adm-alist {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(0.28 * var(--u));
+  align-content: stretch;
+  min-height: 0;
+}
+
+.admin-board .adm-alert {
+  display: grid;
+  grid-template-columns: calc(1.35 * var(--u)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(0.5 * var(--u));
+  padding: calc(0.28 * var(--u)) calc(0.5 * var(--u));
+  border-radius: calc(0.5 * var(--u));
+  background: #f8fafc;
+  min-height: 0;
+  box-shadow: inset 0 0 0 1px var(--hair);
+  border-left: calc(0.2 * var(--u)) solid var(--mu1);
+}
+.admin-board .adm-ic {
+  width: calc(1.35 * var(--u));
+  height: calc(1.35 * var(--u));
+  border-radius: calc(0.32 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(0.88 * var(--u));
+  font-weight: 700;
+  color: #fff;
+  background: var(--mu1);
+  flex: none;
+}
+.admin-board .adm-tx {
+  min-width: 0;
+}
+.admin-board .adm-tx b {
+  display: block;
+  font-size: calc(0.98 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  line-height: 1.18;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-board .adm-tx span {
+  display: block;
+  font-size: calc(0.86 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+  line-height: 1.22;
+  margin-top: calc(0.04 * var(--u));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-board .adm-do {
+  font-size: calc(0.86 * var(--u));
+  font-weight: 700;
+  color: var(--ink-2);
+  white-space: nowrap;
+  padding: calc(0.22 * var(--u)) calc(0.5 * var(--u));
+  border-radius: calc(0.4 * var(--u));
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+.admin-board .adm-a-crit {
+  background: rgba(244, 63, 94, 0.06);
+  border-left-color: var(--ba1);
+}
+.admin-board .adm-a-crit .adm-ic {
+  background: var(--ba1);
+}
+.admin-board .adm-a-crit .adm-do {
+  color: var(--ba1);
+  box-shadow: inset 0 0 0 1px rgba(244, 63, 94, 0.3);
+}
+.admin-board .adm-a-warn {
+  background: rgba(245, 158, 11, 0.07);
+  border-left-color: var(--wa1);
+}
+.admin-board .adm-a-warn .adm-ic {
+  background: var(--wa1);
+}
+.admin-board .adm-a-warn .adm-do {
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.34);
+}
+.admin-board .adm-a-info {
+  border-left-color: var(--d2);
+}
+.admin-board .adm-a-info .adm-ic {
+  background: var(--d2);
+}
+/* The all-clear. Green is legal here because this IS a condition. */
+.admin-board .adm-a-clear {
+  background: rgba(16, 185, 129, 0.07);
+  border-left-color: var(--ok1);
+}
+.admin-board .adm-a-clear .adm-ic {
+  background: var(--ok1);
+}
+
+.admin-board .adm-more {
+  align-self: center;
+}
+
+/* Present for a screen reader, absent on the wall — the tint and the mark
+   already carry severity, and a repeated "Warning:" on every row is noise. */
+.admin-board .adm-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ───────── fullscreen ───────── */
+
+/*
+ * Fullscreen is where the maths is exact.
+ *
+ * Out of the shell the board IS the viewport, so the container query and the
+ * `vh` term finally measure the same box. The unit goes back to `vw` for the
+ * horizontal term because there is no longer a nav rail to subtract.
+ */
+.admin-board.ops-board:fullscreen,
+.admin-board.ops-board:-webkit-full-screen {
+  --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
+}
+
+/* The same wall, reached through the carousel — see `ops-board.css`. */
+.ops-wall .admin-board.ops-board {
+  --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
+}

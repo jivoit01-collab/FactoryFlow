@@ -50,12 +50,24 @@ describe('poReceiptApi', () => {
     expect(typeof poReceiptApi.create).toBe('function');
   });
 
+  it('has an update method', () => {
+    expect(typeof poReceiptApi.update).toBe('function');
+  });
+
+  it('has a replace method', () => {
+    expect(typeof poReceiptApi.replace).toBe('function');
+  });
+
+  it('has a repoint method', () => {
+    expect(typeof poReceiptApi.repoint).toBe('function');
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // No unexpected methods
   // ═══════════════════════════════════════════════════════════════
 
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(poReceiptApi).sort();
-    expect(methodNames).toEqual(['create', 'get']);
+    expect(methodNames).toEqual(['create', 'get', 'replace', 'repoint', 'update']);
   });
 });

@@ -62,7 +62,6 @@ export default function IssueNewPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState(BODY_TEMPLATE);
   const [priority, setPriority] = useState<IssuePriority>('MEDIUM');
-  const [areaId, setAreaId] = useState('');
   const [labelIds, setLabelIds] = useState<number[]>([]);
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
   const [attachmentIds, setAttachmentIds] = useState<number[]>([]);
@@ -82,7 +81,6 @@ export default function IssueNewPage() {
         title: title.trim(),
         body,
         priority,
-        area: areaId ? Number(areaId) : null,
         company: company?.id ?? null,
         label_ids: canTriage ? labelIds : [],
         assignee_ids: canTriage ? assigneeIds : [],
@@ -97,19 +95,6 @@ export default function IssueNewPage() {
         onError: (error) => toast.error(getErrorMessage(error, 'The issue was not filed.')),
       },
     );
-  }
-
-  /**
-   * The area's owners are suggested as assignees the moment an area is picked,
-   * so a triager does not have to remember who looks after Dispatch.
-   */
-  function pickArea(nextAreaId: string) {
-    setAreaId(nextAreaId);
-    if (!canTriage || !nextAreaId) return;
-    const area = meta.data?.areas.find((row) => row.id === Number(nextAreaId));
-    if (area?.owners.length) {
-      setAssigneeIds(area.owners.map((owner) => owner.id));
-    }
   }
 
   return (
@@ -179,22 +164,6 @@ export default function IssueNewPage() {
         <div className="space-y-4">
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <div className="space-y-1.5">
-                <Label htmlFor="issue-area">Area</Label>
-                <NativeSelect
-                  id="issue-area"
-                  value={areaId}
-                  onChange={(event) => pickArea(event.target.value)}
-                >
-                  <SelectOption value="">Not sure</SelectOption>
-                  {(meta.data?.areas ?? []).map((area) => (
-                    <SelectOption key={area.id} value={String(area.id)}>
-                      {area.name}
-                    </SelectOption>
-                  ))}
-                </NativeSelect>
-              </div>
-
               <div className="space-y-1.5">
                 <Label htmlFor="issue-priority">Priority</Label>
                 <NativeSelect

@@ -39,43 +39,43 @@ export const WORKFLOW_STATUS_CONFIG: Record<InspectionListWorkflowStatus, Status
   NOT_STARTED: {
     label: 'Pending',
     color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-500/10',
     icon: Clock,
   },
   DRAFT: {
     label: 'Draft',
     color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-500/10',
     icon: FileText,
   },
   SUBMITTED: {
     label: 'Awaiting Chemist',
     color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
+    bgColor: 'bg-blue-50 dark:bg-blue-500/10',
     icon: Send,
   },
   QA_CHEMIST_APPROVED: {
     label: 'Awaiting Manager',
     color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
+    bgColor: 'bg-purple-50 dark:bg-purple-500/10',
     icon: UserCheck,
   },
   QAM_APPROVED: {
     label: 'Approved',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
   REJECTED: {
     label: 'Rejected',
     color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    bgColor: 'bg-red-50 dark:bg-red-500/10',
     icon: XCircle,
   },
   COMPLETED: {
     label: 'Completed',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
 };
@@ -83,26 +83,26 @@ export const WORKFLOW_STATUS_CONFIG: Record<InspectionListWorkflowStatus, Status
 export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = {
   PENDING: {
     label: 'Pending',
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
+    color: 'text-gray-600 dark:text-muted-foreground',
+    bgColor: 'bg-gray-50 dark:bg-muted/40',
     icon: Clock,
   },
   ACCEPTED: {
     label: 'Approved',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
   REJECTED: {
     label: 'Rejected',
     color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    bgColor: 'bg-red-50 dark:bg-red-500/10',
     icon: XCircle,
   },
   HOLD: {
     label: 'Hold',
     color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
+    bgColor: 'bg-orange-50 dark:bg-orange-500/10',
     icon: AlertCircle,
   },
 };
@@ -110,26 +110,26 @@ export const FINAL_STATUS_CONFIG: Record<InspectionFinalStatus, StatusConfig> = 
 export const DECISION_STATUS_CONFIG: Record<InspectionDecision | 'PENDING', StatusConfig> = {
   PENDING: {
     label: 'Pending',
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
+    color: 'text-gray-600 dark:text-muted-foreground',
+    bgColor: 'bg-gray-50 dark:bg-muted/40',
     icon: Clock,
   },
   APPROVED: {
     label: 'Approved',
     color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    bgColor: 'bg-green-50 dark:bg-green-500/10',
     icon: CheckCircle2,
   },
   HOLD: {
     label: 'Hold',
     color: 'text-orange-600',
-    bgColor: 'bg-orange-50',
+    bgColor: 'bg-orange-50 dark:bg-orange-500/10',
     icon: AlertCircle,
   },
   REJECTED: {
     label: 'Rejected',
     color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    bgColor: 'bg-red-50 dark:bg-red-500/10',
     icon: XCircle,
   },
 };

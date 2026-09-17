@@ -17,6 +17,8 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
+import { PrintTransferAction } from '../../components/PrintTransferDialog';
+
 const PAGE_SIZE = 20;
 
 import { BST_LIVE_POLL_MS, useBSTIncoming, useBSTTransfers } from '../../api';
@@ -104,6 +106,7 @@ function TransferTable({
             <th className="py-2 px-3">Route</th>
             <th className="py-2 px-3">SAP Doc</th>
             <th className="py-2 px-3 text-right">Boxes</th>
+            <th className="py-2 px-3">Loaded</th>
             <th className="py-2 px-3">Dispatched</th>
             <th className="py-2 px-3">Received</th>
             <th className="py-2 px-3">Status</th>
@@ -126,7 +129,7 @@ function TransferTable({
                     : t.sap_to_warehouse || '—'}
                 </span>
                 {t.source_type === 'INVOICE' && (
-                  <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-700">
+                  <span className="ml-1 rounded bg-blue-50 dark:bg-blue-500/10 px-1 text-[10px] font-medium text-blue-700 dark:text-blue-400">
                     invoice
                   </span>
                 )}
@@ -138,6 +141,7 @@ function TransferTable({
                 )}
               </td>
               <td className="py-2 px-3 text-right">{t.scanned_box_count}</td>
+              <td className="py-2 px-3">{formatBstDateTime(t.loaded_at)}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.dispatched_at)}</td>
               <td className="py-2 px-3">{formatBstDateTime(t.received_at)}</td>
               <td className="py-2 px-3">
@@ -248,14 +252,17 @@ export default function BSTDashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader
-        title="Branch Stock Transfer"
-        description="Move stock between branches — dispatch and receive"
+        title="BST Scanning"
+        description="Move stock between branches — scan it out, and receive it in"
         primaryAction={{
           label: 'New BST',
           icon: <Plus className="h-4 w-4 mr-2" />,
           onClick: () => navigate('/warehouse/bst/new'),
         }}
       >
+        {/* The transfer document, reachable from the desk doing the physical
+            move as well as from the page where it was raised. */}
+        <PrintTransferAction />
         <DateRangePicker
           date={dateRangeAsDateObjects}
           className="w-full sm:w-[300px]"
