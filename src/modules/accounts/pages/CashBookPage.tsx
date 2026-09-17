@@ -507,7 +507,7 @@ export default function CashBookPage() {
                   <ColumnFilter {...column('item', 'Item')} />
                   <ColumnFilter {...column('detail', 'Detail')} />
                   <ColumnFilter {...column('amount', 'Amount', 'right')} />
-                  <th className="px-3 py-2 text-right">In</th>
+                  <ColumnFilter {...column('in', 'In', 'right')} />
                   <ColumnFilter {...column('balance', 'Balance', 'right')} />
                   <ColumnFilter {...column('approval', 'Approval')} />
                   {canManage && <th className="px-3 py-2">Actions</th>}
