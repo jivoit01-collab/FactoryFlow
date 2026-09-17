@@ -141,6 +141,60 @@ export interface OverrideRequest {
 
 // ===== Service =====
 
+/**
+ * One month as a register.
+ *
+ * A cell is deliberately tiny: a month is ~7,600 of them, and the grid only
+ * needs an id to click and a letter to draw. `e` is present ONLY when the day
+ * was corrected — its presence IS the override flag, which is why there is no
+ * separate boolean. Everything the correction dialog needs (punch times,
+ * reason, who) is fetched per row on click, not carried 7,600 times.
+ */
+export interface MusterCell {
+  /** The DailyAttendance row id — what the override dialog is opened against. */
+  id: number;
+  /** What the machine recorded. */
+  m: AttendanceStatusValue;
+  /** What stands, present only when the day was corrected. */
+  e?: AttendanceStatusValue;
+}
+
+/**
+ * `days` is keyed by day-of-month as a string. Three states, never conflated:
+ *  - a cell        — the day was synced
+ *  - `null`        — in service, but nobody has synced that day yet
+ *  - key missing   — the day was not theirs (before joining, after leaving)
+ */
+export interface MusterRow {
+  employee: number;
+  employee_code: string;
+  employee_name: string;
+  department_name: string | null;
+  sap_segment: string;
+  days: Record<string, MusterCell | null>;
+  totals: Partial<Record<AttendanceStatusValue | 'not_synced', number>>;
+}
+
+export interface MusterResponse {
+  month: string;
+  date_from: string;
+  date_to: string;
+  days_in_month: number;
+  meta: AttendanceSummary & { employee_count: number };
+  pagination: { page: number; page_size: number; total: number; total_pages: number };
+  data: MusterRow[];
+}
+
+export interface MusterFilters {
+  month?: string;
+  department?: number;
+  sap_segment?: string;
+  employee?: number;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
 function toParams(filters?: DailyFilters): Record<string, string | number> {
   const params: Record<string, string | number> = {};
   if (!filters) return params;
@@ -158,6 +212,28 @@ function toParams(filters?: DailyFilters): Record<string, string | number> {
 }
 
 export const attendanceApi = {
+  /** One month as a register. */
+  getMuster: async (filters?: MusterFilters): Promise<MusterResponse> => {
+    const response = await apiClient.get<MusterResponse>(API_ENDPOINTS.ATTENDANCE.MUSTER, {
+      params: filters ?? {},
+    });
+    return response.data;
+  },
+
+  /**
+   * One row in full.
+   *
+   * The register's cells are too small to open the correction dialog with, so a
+   * click fetches the whole row first. This is the detail route the daily sheet
+   * never needed, because there it already holds every row it shows.
+   */
+  getRow: async (id: number): Promise<DailyAttendanceRow> => {
+    const response = await apiClient.get<DailyAttendanceRow>(
+      API_ENDPOINTS.ATTENDANCE.DAILY_DETAIL(id),
+    );
+    return response.data;
+  },
+
   getDaily: async (filters?: DailyFilters): Promise<DailyAttendanceRow[]> => {
     const response = await apiClient.get<DailyAttendanceRow[]>(API_ENDPOINTS.ATTENDANCE.DAILY, {
       params: toParams(filters),

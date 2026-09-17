@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   attendanceApi,
   type DailyFilters,
+  type MusterFilters,
   type OverrideRequest,
 } from './attendance.api';
 
@@ -14,6 +15,30 @@ import {
 function invalidateSheet(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: ['attendanceDaily'] });
   queryClient.invalidateQueries({ queryKey: ['attendanceSummary'] });
+  // The register shows the same day from the other direction. Leaving it out
+  // means a correction made from the month grid does not change the month grid.
+  queryClient.invalidateQueries({ queryKey: ['attendanceMuster'] });
+  queryClient.invalidateQueries({ queryKey: ['attendanceRow'] });
+}
+
+export function useMuster(filters?: MusterFilters, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['attendanceMuster', filters],
+    queryFn: () => attendanceApi.getMuster(filters),
+    // A month moves only when the sync runs or somebody corrects a day, and
+    // both invalidate this key explicitly.
+    staleTime: 60 * 1000,
+    enabled,
+  });
+}
+
+/** One row in full, fetched when a register cell is clicked. */
+export function useAttendanceRow(id: number | null) {
+  return useQuery({
+    queryKey: ['attendanceRow', id],
+    queryFn: () => attendanceApi.getRow(id as number),
+    enabled: id !== null,
+  });
 }
 
 export function useDailyAttendance(filters?: DailyFilters, enabled: boolean = true) {

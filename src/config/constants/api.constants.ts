@@ -1672,6 +1672,8 @@ export const API_ENDPOINTS = {
     REVERT: (id: number) => `/attendance/daily/${id}/revert/`,
     /** Every change ever made to that day. */
     HISTORY: (id: number) => `/attendance/daily/${id}/history/`,
+    /** One month as a register: a row per employee, a cell per day. */
+    MUSTER: '/attendance/daily/muster/',
     SUMMARY: '/attendance/daily/summary/',
     /** The status and reason-code vocabulary, so the client never hardcodes it. */
     REASONS: '/attendance/daily/reasons/',

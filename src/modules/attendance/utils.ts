@@ -57,3 +57,60 @@ export function todayLocal(): string {
   const offset = now.getTimezoneOffset();
   return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
 }
+
+// ===== The monthly register =====
+
+/**
+ * The single letter a register cell shows.
+ *
+ * One column per day across thirty-one days leaves room for exactly one
+ * character, so the grid draws a letter and the legend carries the words. The
+ * letters are derived here rather than hardcoded per cell so that a status
+ * added to the backend's vocabulary shows up as its own initial instead of
+ * silently reading as something else.
+ */
+const CELL_LETTERS: Record<string, string> = {
+  PRESENT: 'P',
+  ABSENT: 'A',
+  HALF_DAY: 'H',
+  MISSING_PUNCH: 'M',
+  WEEKLY_OFF: 'W',
+  ON_LEAVE: 'L',
+  ON_DUTY: 'D',
+  HOLIDAY: 'O',
+};
+
+export function cellLetter(status: string): string {
+  return CELL_LETTERS[status] ?? status.charAt(0);
+}
+
+/**
+ * What a register cell is, from the three shapes the API can send.
+ *
+ * `missing` is the one that matters: a day nobody has synced is NOT an
+ * absence, and drawing it as one would invent a fortnight of absences for the
+ * whole plant every time the sync stops. `outside` is a day that was never this
+ * person's — before they joined, after they left — and is simply blank.
+ */
+export type CellKind = 'synced' | 'missing' | 'outside';
+
+export function cellKind(days: Record<string, unknown>, day: number): CellKind {
+  const key = String(day);
+  if (!(key in days)) return 'outside';
+  return days[key] === null ? 'missing' : 'synced';
+}
+
+/** The month a register opens on: the current one, in the browser's timezone. */
+export function currentMonth(): string {
+  return todayLocal().slice(0, 7);
+}
+
+/** `"2026-09"` -> `"September 2026"`. */
+export function monthLabel(month: string): string {
+  const [year, index] = month.split('-').map(Number);
+  if (!year || !index) return month;
+  return new Date(year, index - 1, 1).toLocaleString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+}
