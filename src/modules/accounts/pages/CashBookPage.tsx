@@ -208,6 +208,12 @@ export default function CashBookPage() {
   }
 
   const bundleable = rows.filter(canBundle);
+  // Why the tick column is empty, when it is: still waiting on an approver,
+  // or already inside somebody's envelope.
+  const pendingHere = rows.filter(
+    (entry) => entry.is_active && entry.approval_status === 'PENDING',
+  ).length;
+  const bundledHere = rows.filter((entry) => entry.bunch).length;
   const pickedTotal = [...picked.values()].reduce(
     (sum, entry) => sum + Number(entry.amount),
     0,
@@ -405,6 +411,21 @@ export default function CashBookPage() {
       </div>
 
 
+      {/* A greyed-out tick column explains nothing by itself. When none of
+          the rows on screen can go into a batch, say which of the two reasons
+          it is, rather than leaving the custodian clicking a checkbox that
+          will not move. */}
+      {canManage && rows.length > 0 && bundleable.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Nothing on this page can be bundled — a voucher has to be approved first,
+          and not already be in a batch.
+          {pendingHere > 0 &&
+            ` ${pendingHere} here ${pendingHere === 1 ? 'is' : 'are'} still waiting on an approver.`}
+          {bundledHere > 0 &&
+            ` ${bundledHere} ${bundledHere === 1 ? 'is' : 'are'} already in one.`}
+        </p>
+      )}
+
       {canManage && picked.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
           <Package className="h-4 w-4 text-muted-foreground" />
@@ -458,12 +479,23 @@ export default function CashBookPage() {
                 <tr className="border-b bg-muted/40 text-left">
                   {canManage && (
                     <th className="w-10 px-3 py-2">
-                      <Checkbox
-                        checked={allPagePicked}
-                        disabled={bundleable.length === 0}
-                        onCheckedChange={togglePage}
-                        aria-label="Tick every bundleable voucher on this page"
-                      />
+                      {/* The title sits on the wrapper: the checkbox itself
+                          takes no title, and a disabled control would not
+                          show one anyway. */}
+                      <span
+                        title={
+                          bundleable.length === 0
+                            ? 'Nothing on this page can be bundled — a voucher has to be approved, and not already be in a batch'
+                            : `Tick all ${bundleable.length} bundleable on this page`
+                        }
+                      >
+                        <Checkbox
+                          checked={allPagePicked}
+                          disabled={bundleable.length === 0}
+                          onCheckedChange={togglePage}
+                          aria-label="Tick every bundleable voucher on this page"
+                        />
+                      </span>
                     </th>
                   )}
                   <ColumnFilter {...column('date', 'Date')} />
