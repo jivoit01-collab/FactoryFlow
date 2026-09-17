@@ -27,6 +27,18 @@ export interface ColumnSpec<T> {
   value: (row: T) => string | null | undefined;
   /** Used for sorting when the displayed text would sort wrongly. */
   sortValue?: (row: T) => string | number | null | undefined;
+  /**
+   * Rows this column shows nothing in, even though the field behind it has a
+   * value.
+   *
+   * These tables put one amount under two headings and let the movement
+   * decide which: Paid on or Drawn off, Taken or Cleared. A withdrawal's
+   * "Paid on" cell is empty, so its figure must not be offered on that
+   * column's filter -- ticking 50,000 under Paid on and getting back a row
+   * whose Paid on cell is blank is worse than having no filter, because the
+   * blank one at least does not lie about what it did.
+   */
+  blankWhen?: (row: T) => boolean;
 }
 
 /** Stands for an empty cell, so "no branch" can be ticked like any other value. */
@@ -41,7 +53,9 @@ export function useLocalColumns<T>(
   const [sort, setSort] = useState<SortState>(initialSort);
 
   const read = (row: T, key: string) => {
-    const raw = columns[key]?.value(row);
+    const spec = columns[key];
+    if (spec?.blankWhen?.(row)) return BLANK;
+    const raw = spec?.value(row);
     return raw === null || raw === undefined || raw === '' ? BLANK : String(raw);
   };
 

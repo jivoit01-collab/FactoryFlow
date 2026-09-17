@@ -83,6 +83,7 @@ export default function CashApprovalsPage() {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
       },
+      state: { value: (row) => row.approval_label },
     },
     { key: 'date', direction: 'desc' },
   );
@@ -262,7 +263,7 @@ export default function CashApprovalsPage() {
                   <ColumnFilter {...column('detail', 'Detail')} />
                   <ColumnFilter {...column('advance', 'Advance')} />
                   <ColumnFilter {...column('amount', 'Amount', 'right')} />
-                  <th className="px-3 py-2">State</th>
+                  <ColumnFilter {...column('state', 'State')} />
                 </tr>
               </thead>
               <tbody>
