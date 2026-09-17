@@ -14,6 +14,7 @@ import {
   CardContent,
   Checkbox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -33,7 +34,8 @@ import {
   useUpdateDailyElectricityReading,
   useUpdateElectricityMeter,
 } from '../api';
-import type { DailyElectricityReading, ElectricityMeter } from '../types';
+import type { DailyElectricityReading, ElectricityMeter, SupplySource } from '../types';
+import { SUPPLY_SOURCE_LABELS, SUPPLY_SOURCE_LIST } from '../types';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -71,9 +73,12 @@ const EMPTY_METER_FORM = {
   // Companies the meter feeds — several for a shared meter, one for a meter on
   // its own supply (Jivo Mart), none if it is not attributed yet.
   company_codes: [] as CompanyCode[],
-  // A main meter is the supply the others are drawn from — read beside the
-  // register, never added into it.
+  // A main meter is a supply the others are drawn from — read beside the
+  // register, never added into it. Which supply it measures matters because the
+  // plant swaps between them: grid most days, the DG set when the grid is out.
   is_main: false,
+  supply_source: 'GRID' as SupplySource,
+  counts_as_supply: true,
 };
 
 export default function MaintenanceDailyElectricityPage() {
@@ -137,7 +142,41 @@ export default function MaintenanceDailyElectricityPage() {
     return { units, cost };
   };
   const totals = useMemo(() => sumReadings(subReadings), [subReadings]);
-  const mainTotals = useMemo(() => sumReadings(mainReadings), [mainReadings]);
+
+  // The mains are grouped by the supply they measure, never added blind: a day
+  // the plant ran off the generator shows a grid meter that barely moved and a
+  // DG meter that did all the work, and both figures are the story.
+  const supplyGroups = useMemo(() => {
+    const groups = new Map<string, { source: string; label: string; counts: boolean; rows: DailyElectricityReading[] }>();
+    for (const reading of mainReadings) {
+      const source = reading.meter_supply_source || 'GRID';
+      // A duplicate main (KVAH measuring KWH a second way) is shown on its own
+      // line rather than folded in, so it is never silently added to the grid.
+      const key = `${source}:${reading.meter_counts_as_supply ? 'in' : 'out'}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.rows.push(reading);
+      } else {
+        groups.set(key, {
+          source,
+          label:
+            reading.meter_supply_source_display ||
+            SUPPLY_SOURCE_LABELS[source as SupplySource] ||
+            source,
+          counts: reading.meter_counts_as_supply,
+          rows: [reading],
+        });
+      }
+    }
+    return [...groups.values()].map((group) => ({ ...group, ...sumReadings(group.rows) }));
+  }, [mainReadings]);
+
+  // What the factory actually took in: the counted sources added together.
+  // Leaving the duplicates out is what makes the sum mean anything.
+  const totalSupply = useMemo(
+    () => sumReadings(mainReadings.filter((r) => r.meter_counts_as_supply)),
+    [mainReadings],
+  );
 
   const selectedMeter = readingForm.meter
     ? meters.find((m) => m.id === Number(readingForm.meter))
@@ -255,6 +294,8 @@ export default function MaintenanceDailyElectricityPage() {
       multiplying_factor: meter.multiplying_factor,
       company_codes: meter.company_codes ?? [],
       is_main: meter.is_main,
+      supply_source: (meter.supply_source || 'GRID') as SupplySource,
+      counts_as_supply: meter.counts_as_supply,
     });
   };
 
@@ -271,6 +312,10 @@ export default function MaintenanceDailyElectricityPage() {
         meterForm.multiplying_factor === '' ? undefined : meterForm.multiplying_factor,
       company_codes: meterForm.company_codes,
       is_main: meterForm.is_main,
+      // Only a main meter measures a supply; the backend clears these for a
+      // sub-meter either way, and sending them would only muddy the request.
+      supply_source: (meterForm.is_main ? meterForm.supply_source : '') as SupplySource | '',
+      counts_as_supply: meterForm.is_main ? meterForm.counts_as_supply : true,
     };
     try {
       if (editingMeter) {
@@ -338,9 +383,12 @@ export default function MaintenanceDailyElectricityPage() {
                 {reading.meter_is_main && (
                   <span
                     className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-                    title="Main meter — the incoming supply, not added to the total"
+                    title="Main meter — an incoming supply, not added to the total"
                   >
                     Main
+                    {reading.meter_supply_source_display
+                      ? ` · ${reading.meter_supply_source_display}`
+                      : ''}
                   </span>
                 )}
               </td>
@@ -479,11 +527,11 @@ export default function MaintenanceDailyElectricityPage() {
                 className="rounded-md border border-dashed px-3 py-1"
                 title="Incoming supply — read on its own, not added to the total"
               >
-                <span className="text-muted-foreground">Main Meters: </span>
-                <span className="font-semibold">{mainTotals.units.toLocaleString()}</span>
+                <span className="text-muted-foreground">Total Supply: </span>
+                <span className="font-semibold">{totalSupply.units.toLocaleString()}</span>
                 <span className="text-muted-foreground"> units · </span>
                 <span className="font-semibold">
-                  ₹{mainTotals.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  ₹{totalSupply.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </span>
               </div>
             )}
@@ -509,25 +557,61 @@ export default function MaintenanceDailyElectricityPage() {
       {mainReadings.length > 0 && (
         <Card>
           <CardContent className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/30 px-4 py-3">
-              <div>
-                <p className="text-sm font-medium">Main Meters — Incoming Supply</p>
-                <p className="text-xs text-muted-foreground">
-                  Every other meter draws off this supply, so these readings are shown here
-                  and left out of the sub-meter total below.
-                </p>
+            <div className="border-b bg-muted/30 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Incoming Supply</p>
+                  <p className="text-xs text-muted-foreground">
+                    Every other meter draws off these, so they are shown here and left out
+                    of the sub-meter total below.
+                  </p>
+                </div>
+                <div className="flex items-center gap-6 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Total Supply: </span>
+                    <span className="font-semibold">{totalSupply.units.toLocaleString()}</span>
+                    <span className="text-muted-foreground"> units</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Cost: </span>
+                    <span className="font-semibold">
+                      ₹{totalSupply.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-6 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Units: </span>
-                  <span className="font-semibold">{mainTotals.units.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Cost: </span>
-                  <span className="font-semibold">
-                    ₹{mainTotals.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </span>
-                </div>
+              {/* One line per supply. On a day the grid went out this is where
+                  it shows: the grid near zero, the DG carrying the plant. */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {supplyGroups.map((group) => (
+                  <div
+                    key={`${group.source}-${group.counts}`}
+                    className={`rounded-md border px-3 py-1 text-sm ${
+                      group.counts ? 'bg-background' : 'border-dashed text-muted-foreground'
+                    }`}
+                    title={
+                      group.counts
+                        ? undefined
+                        : 'Measures a supply another meter already counts — read, but not added in'
+                    }
+                  >
+                    <span className="font-medium">{group.label}</span>
+                    {!group.counts && <span> (duplicate)</span>}
+                    <span className="text-muted-foreground"> · </span>
+                    <span className="font-semibold">{group.units.toLocaleString()}</span>
+                    <span className="text-muted-foreground"> units · ₹</span>
+                    <span className="font-semibold">
+                      {group.cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                    {group.counts && totalSupply.units > 0 && (
+                      // One string, not a run of nodes: "69% of supply" is the
+                      // phrase a reader scans for on a day the grid went out.
+                      <span className="text-muted-foreground">
+                        {` · ${Math.round((group.units / totalSupply.units) * 100)}% of supply`}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
             {readingsTable(mainReadings)}
@@ -570,11 +654,14 @@ export default function MaintenanceDailyElectricityPage() {
 
       {/* Add / Edit reading dialog */}
       <Dialog open={dialog === 'reading'} onOpenChange={(open) => { if (!open) setDialog(null); }}>
-        <DialogContent>
+        {/* Scrolls inside itself: the meter picker, six fields, the preview and
+            the remarks box are taller than a laptop screen, and a dialog that
+            grows past it puts "Add Reading" out of reach. */}
+        <DialogContent className="grid max-h-[90vh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editingReading ? 'Edit Reading' : 'Add Reading'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <DialogBody className="space-y-4">
             <div>
               <Label htmlFor="reading-meter">Meter</Label>
               <NativeSelect
@@ -699,17 +786,20 @@ export default function MaintenanceDailyElectricityPage() {
                 {editingReading ? 'Save Reading' : 'Add Reading'}
               </Button>
             </div>
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
 
       {/* Meter master dialog */}
       <Dialog open={dialog === 'meters'} onOpenChange={(open) => { if (!open) setDialog(null); }}>
-        <DialogContent className="max-w-2xl">
+        {/* The meter list and the add/edit form together run past the bottom of
+            the screen — more so since a main meter names its supply — so the
+            body scrolls and the title stays put. */}
+        <DialogContent className="grid max-h-[90vh] max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Electricity Meters</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <DialogBody className="space-y-4">
             <div className="max-h-64 overflow-y-auto rounded-md border">
               {metersLoading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
@@ -725,6 +815,7 @@ export default function MaintenanceDailyElectricityPage() {
                       <th className="px-3 py-2 font-medium">Meter No.</th>
                       <th className="px-3 py-2 font-medium">Location</th>
                       <th className="px-3 py-2 font-medium">Company</th>
+                      <th className="px-3 py-2 font-medium">Supply</th>
                       <th className="px-3 py-2 font-medium text-right">MF</th>
                       <th className="px-3 py-2 font-medium text-right">Rate</th>
                       <th className="px-3 py-2" />
@@ -754,6 +845,23 @@ export default function MaintenanceDailyElectricityPage() {
                         <td className="px-3 py-2">
                           {meter.companies_display || (
                             <span className="text-muted-foreground">Not set</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {meter.is_main ? (
+                            <>
+                              {meter.supply_source_display}
+                              {!meter.counts_as_supply && (
+                                <span
+                                  className="ml-1 text-xs text-muted-foreground"
+                                  title="Measures a supply another meter already counts"
+                                >
+                                  (duplicate)
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -848,12 +956,57 @@ export default function MaintenanceDailyElectricityPage() {
                     Main (incoming supply) meter
                   </label>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Tick this for the meters the supply comes in on. Every other meter measures
+                    Tick this for the meters a supply comes in on. Every other meter measures
                     a part of that same electricity, so a main meter is listed and totalled on
                     its own and left out of the register total — adding it would count the same
                     units twice.
                   </p>
                 </div>
+                {meterForm.is_main && (
+                  <>
+                    <div>
+                      <Label htmlFor="meter-supply-source">Supply</Label>
+                      <NativeSelect
+                        id="meter-supply-source"
+                        value={meterForm.supply_source}
+                        onChange={(e) =>
+                          setMeterForm((p) => ({
+                            ...p,
+                            supply_source: e.target.value as SupplySource,
+                          }))
+                        }
+                      >
+                        {SUPPLY_SOURCE_LIST.map((source) => (
+                          <SelectOption key={source} value={source}>
+                            {SUPPLY_SOURCE_LABELS[source]}
+                          </SelectOption>
+                        ))}
+                      </NativeSelect>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Which supply this meter measures. The plant swaps between them — on a
+                        day the grid is out the DG carries the load, and the register has to
+                        say so rather than show a grid meter that stopped moving.
+                      </p>
+                    </div>
+                    <div className="flex flex-col justify-end">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <Checkbox
+                          id="meter-counts-as-supply"
+                          checked={meterForm.counts_as_supply}
+                          onCheckedChange={(checked) =>
+                            setMeterForm((p) => ({ ...p, counts_as_supply: checked === true }))
+                          }
+                        />
+                        Counts toward total supply
+                      </label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Untick a meter that measures a supply another meter already counts —
+                        KVAH is the grid&apos;s KWH as apparent energy, so counting both would
+                        double the grid.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
               <fieldset className="mt-3">
                 {/* A legend, not a Label: the heading names the group, each
@@ -900,7 +1053,7 @@ export default function MaintenanceDailyElectricityPage() {
                 </Button>
               </div>
             </div>
-          </div>
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>
