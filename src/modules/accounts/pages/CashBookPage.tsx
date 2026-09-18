@@ -31,6 +31,7 @@ import {
   type SortState,
   toSortParam,
 } from '@/modules/accounts/components/sorting';
+import { useSpreadsheetKeys } from '@/modules/accounts/components/useSpreadsheetKeys';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
@@ -108,6 +109,12 @@ export default function CashBookPage() {
   // total have to stay right after paging away from the rows they came from.
   const [picked, setPicked] = useState<Map<number, CashEntry>>(new Map());
   const [bundling, setBundling] = useState(false);
+
+  // The register is read the way the spreadsheet it replaces was read: click
+  // a cell, then walk it with the arrow keys.
+  const { gridProps } = useSpreadsheetKeys({
+    onCopy: () => toast.success('Copied'),
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashEntry | null>(null);
@@ -489,7 +496,7 @@ export default function CashBookPage() {
       ) : (
         <div className="rounded-md border">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table {...gridProps} className={`w-full text-sm ${gridProps.className}`}>
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
                   {canManage && (
