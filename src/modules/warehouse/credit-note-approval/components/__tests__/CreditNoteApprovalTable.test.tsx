@@ -45,6 +45,11 @@ const PENDING: CreditNoteApproval = {
   status: 'PENDING',
   rejection_reason: null,
   current_step: 20,
+  template_code: 106,
+  template_name: 'USER24 ALL GAUTAM',
+  request_count: 1,
+  request_index: 1,
+  open_request_count: 1,
   approver_code: 'USER24',
   approver_name: 'Gautam Chanana',
   decided_by: null,
@@ -138,6 +143,34 @@ const MINE: CreditNoteApproval = {
   can_decide: true,
 };
 
+/**
+ * Oil draft 52386 as SAP holds it: ONE credit note that matched two approval
+ * templates, so SAP opened two requests on it and both wait on the same user.
+ * Every other field is the draft's, shared by both rows — which is exactly why
+ * the pair looked like the queue printing one document twice.
+ */
+const TWIN_A: CreditNoteApproval = {
+  ...PENDING,
+  id: 69466,
+  draft_entry: 52386,
+  party_name: 'JIVO MART PVT LTD',
+  card_code: 'CUSTA000606',
+  total_amount: '80621.00',
+  template_code: 27,
+  template_name: 'USER26 GRPO',
+  request_count: 2,
+  request_index: 1,
+  open_request_count: 2,
+};
+
+const TWIN_B: CreditNoteApproval = {
+  ...TWIN_A,
+  id: 69467,
+  template_code: 73,
+  template_name: 'USER26 FINISHED GP',
+  request_index: 2,
+};
+
 function renderTable(props: Partial<Parameters<typeof CreditNoteApprovalTable>[0]> = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -184,6 +217,41 @@ describe('CreditNoteApprovalTable', () => {
     renderTable({ rows: [{ ...PENDING, lines: [{ ...PENDING.lines[0], warehouse_stock: 0 }] }] });
     expect(screen.getByText('Stock in')).toBeInTheDocument();
     expect(screen.queryByText('1 short')).not.toBeInTheDocument();
+  });
+
+  it('tells apart two approvals SAP opened on the same credit note', () => {
+    renderTable({ rows: [TWIN_A, TWIN_B] });
+    const [first, second] = screen.getAllByRole('row').slice(1);
+
+    // The pair is identical in every other column, so the row has to say which
+    // approval it is and under which template — otherwise it reads as a bug.
+    expect(within(first).getByText('approval 1 of 2')).toBeInTheDocument();
+    expect(within(second).getByText('approval 2 of 2')).toBeInTheDocument();
+    expect(within(first).getByText('USER26 GRPO')).toBeInTheDocument();
+    expect(within(second).getByText('USER26 FINISHED GP')).toBeInTheDocument();
+
+    // And the queue says so up front, before anybody counts ₹80,621 twice.
+    expect(screen.getByText(/rows belong to credit notes SAP wants signed more than once/i))
+      .toBeInTheDocument();
+  });
+
+  it('spells out that both approvals are needed before anything is created', () => {
+    renderTable({ rows: [TWIN_A] });
+    fireEvent.click(screen.getByText('A/R Credit Note'));
+
+    expect(screen.getByText(/approval 1 of 2 \(template USER26 GRPO\)/)).toBeInTheDocument();
+    expect(screen.getByText(/deciding it does not decide the others/i)).toBeInTheDocument();
+    expect(screen.getByText(/creates nothing until every one of them is approved/i))
+      .toBeInTheDocument();
+    // The request id, which is what a decision actually acts on.
+    expect(screen.getByText(/69466 · USER26 GRPO/)).toBeInTheDocument();
+  });
+
+  it('says nothing about templates on an ordinary one-approval row', () => {
+    renderTable();
+    expect(screen.queryByText(/approval 1 of 1/)).not.toBeInTheDocument();
+    expect(screen.queryByText('USER24 ALL GAUTAM')).not.toBeInTheDocument();
+    expect(screen.queryByText(/wants signed more than once/i)).not.toBeInTheDocument();
   });
 
   it('offers Approve only on the rows SAP named this user on', () => {

@@ -72,6 +72,21 @@ export interface CreditNoteApproval {
   status: CreditNoteApprovalStatus;
   rejection_reason: string | null;
   current_step: number | null;
+  /**
+   * The SAP approval template (OWTM) that opened THIS request, and where the
+   * request sits in the set the draft opened. A draft matching two templates
+   * gets one request per template, each needing its own decision — these are
+   * the only fields that tell such rows apart, everything else on the row
+   * belongs to the shared draft.
+   */
+  template_code: number | null;
+  template_name: string | null;
+  /** How many approvals this one credit note needs; 1 for an ordinary row. */
+  request_count: number;
+  /** This request's 1-based place in that set, numbered as they are listed. */
+  request_index: number;
+  /** How many of them are still waiting on somebody. */
+  open_request_count: number;
   /** The single SAP user this request is waiting on. */
   approver_code: string | null;
   approver_name: string | null;

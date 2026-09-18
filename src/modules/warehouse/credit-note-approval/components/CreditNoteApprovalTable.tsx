@@ -35,6 +35,7 @@ import {
   Clock,
   Copy,
   KeyRound,
+  Layers,
   Receipt,
   UserCheck,
   XCircle,
@@ -181,6 +182,12 @@ function CopyableNumber({ value }: { value: number }) {
  * entry, because a draft's own DocNum is provisional and shared between open
  * drafts (three Oil credit notes carry 626042613 between them) and must never
  * look like a key.
+ *
+ * Where the draft opened more than one approval request — SAP does that once a
+ * credit note matches two templates, and each request needs its own signature
+ * — the row also says WHICH of them it is and under which template. Everything
+ * else on the row belongs to the shared draft, so without this the two rows are
+ * character-for-character identical and read as one credit note listed twice.
  */
 function DocumentCell({ row }: { row: CreditNoteApproval }) {
   return (
@@ -197,6 +204,25 @@ function DocumentCell({ row }: { row: CreditNoteApproval }) {
         <div className="whitespace-nowrap font-mono text-xs text-muted-foreground">
           draft {row.draft_entry}
         </div>
+      )}
+      {row.request_count > 1 && (
+        <>
+          <div
+            className={`${CHIP} bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400`}
+            title={`This credit note needs ${row.request_count} separate approvals in SAP and is listed once per approval`}
+          >
+            <Layers className="h-3 w-3" />
+            approval {row.request_index} of {row.request_count}
+          </div>
+          {row.template_name && (
+            <div
+              className="max-w-[11rem] truncate text-xs text-muted-foreground"
+              title={`SAP approval template: ${row.template_name}`}
+            >
+              {row.template_name}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -335,6 +361,23 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
         : 'This is a service credit note — no goods move. Approving credits the amount against the G/L account on each line.',
     );
   }
+  if (row.request_count > 1) {
+    // The whole reason twins exist. Said here in full because the row can only
+    // fit "approval 1 of 2", and an approver who reads that as a duplicate
+    // either signs one and assumes it is done, or counts the money twice.
+    notes.push(
+      `This credit note matched ${row.request_count} SAP approval templates, so SAP opened ${row.request_count} separate requests on it and the queue lists it once per request. This row is approval ${row.request_index} of ${row.request_count}${
+        row.template_name ? ` (template ${row.template_name})` : ''
+      }, and deciding it does not decide the others.`,
+    );
+    if (row.open_request_count > 0) {
+      notes.push(
+        `${row.open_request_count} of the ${row.request_count} ${
+          row.open_request_count === 1 ? 'is' : 'are'
+        } still waiting — SAP creates nothing until every one of them is approved. The amount and lines above are the whole document's, shown on each row, not this row's share of it.`,
+      );
+    }
+  }
   if (row.posted_doc_num !== null) {
     notes.push(`SAP posted this as credit note ${row.posted_doc_num}.`);
   }
@@ -363,6 +406,10 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
             <span className="font-medium">Branch:</span> {row.branch}
           </div>
         )}
+        <div>
+          <span className="font-medium">Approval request:</span> {row.id}
+          {row.template_name && ` · ${row.template_name}`}
+        </div>
         {row.base_documents.length > 0 && (
           <div>
             <span className="font-medium">Raised against:</span> {row.base_documents.join(', ')}
@@ -463,6 +510,10 @@ export function CreditNoteApprovalTable({
   // Mine but unsignable, i.e. my own SAP password is missing — the one case the
   // reader can fix themselves by asking an administrator for their account.
   const myPasswordMissing = pending.some((r) => r.is_mine && !r.credentials_configured);
+  // Rows that are one of several approvals on a single credit note. Counted so
+  // the queue can admit up front that a document appears more than once, rather
+  // than letting it look like the page is repeating itself.
+  const multiApproval = pending.filter((r) => r.request_count > 1).length;
   const unadded = rows.filter(
     (r) => r.status === 'APPROVED' && r.posted_doc_num === null,
   ).length;
@@ -477,6 +528,17 @@ export function CreditNoteApprovalTable({
           {pending.length !== mine && `, out of ${pending.length} pending`}. Approving signs the
           decision in SAP as your own account and posts the credit note — an item credit note
           moves the goods with it, a service one moves money only.
+          {multiApproval > 0 && (
+            <>
+              {' '}
+              <span className="font-medium">{multiApproval}</span> of these rows belong to credit
+              notes SAP wants signed more than once: the document matched more than one approval
+              template, so SAP opened a request per template and each is decided on its own. Such a
+              credit note is listed once per approval — every row showing the whole document&apos;s
+              amount, not a share of it — and the{' '}
+              <span className="font-medium">approval 1 of 2</span> mark says which row is which.
+            </>
+          )}
           {myPasswordMissing && (
             <>
               {' '}
