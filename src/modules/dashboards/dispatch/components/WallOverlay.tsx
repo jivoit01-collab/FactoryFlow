@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { cn } from '@/shared/utils';
+
 /**
  * A full-screen layer for the wall board.
  *
@@ -22,11 +24,20 @@ import { createPortal } from 'react-dom';
 export function WallOverlay({
   onClose,
   labelledBy,
+  width = 'max-w-2xl',
   children,
 }: {
   onClose: () => void;
   /** id of the element naming this layer, for screen readers. */
   labelledBy?: string;
+  /**
+   * How wide the card may grow — a Tailwind max-width class.
+   *
+   * Defaulted to the width a bill reads best at. A card that is mostly tables
+   * rather than fields needs more, and passing the class is cheaper than each
+   * caller rebuilding the portal it sits in.
+   */
+  width?: string;
   children: ReactNode;
 }) {
   const [host, setHost] = useState<Element | null>(null);
@@ -61,7 +72,12 @@ export function WallOverlay({
         onClick={onClose}
         className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm"
       />
-      <div className="animate-in zoom-in-95 slide-in-from-bottom-2 relative z-10 flex max-h-full w-full max-w-2xl flex-col duration-200">
+      <div
+        className={cn(
+          'animate-in zoom-in-95 slide-in-from-bottom-2 relative z-10 flex max-h-full w-full flex-col duration-200',
+          width,
+        )}
+      >
         {children}
       </div>
     </div>,

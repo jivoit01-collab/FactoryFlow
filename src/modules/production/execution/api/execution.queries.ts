@@ -1452,6 +1452,23 @@ export function useLineConfigs(lineId?: number) {
   });
 }
 
+/**
+ * Every line's presets in one read, for screens that are about all the lines at
+ * once rather than the one somebody picked.
+ *
+ * A separate hook rather than `useLineConfigs()` with nothing passed: every
+ * caller of that one relies on it staying idle until a line is chosen, and
+ * relaxing its `enabled` would have each of those quietly pull the whole
+ * configuration table on first paint.
+ */
+export function useAllLineConfigs() {
+  return useQuery({
+    queryKey: [...EXECUTION_QUERY_KEYS.all, 'line-configs', 'all'],
+    queryFn: () => executionApi.getLineConfigs(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useCreateLineConfig() {
   const qc = useQueryClient();
   return useMutation({

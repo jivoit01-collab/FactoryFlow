@@ -107,6 +107,26 @@ export function runTone(live: string | undefined, status: string | undefined): R
   };
 }
 
+/**
+ * A percentage against the target it is judged by → the ink it is drawn in.
+ *
+ * Banded on the company variant's own benchmark rather than on a figure
+ * invented here, so Oil and Beverages are each read against what the plant
+ * actually asks of them. At or above the benchmark is good; within a fifth of
+ * it is worth watching; below that the line lost enough output to matter.
+ *
+ * A null percentage is not a bad one — it is a figure that could not be worked
+ * out, usually because SAP never resolved how many bottles go in a case — and
+ * it is drawn in the neutral ink so nobody reads a missing number as a failing
+ * line.
+ */
+export function ratioTone(pct: number | null, benchmark: number): string {
+  if (pct == null) return 'text-foreground';
+  if (pct >= benchmark) return 'text-emerald-600 dark:text-emerald-400';
+  if (pct >= benchmark * 0.8) return 'text-amber-600 dark:text-amber-400';
+  return 'text-rose-600 dark:text-rose-400';
+}
+
 /** Reconciliation status → a panel-badge tone and a word the floor uses. */
 export function reconTone(status: string | undefined): {
   label: string;

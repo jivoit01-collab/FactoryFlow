@@ -6,11 +6,13 @@ import { type CostRate as CentralCostRate,useCostMasterRates } from '@/modules/a
 import {
   EXECUTION_QUERY_KEYS,
   executionApi,
+  useAllLineConfigs,
   useCostAnalysisReport,
   useRuns,
 } from '@/modules/production/execution/api';
-import type { ProductionRun, ProductionRunCost } from '@/modules/production/execution/types';
+import type { ProductionRun } from '@/modules/production/execution/types';
 
+import { useNow } from '../../dispatch/hooks';
 import type { MaterialReport, MaterialRow, ReconReport, ReconRow } from '../api/reconciliation.api';
 import {
   useMaterialReconciliation,
@@ -21,30 +23,14 @@ import {
   MATERIAL_COST_CATEGORY,
   PRODUCTION_TREND_DAYS,
   PRODUCTION_WALL_REFRESH_MS,
-  type RunTone,
-  runTone,
 } from '../constants/production-wall.constants';
+import { configForRun, indexLineConfigs, standardOf } from '../utils/lineStandards';
+import { type ProductionRunRow, toRunRow } from './runRow';
 import type { ProductionDay } from './useProductionDay';
 
 // -------------------------------------------------------------------------- //
 // Shapes the panels read
 // -------------------------------------------------------------------------- //
-
-export interface ProductionRunRow {
-  id: number;
-  runNumber: number;
-  line: string;
-  product: string;
-  itemCode: string;
-  /**
-   * Cases on the board: live segment output while the run is open, the run's
-   * own closing figure once it is done. A running line whose segments have not
-   * been closed yet reports `total_production` = 0, and a wall that showed that
-   * as "0 cases" for six hours would read as a dead line.
-   */
-  cases: number;
-  tone: RunTone;
-}
 
 export interface ReconLitres {
   /** Litres per row, in row order. Null where SAP holds no volume for the SKU. */
@@ -525,6 +511,9 @@ export function useProductionBoard(
   includeMaterial: boolean,
 ): ProductionBoard {
   const reconParams = { date_from: day.date, date_to: day.date, line };
+  const clock = useNow(PRODUCTION_WALL_REFRESH_MS);
+  // Master data, cached for five minutes and shared with the per-line board.
+  const lineConfigs = useAllLineConfigs();
 
   // One list for the whole fortnight: the shown day's rows are a filter on it,
   // so the panel and the trend can never disagree about what was produced.
@@ -575,19 +564,27 @@ export function useProductionBoard(
     })),
   });
 
-  const runs: ProductionRunRow[] = dayRuns.map((run, index) => {
-    const segments = detailQueries[index]?.data?.segments ?? [];
-    const segmentTotal = segments.reduce((sum, seg) => sum + norm(Number(seg.produced_cases)), 0);
-    return {
-      id: run.id,
-      runNumber: run.run_number,
-      line: run.line_name || `Line ${run.line}`,
-      product: run.product || '—',
-      itemCode: run.item_code,
-      cases: segmentTotal > 0 ? segmentTotal : norm(Number(run.total_production)),
-      tone: runTone(run.live_status, run.status),
-    };
-  });
+  // One clock for every run on the board, ticking at the board's own refresh
+  // cadence. Shared rather than read per run for two reasons: two runs read a
+  // second apart would report running times that do not add up to the same
+  // shift, and an open segment measured against a frozen clock would stop
+  // ageing — the running time under a live line has to move on its own.
+  const now = clock.getTime();
+  const configs = indexLineConfigs(lineConfigs.data ?? []);
+
+  const runs: ProductionRunRow[] = dayRuns.map((run, index) =>
+    toRunRow({
+      run,
+      detail: detailQueries[index]?.data,
+      cost: costQueries[index]?.data,
+      now,
+      // The line's preset, for a run opened without one of its own. Read here
+      // as well as on the per-line board so the run card states the same speed
+      // and efficiency whichever screen opened it.
+      standard: standardOf(configForRun(configs, run.line, run.item_code)),
+      detailLoading: detailQueries[index]?.isLoading ?? false,
+    }),
+  );
 
   const cases = runs.reduce((sum, row) => sum + row.cases, 0);
   const liveRuns = runs.filter((row) => row.tone.isLive);

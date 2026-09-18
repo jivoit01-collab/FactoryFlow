@@ -488,7 +488,18 @@ export interface PlantBoardProduction {
   /** Computed on pieces: the case ratio is a differently weighted number. */
   attainment_pct: number | null;
   planned_tons: number;
+  /**
+   * EVERY receipt onto the finished floor, planned or not — what the plant
+   * made. Reading this through the plan's own item list under-reported
+   * September by 225 t, a fifth of the month.
+   */
   produced_tons: number;
+  /** The same month on the plan's own listed items, kept for checking the plan. */
+  produced_planned_tons: number;
+  produced_planned_qty: number;
+  attainment_planned_pct: number | null;
+  /** Output the plan never listed: `produced_tons` less `produced_planned_tons`. */
+  produced_unplanned_tons: number;
   /** The same ratio on the tonnage, which is what the tile reads in. */
   attainment_tons_pct: number | null;
   /** Planned SKUs with no litre volume in SAP, so absent from the tons. */

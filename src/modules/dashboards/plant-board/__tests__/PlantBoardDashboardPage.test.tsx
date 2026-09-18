@@ -287,7 +287,13 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
       // Deliberately NOT 80%: the tonnage ratio is 76%, so a tile printing the
       // piece ratio beside tonne figures fails this fixture.
       planned_tons: 1_040,
+      // The WHOLE FLOOR: 700 t of it on the plan's own items, 90 t the plan
+      // never listed. A tile reading only the planned share would print 700.
       produced_tons: 790,
+      produced_planned_tons: 700,
+      produced_planned_qty: 740_000,
+      attainment_planned_pct: 71.2,
+      produced_unplanned_tons: 90,
       attainment_tons_pct: 76,
       unweighed_lines: 2,
       avg_qty_per_active_day: 104_000,
@@ -1183,8 +1189,35 @@ describe('PlantBoardDashboardPage', () => {
     // the figures printed beside it.
     expect(card.querySelector('.ops-tag')?.textContent).toContain('76% produced');
 
-    // The remainder, and the SKUs no tonnage can speak for.
+    // The remainder, what the plan could not account for, and the SKUs no
+    // tonnage can speak for.
     const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    expect(legend).toEqual(['Left to make250 t', 'Unplanned90 t', 'No litre volume2 SKUs']);
+  });
+
+  it('counts output the plan never listed, and names it', () => {
+    // The plan lists what the month INTENDS to make. Measuring output through
+    // that list drops whatever the floor made without planning it — on Oil in
+    // September, a fifth of the month. The plan is the target, not the filter.
+    const { container } = renderBoard(board());
+    const card = tile(container, 'Monthly planning');
+
+    // 790 t on the floor, not the 700 t the plan can speak for.
+    expect(card.querySelector('.ops-sub')?.textContent).toContain('790 t produced');
+    // And the part the plan cannot account for is named rather than buried
+    // inside that figure.
+    const legend = [...card.querySelectorAll('.ops-mkey span')].map((el) => el.textContent?.trim());
+    expect(legend).toContain('Unplanned90 t');
+  });
+
+  it('drops the unplanned note when the plan accounts for everything made', () => {
+    const data = board();
+    data.production!.produced_unplanned_tons = 0;
+    const { container } = renderBoard(data);
+
+    const legend = [...tile(container, 'Monthly planning').querySelectorAll('.ops-mkey span')].map(
+      (el) => el.textContent?.trim(),
+    );
     expect(legend).toEqual(['Left to make250 t', 'No litre volume2 SKUs']);
   });
 
@@ -1196,7 +1229,7 @@ describe('PlantBoardDashboardPage', () => {
     const legend = [...tile(container, 'Monthly planning').querySelectorAll('.ops-mkey span')].map(
       (el) => el.textContent?.trim(),
     );
-    expect(legend).toEqual(['Left to make250 t']);
+    expect(legend).toEqual(['Left to make250 t', 'Unplanned90 t']);
   });
 
   /**
@@ -1695,6 +1728,85 @@ describe('PlantBoardDashboardPage', () => {
       expect(
         [...container.querySelectorAll('[data-drill="1"] .ops-nm')].map((el) => el.textContent),
       ).not.toContain('Non-moving stock');
+    });
+
+    /**
+     * And then "which ones under that".
+     *
+     * Every panel that has a second level opens it underneath the row rather
+     * than over it, so the list the reader was scanning stays where it was.
+     * What these pin is the part that is easy to get wrong: that the row a
+     * reader opens is the one that expands, that a row with nothing under it
+     * does not offer to open, and that a group row keeps agreeing with the
+     * tile even when the list underneath it is only part of the band.
+     */
+    function openRow(panel: HTMLElement, text: string) {
+      fireEvent.click(within(panel).getByText(text));
+      return panel;
+    }
+
+    it('splits the idle stores by how long the stock has stood', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Non-moving stock');
+
+      // The two bands the Non-Moving dashboard defines, counted off the
+      // snapshot rather than off the short list underneath them.
+      expect(panel.textContent).toContain('Non-moving over 45 days');
+      expect(panel.textContent).toContain('Slow-moving 30–45 days');
+      const rows = within(panel).getAllByRole('row');
+      const nonMoving = rows.find((row) => row.textContent?.includes('Non-moving over 45'));
+      expect(nonMoving?.textContent).toContain('26');
+    });
+
+    it('names the SKUs of the band that was opened, and not the other band', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Non-moving stock');
+
+      expect(panel.textContent).not.toContain('PET BOTTLE 1 LTR 52 GMS POMACE');
+      openRow(panel, 'Non-moving over 45 days');
+      expect(panel.textContent).toContain('PET BOTTLE 1 LTR 52 GMS POMACE');
+      // The slow-moving SKU belongs to the other band and stays shut.
+      expect(panel.textContent).not.toContain('LABEL 1 LTR RICE BRAN OIL BACK');
+    });
+
+    it('admits that the SKUs under a band are only the worst of it', () => {
+      // The tile counts every idle SKU; the feed lists the ones worth naming.
+      // A list that did not say so would be read as the whole band.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Non-moving stock');
+      openRow(panel, 'Non-moving over 45 days');
+      expect(panel.textContent).toContain('The worst 1 of 26');
+    });
+
+    it('breaks a waste day into the units it was logged in', () => {
+      // Pieces, metres and litres are three scales and none adds to another,
+      // which is why the row above prices the day instead.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Wastage');
+      openRow(panel, '7 Sep');
+      expect(panel.textContent).toContain('What was logged against 7 Sep');
+      expect(panel.textContent).toContain('MTR');
+    });
+
+    it('does not offer to open a day nothing was logged against', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Wastage');
+      const quiet = within(panel).getByText('6 Sep').closest('tr');
+      expect(quiet?.getAttribute('tabindex')).toBeNull();
+      expect(quiet?.className).not.toContain('ops-drill__rowopen');
+    });
+
+    it('says where an item on order stands, against the pile and the plan', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Open POs');
+      openRow(panel, 'HDPE BOTTLE 5 LTR');
+
+      expect(panel.textContent).toContain('Where HDPE BOTTLE 5 LTR stands');
+      expect(panel.textContent).toContain('In the stores');
+      expect(panel.textContent).toContain('Landed plan-to-date');
+      // The plan's worst list is empty in this fixture, and the panel says so
+      // rather than leaving the reader to read a dash as a zero shortfall.
+      expect(panel.textContent).toContain('not among the plan’s worst shortages');
     });
 
     it('every tile on the board opens something', () => {

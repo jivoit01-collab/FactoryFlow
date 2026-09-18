@@ -18,9 +18,16 @@ export interface ProductionWallHeaderProps {
   companyName: string;
   /** Oil / Beverages / Production — the variant chip. */
   variantLabel: string;
-  lines: LineOption[];
-  selectedLine: number | undefined;
-  onPickLine: (line: number | undefined) => void;
+  /** What this board is called, before the "— Today" / "— Past day" half. */
+  title?: string;
+  lines?: LineOption[];
+  selectedLine?: number | undefined;
+  /**
+   * Narrow the board to one line. Withheld on a board that is ABOUT all the
+   * lines, which then shows no picker — a control that can only ever take the
+   * board apart does not belong on it.
+   */
+  onPickLine?: (line: number | undefined) => void;
   isFetching: boolean;
   updatedAt: number;
   onRefresh: () => void;
@@ -45,7 +52,8 @@ export function ProductionWallHeader({
   day,
   companyName,
   variantLabel,
-  lines,
+  title = 'Production',
+  lines = [],
   selectedLine,
   onPickLine,
   isFetching,
@@ -92,7 +100,7 @@ export function ProductionWallHeader({
 
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Production — {history ? 'Past day' : 'Today'}
+            {title} — {history ? 'Past day' : 'Today'}
             <span className="shrink-0 rounded-full border border-black/[0.09] bg-black/[0.035] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-foreground/70 dark:border-white/10 dark:bg-white/5">
               {variantLabel}
             </span>
@@ -104,24 +112,26 @@ export function ProductionWallHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <label className="flex items-center gap-1.5 rounded-lg border border-black/[0.09] bg-black/[0.02] px-2.5 py-1.5 dark:border-white/10 dark:bg-white/[0.03]">
-          <Factory className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          <span className="sr-only">Production line</span>
-          <select
-            value={selectedLine ?? ''}
-            onChange={(event) =>
-              onPickLine(event.target.value ? Number(event.target.value) : undefined)
-            }
-            className="max-w-[130px] bg-transparent text-xs font-semibold text-foreground outline-none"
-          >
-            <option value="">All lines</option>
-            {lines.map((line) => (
-              <option key={line.id} value={line.id}>
-                {line.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {onPickLine && (
+          <label className="flex items-center gap-1.5 rounded-lg border border-black/[0.09] bg-black/[0.02] px-2.5 py-1.5 dark:border-white/10 dark:bg-white/[0.03]">
+            <Factory className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="sr-only">Production line</span>
+            <select
+              value={selectedLine ?? ''}
+              onChange={(event) =>
+                onPickLine(event.target.value ? Number(event.target.value) : undefined)
+              }
+              className="max-w-[130px] bg-transparent text-xs font-semibold text-foreground outline-none"
+            >
+              <option value="">All lines</option>
+              {lines.map((line) => (
+                <option key={line.id} value={line.id}>
+                  {line.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         {/* `max` stops the obvious mistake; the day hook rejects a future date
             regardless, since a typed-in one bypasses the widget. */}

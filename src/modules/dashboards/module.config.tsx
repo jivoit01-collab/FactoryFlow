@@ -28,6 +28,9 @@ const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage')
 const ExecutiveOverviewPage = lazy(() => import('./overview/pages/ExecutiveOverviewPage'));
 const GateDashboardPage = lazy(() => import('./gate/pages/GateDashboardPage'));
 const ProductionDashboardPage = lazy(() => import('./production/pages/ProductionDashboardPage'));
+const LinePerformanceDashboardPage = lazy(
+  () => import('./production/pages/LinePerformanceDashboardPage'),
+);
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
 const StockLevelDashboardPage = lazy(() => import('./stock-level/pages/StockLevelDashboardPage'));
 const NonMovingDashboardPage = lazy(() => import('./non-moving/pages/NonMovingDashboardPage'));
@@ -307,6 +310,17 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Production' },
     },
     {
+      // The same day's runs, cut per line instead of per plant. Gated on the
+      // production board's own permission rather than a new one: it is the
+      // same data read a different way, and a separate permission would hand
+      // somebody the plant total while hiding which line produced it.
+      path: '/dashboards/production-lines',
+      element: <LinePerformanceDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+      breadcrumb: { label: 'Line Performance' },
+    },
+    {
       path: '/dashboards/blowing',
       element: <BlowingDashboardPage />,
       layout: 'main',
@@ -549,6 +563,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
         {
           path: '/dashboards/production',
           title: 'Production',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+        },
+        {
+          path: '/dashboards/production-lines',
+          title: 'Line Performance',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
         },
         {

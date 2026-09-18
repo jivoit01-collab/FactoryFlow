@@ -19,8 +19,23 @@ export interface AdminTrendDay {
 }
 
 export interface AdminProduction {
+  /**
+   * EVERY production receipt onto the finished floor, planned or not — what
+   * the plant recognises as what it made. Headlining the plan's own actuals
+   * instead read 230 t light in September, because a fifth of the month's
+   * output was items the plan never listed.
+   */
   mtd_tons: number;
   mtd_pieces: number;
+  /**
+   * The same month on the plan's own basis: its listed items only. Null where
+   * no plan is filed. `planned_items_pct` is SAP's attainment on those lines —
+   * that figure over the target, not `mtd_tons` over it.
+   */
+  planned_items_tons: number | null;
+  planned_items_pct: number | null;
+  /** Output the plan never listed. `mtd_tons` less `planned_items_tons`. */
+  unplanned_tons: number | null;
   today_tons: number;
   /** Days that actually produced. The denominator of the average. */
   producing_days: number;
@@ -29,6 +44,7 @@ export interface AdminProduction {
   plan_tons: number | null;
   /** The plan pro-rated by elapsed days — the plan is filed as one bucket. */
   plan_to_date_tons: number | null;
+  /** Everything made over the month's target — the bar follows the headline. */
   plan_pct: number | null;
   /** What the remaining days must average to close the plan. */
   required_tons_per_day: number | null;

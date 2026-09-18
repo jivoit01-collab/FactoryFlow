@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '@/shared/utils';
@@ -73,6 +73,33 @@ export interface OpsDrillProps<Row> {
    */
   onRowClick?: (row: Row, index: number) => void;
   /**
+   * Which rows have anything to open, where some do not.
+   *
+   * A day the plant dispatched nothing has no customers under it, and a
+   * chevron beside it would promise a list that cannot exist. Rows this
+   * refuses keep their figures and lose the pointer, the chevron and the
+   * keyboard stop — the same rule the tiles follow, one level down.
+   *
+   * Withheld, every row opens, which is what almost every panel wants.
+   */
+  canOpenRow?: (row: Row, index: number) => boolean;
+  /**
+   * A row's own detail, opened underneath it rather than over it.
+   *
+   * The alternative — and what this table did first — is to replace the whole
+   * panel with a second one and offer a back arrow. That answers the question
+   * but costs the reader their place: the list they were scanning is gone, and
+   * comparing two customers means opening, reading, going back, and opening
+   * again from memory.
+   *
+   * Expanded in place, the surrounding rows stay put and a second row can be
+   * opened without closing the first. Given alongside `onRowClick`, that
+   * handler becomes the toggle and the chevron turns to face down.
+   */
+  renderExpanded?: (row: Row, index: number) => React.ReactNode;
+  /** Which row is open, by the key `rowKey` gives it. Null for none. */
+  expandedKey?: string | null;
+  /**
    * Go back up one level, on a panel opened from another panel.
    *
    * Given, the header grows a back arrow and Escape goes UP rather than out:
@@ -120,6 +147,9 @@ export function OpsDrill<Row>({
   empty,
   loading = false,
   onRowClick,
+  canOpenRow,
+  renderExpanded,
+  expandedKey = null,
   onBack,
   backLabel,
   onClose,
@@ -243,10 +273,25 @@ export function OpsDrill<Row>({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, index) => (
+                {rows.map((row, index) => {
+                  const key = rowKey(row, index);
+                  // Expanded only when this table can expand at all: an
+                  // `expandedKey` left over from a panel with no
+                  // `renderExpanded` must not open a blank row underneath.
+                  const isOpen = Boolean(renderExpanded) && expandedKey === key;
+                  // This row in particular, not the table in general: a panel
+                  // may hold rows with nothing under them beside rows that
+                  // open, and only the ones that open may say so.
+                  const openable = Boolean(onRowClick) && (canOpenRow?.(row, index) ?? true);
+
+                  return (
+                  <Fragment key={key}>
                   <tr
-                    key={rowKey(row, index)}
-                    className={cn(onRowClick && 'ops-drill__rowopen')}
+                    className={cn(
+                      openable && 'ops-drill__rowopen',
+                      isOpen && 'ops-drill__rowon',
+                    )}
+                    aria-expanded={renderExpanded && openable ? isOpen : undefined}
                     // A row is opened by the same two gestures anything else on
                     // this board is: the pointer, or the keyboard on the row the
                     // focus ring is sitting on.
@@ -254,14 +299,14 @@ export function OpsDrill<Row>({
                     // trade the table's own row-and-cell semantics away, and a
                     // screen-reader user would lose the column headers that
                     // make the figures mean anything.
-                    tabIndex={onRowClick ? 0 : undefined}
-                    onClick={onRowClick ? () => onRowClick(row, index) : undefined}
+                    tabIndex={openable ? 0 : undefined}
+                    onClick={openable ? () => onRowClick?.(row, index) : undefined}
                     onKeyDown={
-                      onRowClick
+                      openable
                         ? (event) => {
                             if (event.key !== 'Enter' && event.key !== ' ') return;
                             event.preventDefault();
-                            onRowClick(row, index);
+                            onRowClick?.(row, index);
                           }
                         : undefined
                     }
@@ -276,11 +321,28 @@ export function OpsDrill<Row>({
                     ))}
                     {onRowClick && (
                       <td className="ops-drill__gocol" aria-hidden="true">
-                        ›
+                        {/* Down when this row's own rows are showing, right
+                            when opening would take the reader elsewhere, and
+                            nothing at all on a row with nothing under it. The
+                            chevron is the only thing that says which of the
+                            three a click is about to do. */}
+                        {!openable ? '' : renderExpanded ? (isOpen ? '⌄' : '›') : '›'}
                       </td>
                     )}
                   </tr>
-                ))}
+
+                  {isOpen && (
+                    <tr className="ops-drill__subrow">
+                      {/* Spans the lot, chevron column included, so the detail
+                          is not squeezed into one column's width. */}
+                      <td colSpan={columns.length + (onRowClick ? 1 : 0)}>
+                        {renderExpanded?.(row, index)}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}

@@ -1151,7 +1151,14 @@ function ProductionBand({
           `OITM.InvntryUom`, so the comparison itself needs no conversion — the
           tons are one step off those pieces, at the business's 1000 L = 1 t,
           and a SKU SAP carries no litre volume for is in neither ton figure,
-          which is what the note under the bar counts. */}
+          which is what the note under the bar counts.
+
+          OUTPUT IS THE WHOLE FLOOR, planned or not. Reading it through the
+          plan's own item list made this tile report 1,290 t of a month the
+          plant finished at 1,515 t, because a fifth of what it made — cold
+          pressed groundnut, rice bran, the Kachi Ghani cold presses — was
+          never on the plan. The plan stays the target; it is not the filter.
+          What it cannot account for is named in the legend. */}
       <OpsGroup
         name="Monthly planning"
         onOpen={onOpen('monthly-planning')}
@@ -1174,6 +1181,20 @@ function ProductionBand({
                 label: 'Left to make',
                 figure: `${whole(tonsLeft)} t`,
               },
+              ...(production.produced_unplanned_tons > 0
+                ? [
+                    {
+                      // Zero width: a disclosure, not a slice. It is inside the
+                      // produced figure above — the plan simply cannot speak
+                      // for it, and a reader comparing the two deserves to know
+                      // which part the plan never saw.
+                      fill: 'mute' as const,
+                      pct: 0,
+                      label: 'Unplanned',
+                      figure: `${whole(production.produced_unplanned_tons)} t`,
+                    },
+                  ]
+                : []),
               ...(production.unweighed_lines > 0
                 ? [
                     {

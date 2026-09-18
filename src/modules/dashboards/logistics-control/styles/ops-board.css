@@ -1632,7 +1632,20 @@
   white-space: nowrap;
 }
 
-.ops-drill tbody td {
+/*
+ * `> tr > td` THROUGHOUT THIS TABLE, NOT DESCENDANT `td`.
+ *
+ * A panel's rows can now hold a table of their own (see `__subrow` below), and
+ * a descendant `td` does not stop at the first one — every rule written for
+ * "the cells of this table" silently reached the nested table's cells too, at
+ * a specificity the nested rules had to fight. That is not a style conflict
+ * anyone sees coming: it showed up as every other line of a bills table being
+ * indented by one cell's padding.
+ *
+ * A `td` is always a direct child of a `tr`, so the child combinator costs
+ * nothing here and stops the whole class of bug.
+ */
+.ops-drill tbody > tr > td {
   padding: calc(0.58 * var(--du)) calc(0.9 * var(--du));
   border-bottom: 1px solid color-mix(in srgb, var(--tint2) 55%, transparent);
   color: var(--ink);
@@ -1646,16 +1659,18 @@
 
 /* Banded rather than plain, faintly, so the eye can track a row across seven
    columns without a rule under every line. */
-.ops-drill tbody tr:nth-child(even) td {
+.ops-drill tbody > tr:nth-child(even) > td {
   background: color-mix(in srgb, var(--d4) 16%, transparent);
 }
 
-.ops-drill tbody tr:hover td {
-  background: color-mix(in srgb, var(--d4) 55%, #fff);
-}
+/* NO HOVER TINT ON THESE ROWS, DELIBERATELY. The banding above is what the
+   eye tracks a row by, and a tint that follows the pointer competes with it —
+   on a panel whose rows now open in place, the row that is OPEN is the one
+   that should be lit, and a hover highlight kept stealing that. Keyboard focus
+   is a different matter and still shows: see the outline below. */
 
 /* The first column carries the row's identity, so it is set like one. */
-.ops-drill tbody td:first-child {
+.ops-drill tbody > tr > td:first-child {
   font-weight: 600;
   color: var(--ink);
 }
@@ -1680,23 +1695,26 @@
 /*
  * A row that opens something says so before it is clicked.
  *
- * Three signals, none of them colour alone: the pointer, a lift on hover and
- * focus, and a chevron parked in its own column. A table whose rows are merely
- * clickable-if-you-try is a feature nobody finds.
+ * Two signals, neither of them colour alone: the pointer, and a chevron parked
+ * in its own column. A table whose rows are merely clickable-if-you-try is a
+ * feature nobody finds.
+ *
+ * There was a third — a tint under the pointer — and it is gone on purpose.
+ * These rows open underneath themselves now, so the row worth lighting is the
+ * one that is OPEN, and a highlight chasing the mouse read as the selection it
+ * was not. The cursor still says the row is live before it is clicked.
  */
 .ops-drill__rowopen {
   cursor: pointer;
 }
-.ops-drill__rowopen:hover td,
-.ops-drill__rowopen:focus-visible td {
+/* Keyboard focus is not hover and must still show: a reader tabbing through
+   has nothing else to tell them where they are. */
+.ops-drill__rowopen:focus-visible > td {
   background: color-mix(in srgb, var(--d3) 42%, #fff);
 }
 .ops-drill__rowopen:focus-visible {
   outline: calc(0.14 * var(--du)) solid var(--d1);
   outline-offset: calc(-0.14 * var(--du));
-}
-.ops-drill__rowopen:hover td:first-child {
-  color: var(--d1);
 }
 
 /* The chevron column: present on every row of an openable table so the column
@@ -1711,9 +1729,181 @@
   font-weight: 700;
   line-height: 1;
 }
-.ops-drill__rowopen:hover td.ops-drill__gocol,
-.ops-drill__rowopen:focus-visible td.ops-drill__gocol {
+.ops-drill__rowopen:focus-visible > td.ops-drill__gocol {
   color: var(--d1);
+}
+
+/*
+ * A row with its own rows open underneath it.
+ *
+ * The open row is tinted and holds the tint through the banding above — hence
+ * the specificity. Without it an open row on an even line goes back to looking
+ * like every other even line, and the reader loses which of the two tables
+ * they are reading.
+ *
+ * With the hover tint gone this is now the ONLY lit row on the panel, which is
+ * the point: what is open is worth marking, what the mouse is passing over is
+ * not.
+ */
+.ops-drill tbody tr.ops-drill__rowon > td,
+.ops-drill tbody tr.ops-drill__rowon:nth-child(even) > td {
+  background: color-mix(in srgb, var(--d3) 52%, #fff);
+}
+.ops-drill tbody tr.ops-drill__rowon > td:first-child {
+  color: var(--d1);
+}
+
+/*
+ * The detail row itself carries no banding of its own: it belongs to the row
+ * above, and a second stripe here reads as a third table.
+ *
+ * `> td`, AND NOT A DESCENDANT `td`. This rule exists to flatten the ONE cell
+ * that holds the detail, but `td` alone does not stop at the first table — it
+ * reached every cell of the nested table inside as well. Because this row sits
+ * at an even index, the `:nth-child(even)` half outranked the nested table's
+ * own padding on its odd rows and lost to it on its even ones, so every other
+ * line of bills was indented by exactly one cell's padding and a straight
+ * column read as a zigzag.
+ */
+.ops-drill tbody tr.ops-drill__subrow > td,
+.ops-drill tbody tr.ops-drill__subrow:nth-child(even) > td {
+  padding: 0;
+  background: color-mix(in srgb, var(--d4) 30%, #fff);
+}
+
+.ops-drill__sub {
+  padding: calc(0.7 * var(--du)) calc(1.1 * var(--du)) calc(1.1 * var(--du));
+  /* Inset on the left so the block reads as hanging off the row above rather
+     than as a new section of the panel. */
+  border-left: calc(0.22 * var(--du)) solid var(--d1);
+}
+
+.ops-drill__subhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--du));
+  padding: calc(0.4 * var(--du)) 0 calc(0.7 * var(--du));
+  color: var(--ink-3);
+  font-size: calc(0.95 * var(--du));
+  font-weight: 500;
+}
+
+/* The roll-up the row above states, recomputed from the rows below it. */
+.ops-drill__substats b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/*
+ * Sized under the table it sits inside, not beside it: a nested table at the
+ * parent's weight competes with the list the reader is scanning.
+ *
+ * `table.ops-drill__subtable`, not the class alone — `.ops-drill table` above
+ * is (0,1,1) and outranks a bare class, so the font size here was silently
+ * losing to the parent's and the columns were being set at full width inside
+ * half the room. That is what ran the value into the vehicle beside it.
+ */
+.ops-drill table.ops-drill__subtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(0.92 * var(--du));
+  /* Honours the `colgroup` the markup declares. Without it the browser sizes
+     every column from its own content, and a column that is one width on this
+     row and another on the next is what makes a straight list look wavy. */
+  table-layout: fixed;
+  /* Digits of equal width, so a column of figures lines up down its edge
+     instead of drifting with the glyphs. Inherited from `.ops-drill table`
+     today; restated because this table no longer depends on that rule for
+     anything else and a future edit there must not silently unset it. */
+  font-variant-numeric: tabular-nums;
+}
+.ops-drill .ops-drill__subtable thead tr th {
+  /* NOT sticky, unlike the panel's own heads: `.ops-drill thead th` pins them
+     to the top of the scroll box, and a nested head that did the same would
+     float over the list it belongs under. */
+  position: static;
+  padding: calc(0.35 * var(--du)) calc(0.75 * var(--du));
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 30%, transparent);
+  color: var(--ink-3);
+  font-size: calc(0.82 * var(--du));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Same cut as the cells below: a head that outgrew its fixed column would
+     push into its neighbour and misreport which column is which. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ops-drill .ops-drill__subtable thead tr th.num {
+  text-align: right;
+}
+
+/*
+ * Every rule here outweighs the parent table's own.
+ *
+ * This table is nested INSIDE `.ops-drill tbody`, so the banding and the bold
+ * first column above both reach it — a nested table wearing the outer table's
+ * stripes reads as one list with a hiccup in it rather than as a row's own
+ * detail. Hence `tbody tr td` rather than plain `td`: it is specificity, not
+ * decoration.
+ */
+.ops-drill .ops-drill__subtable tbody tr td,
+.ops-drill .ops-drill__subtable tbody tr:nth-child(even) td {
+  padding: calc(0.4 * var(--du)) calc(0.75 * var(--du));
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-3) 14%, transparent);
+  background: none;
+  color: var(--ink);
+  font-weight: 500;
+  /* Every cell on one line. The parent sets `white-space: normal` so its
+     descriptions can wrap; here a wrapped vehicle number or status reads as a
+     second row and the column loses its edge. */
+  white-space: nowrap;
+  /* Cut, with the ellipsis that admits it. `table-layout: fixed` gives a long
+     transporter name no room to grow into, so without this it would print
+     straight over the column beside it — the exact fault this table was
+     rebuilt to remove. A truncated name still has its full text in the DOM for
+     anyone who needs it. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ops-drill .ops-drill__subtable tbody tr:last-child td {
+  border-bottom: 0;
+}
+/* The identity column is set like one here too, matching the parent table. */
+.ops-drill .ops-drill__subtable tbody tr td:first-child {
+  color: var(--ink);
+  font-weight: 700;
+}
+/* Restated after the reset above, which would otherwise flatten them. */
+.ops-drill .ops-drill__subtable tbody tr td.num {
+  text-align: right;
+  font-weight: 700;
+}
+.ops-drill .ops-drill__subtable tbody tr td.dim {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+/*
+ * Room where a right-aligned figure meets left-aligned text.
+ *
+ * A `num` column pushes its digits hard against its right edge and the column
+ * after it pushes its words hard against its left, so the two meet with only
+ * the cell padding between them — "₹41.0k" and "Awaiting a truck" read as one
+ * string. Ordinary padding cannot fix it without loosening every other column,
+ * so the gap goes on exactly the boundary that needs it.
+ *
+ * `:not(.num)` because a figure following a figure needs none of this: both
+ * are right-aligned, so they part at their own edges and the extra room would
+ * only cost the table width it has better uses for.
+ */
+.ops-drill .ops-drill__subtable tbody tr td.num + td:not(.num),
+.ops-drill .ops-drill__subtable thead tr th.num + th:not(.num) {
+  padding-left: calc(1.1 * var(--du));
 }
 
 /* An empty or unreadable table says which it is, never a blank panel. */

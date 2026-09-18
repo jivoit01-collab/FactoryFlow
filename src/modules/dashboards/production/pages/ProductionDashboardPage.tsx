@@ -9,6 +9,7 @@ import { useFullscreen } from '../../dispatch/hooks';
 import {
   CostBreakdownPanel,
   MaterialWallPanel,
+  ProductionRunCard,
   ProductionRunsPanel,
   ProductionTrendChart,
   ProductionWallHeader,
@@ -62,6 +63,16 @@ export default function ProductionDashboardPage() {
    * anyone who has not touched the switch.
    */
   const [includeMaterial, setIncludeMaterial] = useState(true);
+  /**
+   * Which line's card is open, by run id rather than by row.
+   *
+   * The row itself is re-resolved from the live list on every render, so a run
+   * that is still producing keeps climbing while somebody reads it, and one
+   * that closes settles onto its final figures under them — a snapshot taken
+   * on click would freeze the card at whatever the wall happened to hold that
+   * second and quietly disagree with the row behind it.
+   */
+  const [openRunId, setOpenRunId] = useState<number | null>(null);
 
   const linesQuery = useLines(true);
   const lines = useMemo(
@@ -127,6 +138,7 @@ export default function ProductionDashboardPage() {
               isLoading={board.runsLoading}
               isToday={day.isToday}
               unitNoun={unitNoun}
+              onOpenRun={(row) => setOpenRunId(row.id)}
             />
             <ReconWallPanel
               title="Produced · App vs SAP"
@@ -150,6 +162,15 @@ export default function ProductionDashboardPage() {
             />
           </div>
         </>
+      )}
+
+      {openRunId != null && (
+        <ProductionRunCard
+          run={board.runs.find((row) => row.id === openRunId) ?? null}
+          unitNoun={unitNoun}
+          benchmark={variant.benchmarks.oee}
+          onClose={() => setOpenRunId(null)}
+        />
       )}
 
       {!isFullscreen && (

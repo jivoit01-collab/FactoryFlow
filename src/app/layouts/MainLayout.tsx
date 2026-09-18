@@ -6,15 +6,19 @@ import { AiAssistantWidget } from '@/modules/ai/components';
 import { TooltipProvider } from '@/shared/components/ui';
 import { useSettings } from '@/shared/contexts';
 import { useLocalStorage } from '@/shared/hooks';
+import { cn } from '@/shared/utils';
 
 import { Breadcrumbs, Header, MobileSidebar, Sidebar } from './components';
 import { HeaderHelpTour } from './components/HeaderHelpTour';
+import { PageWidthContext } from './pageWidth';
 
 export function MainLayout() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false);
   const { aiEnabled } = useSettings();
+  /** Set by a page that asks for the whole width — see `useFullWidthPage`. */
+  const [fullWidth, setFullWidth] = useState(false);
 
   // TODO: create a config variable for the sidebar-collapsed key and use it across the project
 
@@ -50,10 +54,14 @@ export function MainLayout() {
 
         {/* Main Content */}
         <main className="pt-16 transition-all duration-300" style={{ marginLeft: sidebarWidth }}>
-          <div className="container mx-auto p-6">
-            <Breadcrumbs />
-            <Outlet />
-          </div>
+          <PageWidthContext.Provider value={setFullWidth}>
+            {/* Centred and capped for ordinary pages; edge to edge for a board
+                that asked, which on a wide screen is a whole column of tiles. */}
+            <div className={cn(fullWidth ? 'w-full px-4 py-4' : 'container mx-auto p-6')}>
+              <Breadcrumbs />
+              <Outlet />
+            </div>
+          </PageWidthContext.Provider>
         </main>
         {aiEnabled && <AiAssistantWidget />}
 

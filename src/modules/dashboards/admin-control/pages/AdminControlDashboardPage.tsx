@@ -314,6 +314,20 @@ function ProductionTile({
                 label: 'Month gone',
                 figure: pct(elapsed),
               },
+              // OUTPUT THE PLAN NEVER LISTED, named rather than buried. The
+              // headline counts it — it is tonnage the plant made — but the
+              // target beside it cannot speak for it, and a reader comparing
+              // the two deserves to know which part the plan never saw.
+              ...(production.unplanned_tons
+                ? [
+                    {
+                      fill: 'mute' as const,
+                      pct: 0,
+                      label: 'Unplanned',
+                      figure: `${tons(production.unplanned_tons)} T`,
+                    },
+                  ]
+                : []),
             ]}
           />
         )

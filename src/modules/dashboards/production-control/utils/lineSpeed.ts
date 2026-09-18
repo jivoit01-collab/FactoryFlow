@@ -15,12 +15,19 @@
  * against rated speed, from output the operators have actually entered. Full
  * three-part OEE belongs on completed runs, from the analytics endpoints.
  *
- * ONE OPEN QUESTION sits behind this. On a completed run `total_production` and
- * the sum of the run's segments disagree — by up to 3.4× on live records — and
- * nobody has yet said which is authoritative. This module reads
- * `total_production` because it is the figure on the run's own closing record
- * and the only one the list endpoint carries; `SPEED_BASIS` names that choice so
- * it is a visible decision rather than a buried assumption.
+ * On a completed run `total_production` and the sum of the run's segments
+ * disagree — by up to 3.4× on live records. That used to be an open question;
+ * it is now settled, by the business, in favour of `total_production`: it is
+ * what the supervisor enters when closing the run, what the run screen shows,
+ * and what is received into SAP as finished goods. Segments are booked spell by
+ * spell and are routinely left at zero on the spells nobody filled in — on
+ * 2026-09-17 every completed run disagreed with its own (10 Head 894 against
+ * 440), so a board reading segments understated the day by nearly half.
+ *
+ * `SPEED_BASIS` keeps the choice visible rather than buried, and this module
+ * was already on the right side of it. The same rule is applied to every
+ * production board by `runMetrics`, which additionally falls back to live
+ * segments while a run is still OPEN — the closing figure is 0 until then.
  */
 
 /** Which output figure the speed is computed from. See the note above. */

@@ -1,6 +1,5 @@
 import { Factory } from 'lucide-react';
 import { useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { cn } from '@/shared/utils';
 
@@ -21,21 +20,29 @@ import type { ProductionRunRow } from '../hooks';
  * A running line's figure is its live segment output, so it climbs through the
  * shift; a finished one shows its closing figure. The chip is the difference
  * between the two, and it is the first thing the eye should find.
+ *
+ * A row opens the line's own card rather than navigating to the run screen. The
+ * question a case count raises — 900 cases out of what, in how long — is
+ * answered from figures the board is already holding, and answering it on the
+ * board keeps the wall on the wall: leaving for a register screen used to end
+ * the shift's viewing, because nothing brings the board back up.
  */
 export function ProductionRunsPanel({
   runs,
   isLoading,
   isToday,
   unitNoun,
+  onOpenRun,
   className,
 }: {
   runs: ProductionRunRow[];
   isLoading: boolean;
   isToday: boolean;
   unitNoun: string;
+  /** Open one line's card. */
+  onOpenRun: (run: ProductionRunRow) => void;
   className?: string;
 }) {
-  const navigate = useNavigate();
   const palette = useWallPalette();
   const listRef = useRef<HTMLUListElement>(null);
   useAutoScroll(listRef, runs.length >= AUTO_SCROLL_FROM);
@@ -71,7 +78,8 @@ export function ProductionRunsPanel({
             <li key={row.id}>
               <button
                 type="button"
-                onClick={() => navigate(`/production/execution/runs/${row.id}`)}
+                onClick={() => onOpenRun(row)}
+                aria-label={`${row.line} — run ${row.runNumber}, ${count(row.cases)} ${unitNoun}s`}
                 className="relative flex w-full items-center gap-3 overflow-hidden px-4 py-2.5 text-left transition-colors hover:bg-black/[0.035] focus:outline-none focus-visible:bg-black/[0.05] dark:hover:bg-white/[0.05] dark:focus-visible:bg-white/[0.07]"
               >
                 <span
