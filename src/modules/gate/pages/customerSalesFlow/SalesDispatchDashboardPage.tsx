@@ -474,7 +474,6 @@ export default function SalesDispatchDashboardPage() {
               detailPath={routes.detail}
               weighmentPath={routes.weighment}
               gatepassPath={routes.gatepass}
-              sealPath={routes.attachments}
               isGateOutMode={isGateOutMode}
               onAddToDocking={handleAddToDocking}
               isAddingToDocking={addToDocking.isPending}
@@ -501,7 +500,6 @@ function DispatchTable({
   detailPath,
   weighmentPath,
   gatepassPath,
-  sealPath,
   isGateOutMode,
   onAddToDocking,
   isAddingToDocking,
@@ -511,7 +509,6 @@ function DispatchTable({
   detailPath: (entryId: string | number) => string;
   weighmentPath: (entryId: string | number) => string;
   gatepassPath: (entryId: string | number) => string;
-  sealPath: (entryId: string | number) => string;
   isGateOutMode: boolean;
   onAddToDocking?: (booking: SalesDispatchPendingBooking, docking: SalesDispatchGateOut) => void;
   isAddingToDocking?: boolean;
@@ -587,27 +584,6 @@ function DispatchTable({
                 }}
               >
                 + Add to {openDocking.entry_no}
-              </Button>
-            ) : null}
-            {isGateOutMode && !isPendingBookingEntry(entry) ? (
-              // The seal goes on at the gate, so it is reachable straight from the
-              // board -- the gate person is looking at the truck, not at a step flow.
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 w-full whitespace-nowrap px-2 text-xs font-normal"
-                title={
-                  entry.seal_number
-                    ? `Seal ${entry.seal_number} recorded. Open to change it.`
-                    : 'Record the seal fastened on this truck.'
-                }
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(sealPath(entry.vehicle_entry));
-                }}
-              >
-                {entry.seal_number ? `Seal ${entry.seal_number}` : 'Record seal'}
               </Button>
             ) : null}
           </div>

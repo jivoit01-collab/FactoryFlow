@@ -147,9 +147,6 @@ const SalesDispatchDashboardPage = lazy(
 const SalesDispatchGateOutWeighmentPage = lazy(
   () => import('./pages/customerSalesFlow/SalesDispatchGateOutWeighmentPage'),
 );
-const SalesDispatchSealPage = lazy(
-  () => import('./pages/customerSalesFlow/SalesDispatchSealPage'),
-);
 const SalesDispatchGatepassPage = lazy(
   () => import('./pages/customerSalesFlow/SalesDispatchGatepassPage'),
 );
@@ -954,10 +951,10 @@ export const gateModuleConfig: ModuleConfig = {
     },
     {
       path: '/gate/sales-dispatch/new/attachments',
-      element: <SalesDispatchSealPage />,
+      element: <RedirectWithSearch to="/dispatch/docking/new/attachments" />,
       layout: 'main',
-      permissions: [GATE_PERMISSIONS.SALES_DISPATCH.UPLOAD_PHOTO],
-      breadcrumb: { label: 'Truck Seal' },
+      permissions: [GATE_PERMISSIONS.SALES_DISPATCH.CREATE],
+      breadcrumb: { label: 'Docking Attachments' },
     },
     {
       path: '/gate/sales-dispatch/new/gatepass',

@@ -21,7 +21,6 @@ export type SalesDispatchAttachmentType =
   | 'DELIVERY_NOTE'
   | 'BILTY'
   | 'EWAY_BILL'
-  | 'SEAL_PHOTO'
   | 'OTHER';
 
 export interface SalesDispatchDocument {
@@ -554,12 +553,6 @@ export type SalesDispatchUpdateRequest = Partial<
   >
 >;
 
-export interface SalesDispatchSealRequest {
-  seal_number: string;
-  /** Optional: the number on its own is still a record worth keeping. */
-  seal_photo?: File | null;
-}
-
 export interface SalesDispatchAttachmentUploadRequest {
   attachment_type: SalesDispatchAttachmentType;
   file: File;
@@ -854,25 +847,6 @@ export const salesDispatchApi = {
 
     const response = await apiClient.post<SalesDispatchAttachment>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ATTACHMENTS(id),
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    );
-    return response.data;
-  },
-
-  /**
-   * Record the seal the gate fastened on the truck. The server writes it to every
-   * docking on the same physical trip, so this is called once per truck, not once
-   * per company. `seal_photo` is optional -- the number alone is a valid record.
-   */
-  async recordSeal(id: number, data: SalesDispatchSealRequest): Promise<SalesDispatchGateOut> {
-    const formData = new FormData();
-    formData.append('seal_number', data.seal_number);
-    if (data.seal_photo) {
-      formData.append('seal_photo', data.seal_photo);
-    }
-    const response = await apiClient.post<SalesDispatchGateOut>(
-      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_SEAL(id),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
