@@ -302,10 +302,10 @@ export function ProductionRunCard({
                     from — a shortfall that reads as a caption gets skipped. */}
                 <p
                   className={cn(
-                    'mt-1.5 text-sm',
+                    'mt-1.5 text-base font-bold',
                     made >= expected
                       ? 'text-muted-foreground'
-                      : 'font-semibold text-rose-600 dark:text-rose-400',
+                      : 'text-rose-600 dark:text-rose-400',
                   )}
                 >
                   {made >= expected

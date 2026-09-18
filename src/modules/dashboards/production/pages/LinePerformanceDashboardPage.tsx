@@ -9,8 +9,9 @@ import { useFullscreen } from '../../dispatch/hooks';
 import {
   BlowingPerformanceTile,
   BlowingSummary,
-  LinePerformanceSummary,
+  CapacityBox,
   LinePerformanceTile,
+  MonthPlanStrip,
   PerformanceTrend,
   ProductionRunCard,
   ProductionWallHeader,
@@ -150,9 +151,39 @@ export default function LinePerformanceDashboardPage() {
         onToggleFullscreen={toggle}
       />
 
-      <StageSwitch stage={stage} onPick={setStage} />
+      {/* The month and the day, side by side: what the plant committed to over
+          the month, and what the lines that ran could have made today. Both
+          production-side — the plan is finished goods, and a blowing machine
+          has no rating to work a capacity out of. */}
+      {stage === 'production' && (
+        <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-2">
+          <MonthPlanStrip />
+          <CapacityBox
+            produced={board.cases}
+            producedLitres={board.litres}
+            capacity={board.capacityCases}
+            capacityLitres={board.capacityLitres}
+            capacityPct={board.capacityPct}
+            capacityMinutes={board.capacityMinutes}
+            idleMinutes={board.idleMinutes}
+            breakdownMinutes={board.breakdownMinutes}
+            stoppageCount={board.stoppageCount}
+            lines={board.lines}
+            unit={unit}
+            unitNoun={unitNoun}
+          />
+        </div>
+      )}
 
-      {stage === 'blowing' ? (
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
+        <StageSwitch stage={stage} onPick={setStage} />
+        {/* The unit governs every figure on the board, so it sits beside the
+            switch that governs which half of the plant is on it. Blowing counts
+            bottles off a machine's own counter and has no such choice. */}
+        {stage === 'production' && <UnitSwitch unit={unit} onPick={setUnit} unitNoun={unitNoun} />}
+      </div>
+
+      {stage === 'blowing' && (
         <BlowingSummary
           machines={blowing.machines}
           running={blowing.running}
@@ -165,23 +196,6 @@ export default function LinePerformanceDashboardPage() {
           idleMinutes={blowing.idleMinutes}
           stoppageCount={blowing.stoppageCount}
           benchmark={BLOWING_YIELD_TARGET}
-        />
-      ) : (
-        <LinePerformanceSummary
-          lines={board.lines}
-          running={board.running}
-          down={board.down}
-          finished={board.finished}
-          cases={board.cases}
-          litres={board.litres}
-          efficiencyPct={board.efficiencyPct}
-          breakdownMinutes={board.breakdownMinutes}
-          idleMinutes={board.idleMinutes}
-          stoppageCount={board.stoppageCount}
-          unitNoun={unitNoun}
-          unit={unit}
-          onPickUnit={setUnit}
-          benchmark={variant.benchmarks.oee}
         />
       )}
 
@@ -264,6 +278,44 @@ export default function LinePerformanceDashboardPage() {
             : 'Click a line for its runs, segments and stoppages — or open wall mode.'}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Cases or litres, for every figure on the board at once.
+ *
+ * Lifted out of the summary strip when that strip went: the two cards above
+ * carry the day's figures now, and a control that governs the whole board
+ * belongs beside the other one that does, not inside a panel.
+ */
+function UnitSwitch({
+  unit,
+  onPick,
+  unitNoun,
+}: {
+  unit: BoardUnit;
+  onPick: (unit: BoardUnit) => void;
+  unitNoun: string;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-xl border border-black/[0.09] bg-black/[0.02] p-0.5 dark:border-white/10 dark:bg-white/[0.03]">
+      {(['cases', 'litres'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onPick(option)}
+          aria-pressed={unit === option}
+          className={cn(
+            'rounded-lg px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors',
+            unit === option
+              ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {option === 'cases' ? `${unitNoun}s` : 'litres'}
+        </button>
+      ))}
     </div>
   );
 }

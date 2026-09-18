@@ -1,8 +1,10 @@
 export { BlowingPerformanceTile } from './BlowingPerformanceTile';
 export { BlowingSummary } from './BlowingSummary';
+export { CapacityBox } from './CapacityBox';
 export { CostBreakdownPanel } from './CostBreakdownPanel';
-export { LinePerformanceSummary, LinePerformanceTile } from './LinePerformanceTile';
+export { LinePerformanceTile } from './LinePerformanceTile';
 export { MaterialWallPanel } from './MaterialWallPanel';
+export { MonthPlanStrip } from './MonthPlanStrip';
 export { PerformanceTrend } from './PerformanceTrend';
 export { ProductionRunCard } from './ProductionRunCard';
 export { ProductionRunsPanel } from './ProductionRunsPanel';

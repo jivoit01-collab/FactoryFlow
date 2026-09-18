@@ -216,6 +216,42 @@ describe('buildLineTiles', () => {
     expect(board.tiles[0].spanMinutes).toBe(540);
   });
 
+  it('works capacity off the hours the line actually ran, not a standard day', () => {
+    const board = buildLineTiles({
+      rows: [
+        row(1, 'COMPLETED', 1, {
+          metrics: metrics({ producedCases: 894, expectedCases: 656, runningMinutes: 483 }),
+        }),
+      ],
+      configs: noConfigs,
+    });
+
+    const tile = board.tiles[0];
+    expect(tile.capacityCases).toBe(656);
+    expect(board.capacityCases).toBe(656);
+    // 894 made against 656 rated in the 8h 3m it ran.
+    expect(board.capacityPct).toBe(136.3);
+    expect(board.capacityMinutes).toBe(483);
+  });
+
+  it('refuses a capacity rather than guessing one for an unrated line', () => {
+    const board = build([row(1, 'RUNNING', 1, { metrics: metrics({ expectedCases: null }) })]);
+
+    expect(board.tiles[0].capacityCases).toBeNull();
+    expect(board.capacityCases).toBeNull();
+    expect(board.capacityMinutes).toBeNull();
+  });
+
+  it('withholds the plant total when one line that ran has no rating', () => {
+    // A total missing a line would read as capacity the plant has not got.
+    const board = build([
+      row(1, 'COMPLETED', 1, { metrics: metrics({ expectedCases: 400, runningMinutes: 120 }) }),
+      row(2, 'COMPLETED', 1, { metrics: metrics({ expectedCases: null }) }),
+    ]);
+
+    expect(board.capacityCases).toBeNull();
+  });
+
   it('measures efficiency only over the runs that carry a rating', () => {
     const board = build([
       // Rated: 360 made against 400 expected.

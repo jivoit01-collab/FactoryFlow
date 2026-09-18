@@ -1,4 +1,4 @@
-import { AlertTriangle, Gauge } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/shared/utils';
@@ -69,13 +69,13 @@ function Figure({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
       <p className={cn('truncate text-xl font-bold tabular-nums', tone ?? 'text-foreground')}>
         {value}
       </p>
-      {sub && <p className="truncate text-[11px] text-muted-foreground">{sub}</p>}
+      {sub && <p className="truncate text-[11px] font-medium text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -84,7 +84,7 @@ function Figure({
 function Note({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="truncate">
-      <span className="text-muted-foreground/60">{label} </span>
+      <span className="font-medium text-muted-foreground">{label} </span>
       <span className="font-semibold text-foreground/80">{children}</span>
     </span>
   );
@@ -159,10 +159,10 @@ export function LinePerformanceTile({
             {broken && <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />}
             {tile.lineName}
           </h3>
-          <p className="truncate text-xs text-muted-foreground" title={tile.product}>
+          <p className="truncate text-xs font-semibold text-muted-foreground" title={tile.product}>
             {tile.product}
           </p>
-          <p className="truncate text-[11px] text-muted-foreground/70">
+          <p className="truncate text-[11px] font-medium text-muted-foreground">
             {tile.itemCode && `${tile.itemCode} · `}
             {tile.runs.length > 1
               ? `${count(tile.runs.length)} runs`
@@ -249,9 +249,12 @@ export function LinePerformanceTile({
             880 above it still leaves the reader doing the subtraction. */}
         <p
           className={cn(
-            'mt-1.5 truncate text-sm',
+            // The reader's second question after the headline — what it made
+            // against what it should have — so it is sized as an answer, not
+            // as a caption under the bar.
+            'mt-1.5 truncate text-base font-bold',
             expected != null && drawn < expected
-              ? 'font-semibold text-rose-600 dark:text-rose-400'
+              ? 'text-rose-600 dark:text-rose-400'
               : 'text-muted-foreground',
           )}
         >
@@ -343,8 +346,8 @@ export function LinePerformanceTile({
                   )}%`,
                 }}
               />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                <span className="font-semibold text-foreground/80">{stoppage.label}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">
+                <span className="font-bold text-foreground">{stoppage.label}</span>
                 {stoppage.count > 1 && ` ×${count(stoppage.count)}`}
                 {stoppage.unrecovered && ' · never made up'}
               </span>
@@ -405,122 +408,5 @@ export function LinePerformanceTile({
         )}
       </div>
     </button>
-  );
-}
-
-/**
- * The strip above the tiles: how the plant is doing, in one line — and the one
- * control that governs the whole board.
- *
- * The cases/litres switch lives here rather than in the header because it is
- * about the FIGURES, not about the day: it changes what every number on the
- * screen means, and it belongs beside the first of them.
- */
-export function LinePerformanceSummary({
-  lines,
-  running,
-  down,
-  finished,
-  cases,
-  litres,
-  efficiencyPct,
-  breakdownMinutes,
-  idleMinutes,
-  stoppageCount,
-  unitNoun,
-  unit,
-  onPickUnit,
-  benchmark,
-}: {
-  lines: number;
-  running: number;
-  down: number;
-  finished: number;
-  cases: number;
-  litres: number | null;
-  efficiencyPct: number | null;
-  breakdownMinutes: number;
-  idleMinutes: number;
-  stoppageCount: number;
-  unitNoun: string;
-  unit: BoardUnit;
-  onPickUnit: (unit: BoardUnit) => void;
-  benchmark: number;
-}) {
-  const output = quantityOf(unit, cases, litres, unitNoun);
-
-  return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border border-black/[0.09] bg-black/[0.02] px-5 py-3 dark:border-white/10 dark:bg-white/[0.035]">
-      <span className="flex items-center gap-2 text-base font-semibold text-foreground">
-        <Gauge className="h-4 w-4 text-violet-500" />
-        {count(lines)}{' '}
-        <span className="text-muted-foreground">line{lines === 1 ? '' : 's'} ran</span>
-      </span>
-
-      <span className="text-sm font-semibold text-foreground">
-        {output.text}{' '}
-        <span className="font-normal text-muted-foreground">
-          {output.noun ?? 'no volume in SAP'}
-        </span>
-      </span>
-
-      <span className={cn('text-base font-bold tabular-nums', ratioTone(efficiencyPct, benchmark))}>
-        {percent(efficiencyPct)} <span className="font-normal text-muted-foreground">of rated</span>
-      </span>
-
-      <span className="text-base text-muted-foreground">
-        <span className="font-bold text-emerald-600 dark:text-emerald-400">{count(running)}</span>{' '}
-        running ·{' '}
-        <span className={cn('font-bold', down > 0 && 'text-rose-600 dark:text-rose-400')}>
-          {count(down)}
-        </span>{' '}
-        down · <span className="font-bold text-sky-600 dark:text-sky-400">{count(finished)}</span>{' '}
-        finished
-      </span>
-
-      {/* Total breakdown, stated whether or not there was any — a blank where a
-          figure belongs reads as "not measured", which is worse than a zero. */}
-      <span
-        className={cn(
-          'flex items-center gap-1.5 text-base',
-          breakdownMinutes > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground',
-        )}
-      >
-        <AlertTriangle className="h-3.5 w-3.5" />
-        {breakdownMinutes > 0 ? (
-          <>
-            <span className="font-bold">{duration(breakdownMinutes)}</span> breakdown ·{' '}
-            {count(stoppageCount)} logged
-          </>
-        ) : (
-          'no breakdown logged'
-        )}
-      </span>
-
-      {idleMinutes > 0 && (
-        <span className="text-base text-amber-600 dark:text-amber-400">
-          <span className="font-bold">{duration(idleMinutes)}</span> idle
-        </span>
-      )}
-
-      <div className="ml-auto flex shrink-0 items-center gap-0.5 rounded-lg border border-black/[0.09] bg-black/[0.02] p-0.5 dark:border-white/10 dark:bg-white/[0.03]">
-        {(['cases', 'litres'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onPickUnit(option)}
-            aria-pressed={unit === option}
-            className={cn(
-              'rounded-md px-3 py-1 text-xs font-bold uppercase tracking-wider transition-colors',
-              unit === option
-                ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {option === 'cases' ? `${unitNoun}s` : 'litres'}
-          </button>
-        ))}
-      </div>
-    </div>
   );
 }

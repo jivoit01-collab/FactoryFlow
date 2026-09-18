@@ -109,6 +109,19 @@ export interface LineTile {
   actualSpeed: number | null;
   /** The lead run's rating — its own snapshot, or the line's configuration. */
   ratedSpeed: number | null;
+  /**
+   * What the line could have made IN THE TIME IT RAN, at its rating.
+   *
+   * Measured over running time rather than over a standard day: a 22-hour
+   * yardstick made every figure on the board a statement about hours nobody
+   * worked, which buried the thing the plant is judged on — what the line did
+   * while it was running. The same figure as `expectedCases`, carried
+   * separately so the box above the board and the tile below it stay free to
+   * move apart.
+   */
+  capacityCases: number | null;
+  /** The same capacity in litres, where the SKU carries a volume. */
+  capacityLitres: number | null;
   /** Which of the two that rating came from. */
   ratedFrom: 'run' | 'config' | null;
   targetCases: number | null;
@@ -149,6 +162,14 @@ export interface LineTileBoard {
   down: number;
   finished: number;
   cases: number;
+  /** What the lines could have made in the time they ran, added up. */
+  capacityCases: number | null;
+  /** The same in litres, where every line that ran carries a volume. */
+  capacityLitres: number | null;
+  /** Output as a share of capacity — the same ratio in either unit. */
+  capacityPct: number | null;
+  /** The running time the capacity above was measured over. */
+  capacityMinutes: number | null;
   runningMinutes: number;
   breakdownMinutes: number;
   /** Time the lines were on but not producing, across the plant. */
@@ -350,6 +371,11 @@ export function buildLineTiles({
       actualSpeed:
         bottlesKnown && runningMinutes > 0 ? Math.round((bottles / runningMinutes) * 60) : null,
       ratedSpeed: lead.metrics.ratedSpeed,
+      // Needs all three: a rating to run at, a pack size to state it in cases,
+      // and a standard day to run it for. Any one missing and the line has no
+      // capacity figure rather than a guessed one.
+      capacityCases: ratedRuns > 0 ? expectedCases : null,
+      capacityLitres: volumeKnown && ratedRuns > 0 ? expectedLitres : null,
       ratedFrom: lead.metrics.ratedFrom,
       targetCases: target > 0 ? target : null,
       targetPct: target > 0 ? pct(cases, target) : null,
@@ -407,6 +433,23 @@ export function buildLineTiles({
     down: count('BREAKDOWN') + count('STOPPED'),
     finished: count('COMPLETED'),
     cases: tiles.reduce((sum, tile) => sum + tile.cases, 0),
+    // Summed only where every line that ran has one: a total that silently
+    // left a line out would read as spare capacity the plant does not have.
+    capacityCases: tiles.every((tile) => tile.capacityCases != null)
+      ? tiles.reduce((sum, tile) => sum + (tile.capacityCases ?? 0), 0)
+      : null,
+    capacityMinutes: tiles.every((tile) => tile.capacityCases != null)
+      ? tiles.reduce((sum, tile) => sum + tile.runningMinutes, 0)
+      : null,
+    capacityLitres: tiles.every((tile) => tile.capacityLitres != null)
+      ? tiles.reduce((sum, tile) => sum + (tile.capacityLitres ?? 0), 0)
+      : null,
+    capacityPct: tiles.every((tile) => tile.capacityCases != null)
+      ? pct(
+          tiles.reduce((sum, tile) => sum + tile.cases, 0),
+          tiles.reduce((sum, tile) => sum + (tile.capacityCases ?? 0), 0),
+        )
+      : null,
     litres: tiles.some((tile) => tile.litres == null)
       ? null
       : tiles.reduce((sum, tile) => sum + (tile.litres ?? 0), 0),

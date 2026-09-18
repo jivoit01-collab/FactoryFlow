@@ -70,7 +70,7 @@ export function PerformanceTrend({
       )}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           Last {points.length} days
         </h2>
         <p className="text-xs text-muted-foreground">
@@ -107,7 +107,7 @@ export function PerformanceTrend({
             >
               <span
                 className={cn(
-                  'truncate text-center text-[10px] tabular-nums',
+                  'truncate text-center text-[10px] font-semibold tabular-nums',
                   point.isShown ? 'font-bold text-foreground' : 'text-muted-foreground',
                 )}
               >
@@ -136,13 +136,13 @@ export function PerformanceTrend({
           <div key={point.date} className="min-w-0 flex-1 text-center">
             <p
               className={cn(
-                'truncate text-[10px] tabular-nums',
-                point.isShown ? 'font-bold text-foreground' : 'text-muted-foreground/70',
+                'truncate text-[10px] font-semibold tabular-nums',
+                point.isShown ? 'font-bold text-foreground' : 'text-muted-foreground',
               )}
             >
               {shortDay(point.date)}
             </p>
-            <p className="truncate text-[9px] text-muted-foreground/50">{weekday(point.date)}</p>
+            <p className="truncate text-[9px] font-medium text-muted-foreground/70">{weekday(point.date)}</p>
           </div>
         ))}
       </div>

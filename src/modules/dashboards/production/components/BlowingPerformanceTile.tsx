@@ -57,13 +57,13 @@ function Figure({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
       <p className={cn('truncate text-2xl font-bold tabular-nums', tone ?? 'text-foreground')}>
         {value}
       </p>
-      {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
+      {sub && <p className="truncate text-xs font-medium text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -72,7 +72,7 @@ function Figure({
 function Band({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/60">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {title}
       </p>
       {children}
@@ -84,7 +84,7 @@ function Band({ title, children }: { title: string; children: ReactNode }) {
 function Reading({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="truncate text-muted-foreground">{label}</span>
+      <span className="truncate font-medium text-muted-foreground">{label}</span>
       <span className="shrink-0 font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   );
@@ -119,7 +119,7 @@ function Variance({
 
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="truncate text-muted-foreground">{label}</span>
+      <span className="truncate font-medium text-muted-foreground">{label}</span>
       <span className="shrink-0 tabular-nums">
         <span
           className={cn(
@@ -133,7 +133,7 @@ function Variance({
         >
           {actual == null ? '—' : format(actual)}
         </span>
-        <span className="text-muted-foreground/60">
+        <span className="font-medium text-muted-foreground">
           {standard == null
             ? ' · no target'
             : ` · ${standardNote ?? 'target'} ${format(standard)}`}
@@ -216,9 +216,9 @@ export function BlowingPerformanceTile({
               {STATE_LABEL[tile.state] ?? tile.state}
             </span>
           </h3>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="truncate text-sm font-semibold text-muted-foreground">
             {tile.preform}
-            <span className="text-muted-foreground/70">
+            <span className="font-medium text-muted-foreground">
               {' · '}
               {tile.runs.length > 1
                 ? `${count(tile.runs.length)} runs`
@@ -265,7 +265,7 @@ export function BlowingPerformanceTile({
           style={{ width: `${((tile.rejects / Math.max(tile.bottles, 1)) * 100).toFixed(2)}%` }}
         />
       </div>
-      <p className="mt-2 truncate text-xs text-muted-foreground">
+      <p className="mt-2 truncate text-xs font-medium text-muted-foreground">
         {count(tile.goodBottles)} good · {count(tile.rejects)} rejected
         {tile.detailLoading && ' · reading the machine’s spells…'}
       </p>
@@ -319,8 +319,8 @@ export function BlowingPerformanceTile({
             <ul className="mt-2 space-y-0.5">
               {tile.stoppages.slice(0, 2).map((stoppage) => (
                 <li key={stoppage.label} className="flex items-baseline gap-2 text-xs">
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    <span className="font-semibold text-foreground/80">{stoppage.label}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium text-muted-foreground">
+                    <span className="font-bold text-foreground">{stoppage.label}</span>
                     {stoppage.count > 1 && ` ×${count(stoppage.count)}`}
                   </span>
                   <span className="shrink-0 font-semibold tabular-nums text-rose-600 dark:text-rose-400">
@@ -417,7 +417,7 @@ export function BlowingPerformanceTile({
             />
           </div>
           {tile.standardsSet < 3 && (
-            <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+            <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               <Settings2 className="mt-0.5 h-3 w-3 shrink-0" />
               {3 - tile.standardsSet} of 3 targets not set on this preform — configure them to grade
               the run.
