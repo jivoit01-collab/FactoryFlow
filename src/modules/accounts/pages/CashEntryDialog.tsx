@@ -16,6 +16,7 @@ import {
   useRecordCashEntry,
   useUpdateCashEntry,
 } from '@/modules/accounts/api';
+import { AddPersonDialog } from '@/modules/accounts/components/AddPersonDialog';
 import { SearchableSelect } from '@/shared/components';
 import {
   Button,
@@ -327,6 +328,19 @@ export function CashEntryDialog({
                 loadingText="Loading people…"
                 emptyText="Nobody is holding cash"
                 notFoundText="Nobody holding cash matches that"
+                addNewLabel="Add somebody"
+                renderCreateDialog={(open, onOpenChange, updateSelection) => (
+                  <AddPersonDialog
+                    open={open}
+                    onOpenChange={onOpenChange}
+                    suggestedName={holderSearch}
+                    onAdded={(person) => {
+                      updateSelection(person.id, person.name);
+                      setHolderId(person.id);
+                      setHolderName(person.name);
+                    }}
+                  />
+                )}
                 errorText="The people list could not be loaded."
               />
               <p className="text-xs text-muted-foreground">

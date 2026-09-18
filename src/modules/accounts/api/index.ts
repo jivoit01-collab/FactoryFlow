@@ -28,6 +28,7 @@ export {
   type EntryApprovalStatus,
   type GLAccount,
   type LedgerMovement,
+  type NewCashPerson,
   type RecordEntryPayload,
   type UpdateEntryPayload,
 } from './cashBook.api';
@@ -52,6 +53,7 @@ export {
   useCreateAtmAccount,
   useCreateBunch,
   useCreateCashBranch,
+  useCreateCashPerson,
   useDecideEntries,
   useGLAccounts,
   useMarkBunchSent,

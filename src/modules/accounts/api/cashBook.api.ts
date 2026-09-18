@@ -23,6 +23,17 @@ export interface CashBunchSummary {
 
 
 /** Somebody who can hold an advance: anyone with a login to this company. */
+export interface NewCashPerson extends CashPerson {
+  /**
+   * False when the name was already somebody.
+   *
+   * The server returns the existing person rather than making a second one,
+   * and says so — the screen has to tell the custodian it picked somebody
+   * who was already there, not silently select a person they did not mean.
+   */
+  created: boolean;
+}
+
 export interface CashPerson {
   id: number;
   name: string;
@@ -427,6 +438,15 @@ export const cashBookApi = {
     const { data } = await apiClient.get<AdvanceStatement>(
       API_ENDPOINTS.CASH_BOOK.ADVANCE_STATEMENT(personId),
       { params: includeCancelled ? { include_cancelled: true } : {} },
+    );
+    return data;
+  },
+
+  /** Add somebody who can hold cash but has no login. */
+  async createPerson(name: string): Promise<NewCashPerson> {
+    const { data } = await apiClient.post<NewCashPerson>(
+      API_ENDPOINTS.CASH_BOOK.PERSON_CREATE,
+      { name },
     );
     return data;
   },

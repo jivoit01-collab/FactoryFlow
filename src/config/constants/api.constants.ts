@@ -1783,6 +1783,8 @@ export const API_ENDPOINTS = {
     ADVANCE_HOLDERS: '/cash-book/advances/holders/',
     ADVANCE_STATEMENT: (personId: number) => `/cash-book/advances/holders/${personId}/`,
     PEOPLE: '/cash-book/people/',
+    // Adding a driver or tradesman at the moment cash is handed over.
+    PERSON_CREATE: '/cash-book/people/new/',
     BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,

@@ -259,6 +259,10 @@ export function useCancelAtmReceipt() {
   return useCashBookMutation((id: number) => cashBookApi.cancelAtmReceipt(id));
 }
 
+export function useCreateCashPerson() {
+  return useCashBookMutation((name: string) => cashBookApi.createPerson(name));
+}
+
 export function useRecordAdvance() {
   return useCashBookMutation(
     (payload: {

@@ -12,6 +12,7 @@ import {
   useCashPeople,
   useRecordAdvance,
 } from '@/modules/accounts/api';
+import { AddPersonDialog } from '@/modules/accounts/components/AddPersonDialog';
 import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
 import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
 import { confirmDialog } from '@/shared/components';
@@ -548,6 +549,19 @@ function AdvanceDialog({
               giving ? 'Nobody matches that' : 'Nobody holding cash matches that'
             }
             errorText="The people list could not be loaded."
+            addNewLabel="Add somebody"
+            renderCreateDialog={(open, onOpenChange, updateSelection) => (
+              <AddPersonDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                suggestedName={search}
+                onAdded={(person) => {
+                  updateSelection(person.id, person.name);
+                  setPersonId(person.id);
+                  setPersonName(person.name);
+                }}
+              />
+            )}
           />
 
           <div className="space-y-1">
