@@ -113,9 +113,19 @@ export default function MonthlyRegisterPage() {
         <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <p className="font-medium">The punching machine database is not reachable.</p>
+            <p className="font-medium">
+              {source.last_agent_run
+                ? 'Punches are not being collected right now.'
+                : 'Punches have never been collected.'}
+            </p>
             <p className="text-xs">
-              Days that were never synced show as a faint dot, not as an absence. {source.detail}
+              {source.last_agent_run
+                ? `The last collection from the punching machines was ${new Date(
+                    source.last_agent_run,
+                  ).toLocaleString()}. `
+                : ''}
+              Days that were never rolled up show as a faint dot, not as an absence.{' '}
+              {source.detail}
             </p>
           </div>
         </div>

@@ -105,12 +105,23 @@ export interface AttendanceSummary {
 }
 
 export interface SourceStatus {
+  /**
+   * Whether the punch data is current -- NOT whether a machine answered.
+   * The machines are not reachable from the server; an agent inside the plant
+   * copies punches across, and this is true when it last ran recently and
+   * succeeded. See `sync/README.md`.
+   */
   reachable: boolean;
   detail?: string;
   table?: string;
   punches?: number;
   latest_punch?: string | null;
+  /** When the roll-up last wrote the sheet. */
   last_sync?: string | null;
+  /** When the agent in the plant last attempted a copy. */
+  last_agent_run?: string | null;
+  /** The agent has not reported inside the expected window. */
+  stale?: boolean;
 }
 
 export interface AttendanceVocabulary {
@@ -260,7 +271,7 @@ export const attendanceApi = {
    */
   getSourceStatus: async (): Promise<SourceStatus> => {
     const response = await apiClient.get<SourceStatus>(API_ENDPOINTS.ATTENDANCE.SOURCE_STATUS, {
-      // The punch box is on the factory LAN and may simply be unreachable.
+      // Stale punch data is a normal state to report, not a request that failed.
       // That is information for the banner, not an error toast on every poll.
       suppressErrorToast: true,
     });

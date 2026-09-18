@@ -89,7 +89,7 @@ export default function DailyAttendancePage() {
   const handleSync = async () => {
     try {
       const result = await sync.mutateAsync({ dateFrom: date, dateTo: date });
-      toast.success(`Pulled ${result.punches} punches for ${date}.`);
+      toast.success(`Rolled up ${result.punches} punches for ${date}.`);
     } catch {
       /* the API client toasts, and the banner explains */
     }
@@ -114,7 +114,14 @@ export default function DailyAttendancePage() {
         </div>
         <div className="flex gap-2">
           {canSync && (
-            <Button variant="outline" onClick={handleSync} disabled={sync.isPending}>
+            <Button
+              variant="outline"
+              onClick={handleSync}
+              disabled={sync.isPending}
+              // It re-reads the punches already collected; it cannot reach the
+              // machines. Worth saying, or a stale sheet looks like a broken button.
+              title="Re-read the punches already collected for this day"
+            >
               <RefreshCw className={`mr-2 h-4 w-4 ${sync.isPending ? 'animate-spin' : ''}`} />
               {sync.isPending ? 'Syncing…' : 'Sync punches'}
             </Button>
@@ -126,16 +133,27 @@ export default function DailyAttendancePage() {
         </div>
       </div>
 
-      {/* Absent-because-shut vs absent-because-unsynced. */}
+      {/* Absent-because-shut vs absent-because-uncollected. The machines are not
+          reachable from the server; an agent in the plant copies punches across,
+          and this says when it last managed it. Without the distinction a row of
+          absences reads as a quiet day. */}
       {source && !source.reachable && (
         <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            <p className="font-medium">The punching machine database is not reachable.</p>
+            <p className="font-medium">
+              {source.last_agent_run
+                ? 'Punches are not being collected right now.'
+                : 'Punches have never been collected.'}
+            </p>
             <p className="text-xs">
-              The sheet below is the last data that was synced
-              {source.last_sync ? ` (${new Date(source.last_sync).toLocaleString()})` : ''}. New
-              punches will not appear until the connection is back. {source.detail}
+              {source.last_agent_run
+                ? `The last collection from the punching machines was ${new Date(
+                    source.last_agent_run,
+                  ).toLocaleString()}. `
+                : ''}
+              Anyone who punched since then shows as absent here until it runs again.{' '}
+              {source.detail}
             </p>
           </div>
         </div>
