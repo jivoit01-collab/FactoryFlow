@@ -298,7 +298,16 @@ export function ProductionRunCard({
                         : 'bg-rose-500'
                   }
                 />
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                {/* Red when the run is behind, the same as the tile it opened
+                    from — a shortfall that reads as a caption gets skipped. */}
+                <p
+                  className={cn(
+                    'mt-1.5 text-sm',
+                    made >= expected
+                      ? 'text-muted-foreground'
+                      : 'font-semibold text-rose-600 dark:text-rose-400',
+                  )}
+                >
                   {made >= expected
                     ? `${count(made - expected)} ${noun} ahead of the rating.`
                     : `${count(expected - made)} ${noun} short of the rating.`}

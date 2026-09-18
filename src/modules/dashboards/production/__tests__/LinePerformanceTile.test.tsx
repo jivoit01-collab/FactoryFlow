@@ -101,7 +101,7 @@ describe('LinePerformanceTile', () => {
     expect(screen.getByText('JP Machine')).toBeInTheDocument();
     expect(screen.getByText('360')).toBeInTheDocument();
     expect(screen.getByText('90%')).toBeInTheDocument();
-    expect(screen.getByText('400 cases expected in 2h')).toBeInTheDocument();
+    expect(screen.getByText(/400 cases expected in 2h/)).toBeInTheDocument();
     expect(screen.getByText('of 4,000')).toBeInTheDocument();
   });
 
@@ -112,6 +112,25 @@ describe('LinePerformanceTile', () => {
     expect(screen.getByText('₹4.5 L · ₹1,500/case')).toBeInTheDocument();
     expect(screen.getByText('12 · 4 reworked')).toBeInTheDocument();
     expect(screen.getByText('R. Kumar · 8 labour · +2')).toBeInTheDocument();
+  });
+
+  it('turns the expectation red, and says by how much, when the line is behind', () => {
+    const { container } = draw(tile({ cases: 360, expectedCases: 400 }));
+
+    const caption = screen.getByText(/400 cases expected in 2h/);
+    expect(caption).toHaveTextContent('40 short');
+    expect(caption.className).toMatch(/text-rose-600/);
+    expect(container).toBeTruthy();
+  });
+
+  it('leaves the expectation in the quiet ink when the line is ahead of it', () => {
+    const caption = (() => {
+      draw(tile({ cases: 500, expectedCases: 400 }));
+      return screen.getByText(/400 cases expected in 2h/);
+    })();
+
+    expect(caption).not.toHaveTextContent('short');
+    expect(caption.className).toMatch(/text-muted-foreground/);
   });
 
   it('names the run and the hours the line was on it', () => {
@@ -161,7 +180,7 @@ describe('LinePerformanceTile', () => {
 
     expect(screen.getByText('30,180')).toBeInTheDocument();
     expect(screen.getByText(/^ltr/)).toBeInTheDocument();
-    expect(screen.getByText('13,100 ltr expected in 2h')).toBeInTheDocument();
+    expect(screen.getByText(/13,100 ltr expected in 2h/)).toBeInTheDocument();
     expect(screen.getByText('24,000 · 36%')).toBeInTheDocument();
     expect(screen.getByText('Litres/hr')).toBeInTheDocument();
   });

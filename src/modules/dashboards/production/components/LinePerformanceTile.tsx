@@ -243,12 +243,29 @@ export function LinePerformanceTile({
             />
           )}
         </div>
-        <p className="mt-1.5 truncate text-[11px] text-muted-foreground">
-          {expected != null
-            ? `${count(expected)} ${nounOf(unit, unitNoun)} expected in ${duration(tile.runningMinutes)}`
-            : tile.detailLoading
-              ? 'reading the line’s segments…'
-              : 'no rating to measure this against'}
+        {/* Red the moment the line is behind its rating: the shortfall is the
+            whole point of the line and must not read as a caption. The figure
+            it is short BY is spelled out, because "443 expected" against an
+            880 above it still leaves the reader doing the subtraction. */}
+        <p
+          className={cn(
+            'mt-1.5 truncate text-sm',
+            expected != null && drawn < expected
+              ? 'font-semibold text-rose-600 dark:text-rose-400'
+              : 'text-muted-foreground',
+          )}
+        >
+          {expected != null ? (
+            <>
+              {count(expected)} {nounOf(unit, unitNoun)} expected in{' '}
+              {duration(tile.runningMinutes)}
+              {drawn < expected && ` · ${count(expected - drawn)} short`}
+            </>
+          ) : tile.detailLoading ? (
+            'reading the line’s segments…'
+          ) : (
+            'no rating to measure this against'
+          )}
         </p>
       </div>
 
