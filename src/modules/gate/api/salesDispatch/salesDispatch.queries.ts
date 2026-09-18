@@ -19,6 +19,7 @@ import {
   type SalesDispatchPendingBookingParams,
   type SalesDispatchReasonRequest,
   type SalesDispatchReportParams,
+  type SalesDispatchSealRequest,
   type SalesDispatchUpdateRequest,
 } from './salesDispatch.api';
 
@@ -253,6 +254,17 @@ export function useUpdateSalesDispatchLock() {
 
   return useMutation({
     mutationFn: (data: SalesDispatchLockUpdateRequest) => salesDispatchApi.updateLock(data),
+    onSuccess: () => invalidateSalesDispatch(queryClient),
+  });
+}
+
+/** Record the truck's seal. One call per truck: the server fans it across the trip. */
+export function useRecordSalesDispatchSeal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: SalesDispatchSealRequest }) =>
+      salesDispatchApi.recordSeal(id, data),
     onSuccess: () => invalidateSalesDispatch(queryClient),
   });
 }

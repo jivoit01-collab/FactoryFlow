@@ -7,6 +7,7 @@ import {
   Printer,
   Scale,
   Send,
+  ShieldCheck,
   Truck,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -619,6 +620,17 @@ export default function SalesDispatchGatepassPage() {
           )}
           {isGateOutMode && (
             <>
+              {/* The seal goes on here, at the gate, on the way out -- so the screen
+                  that dispatches the truck is where it has to be reachable from. */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(routes.attachments(entry.vehicle_entry))}
+                disabled={isSaving}
+              >
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                {entry.seal_number ? `Seal ${entry.seal_number}` : 'Record Seal'}
+              </Button>
               {entry.status === 'PRINT_COMMITTED' ? (
                 <Button
                   type="button"

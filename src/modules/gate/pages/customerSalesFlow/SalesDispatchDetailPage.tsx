@@ -9,6 +9,7 @@ import {
   Paperclip,
   Printer,
   RotateCcw,
+  ShieldCheck,
   Truck,
   Warehouse,
   XCircle,
@@ -134,6 +135,11 @@ export default function SalesDispatchDetailPage() {
     !['DISPATCHED', 'CANCELLED', 'REJECTED'].includes(entry.status) &&
     hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.REJECT),
   );
+  // The gate's seal record: reachable while the truck is still here, and afterwards
+  // as the read-only note of what it left wearing.
+  const canRecordSeal = Boolean(
+    entry && hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.UPLOAD_PHOTO),
+  );
   const canReprintGatepass = Boolean(
     entry &&
     !isGateOutMode &&
@@ -255,6 +261,16 @@ export default function SalesDispatchDetailPage() {
           >
             {getPrimaryActionLabel(entry, isGateOutMode)}
           </Button>
+          {isGateOutMode && canRecordSeal && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate(routes.attachments(entry.vehicle_entry))}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {entry.seal_number ? `Seal ${entry.seal_number}` : 'Record Seal'}
+            </Button>
+          )}
           {canReprintGatepass && entry && (
             <Button
               type="button"

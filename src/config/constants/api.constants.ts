@@ -175,6 +175,9 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_BY_VEHICLE_ENTRY: (vehicleEntryId: number) =>
       `/gate-core/sales-dispatch/by-vehicle-entry/${vehicleEntryId}/`,
     SALES_DISPATCH_ATTACHMENTS: (id: number) => `/gate-core/sales-dispatch/${id}/attachments/`,
+    // The gate's own seal record. Separate from the attachment endpoints above because
+    // those close at PRINT_COMMITTED -- exactly the status a truck is in when sealed.
+    SALES_DISPATCH_SEAL: (id: number) => `/gate-core/sales-dispatch/${id}/seal/`,
     SALES_DISPATCH_ATTACHMENT_DETAIL: (id: number, attachmentId: number) =>
       `/gate-core/sales-dispatch/${id}/attachments/${attachmentId}/`,
     SALES_DISPATCH_BOX_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/box-scans/`,

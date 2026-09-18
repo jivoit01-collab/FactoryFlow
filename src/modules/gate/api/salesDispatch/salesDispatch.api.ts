@@ -96,13 +96,6 @@ export interface SalesDispatchGatepassReadiness {
   requires_eway_bill?: boolean;
   has_eway_bill?: boolean;
   has_eway_bill_attachment?: boolean;
-  /** True once a photo of the truck's security seal is attached. */
-  has_seal_attachment?: boolean;
-  /**
-   * True when the server also holds the gatepass for that photo. Off while a docking
-   * build that cannot upload one is still live; this page asks for it either way.
-   */
-  requires_seal_photo?: boolean;
 }
 
 export interface SalesDispatchItem {
@@ -559,13 +552,13 @@ export type SalesDispatchUpdateRequest = Partial<
     | 'dock_incharge'
     | 'remarks'
   >
-> & {
-  /**
-   * Number on the truck's security seal. Typed on the attachments step alongside the
-   * e-way bill; the gatepass step can still correct it at print time.
-   */
-  seal_number?: string;
-};
+>;
+
+export interface SalesDispatchSealRequest {
+  seal_number: string;
+  /** Optional: the number on its own is still a record worth keeping. */
+  seal_photo?: File | null;
+}
 
 export interface SalesDispatchAttachmentUploadRequest {
   attachment_type: SalesDispatchAttachmentType;
@@ -861,6 +854,25 @@ export const salesDispatchApi = {
 
     const response = await apiClient.post<SalesDispatchAttachment>(
       API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_ATTACHMENTS(id),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  /**
+   * Record the seal the gate fastened on the truck. The server writes it to every
+   * docking on the same physical trip, so this is called once per truck, not once
+   * per company. `seal_photo` is optional -- the number alone is a valid record.
+   */
+  async recordSeal(id: number, data: SalesDispatchSealRequest): Promise<SalesDispatchGateOut> {
+    const formData = new FormData();
+    formData.append('seal_number', data.seal_number);
+    if (data.seal_photo) {
+      formData.append('seal_photo', data.seal_photo);
+    }
+    const response = await apiClient.post<SalesDispatchGateOut>(
+      API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_SEAL(id),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
     );
