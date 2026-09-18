@@ -21,6 +21,7 @@ export type SalesDispatchAttachmentType =
   | 'DELIVERY_NOTE'
   | 'BILTY'
   | 'EWAY_BILL'
+  | 'SEAL_PHOTO'
   | 'OTHER';
 
 export interface SalesDispatchDocument {
@@ -95,6 +96,8 @@ export interface SalesDispatchGatepassReadiness {
   requires_eway_bill?: boolean;
   has_eway_bill?: boolean;
   has_eway_bill_attachment?: boolean;
+  /** True once a photo of the truck's security seal is attached (always required). */
+  has_seal_attachment?: boolean;
 }
 
 export interface SalesDispatchItem {
@@ -551,7 +554,13 @@ export type SalesDispatchUpdateRequest = Partial<
     | 'dock_incharge'
     | 'remarks'
   >
->;
+> & {
+  /**
+   * Number on the truck's security seal. Typed on the attachments step alongside the
+   * e-way bill; the gatepass step can still correct it at print time.
+   */
+  seal_number?: string;
+};
 
 export interface SalesDispatchAttachmentUploadRequest {
   attachment_type: SalesDispatchAttachmentType;

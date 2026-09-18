@@ -60,6 +60,7 @@ interface UploadPanelConfig {
 
 interface TransportDocumentForm {
   eway_bill: string;
+  seal_number: string;
   freight: string;
   total_freight: string;
 }
@@ -68,6 +69,7 @@ type TransportDocumentErrors = Partial<Record<keyof TransportDocumentForm | 'att
 
 const EMPTY_TRANSPORT_DOCUMENT_FORM: TransportDocumentForm = {
   eway_bill: '',
+  seal_number: '',
   freight: '',
   total_freight: '',
 };
@@ -95,6 +97,12 @@ const UPLOAD_PANELS: UploadPanelConfig[] = [
     type: 'EWAY_BILL',
     label: 'E-way Bill',
     description: 'E-way bill document',
+  },
+  {
+    type: 'SEAL_PHOTO',
+    label: 'Seal Photo',
+    description: 'Photo of the security seal fastened on the truck',
+    required: true,
   },
   {
     type: 'OTHER',
@@ -207,6 +215,16 @@ export default function SalesDispatchAttachmentsPage() {
       : entry
         ? [entry.id]
         : [];
+  // The dockings a truck-level document may still be written to: on a multi-docking truck
+  // every company's docking that is still open (a committed sibling already has its own).
+  const editableTruckDockingIds =
+    isMultiCompanyArrival && arrivalDockings.dockings.length
+      ? arrivalDockings.dockings
+          .filter((docking) => !BILTY_READONLY_STATUSES.includes(docking.status))
+          .map((docking) => docking.id)
+      : entry
+        ? [entry.id]
+        : [];
   const previewGatepass = usePreviewSalesDispatchGatepass();
 
   const isReadOnly = entry
@@ -315,6 +333,11 @@ export default function SalesDispatchAttachmentsPage() {
     (attachment) => attachment.attachment_type === 'EWAY_BILL',
   );
   const ewayBillRequired = entry ? requiresEwayBill(entry) : false;
+  // The truck is sealed at the dock and the seal photographed, so a load cannot be opened
+  // on the road without it showing. Always required, on every docking.
+  const hasSealAttachment = attachments.some(
+    (attachment) => attachment.attachment_type === 'SEAL_PHOTO',
+  );
   const uploadPanels = UPLOAD_PANELS.map((panel) => ({
     ...panel,
     required: panel.required || (panel.type === 'EWAY_BILL' && ewayBillRequired),
@@ -343,6 +366,7 @@ export default function SalesDispatchAttachmentsPage() {
 
     setTransportForm({
       eway_bill: entry.eway_bill || '',
+      seal_number: entry.seal_number || '',
       freight: entry.freight ?? '',
       total_freight: entry.total_freight ?? '',
     });
@@ -370,6 +394,11 @@ export default function SalesDispatchAttachmentsPage() {
               .join(', ')}.`
           : 'A bilty / LR file, number and date are required.';
     }
+    if (includeAttachments && !hasSealAttachment) {
+      errors.attachments = errors.attachments
+        ? `${errors.attachments} A photo of the truck's security seal is required.`
+        : "A photo of the truck's security seal is required.";
+    }
     if (includeAttachments && ewayBillRequired && !hasEwayBillAttachment) {
       errors.attachments = errors.attachments
         ? `${errors.attachments} E-way bill attachment is required for invoices above Rs 50,000.`
@@ -392,12 +421,13 @@ export default function SalesDispatchAttachmentsPage() {
 
     setError(null);
     try {
-      // Freight is truck-level, so write it to every company's docking; the e-way bill is
-      // per invoice, so only the acting docking gets the entered value. The bilty (LR) is
-      // now per customer and lives on its own attachment, not here.
+      // Freight and the seal are truck-level, so they go to every company's docking; the
+      // e-way bill is per invoice, so only the acting docking gets the entered value. The
+      // bilty (LR) is now per customer and lives on its own attachment, not here.
       const truckLevel = {
         freight: transportForm.freight || null,
         total_freight: transportForm.total_freight || null,
+        seal_number: transportForm.seal_number.trim(),
       };
       await Promise.all(
         truckDockingIds.map((id) =>
@@ -535,6 +565,14 @@ export default function SalesDispatchAttachmentsPage() {
             : {}),
           ...(allowPartial ? { allow_partial: true } : {}),
         };
+        // One seal holds the whole physical truck shut, so its photo satisfies every
+        // company's docking on the load — upload it to each one still open.
+        if (type === 'SEAL_PHOTO') {
+          const targets = editableTruckDockingIds.length ? editableTruckDockingIds : [entry.id];
+          return Promise.all(
+            targets.map((id) => uploadAttachment.mutateAsync({ id, data: attachmentData })),
+          );
+        }
         // A bilty fans out to EVERY editable docking that carries this customer (the same
         // customer can ride on several companies' dockings, and each gates on its own
         // bilty); everything else attaches to the current docking.
@@ -613,6 +651,7 @@ export default function SalesDispatchAttachmentsPage() {
       // Transport docs already saved and unchanged -> skip the redundant PATCH + toast.
       const seededTransport = {
         eway_bill: entry.eway_bill || '',
+        seal_number: entry.seal_number || '',
         freight: entry.freight ?? '',
         total_freight: entry.total_freight ?? '',
       };
@@ -689,6 +728,15 @@ export default function SalesDispatchAttachmentsPage() {
               {transportErrors.eway_bill && (
                 <p className="text-xs text-destructive">{transportErrors.eway_bill}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sales-dispatch-seal-number">Seal No.</Label>
+              <Input
+                id="sales-dispatch-seal-number"
+                value={transportForm.seal_number}
+                disabled={isReadOnly || !canEditDispatch || updateSalesDispatch.isPending}
+                onChange={(event) => updateTransportField('seal_number', event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="sales-dispatch-freight">Freight</Label>
@@ -909,6 +957,7 @@ export default function SalesDispatchAttachmentsPage() {
                 : 'Required'
             }
           />
+          <InfoItem label="Seal Photo" value={hasSealAttachment ? 'Captured' : 'Required'} />
           {ewayBillRequired && (
             <InfoItem
               label="E-way Bill"
@@ -1083,6 +1132,7 @@ const READINESS_LABELS: Record<string, string> = {
   bilty_attachment: 'bilty / LR attachment',
   eway_bill: 'e-way bill number',
   eway_bill_attachment: 'e-way bill attachment',
+  seal_attachment: 'seal photo',
 };
 
 function formatReadinessError(missing: string[]) {
