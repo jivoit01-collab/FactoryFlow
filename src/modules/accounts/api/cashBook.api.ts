@@ -57,6 +57,14 @@ export interface LedgerMovement {
   balance_after: string;
   detail: string;
   cash_entry_id: number | null;
+  /**
+   * False for a row somebody has taken out.
+   *
+   * Only ever false when the statement was asked for them. Such a row shows
+   * struck through and adds nothing to the running balance beside it — the
+   * same rule the register follows for a cancelled line.
+   */
+  is_active: boolean;
 }
 
 export interface AtmStatement {
@@ -412,9 +420,13 @@ export const cashBookApi = {
     return data;
   },
 
-  async advanceStatement(personId: number): Promise<AdvanceStatement> {
+  async advanceStatement(
+    personId: number,
+    includeCancelled = false,
+  ): Promise<AdvanceStatement> {
     const { data } = await apiClient.get<AdvanceStatement>(
       API_ENDPOINTS.CASH_BOOK.ADVANCE_STATEMENT(personId),
+      { params: includeCancelled ? { include_cancelled: true } : {} },
     );
     return data;
   },

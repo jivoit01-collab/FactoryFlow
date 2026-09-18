@@ -22,6 +22,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -85,6 +86,10 @@ export default function AdvancesPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const cancelMovement = useCancelAdvance();
+  // Off by default, like the register's own "Show cancelled": a row that was
+  // taken out is out of the account, and somebody reading a balance should
+  // not have to subtract it back out by eye.
+  const [showTakenOut, setShowTakenOut] = useState(false);
   const [direction, setDirection] = useState<AdvanceDirection>('GIVEN');
   const [personSearch, setPersonSearch] = useState('');
 
@@ -102,7 +107,10 @@ export default function AdvancesPage() {
   const activeId = selectedId ?? holders[0]?.person.id ?? null;
   const selected = holders.find((row) => row.person.id === activeId) ?? null;
 
-  const { data: statement, isLoading: statementLoading } = useAdvanceStatement(activeId);
+  const { data: statement, isLoading: statementLoading } = useAdvanceStatement(
+    activeId,
+    showTakenOut,
+  );
 
   // The ledger arrives whole, so its column filters are built from the rows
   // themselves rather than asked for.
@@ -274,6 +282,16 @@ export default function AdvancesPage() {
           <div className="rounded-md border">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
               <p className="font-medium">{selected?.person.name ?? 'Ledger'}</p>
+              {/* The register's "Show cancelled", for a ledger. Without it a
+                  row taken out simply vanished, and there was no way to see
+                  what had been removed or why an account stopped adding up. */}
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={showTakenOut}
+                  onCheckedChange={(checked) => setShowTakenOut(checked === true)}
+                />
+                Show taken out
+              </label>
               {ledgerFiltering && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   Clear filters
@@ -317,8 +335,14 @@ export default function AdvancesPage() {
                   <tbody>
                     {sorted.map((row) => {
                       const taken = row.kind === 'GIVEN';
+                      const removed = row.is_active === false;
                       return (
-                        <tr key={`${row.kind}-${row.id}`} className="border-b hover:bg-muted/40">
+                        <tr
+                          key={`${row.kind}-${row.id}`}
+                          className={`border-b hover:bg-muted/40 ${
+                            removed ? 'text-muted-foreground line-through' : ''
+                          }`}
+                        >
                           <td className="whitespace-nowrap px-3 py-2">{row.date}</td>
                           <td className="px-3 py-2">
                             <Badge variant="outline" className={MOVEMENT_TONE[row.kind] ?? ''}>
@@ -337,7 +361,11 @@ export default function AdvancesPage() {
                           </td>
                           {canManage && (
                             <td className="px-3 py-2">
-                              {row.cash_entry_id === null ? (
+                              {removed ? (
+                                <span className="text-xs text-muted-foreground no-underline">
+                                  Taken out
+                                </span>
+                              ) : row.cash_entry_id === null ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"

@@ -25,8 +25,8 @@ export const CASH_BOOK_QUERY_KEYS = {
     [...CASH_BOOK_QUERY_KEYS.all, 'atm', includeClosed] as const,
   atmStatement: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'atm', 'statement', id] as const,
   advanceHolders: () => [...CASH_BOOK_QUERY_KEYS.all, 'advance-holders'] as const,
-  advanceStatement: (id: number) =>
-    [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id] as const,
+  advanceStatement: (id: number, includeCancelled = false) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id, includeCancelled] as const,
   approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
   columnValues: (column: string, filters: ColumnFilters, includeCancelled: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
@@ -201,10 +201,13 @@ export function useAdvanceHolders() {
   });
 }
 
-export function useAdvanceStatement(personId: number | null) {
+export function useAdvanceStatement(
+  personId: number | null,
+  includeCancelled = false,
+) {
   return useQuery({
-    queryKey: CASH_BOOK_QUERY_KEYS.advanceStatement(personId ?? 0),
-    queryFn: () => cashBookApi.advanceStatement(personId as number),
+    queryKey: CASH_BOOK_QUERY_KEYS.advanceStatement(personId ?? 0, includeCancelled),
+    queryFn: () => cashBookApi.advanceStatement(personId as number, includeCancelled),
     enabled: personId != null,
   });
 }
