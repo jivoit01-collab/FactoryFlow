@@ -15,6 +15,16 @@
  * either ride along on a details edit is how a directory ends up with a manager
  * change nobody recorded.
  *
+ * **Can hold a team** appears on both, because it is the one thing here that
+ * decides whether this person is *offered* elsewhere: every manager picker in
+ * the module lists only people the flag is on for, or who already have reports.
+ * The backend raises it by itself the moment somebody gains their first report
+ * or takes a managerial designation — which leaves a real gap, since a new lead
+ * with neither cannot be chosen as anybody's manager and nothing in the app
+ * could say otherwise. Once they do have a team the switch locks on: the flag
+ * is never lowered, because a manager whose team was just reassigned has not
+ * stopped being one.
+ *
  * The salary block only appears for somebody who may create salary records, and
  * it says whether what they enter will be in force immediately or will wait for
  * an approver — so nobody types a number expecting it to be paid when it will
@@ -43,6 +53,7 @@ import {
   Label,
   NativeSelect,
   SelectOption,
+  Switch,
   Textarea,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -71,6 +82,7 @@ interface FormState {
   designation: string;
   reporting_manager: string;
   employment_status: string;
+  is_manager: boolean;
   user: string;
   basic_salary: string;
   allowances: string;
@@ -98,6 +110,7 @@ function emptyForm(): FormState {
     designation: '',
     reporting_manager: '',
     employment_status: 'ACTIVE',
+    is_manager: false,
     user: '',
     basic_salary: '',
     allowances: '',
@@ -122,6 +135,7 @@ function formFrom(employee: EmployeeDetail): FormState {
     department: employee.department ? String(employee.department) : '',
     designation: employee.designation ? String(employee.designation) : '',
     employment_status: employee.employment_status,
+    is_manager: employee.is_manager || employee.direct_report_count > 0,
     user: employee.user ? String(employee.user) : '',
   };
 }
@@ -173,6 +187,8 @@ export function EmployeeFormDialog({
   const departments: Department[] = meta?.departments ?? [];
   const designations: Designation[] = meta?.designations ?? [];
   const managers: EmployeeBrief[] = meta?.managers ?? [];
+  const teamSize = employee?.direct_report_count ?? 0;
+  const managerFlagLocked = isEdit && teamSize > 0;
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -194,6 +210,7 @@ export function EmployeeFormDialog({
       joining_date: form.joining_date,
       job_title: form.job_title.trim(),
       location: form.location.trim(),
+      is_manager: form.is_manager,
     };
 
     if (isEdit) {
@@ -413,6 +430,27 @@ export function EmployeeFormDialog({
               </div>
             </section>
           )}
+
+          <section className="border-t pt-4">
+            <div className="flex items-start justify-between gap-3 rounded-lg border bg-muted/20 p-3">
+              <div>
+                <Label htmlFor="employee-is-manager" className="text-sm font-medium">
+                  Can hold a team
+                </Label>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {managerFlagLocked
+                    ? `Already has ${teamSize} direct report(s), so this stays on — the flag is never lowered.`
+                    : 'Offers them as a reporting manager when somebody is hired or moved. Not a permission: it says the role manages people.'}
+                </p>
+              </div>
+              <Switch
+                id="employee-is-manager"
+                checked={form.is_manager}
+                onChange={(checked) => set('is_manager', checked)}
+                disabled={managerFlagLocked}
+              />
+            </div>
+          </section>
 
           {!isEdit && canEnterSalary && (
             <section className="rounded-lg border bg-muted/20 p-3">
