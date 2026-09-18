@@ -1,4 +1,4 @@
-import { ArrowDownLeft, HandCoins, Loader2, Users } from 'lucide-react';
+import { ArrowDownLeft, Ban, HandCoins, Loader2, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -8,11 +8,13 @@ import type { AdvanceDirection, CashPerson } from '@/modules/accounts/api';
 import {
   useAdvanceHolders,
   useAdvanceStatement,
+  useCancelAdvance,
   useCashPeople,
   useRecordAdvance,
 } from '@/modules/accounts/api';
 import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
 import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
+import { confirmDialog } from '@/shared/components';
 import { SearchableSelect } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -37,10 +39,19 @@ import { formatNumber, getErrorMessage } from '@/shared/utils';
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 const today = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * What each row is, said plainly.
+ *
+ * "Advance given" and "Returned" were read as jargon, and "Returned" was the
+ * worst of them -- it sounds like something coming back on its own. Only two
+ * things happen to cash here: somebody is handed it, or it is taken back off
+ * them. The third row is not a cash movement at all -- it is an expense on
+ * the cash book filed against that person, so it says what it is.
+ */
 const MOVEMENT_LABEL: Record<string, string> = {
-  GIVEN: 'Given',
-  RETURNED: 'Returned',
-  EXPLAINED: 'Explained',
+  GIVEN: 'Cash given',
+  RETURNED: 'Cash taken back',
+  EXPLAINED: 'Spent',
 };
 
 const MOVEMENT_TONE: Record<string, string> = {
@@ -50,17 +61,19 @@ const MOVEMENT_TONE: Record<string, string> = {
 };
 
 /**
- * Advances — cash that is out with somebody who has not yet said what it went on.
+ * Advances — who is holding the factory's cash, and who the factory owes.
  *
- * Handing cash over changes the cash book by nothing. Its balance is what the
- * custodian is accountable for, and an advance has only moved money from the
- * box into somebody's pocket. The money reaches the book later, as the expenses
- * that person explains — which is why the third kind of movement here,
- * "Explained", is not typed on this screen at all. It appears by itself when a
- * Cash out on the cash book names the person.
+ * Two things are typed here and they are as plain as they sound: cash given to
+ * somebody, and cash taken back off them. Neither moves the cash book's
+ * balance. That balance is what the custodian is accountable for, and handing
+ * cash over has only moved it from the box into a pocket.
  *
- * A balance can go negative, and that is not a bug: it means they spent more
- * than they were given and the factory owes them.
+ * The third kind of row is not typed here at all. "Spent" appears by itself
+ * when a payment on the cash book names the person — that is the money
+ * reaching the book, which is what the whole arrangement is for.
+ *
+ * A balance can go negative, and that is not a bug: they paid for something
+ * themselves, so the factory owes them rather than the other way round.
  */
 export default function AdvancesPage() {
   const { hasPermission } = usePermission();
@@ -68,6 +81,7 @@ export default function AdvancesPage() {
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const cancelMovement = useCancelAdvance();
   const [direction, setDirection] = useState<AdvanceDirection>('GIVEN');
   const [personSearch, setPersonSearch] = useState('');
 
@@ -120,6 +134,35 @@ export default function AdvancesPage() {
   );
   const ledgerFiltering = filteredColumns.length > 0;
 
+  /**
+   * Take one movement back out of somebody's ledger.
+   *
+   * Only the two typed here can go: a "Spent" row is a payment on the cash
+   * book that happens to name this person, and cancelling it would be
+   * cancelling the expense -- which belongs on the cash book, where the
+   * balance it moves can be seen.
+   */
+  async function cancelRow(row: { id: number; kind: string; amount: string }) {
+    const given = row.kind === 'GIVEN';
+    const ok = await confirmDialog({
+      title: given
+        ? `Take back this record of ${money(row.amount)} given?`
+        : `Take back this record of ${money(row.amount)} returned?`,
+      description: given
+        ? 'The row comes out of their ledger and they stop being counted as holding it. Use this when the handover was recorded by mistake — not when they have given the cash back, which is its own entry.'
+        : 'The row comes out of their ledger and they go back to holding what they held before it.',
+      confirmLabel: 'Take it out',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await cancelMovement.mutateAsync(row.id);
+      toast.success('Taken out of the ledger');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'That could not be taken out.'));
+    }
+  }
+
   function open(which: AdvanceDirection) {
     setDirection(which);
     setFormOpen(true);
@@ -129,15 +172,15 @@ export default function AdvancesPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Advances"
-        description="Cash that is out with somebody who has not yet accounted for it"
+        description="Who is holding the factory's cash, and who the factory owes"
       >
         {canManage && (
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => open('RETURNED')}>
-              <ArrowDownLeft className="mr-2 h-4 w-4" /> Cash returned
+              <ArrowDownLeft className="mr-2 h-4 w-4" /> Take cash back
             </Button>
             <Button onClick={() => open('GIVEN')}>
-              <HandCoins className="mr-2 h-4 w-4" /> Give an advance
+              <HandCoins className="mr-2 h-4 w-4" /> Give cash
             </Button>
           </div>
         )}
@@ -179,7 +222,7 @@ export default function AdvancesPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <HandCoins className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              Nobody is holding cash. Give an advance to start somebody&apos;s ledger.
+              Nobody is holding cash. Give somebody cash to start their ledger.
             </p>
           </CardContent>
         </Card>
@@ -264,9 +307,10 @@ export default function AdvancesPage() {
                       <ColumnFilter {...column('date', 'Date')} />
                       <ColumnFilter {...column('kind', 'Movement')} />
                       <ColumnFilter {...column('detail', 'Detail')} />
-                      <ColumnFilter {...column('amount', 'Taken', 'right')} />
-                      <ColumnFilter {...column('cleared', 'Cleared', 'right')} />
+                      <ColumnFilter {...column('amount', 'Given', 'right')} />
+                      <ColumnFilter {...column('cleared', 'Settled', 'right')} />
                       <ColumnFilter {...column('balance', 'Holding', 'right')} />
+                      {canManage && <th className="px-3 py-2" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -290,6 +334,25 @@ export default function AdvancesPage() {
                           <td className="px-3 py-2 text-right font-medium tabular-nums">
                             {money(row.balance_after)}
                           </td>
+                          {canManage && (
+                            <td className="px-3 py-2">
+                              {row.cash_entry_id === null ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => cancelRow(row)}
+                                  disabled={cancelMovement.isPending}
+                                >
+                                  <Ban className="mr-2 h-4 w-4" />
+                                  Take out
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  On the cash book
+                                </span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
@@ -370,11 +433,11 @@ function AdvanceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>{giving ? 'Give an advance' : 'Cash returned'}</DialogTitle>
+          <DialogTitle>{giving ? 'Give cash' : 'Take cash back'}</DialogTitle>
           <DialogDescription>
             {giving
-              ? 'Cash handed to somebody to spend on the factory’s behalf. The cash book balance does not move — the money has only changed pocket, and it reaches the book as the expenses they later explain.'
-              : 'Cash handed back into the box. It lowers what they are holding; the cash book balance does not move.'}
+              ? 'Cash out of the box and into somebody’s pocket, to spend on the factory’s behalf. The cash book balance does not move — the money has only changed hands, and it reaches the book later as what they spend it on.'
+              : 'Cash out of their pocket and back into the box. It lowers what they are holding; the cash book balance does not move.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -393,8 +456,8 @@ function AdvanceDialog({
                 value={direction}
                 onChange={(e) => changeDirection(e.target.value as AdvanceDirection)}
               >
-                <SelectOption value="GIVEN">Advance given</SelectOption>
-                <SelectOption value="RETURNED">Cash returned</SelectOption>
+                <SelectOption value="GIVEN">Cash given</SelectOption>
+                <SelectOption value="RETURNED">Cash taken back</SelectOption>
               </NativeSelect>
             </div>
             <div className="space-y-1">
@@ -484,7 +547,7 @@ function AdvanceDialog({
             ) : (
               <HandCoins className="mr-2 h-4 w-4" />
             )}
-            {giving ? 'Give advance' : 'Record return'}
+            {giving ? 'Give cash' : 'Take cash back'}
           </Button>
         </DialogFooter>
       </DialogContent>

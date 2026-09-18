@@ -297,7 +297,7 @@ export function CashEntryDialog({
             <div className="space-y-1">
               <SearchableSelect<CashPerson>
                 inputId="cash-advance-holder"
-                label="Spent out of an advance"
+                label="Spent out of cash somebody is holding"
                 value={holderName}
                 items={people}
                 isLoading={peopleLoading}
@@ -325,8 +325,8 @@ export function CashEntryDialog({
                   setHolderName('');
                 }}
                 loadingText="Loading people…"
-                emptyText="Nobody is holding an advance"
-                notFoundText="Nobody holding an advance matches that"
+                emptyText="Nobody is holding cash"
+                notFoundText="Nobody holding cash matches that"
                 errorText="The people list could not be loaded."
               />
               <p className="text-xs text-muted-foreground">
