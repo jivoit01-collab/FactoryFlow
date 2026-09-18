@@ -51,12 +51,15 @@ const today = () => new Date().toISOString().slice(0, 10);
 const MOVEMENT_LABEL: Record<string, string> = {
   GIVEN: 'Cash given',
   RETURNED: 'Cash taken back',
+  SPENT_OWN: 'Paid it themselves',
   EXPLAINED: 'Spent',
 };
 
 const MOVEMENT_TONE: Record<string, string> = {
   GIVEN: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
   RETURNED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-900 dark:text-sky-400',
+  // Money the factory owes, which is the other direction from the rest.
+  SPENT_OWN: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
   EXPLAINED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
 };
 
@@ -145,12 +148,10 @@ export default function AdvancesPage() {
   async function cancelRow(row: { id: number; kind: string; amount: string }) {
     const given = row.kind === 'GIVEN';
     const ok = await confirmDialog({
-      title: given
-        ? `Take back this record of ${money(row.amount)} given?`
-        : `Take back this record of ${money(row.amount)} returned?`,
+      title: `Take this ${MOVEMENT_LABEL[row.kind]?.toLowerCase() ?? 'row'} of ${money(row.amount)} out of the ledger?`,
       description: given
-        ? 'The row comes out of their ledger and they stop being counted as holding it. Use this when the handover was recorded by mistake — not when they have given the cash back, which is its own entry.'
-        : 'The row comes out of their ledger and they go back to holding what they held before it.',
+        ? 'They stop being counted as holding it. Use this when the handover was recorded by mistake — not when they have given the cash back, which is its own entry.'
+        : 'They go back to holding what they held before it.',
       confirmLabel: 'Take it out',
       destructive: true,
     });
