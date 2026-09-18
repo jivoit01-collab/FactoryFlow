@@ -37,10 +37,14 @@ import { useNow } from '../../dispatch/hooks';
 import { PRODUCTION_WALL_REFRESH_MS } from '../constants/production-wall.constants';
 import { configForRun, indexLineConfigs, standardOf } from '../utils/lineStandards';
 import { buildLineTiles, type LineTileBoard } from '../utils/lineTiles';
+import { buildTrend, type TrendPoint } from '../utils/trend';
 import { type ProductionRunRow, toRunRow } from './runRow';
 import type { ProductionDay } from './useProductionDay';
 
 export interface LinePerformance extends LineTileBoard {
+  /** The fortnight ending on the shown day, in cases and in litres. */
+  trend: TrendPoint[];
+  litreTrend: TrendPoint[];
   isLoading: boolean;
   isFetching: boolean;
   updatedAt: number;
@@ -57,6 +61,9 @@ export function useLinePerformance(day: ProductionDay): LinePerformance {
 
   const configsQuery = useAllLineConfigs();
   const runsQuery = useRuns({ date_from: day.date, date_to: day.date });
+  // The fortnight behind it — the list alone, with no per-run detail or
+  // cost, so a strip of fourteen bars costs one request rather than fifty.
+  const windowQuery = useRuns({ date_from: day.trendFrom, date_to: day.date });
 
   const dayRuns: ProductionRun[] = [...(runsQuery.data ?? [])].sort(
     (a, b) => (b.run_number ?? 0) - (a.run_number ?? 0),
@@ -98,8 +105,30 @@ export function useLinePerformance(day: ProductionDay): LinePerformance {
 
   const board = buildLineTiles({ rows, configs, now });
 
+  // A closed run states its output on its own record; the shown day comes from
+  // the board instead, so the last bar and the tiles under it always agree.
+  const windowRuns = windowQuery.data ?? [];
+  const trend = buildTrend({
+    rows: windowRuns,
+    from: day.trendFrom,
+    to: day.date,
+    valueOf: (run) => Number(run.total_production) || 0,
+    shownValue: board.cases,
+  });
+  const litreTrend = buildTrend({
+    rows: windowRuns,
+    from: day.trendFrom,
+    to: day.date,
+    valueOf: (run) => {
+      const perCase = (run.pieces_per_case ?? 0) * (Number(run.litres_per_piece) || 0);
+      return perCase > 0 ? (Number(run.total_production) || 0) * perCase : 0;
+    },
+    shownValue: board.litres ?? 0,
+  });
+
   const refetch = () => {
     void runsQuery.refetch();
+    void windowQuery.refetch();
     void configsQuery.refetch();
     detailQueries.forEach((query) => void query.refetch());
     costQueries.forEach((query) => void query.refetch());
@@ -120,6 +149,8 @@ export function useLinePerformance(day: ProductionDay): LinePerformance {
 
   return {
     ...board,
+    trend,
+    litreTrend,
     isLoading: runsQuery.isLoading,
     isFetching:
       runsQuery.isFetching ||

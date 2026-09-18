@@ -11,6 +11,7 @@ import {
   BlowingSummary,
   LinePerformanceSummary,
   LinePerformanceTile,
+  PerformanceTrend,
   ProductionRunCard,
   ProductionWallHeader,
   StoppagePanel,
@@ -66,7 +67,12 @@ export default function LinePerformanceDashboardPage() {
   const variant = useMemo(() => variantForCompany(currentCompany), [currentCompany]);
   const unitNoun = variant.unitNoun;
 
-  const day = useProductionDay();
+  const boardRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggle } = useFullscreen(boardRef);
+
+  // A back-date sticks at a desk and expires on a wall: see `useProductionDay`.
+  // Wall mode is the only place an abandoned back-date misleads a room.
+  const day = useProductionDay({ autoReturn: isFullscreen });
   const board = useLinePerformance(day);
   const blowing = useBlowingPerformance(day);
 
@@ -102,8 +108,14 @@ export default function LinePerformanceDashboardPage() {
       ? null
       : (board.tiles.flatMap((tile) => tile.runs).find((row) => row.id === openRunId) ?? null);
 
-  const boardRef = useRef<HTMLDivElement>(null);
-  const { isFullscreen, toggle } = useFullscreen(boardRef);
+  // Averaged over the days something actually ran, not over the calendar: a
+  // fortnight with four idle Sundays in it is not a fortnight of low days.
+  const trendPoints =
+    stage === 'blowing' ? blowing.trend : unit === 'litres' ? board.litreTrend : board.trend;
+  const ranDays = trendPoints.filter((point) => point.value > 0);
+  const trendAverage = ranDays.length
+    ? Math.round(ranDays.reduce((sum, point) => sum + point.value, 0) / ranDays.length)
+    : 0;
 
   const empty =
     stage === 'blowing'
@@ -170,6 +182,20 @@ export default function LinePerformanceDashboardPage() {
           unit={unit}
           onPickUnit={setUnit}
           benchmark={variant.benchmarks.oee}
+        />
+      )}
+
+      {!showing.isLoading && (
+        <PerformanceTrend
+          points={
+            stage === 'blowing'
+              ? blowing.trend
+              : unit === 'litres'
+                ? board.litreTrend
+                : board.trend
+          }
+          noun={stage === 'blowing' ? 'bottles' : unit === 'litres' ? 'ltr' : `${unitNoun}s`}
+          average={trendAverage}
         />
       )}
 

@@ -3,6 +3,7 @@ export { BlowingSummary } from './BlowingSummary';
 export { CostBreakdownPanel } from './CostBreakdownPanel';
 export { LinePerformanceSummary, LinePerformanceTile } from './LinePerformanceTile';
 export { MaterialWallPanel } from './MaterialWallPanel';
+export { PerformanceTrend } from './PerformanceTrend';
 export { ProductionRunCard } from './ProductionRunCard';
 export { ProductionRunsPanel } from './ProductionRunsPanel';
 export { ProductionTrendChart } from './ProductionTrendChart';

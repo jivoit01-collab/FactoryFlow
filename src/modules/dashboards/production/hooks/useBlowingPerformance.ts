@@ -20,9 +20,12 @@ import type { PreformSpec } from '@/modules/production/blowing/types';
 import { useNow } from '../../dispatch/hooks';
 import { PRODUCTION_WALL_REFRESH_MS } from '../constants/production-wall.constants';
 import { type BlowingBoard, buildBlowingTiles, toBlowingRow } from '../utils/blowingTiles';
+import { buildTrend, type TrendPoint } from '../utils/trend';
 import type { ProductionDay } from './useProductionDay';
 
 export interface BlowingPerformance extends BlowingBoard {
+  /** The fortnight ending on the shown day, in bottles off the counter. */
+  trend: TrendPoint[];
   isLoading: boolean;
   isFetching: boolean;
   updatedAt: number;
@@ -34,6 +37,8 @@ export function useBlowingPerformance(day: ProductionDay): BlowingPerformance {
   const now = clock.getTime();
 
   const runsQuery = useRuns({ date_from: day.date, date_to: day.date });
+  // The fortnight behind it — the list alone, no detail and no cost.
+  const windowQuery = useRuns({ date_from: day.trendFrom, date_to: day.date });
   const specsQuery = usePreformSpecs(true);
 
   const dayRuns = [...(runsQuery.data ?? [])].sort(
@@ -77,8 +82,17 @@ export function useBlowingPerformance(day: ProductionDay): BlowingPerformance {
 
   const board = buildBlowingTiles({ rows, specs, now });
 
+  const trend = buildTrend({
+    rows: windowQuery.data ?? [],
+    from: day.trendFrom,
+    to: day.date,
+    valueOf: (run) => Number(run.total_counter_production) || 0,
+    shownValue: board.bottles,
+  });
+
   const refetch = () => {
     void runsQuery.refetch();
+    void windowQuery.refetch();
     void specsQuery.refetch();
     detailQueries.forEach((query) => void query.refetch());
     costQueries.forEach((query) => void query.refetch());
@@ -97,6 +111,7 @@ export function useBlowingPerformance(day: ProductionDay): BlowingPerformance {
 
   return {
     ...board,
+    trend,
     isLoading: runsQuery.isLoading,
     isFetching:
       runsQuery.isFetching ||

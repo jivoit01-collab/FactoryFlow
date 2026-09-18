@@ -33,8 +33,14 @@ export interface ProductionDay {
  *   - on a back-date it returns to today on its own. Somebody checks last
  *     Tuesday's output, walks away, and without this the room stares at a dead
  *     day for the rest of the week.
+ *
+ * That second one is a WALL behaviour and a trap at a desk: an analyst reading
+ * last Tuesday has the board pulled out from under them ten minutes in, which
+ * reads as "the date picker does not work". A board opened at a desk therefore
+ * passes `autoReturn: false` and keeps the day it was given until somebody
+ * changes it.
  */
-export function useProductionDay(): ProductionDay {
+export function useProductionDay({ autoReturn = true }: { autoReturn?: boolean } = {}): ProductionDay {
   const [anchor, setAnchor] = useState<string | null>(null);
 
   // Minute resolution catches the midnight roll-over without re-rendering the
@@ -52,10 +58,10 @@ export function useProductionDay(): ProductionDay {
   }, []);
 
   useEffect(() => {
-    if (anchor === null) return;
+    if (anchor === null || !autoReturn) return;
     const id = window.setTimeout(() => setAnchor(null), HISTORY_AUTO_RETURN_MS);
     return () => window.clearTimeout(id);
-  }, [anchor]);
+  }, [anchor, autoReturn]);
 
   return useMemo(() => {
     const date = anchor ?? today;
