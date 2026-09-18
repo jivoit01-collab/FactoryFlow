@@ -110,6 +110,8 @@ describe('a dashboard-only login', () => {
     ['/dashboards/plant-board', BOARD_FEED_PERMISSIONS.NON_MOVING],
     ['/dashboards/company-expense', BOARD_FEED_PERMISSIONS.FACTORY_EXPENSE],
     ['/dashboards/customer-returns', BOARD_FEED_PERMISSIONS.GOODS_RETURN],
+    ['/dashboards/hr-board', BOARD_FEED_PERMISSIONS.WORKFORCE],
+    ['/dashboards/hr-board', BOARD_FEED_PERMISSIONS.LABOUR],
   ])('opens %s for a holder of one of its feed rights', (path, feedRight) => {
     /**
      * Per board, with ONE right rather than all of them — the realistic case,

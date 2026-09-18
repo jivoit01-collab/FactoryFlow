@@ -21,6 +21,7 @@ import {
   Target,
   Truck,
   Undo2,
+  Users,
   Wind,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -41,6 +42,7 @@ import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
+import { HR_BOARD_VIEW_PERMISSIONS } from '../hr-board/constants';
 import {
   LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   logisticsControlScopeForCompany,
@@ -88,6 +90,13 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production-control',
     accent: 'emerald',
     permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'HR Control',
+    icon: <Users className="h-5 w-5" />,
+    route: '/dashboards/hr-board',
+    accent: 'violet',
+    permissions: HR_BOARD_VIEW_PERMISSIONS,
   },
   {
     title: 'Warehouse Control',

@@ -16,6 +16,7 @@ import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
+import { HR_BOARD_VIEW_PERMISSIONS } from './hr-board/constants';
 import {
   LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
@@ -79,6 +80,7 @@ const PlantBoardDashboardPage = lazy(() => import('./plant-board/pages/PlantBoar
 const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
+const HrBoardDashboardPage = lazy(() => import('./hr-board/pages/HrBoardDashboardPage'));
 const BoardCarouselPage = lazy(() => import('./carousel/pages/BoardCarouselPage'));
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
@@ -119,6 +121,7 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...ADMIN_BOARD_VIEW_PERMISSIONS,
         ...COMPANY_EXPENSE_VIEW_PERMISSIONS,
         ...CUSTOMER_RETURNS_VIEW_PERMISSIONS,
+        ...HR_BOARD_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -201,6 +204,29 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: PLANT_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Plant Control' },
+    },
+    {
+      // The two questions an HR head asks every morning: how many people are on
+      // the rolls, and how many labourers came through the gate today. Two
+      // bands, one composed read, no clicks.
+      //
+      // The bands answer to the company switcher DIFFERENTLY, which is a
+      // property of the data rather than an oversight: the employee directory
+      // is one directory for the whole factory, split by the plant a person is
+      // costed to rather than by company, while the labour gate really does
+      // book the plants apart. Each band prints its own scope so the two
+      // figures are never read as covering the same ground.
+      //
+      // Gated on the rights its two registers already need rather than a new
+      // one, so no permission row has to be created on the live database before
+      // anyone can open it. It shows head counts only -- no pay and no named
+      // person -- which is what makes the widely-held directory right the right
+      // gate for it.
+      path: '/dashboards/hr-board',
+      element: <HrBoardDashboardPage />,
+      layout: 'main',
+      permissions: HR_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'HR Control' },
     },
     {
       // Production lines and the finished-goods floor they feed, on one screen:
@@ -513,6 +539,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // not just one board, disappears for them.
         ...PLANT_BOARD_VIEW_PERMISSIONS,
         ...COMPANY_EXPENSE_VIEW_PERMISSIONS,
+        // Same again for HR Control: a login granted only its two feed rights
+        // holds nothing else under any module, so without this spread the
+        // entire Dashboards menu -- not just this board -- is hidden from the
+        // very people it was granted to.
+        ...HR_BOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
@@ -539,6 +570,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production-control',
           title: 'Production Control',
           permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/hr-board',
+          title: 'HR Control',
+          permissions: HR_BOARD_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/warehouse-control',

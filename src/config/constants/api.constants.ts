@@ -535,6 +535,18 @@ export const API_ENDPOINTS = {
   ADMIN_BOARD: {
     BOARD: '/dashboards/admin-board/board/',
   },
+  // HR Control Board -- who is on the rolls, and how many contract labourers
+  // came through the gate today. One endpoint like its neighbours.
+  //
+  // The two halves answer to the company switcher DIFFERENTLY, and the payload
+  // says which is which on each tile: head count is group-wide, because the
+  // directory is one directory for the whole factory split by SAP segment
+  // rather than by company, while labour really is booked per company. See
+  // hr_board/services.py for why filtering the first one would be false rather
+  // than merely narrower.
+  HR_BOARD: {
+    BOARD: '/dashboards/hr-board/board/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',

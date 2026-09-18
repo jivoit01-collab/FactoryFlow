@@ -1,0 +1,113 @@
+/* ══════════════════════════════════════════════════════════════
+   HR CONTROL BOARD
+
+   Almost nothing. The board is the shared `ops-*` vocabulary from
+   `logistics-control/styles/ops-board.css`, which this file is loaded
+   after — the rail, the tile cards, the bar chart, the meters and every
+   tint inside them are that system untouched, so this screen scales,
+   themes and reads exactly like its neighbours in the carousel.
+
+   What is here is the two places an HR board genuinely differs:
+   it has no workforce strip (it IS the workforce), and it lists
+   departments where the other boards list warehouses.
+   ══════════════════════════════════════════════════════════════ */
+
+/*
+ * Two columns, not three: the rail and the tiles.
+ *
+ * `ops-band` reserves a third for the workforce strip. On this board that strip
+ * would be a SECOND head count — typed by an operator into the Plant board's
+ * settings, from a different source than the directory — sitting beside the
+ * real one and free to disagree with it. See `HrBand.tsx`.
+ *
+ * Dropped rather than hidden. `display: none` on the third child leaves the
+ * track itself in the grid, so the band keeps a column of dead space at its
+ * right-hand edge and the tiles never grow into it.
+ */
+.hr-board .hr-band {
+  grid-template-columns: calc(2.5 * var(--u)) minmax(0, 1fr);
+}
+
+/*
+ * A ranked list of names against their counts — departments, contractors.
+ *
+ * The board's other tiles answer "how much"; these two answer "which ones, in
+ * order", and a bar chart of 8 departments at wall distance is 8 unreadable
+ * labels. A list gives each row its name at full size and carries the magnitude
+ * in a bar BEHIND the text, so the shape is still visible in peripheral vision
+ * without a single label being shrunk to fit.
+ */
+.hr-board .hr-rank {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.28 * var(--u));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hr-board .hr-rank > li {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--u));
+  padding: calc(0.2 * var(--u)) calc(0.42 * var(--u));
+  border-radius: calc(0.3 * var(--u));
+  /* The magnitude, as a tint of the band's own hue. Rule 2 of the colour
+     system: composition is tints of the SAME domain hue, never a new one. */
+  background:
+    linear-gradient(90deg, var(--tint1) 0 var(--hr-share, 0%), transparent var(--hr-share, 0%));
+  line-height: 1.15;
+}
+
+/* The name. Ellipsed rather than wrapped: a department that takes two lines
+   pushes the row below it off the tile, and the tile is a fixed height. */
+.hr-board .hr-rank em {
+  font-style: normal;
+  font-size: calc(1.02 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hr-board .hr-rank b {
+  flex: 0 0 auto;
+  font-size: calc(1.12 * var(--u));
+  font-weight: 700;
+  color: var(--ink-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The tail row: everything below the cut, summed.
+ *
+ * Greyed, because rule 4 of the colour system reserves grey for "the part that
+ * isn't there" — and this row is precisely the part the tile is not showing.
+ * It is present rather than dropped so the rows still add up to the headline.
+ */
+.hr-board .hr-rank > li.hr-rest {
+  background: none;
+}
+
+.hr-board .hr-rank > li.hr-rest em,
+.hr-board .hr-rank > li.hr-rest b {
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+/*
+ * The caveat line under a tile that DID render — a count with something the
+ * reader has to know about it, like people with no department on their record.
+ *
+ * Quiet on purpose: it qualifies the figure, it is not a warning about it.
+ * Amber here would claim a condition, and the colour system reserves amber for
+ * exactly that.
+ */
+.hr-board .hr-caveat {
+  margin-top: calc(0.3 * var(--u));
+  font-size: calc(0.86 * var(--u));
+  line-height: 1.25;
+  color: var(--ink-3);
+}
