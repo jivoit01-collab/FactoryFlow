@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { confirmDialog } from './ConfirmDialog';
+import { confirmDialog, promptDialog } from './ConfirmDialog';
 
 /**
  * The confirmation every button that writes to SAP goes through.
@@ -42,6 +42,22 @@ export interface SapPostConfirmOptions {
   destructive?: boolean;
 }
 
+function detailRows(details: SapPostConfirmOptions['details']) {
+  const rows = (details ?? []).filter(Boolean) as SapPostDetail[];
+  if (rows.length === 0) return undefined;
+
+  return (
+    <div className="space-y-3">
+      {rows.map((row, index) => (
+        <div key={index} className="text-sm">
+          <span className="text-muted-foreground">{row.label}:</span>{' '}
+          <span className="font-medium">{row.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Ask before writing to SAP. Resolves `true` only on an explicit confirm. */
 export function confirmSapPost({
   title,
@@ -50,22 +66,46 @@ export function confirmSapPost({
   confirmLabel = 'Confirm Post',
   destructive,
 }: SapPostConfirmOptions): Promise<boolean> {
-  const rows = (details ?? []).filter(Boolean) as SapPostDetail[];
-
   return confirmDialog({
     title,
     description,
-    body: rows.length > 0 && (
-      <div className="space-y-3">
-        {rows.map((row, index) => (
-          <div key={index} className="text-sm">
-            <span className="text-muted-foreground">{row.label}:</span>{' '}
-            <span className="font-medium">{row.value}</span>
-          </div>
-        ))}
-      </div>
-    ),
+    body: detailRows(details),
     confirmLabel,
     destructive,
+  });
+}
+
+export interface SapPostPromptOptions extends SapPostConfirmOptions {
+  /** Names the field. Defaults to `Reason`. */
+  label?: string;
+  placeholder?: string;
+}
+
+/**
+ * The same dialog, for an action that also has to be explained — rejecting a
+ * request, reversing a document. The reason is typed inside the confirmation
+ * rather than on the page behind it: a field the operator has to go looking for
+ * reads as a dead button, and on a long record it can be below the fold.
+ *
+ * Resolves the trimmed reason, or `null` if the operator backed out.
+ */
+export function promptSapPost({
+  title,
+  details,
+  description = 'Review the details below. The requester will see the reason you give.',
+  confirmLabel = 'Confirm',
+  destructive = true,
+  label = 'Reason',
+  placeholder,
+}: SapPostPromptOptions): Promise<string | null> {
+  return promptDialog({
+    title,
+    description,
+    body: detailRows(details),
+    confirmLabel,
+    destructive,
+    label,
+    placeholder,
+    multiline: true,
   });
 }

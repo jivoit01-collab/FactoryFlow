@@ -12,6 +12,7 @@ import {
   Search,
   Truck,
   Unlock,
+  Warehouse,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -45,6 +46,7 @@ import {
 } from '@/modules/gate/api';
 import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
 import { promptDialog } from '@/shared/components';
+import { EmptyPanel, PageHeader, PageSection } from '@/shared/components/page';
 import {
   Button,
   Dialog,
@@ -295,7 +297,11 @@ export default function SalesDispatchDashboardPage() {
         entriesToExport = filteredEntries.map((entry) => {
           const heavy = heavyById.get(entry.id as number);
           return heavy
-            ? ({ ...entry, items: heavy.items, documents: heavy.documents } as SalesDispatchDashboardEntry)
+            ? ({
+                ...entry,
+                items: heavy.items,
+                documents: heavy.documents,
+              } as SalesDispatchDashboardEntry)
             : entry;
         });
       } else {
@@ -319,18 +325,17 @@ export default function SalesDispatchDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">
-            {isGateOutMode ? 'Sales Dispatch Out' : 'Docking'}
-          </h2>
-          <p className="text-muted-foreground">
-            {isGateOutMode
-              ? 'View Docking-created invoice dispatches and mark vehicles out'
-              : 'Dock SAP invoices, verify truck documents, and print gatepasses'}
-          </p>
-        </div>
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+      <PageHeader
+        title={isGateOutMode ? 'Sales Dispatch Out' : 'Docking'}
+        description={
+          isGateOutMode
+            ? 'View Docking-created invoice dispatches and mark vehicles out'
+            : 'Dock SAP invoices, verify truck documents, and print gatepasses'
+        }
+        icon={Warehouse}
+        accent="blue"
+      >
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
           <DateRangePicker
             date={dateRangeAsDateObjects}
             onDateChange={(date) => {
@@ -384,7 +389,7 @@ export default function SalesDispatchDashboardPage() {
             </Button>
           )}
         </div>
-      </div>
+      </PageHeader>
 
       {/* Gate-pass printing lock is a supervisor control -- hidden from the
           scanning worker, who just picks a truck below and scans. It lives behind
@@ -425,23 +430,22 @@ export default function SalesDispatchDashboardPage() {
         />
       )}
 
-      <section>
-        <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Truck className="h-4 w-4" />
-            {isGateOutMode ? 'Sales Dispatch Out Entries' : 'Docking Entries'}
-          </h3>
-          <div className="relative w-full lg:max-w-sm">
+      <PageSection
+        title={isGateOutMode ? 'Sales Dispatch Out Entries' : 'Docking Entries'}
+        icon={Truck}
+        actions={
+          <div className="relative w-full sm:w-80">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search entry, document, customer, vehicle"
               className="pl-9"
+              aria-label="Search docking entries"
             />
           </div>
-        </div>
-
+        }
+      >
         {isDashboardFetching && displayEntries.length === 0 ? (
           <EmptyState
             text={isGateOutMode ? 'Loading sales dispatch out entries' : 'Loading docking entries'}
@@ -485,7 +489,7 @@ export default function SalesDispatchDashboardPage() {
             )}
           </>
         )}
-      </section>
+      </PageSection>
     </div>
   );
 }
@@ -526,7 +530,8 @@ function DispatchTable({
   }, [entries]);
 
   const findOpenDocking = (booking: SalesDispatchPendingBooking) => {
-    const byId = booking.vehicle != null ? openDockingByVehicle.get(`id:${booking.vehicle}`) : undefined;
+    const byId =
+      booking.vehicle != null ? openDockingByVehicle.get(`id:${booking.vehicle}`) : undefined;
     return byId ?? openDockingByVehicle.get(`no:${booking.vehicle_no}`);
   };
 
@@ -607,7 +612,9 @@ function DispatchTable({
               </span>
             ) : null}
           </div>
-          <div className="text-xs text-muted-foreground">{formatDocumentType(entry.document_type)}</div>
+          <div className="text-xs text-muted-foreground">
+            {formatDocumentType(entry.document_type)}
+          </div>
         </td>
         <td className="p-3 text-sm">
           <div className="truncate whitespace-nowrap font-medium">{entry.customer_name || '-'}</div>
@@ -740,7 +747,7 @@ function DispatchTable({
   };
 
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="max-h-[520px] overflow-auto">
         <table className="w-full min-w-[2180px] table-fixed">
           <colgroup>
@@ -755,20 +762,38 @@ function DispatchTable({
             <col className="w-[165px]" />
             <col className="w-[280px]" />
           </colgroup>
-          <thead className="bg-muted/50">
+          <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
             <tr>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Entry No.</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Company</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Vehicle</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Status</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">SAP Document</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Customer</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Items</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Dispatch Date</th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Entry No.
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Company
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Vehicle
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Status
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                SAP Document
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Customer
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Items
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Dispatch Date
+              </th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Actual Gate Out
               </th>
-              <th className="whitespace-nowrap p-3 text-left text-sm font-medium">Gatepass</th>
+              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Gatepass
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -832,7 +857,9 @@ function DockingLockDialog({
         <div
           className={cn(
             'flex items-start gap-3 rounded-lg border p-4',
-            isLocked ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10' : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10',
+            isLocked
+              ? 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10'
+              : 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10',
           )}
         >
           {isLocked ? (
@@ -1483,13 +1510,13 @@ function StatCard({
       aria-pressed={isActive}
       onClick={onClick}
       className={cn(
-        'rounded-lg border bg-card p-4 text-left text-card-foreground shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'rounded-xl border bg-card p-4 text-left text-card-foreground shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         isActive && 'border-primary/60 bg-primary/5 ring-1 ring-primary/30',
       )}
     >
       <span className="flex items-center justify-between">
         <span>{icon}</span>
-        <span className="text-2xl font-bold">{value}</span>
+        <span className="text-2xl font-semibold tabular-nums tracking-tight">{value}</span>
       </span>
       <span
         className={cn(
@@ -1503,10 +1530,7 @@ function StatCard({
   );
 }
 
+/** Thin wrapper so the page's many call sites keep reading `<EmptyState text=… />`. */
 function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="flex h-24 items-center justify-center rounded-lg border text-sm text-muted-foreground">
-      {text}
-    </div>
-  );
+  return <EmptyPanel message={text} loading={/loading/i.test(text)} />;
 }

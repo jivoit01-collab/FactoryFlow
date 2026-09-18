@@ -1,8 +1,17 @@
-import { AlertCircle, ArrowLeft, ChevronRight, RefreshCw, Search, ShieldX, X } from 'lucide-react';
+import {
+  AlertCircle,
+  ChevronRight,
+  PackageCheck,
+  RefreshCw,
+  Search,
+  ShieldX,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
@@ -104,23 +113,14 @@ export default function ServicePendingEntriesPage({
   return (
     <div className="space-y-6">
       {!embedded && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => navigate('/dispatch/bilty-grpo')}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="text-3xl font-bold tracking-tight">Service GRPO Pending</h2>
-            </div>
-            <p className="text-muted-foreground">
-              Booked dispatch vehicle bookings pending transport service GRPO
-            </p>
-          </div>
+        <PageHeader
+          title="Service GRPO Pending"
+          description="Booked dispatch vehicle bookings pending transport service GRPO"
+          icon={PackageCheck}
+          accent="teal"
+          backTo="/dispatch/bilty-grpo"
+          backLabel="Service GRPO"
+        >
           <Button
             variant="outline"
             size="sm"
@@ -130,7 +130,7 @@ export default function ServicePendingEntriesPage({
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-        </div>
+        </PageHeader>
       )}
 
       {isPermissionError && (
@@ -248,19 +248,41 @@ export default function ServicePendingEntriesPage({
             <div className="rounded-md border overflow-hidden">
               <div className="overflow-x-auto max-w-full">
                 <table className="w-full min-w-[1220px]">
-                  <thead className="bg-muted/50">
+                  <thead className="bg-muted/40">
                     <tr>
-                      <th className="p-3 text-left text-sm font-medium">Status</th>
-                      <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
-                      <th className="p-3 text-left text-sm font-medium">Invoices</th>
-                      <th className="p-3 text-left text-sm font-medium">State</th>
-                      <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                      <th className="p-3 text-left text-sm font-medium">Transporter</th>
-                      <th className="p-3 text-left text-sm font-medium">Driver</th>
-                      <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                      <th className="p-3 text-left text-sm font-medium">Dispatch Date</th>
-                      <th className="p-3 text-left text-sm font-medium">Age</th>
-                      <th className="p-3 text-left text-sm font-medium">Freight</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Dispatch Bill
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Invoices
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        State
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Vehicle
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Transporter
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Driver
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Dispatch Date
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Age
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Freight
+                      </th>
                       <th className="p-3 w-8" aria-hidden="true" />
                     </tr>
                   </thead>

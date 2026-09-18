@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
-import { CalendarCheck, Loader2, RotateCcw } from 'lucide-react';
+import { CalendarCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { FilterAction, FilterBar, FilterField } from '@/shared/components/page';
 import {
   Button,
   Input,
@@ -59,6 +60,14 @@ export function DispatchPlanFilters({
   const searchIgnoresDates =
     dateBasis === 'dispatch' && !!filters.selected_only && !!filters.search;
 
+  // Counted so the bar can say how much of the list the filters are hiding —
+  // the dates are always set, so only the ones a user turns on are counted.
+  const activeCount =
+    (filters.search ? 1 : 0) +
+    (filters.booking_status && filters.booking_status !== 'all' ? 1 : 0) +
+    (filters.exclude_jivo_mart_transfer ? 0 : 1) +
+    (isToday ? 1 : 0);
+
   function toggleToday() {
     if (isToday) {
       const restored = rangeBeforeToday ?? defaultDateRange();
@@ -82,11 +91,16 @@ export function DispatchPlanFilters({
   }, [filters, onFiltersChange, searchDraft]);
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-card p-4">
-      <div className="flex w-full flex-col gap-1.5 sm:w-auto">
-        <Label htmlFor="dispatch-plan-date-from" className="text-xs font-semibold">
-          {DATE_LABELS[dateBasis].from}
-        </Label>
+    <FilterBar
+      isFetching={isFetching}
+      activeCount={activeCount}
+      onReset={() => {
+        setSearchDraft('');
+        if (onReset) onReset();
+        else onFiltersChange(createDefaultDispatchPlanFilters());
+      }}
+    >
+      <FilterField label={DATE_LABELS[dateBasis].from} htmlFor="dispatch-plan-date-from">
         <Input
           id="dispatch-plan-date-from"
           type="date"
@@ -99,12 +113,9 @@ export function DispatchPlanFilters({
           }
           className="w-full sm:w-40"
         />
-      </div>
+      </FilterField>
 
-      <div className="flex w-full flex-col gap-1.5 sm:w-auto">
-        <Label htmlFor="dispatch-plan-date-to" className="text-xs font-semibold">
-          {DATE_LABELS[dateBasis].to}
-        </Label>
+      <FilterField label={DATE_LABELS[dateBasis].to} htmlFor="dispatch-plan-date-to">
         <Input
           id="dispatch-plan-date-to"
           type="date"
@@ -117,28 +128,31 @@ export function DispatchPlanFilters({
           }
           className="w-full sm:w-40"
         />
-      </div>
+      </FilterField>
 
       {/* One click for the everyday question — "what is going out today" — so
           nobody has to type the same date into both boxes. Clicking again puts
           the earlier range back. */}
-      <Button
-        type="button"
-        variant={isToday ? 'default' : 'outline'}
-        size="sm"
-        aria-pressed={isToday}
-        title={isToday ? 'Back to the earlier date range' : 'Show only today'}
-        onClick={toggleToday}
-        className="mb-0.5 w-full sm:w-auto"
-      >
-        <CalendarCheck className="mr-2 h-4 w-4" />
-        Today
-      </Button>
+      <FilterAction>
+        <Button
+          type="button"
+          variant={isToday ? 'default' : 'outline'}
+          size="sm"
+          aria-pressed={isToday}
+          title={isToday ? 'Back to the earlier date range' : 'Show only today'}
+          onClick={toggleToday}
+          className="h-10 w-full sm:w-auto"
+        >
+          <CalendarCheck className="mr-2 h-4 w-4" />
+          Today
+        </Button>
+      </FilterAction>
 
-      <div className="flex w-full flex-col gap-1.5 sm:w-auto">
-        <Label htmlFor="dispatch-plan-search" className="text-xs">
-          Search
-        </Label>
+      <FilterField
+        label="Search"
+        htmlFor="dispatch-plan-search"
+        hint={searchIgnoresDates && 'Searching every planned bill — the dates above are ignored'}
+      >
         <Input
           id="dispatch-plan-search"
           value={searchDraft}
@@ -146,17 +160,9 @@ export function DispatchPlanFilters({
           placeholder="Bill, party, vehicle"
           className="w-full sm:w-60"
         />
-        {searchIgnoresDates && (
-          <p className="text-[11px] leading-tight text-muted-foreground">
-            Searching every planned bill — the dates above are ignored
-          </p>
-        )}
-      </div>
+      </FilterField>
 
-      <div className="flex w-full flex-col gap-1.5 sm:w-auto">
-        <Label htmlFor="dispatch-plan-status" className="text-xs">
-          Status
-        </Label>
+      <FilterField label="Status" htmlFor="dispatch-plan-status">
         <Select
           id="dispatch-plan-status"
           value={filters.booking_status ?? 'all'}
@@ -166,7 +172,7 @@ export function DispatchPlanFilters({
               booking_status: event.target.value as DispatchPlanFilters['booking_status'],
             })
           }
-          className="w-full sm:w-36"
+          className="h-10 w-full sm:w-36"
         >
           {BOOKING_STATUS_OPTIONS.map((option) => (
             <SelectOption key={option.value} value={option.value}>
@@ -174,45 +180,25 @@ export function DispatchPlanFilters({
             </SelectOption>
           ))}
         </Select>
-      </div>
+      </FilterField>
 
-      <div className="flex w-full items-center gap-2 rounded-md border bg-background px-3 py-2 sm:w-auto">
-        <Switch
-          id="dispatch-plan-show-jivo-mart"
-          checked={!filters.exclude_jivo_mart_transfer}
-          onChange={(checked) =>
-            onFiltersChange({
-              ...filters,
-              exclude_jivo_mart_transfer: !checked,
-            })
-          }
-        />
-        <Label htmlFor="dispatch-plan-show-jivo-mart" className="cursor-pointer text-xs">
-          Show Jivo Mart bills
-        </Label>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          setSearchDraft('');
-          if (onReset) onReset();
-          else onFiltersChange(createDefaultDispatchPlanFilters());
-        }}
-        className="mb-0.5 w-full sm:w-auto"
-      >
-        <RotateCcw className="mr-2 h-4 w-4" />
-        Reset
-      </Button>
-
-      {isFetching && (
-        <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading...
+      <FilterAction>
+        <div className="flex h-10 w-full items-center gap-2 rounded-md border bg-background px-3 sm:w-auto">
+          <Switch
+            id="dispatch-plan-show-jivo-mart"
+            checked={!filters.exclude_jivo_mart_transfer}
+            onChange={(checked) =>
+              onFiltersChange({
+                ...filters,
+                exclude_jivo_mart_transfer: !checked,
+              })
+            }
+          />
+          <Label htmlFor="dispatch-plan-show-jivo-mart" className="cursor-pointer text-xs">
+            Show Jivo Mart bills
+          </Label>
         </div>
-      )}
-    </div>
+      </FilterAction>
+    </FilterBar>
   );
 }

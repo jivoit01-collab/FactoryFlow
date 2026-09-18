@@ -9,7 +9,11 @@
  * look at it.
  */
 
-import { DASHBOARDS_PERMISSIONS, PLANNING_PURCHASE_PERMISSIONS } from '@/config/permissions';
+import {
+  BOARD_FEED_PERMISSIONS,
+  DASHBOARDS_PERMISSIONS,
+  PLANNING_PURCHASE_PERMISSIONS,
+} from '@/config/permissions';
 
 /**
  * Fallback poll interval, in ms.
@@ -65,8 +69,23 @@ export const ADMIN_COST_COLOURS: Record<string, string> = {
  *
  * These must ALSO be present on the parent `/dashboards` navigation entry, or
  * the whole Dashboards menu hides from a user who holds only one of them.
+ *
+ * THE FEED RIGHTS COME FIRST, AND THE OPERATIONAL ONES STAY.
+ * The four `BOARD_FEED_PERMISSIONS` entries are what a dashboard-only login
+ * holds: they open this composed board on the server and reach no operational
+ * endpoint, so granting them puts nothing in the sidebar. The four rights below
+ * them are the ones today's readers already hold, kept so that nobody's access
+ * narrows — the same OR the API makes in `may_read`. Removing one would lock
+ * out a user who can read this board today.
+ *
+ * Holding only SOME of these opens the board and withholds the other bands;
+ * the server reports which in `meta.withheld`.
  */
 export const ADMIN_BOARD_VIEW_PERMISSIONS: readonly string[] = [
+  BOARD_FEED_PERMISSIONS.STOCK,
+  BOARD_FEED_PERMISSIONS.PRODUCTION_PLAN,
+  BOARD_FEED_PERMISSIONS.DISPATCH_PLANS,
+  BOARD_FEED_PERMISSIONS.FACTORY_EXPENSE,
   DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
   PLANNING_PURCHASE_PERMISSIONS.VIEW,
   DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,

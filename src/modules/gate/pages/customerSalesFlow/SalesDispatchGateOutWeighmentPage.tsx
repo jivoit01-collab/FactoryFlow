@@ -180,7 +180,10 @@ export default function SalesDispatchGateOutWeighmentPage() {
 
   const handleAddAdditionalRow = () => {
     rowKeyRef.current += 1;
-    setAdditionalRows((rows) => [...rows, { key: `new-${rowKeyRef.current}`, name: '', weight: '' }]);
+    setAdditionalRows((rows) => [
+      ...rows,
+      { key: `new-${rowKeyRef.current}`, name: '', weight: '' },
+    ]);
     setError('');
   };
 
@@ -545,7 +548,9 @@ function ScanApprovalNotice({
           {isFullSkip
             ? 'This vehicle is dispatching without box scanning, approved by admin on request. No boxes were scanned for this load.'
             : `This vehicle is dispatching with a partial box scan${
-                expectedBoxes > 0 ? ` (${scannedBoxes} of ${formatNumber(expectedBoxes)} boxes)` : ''
+                expectedBoxes > 0
+                  ? ` (${scannedBoxes} of ${formatNumber(expectedBoxes)} boxes)`
+                  : ''
               }, approved by admin on request.`}
         </p>
       </div>
@@ -619,10 +624,22 @@ function InfoItem({ label, value }: { label: string; value?: string | number | n
 }
 
 const VARIANCE_TONE = {
-  good: { box: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400', label: 'Within tolerance' },
-  warn: { box: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400', label: 'Check the load' },
-  bad: { box: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-400', label: 'Large weight mismatch' },
-  neutral: { box: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground', label: 'Comparison' },
+  good: {
+    box: 'border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400',
+    label: 'Within tolerance',
+  },
+  warn: {
+    box: 'border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400',
+    label: 'Check the load',
+  },
+  bad: {
+    box: 'border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-800 dark:text-red-400',
+    label: 'Large weight mismatch',
+  },
+  neutral: {
+    box: 'border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 text-slate-700 dark:text-muted-foreground',
+    label: 'Comparison',
+  },
 } as const;
 
 function getVarianceTone(pct: number | null): keyof typeof VARIANCE_TONE {
@@ -661,8 +678,8 @@ function ChallanWeightCard({
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Enter the weight from the delivery challan to check the loaded net weight against it. Use
-          this when the SAP invoice weight is missing or wrong. Leave it blank to compare against the
-          SAP invoice weight.
+          this when the SAP invoice weight is missing or wrong. Leave it blank to compare against
+          the SAP invoice weight.
         </p>
         <div className="grid gap-2 sm:max-w-xs">
           <Label htmlFor="challan-weight">Challan Weight (kg)</Label>
@@ -675,7 +692,9 @@ function ChallanWeightCard({
             value={value}
             disabled={disabled}
             onChange={(event) => onChange(event.target.value)}
-            placeholder={hasSapWeight ? `SAP invoice: ${formatNumber(sapInvoiceWeight)}` : 'e.g. 2450'}
+            placeholder={
+              hasSapWeight ? `SAP invoice: ${formatNumber(sapInvoiceWeight)}` : 'e.g. 2450'
+            }
           />
         </div>
         <p className="text-xs text-muted-foreground">
@@ -749,8 +768,8 @@ function WeightCheckCard({
           </p>
         ) : !hasChallanWeight ? (
           <div className="rounded-md border border-slate-200 dark:border-border bg-slate-50 dark:bg-muted/40 p-3 text-sm text-slate-700 dark:text-muted-foreground">
-            No challan or invoice weight to compare against. Enter a challan weight above. Net loaded
-            weight is {formatKg(net)}.
+            No challan or invoice weight to compare against. Enter a challan weight above. Net
+            loaded weight is {formatKg(net)}.
           </div>
         ) : (
           <div
@@ -837,7 +856,10 @@ function DockingLoadCard({
             // boxes" reading as the whole shipment when 4 pcs ship loose in a part box.
             hint={expectedLoose > 0 ? `+ ${formatNumber(expectedLoose)} pcs loose` : ''}
           />
-          <MetricTile label="Invoice Weight" value={invoiceWeight > 0 ? formatKg(invoiceWeight) : '—'} />
+          <MetricTile
+            label="Invoice Weight"
+            value={invoiceWeight > 0 ? formatKg(invoiceWeight) : '—'}
+          />
         </div>
 
         {scannedBoxes === 0 && scanSkipApproved ? (
@@ -850,12 +872,20 @@ function DockingLoadCard({
         {invoiceItems.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
-              <thead className="border-b bg-muted/50">
+              <thead className="border-b bg-muted/40">
                 <tr>
-                  <th className="p-2 text-left font-medium">Item</th>
-                  <th className="p-2 text-right font-medium">Invoice Qty</th>
-                  <th className="p-2 text-right font-medium">Boxes</th>
-                  <th className="p-2 text-right font-medium">Weight</th>
+                  <th className="p-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Item
+                  </th>
+                  <th className="p-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Invoice Qty
+                  </th>
+                  <th className="p-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Boxes
+                  </th>
+                  <th className="p-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Weight
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -874,8 +904,12 @@ function DockingLoadCard({
                       <td className="p-2 text-right tabular-nums">
                         {qty > 0 ? [formatNumber(qty), item.uom].filter(Boolean).join(' ') : '-'}
                       </td>
-                      <td className="p-2 text-right tabular-nums">{boxes > 0 ? formatNumber(boxes) : '-'}</td>
-                      <td className="p-2 text-right tabular-nums">{weight > 0 ? formatKg(weight) : '-'}</td>
+                      <td className="p-2 text-right tabular-nums">
+                        {boxes > 0 ? formatNumber(boxes) : '-'}
+                      </td>
+                      <td className="p-2 text-right tabular-nums">
+                        {weight > 0 ? formatKg(weight) : '-'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -894,11 +928,21 @@ function DockingLoadCard({
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="sticky top-0 border-b bg-muted">
                   <tr>
-                    <th className="p-2 text-left font-medium">Barcode</th>
-                    <th className="p-2 text-left font-medium">Item</th>
-                    <th className="p-2 text-left font-medium">Batch</th>
-                    <th className="p-2 text-right font-medium">Qty</th>
-                    <th className="p-2 text-right font-medium">Net Weight</th>
+                    <th className="p-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Barcode
+                    </th>
+                    <th className="p-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Item
+                    </th>
+                    <th className="p-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Batch
+                    </th>
+                    <th className="p-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Qty
+                    </th>
+                    <th className="p-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Net Weight
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -940,7 +984,12 @@ function MetricTile({
   emphasis?: boolean;
 }) {
   return (
-    <div className={cn('rounded-md border bg-muted/20 p-3', emphasis && 'border-primary/40 bg-primary/5')}>
+    <div
+      className={cn(
+        'rounded-md border bg-muted/20 p-3',
+        emphasis && 'border-primary/40 bg-primary/5',
+      )}
+    >
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-semibold">{value}</p>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

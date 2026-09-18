@@ -15,9 +15,9 @@ import { useReactToPrint } from 'react-to-print';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { confirmSapPost } from '@/shared/components';
+import { confirmSapPost, promptSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import {
   useApproveTransferRequest,
@@ -80,8 +80,6 @@ export default function TransferRequestDetailPage() {
   const secondLeg = usePostTransferSecondLeg();
 
   const [approvedQty, setApprovedQty] = useState<Record<number, string>>({});
-  const [rejectReason, setRejectReason] = useState('');
-  const [showReject, setShowReject] = useState(false);
   const [verifyOn, setVerifyOn] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
   const [error, setError] = useState('');
@@ -344,11 +342,30 @@ export default function TransferRequestDetailPage() {
           <>
             <Button
               variant="outline"
-              onClick={() => setShowReject((v) => !v)}
+              onClick={() =>
+                run(async () => {
+                  const reason = await promptSapPost({
+                    title: 'Reject this request?',
+                    details: [
+                      {
+                        label: 'Closes',
+                        value: `Inventory Transfer Request ${
+                          r.sap_request_doc_num || r.sap_request_doc_entry
+                        }`,
+                      },
+                      { label: 'Effect', value: 'The request stops reserving the stock' },
+                    ],
+                    placeholder: 'Why are you rejecting this?',
+                    confirmLabel: 'Reject and close it',
+                  });
+                  if (reason === null) return;
+                  await reject.mutateAsync({ requestId: id, data: { reason } });
+                }, 'Could not reject this request.')
+              }
               disabled={reject.isPending}
             >
               <XCircle className="mr-2 h-4 w-4" />
-              Reject
+              {reject.isPending ? 'Rejecting…' : 'Reject'}
             </Button>
             <Button
               disabled={approve.isPending}
@@ -471,57 +488,6 @@ export default function TransferRequestDetailPage() {
           </Button>
         )}
       </div>
-
-      {showReject && isPending && canApprove && (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            <Textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Why are you rejecting this? The requester will see it."
-              rows={2}
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowReject(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={!rejectReason.trim() || reject.isPending}
-                onClick={() =>
-                  run(
-                    () =>
-                      confirmSapPost({
-                        title: 'Reject this request?',
-                        details: [
-                          {
-                            label: 'Closes',
-                            value: `Inventory Transfer Request ${
-                              r.sap_request_doc_num || r.sap_request_doc_entry
-                            }`,
-                          },
-                          { label: 'Effect', value: 'The request stops reserving the stock' },
-                        ],
-                        confirmLabel: 'Reject and close it',
-                        destructive: true,
-                      }).then((confirmed) =>
-                        confirmed
-                          ? reject.mutateAsync({
-                              requestId: id,
-                              data: { reason: rejectReason.trim() },
-                            })
-                          : undefined,
-                      ),
-                    'Could not reject this request.',
-                  )
-                }
-              >
-                {reject.isPending ? 'Rejecting…' : 'Confirm rejection'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <BatchAllocationDialog
         requestId={id}

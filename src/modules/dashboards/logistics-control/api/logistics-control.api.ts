@@ -99,6 +99,15 @@ export async function getPendingBillsForCompany(
   companyCode: string,
   window: { date_from: string; date_to: string },
   limit: number,
+  /**
+   * One booking state, or every state when omitted.
+   *
+   * Narrowing here is what lets the caller ask for an unbounded window: the
+   * feed caps the doc-entries a window resolves to at 2000 and takes the
+   * NEWEST of them, so an all-time question has to be asked in slices small
+   * enough that the cap never bites.
+   */
+  bookingStatus?: string,
 ): Promise<DispatchPlansResponse> {
   const response = await apiClient.get<DispatchPlansResponse>(
     API_ENDPOINTS.DISPATCH_PLANS.BILLS,
@@ -112,6 +121,9 @@ export async function getPendingBillsForCompany(
         date_to: window.date_to,
         by_dispatch_date: 'true',
         selected_only: 'true',
+        // Omitted rather than sent as "all", the way every other flag here is
+        // built: an absent filter is the endpoint's own default.
+        ...(bookingStatus ? { booking_status: bookingStatus } : {}),
         /*
          * Deliberately NOT scoped to a warehouse.
          *
@@ -314,14 +326,42 @@ export async function getPendingBillsByCompany(
   companyCodes: readonly string[],
   window: { date_from: string; date_to: string },
   limit: number,
+  /**
+   * Booking states to ask for, one request each, merged per company.
+   *
+   * Empty (the default) keeps the single unfiltered request every earlier
+   * caller made. Given, it is the caller saying its window is wider than the
+   * feed's 2000-row cap can answer in one go — see the constant that carries
+   * this board's statuses for why that cap decides which bills are visible.
+   */
+  bookingStatuses: readonly string[] = [],
 ): Promise<CompanyPendingBills[]> {
+  const slices = bookingStatuses.length > 0 ? bookingStatuses : [undefined];
+
   const results = await Promise.allSettled(
     companyCodes.map(async (companyCode) => {
-      const response = await getPendingBillsForCompany(companyCode, window, limit);
+      const responses = await Promise.all(
+        slices.map((status) => getPendingBillsForCompany(companyCode, window, limit, status)),
+      );
+
+      /*
+       * Merged by doc-entry, not concatenated.
+       *
+       * The states are disjoint today, so this dedupe should never fire — but
+       * a plan booked onto a truck between the two requests would land in
+       * both, and a bill counted twice is tonnage the tile invents.
+       */
+      const bills = new Map<number, DispatchPlansResponse['data'][number]>();
+      for (const response of responses) {
+        for (const bill of response.data ?? []) bills.set(bill.doc_entry, bill);
+      }
+
       return {
         companyCode,
-        bills: response.data ?? [],
-        total: response.meta?.total_bills ?? 0,
+        bills: [...bills.values()],
+        // Summed across the slices: each answers for its own state, and the
+        // truncation test upstairs compares this against the rows it got.
+        total: responses.reduce((sum, response) => sum + (response.meta?.total_bills ?? 0), 0),
       };
     }),
   );

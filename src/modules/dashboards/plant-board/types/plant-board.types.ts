@@ -41,25 +41,32 @@ export interface PurchaseWorstRow {
 }
 
 /**
- * One SKU the buyer has more of than the plan needs.
+ * One of the plan's packing items with something still on order.
  *
- * The same rows the tile's total is summed over — the requirement sheet's own
- * `over_purchased` flag, never a threshold reapplied here, so the list and the
- * headline cannot describe different sets.
+ * Ranked by what is still OPEN, never by what was ordered: the buyer's
+ * question is what is still coming and what it is worth.
  */
-export interface OverPurchasedRow {
+export interface OpenPoRow {
   item_code: string;
   item_name: string;
-  over_qty: number;
-  over_value: number;
-  /** The sheet's own Req-after-PO column. Positive: that is the surplus. */
-  req_after_po_qty: number;
   open_po_qty: number;
-  /** Due only after the plan closes — surplus later, not surplus now. */
-  po_due_after_plan: boolean;
+  /** Open quantity at the item master's last purchase price. */
+  open_po_value: number;
+  po_lines: number;
+  /** Earliest delivery date on the open lines, ISO, or null where SAP holds none. */
+  po_earliest_due: string | null;
   po_overdue: boolean;
-  /** The floor drew more than the plan asked for: a question about the plan. */
-  over_issued: boolean;
+  /** Not due until the plan is over: still coming, but not in time. */
+  po_due_after_plan: boolean;
+  /** What the stores hold already, so an order reads against the pile it adds to. */
+  on_hand_qty: number;
+  /**
+   * Landed plan-to-date on this item, off the goods receipt. The receipt's own
+   * line total — what the company was billed — so it is NOT the same kind of
+   * money as `open_po_value` and the two are never added together.
+   */
+  received_qty: number;
+  received_value: number;
 }
 
 export interface PlantBoardPurchase {
@@ -105,6 +112,29 @@ export interface PlantBoardPurchase {
   /** The standing open-order book — a different question from the month's buying. */
   open_po_qty: number;
   open_po_overdue_count: number;
+  /** How many of the plan's items have anything on order at all. */
+  open_po_count: number;
+  /**
+   * The open book split by the age of the order behind it: raised inside the
+   * plan month, or older. Shares of `open_po_value`, so the two halves add
+   * back to it exactly.
+   */
+  open_po_recent_qty: number;
+  open_po_recent_value: number;
+  open_po_recent_lines: number;
+  open_po_older_qty: number;
+  open_po_older_value: number;
+  open_po_older_lines: number;
+  /**
+   * Packing material RECEIVED plan-to-date on the plan's own items, off the
+   * goods receipt rather than the order line's received column: it answers
+   * "how much landed", whatever month the order was raised in.
+   */
+  pm_received_value: number;
+  pm_received_qty: number;
+  pm_received_docs: number;
+  pm_received_lines: number;
+  pm_received_basis: string;
   /** The gate's own count of what arrived, as an independent check. */
   grpo_received_qty: number;
   grpo_basis: string;
@@ -138,8 +168,8 @@ export interface PlantBoardPurchase {
   benchmark_basis: string;
   stores: string[];
   worst: PurchaseWorstRow[];
-  /** The rows behind `over_purchase_value`, worst by value first. */
-  over_purchased_rows: OverPurchasedRow[];
+  /** The rows behind `open_po_value`, most still on order first. */
+  open_po_rows: OpenPoRow[];
 }
 
 export interface NonMovingItem {
@@ -496,6 +526,37 @@ export interface ShiftingRoute {
 }
 
 /**
+ * One BST behind the shipped tile — the document, not the fold.
+ *
+ * The tile counts transfers and the routes say where the boxes went; neither
+ * names anything a reader can go and look up. This is that: the entry number
+ * the register issued, with the SAP document beside it.
+ *
+ * `sap_doc_num` and `invoice_no` answer different questions and either can be
+ * empty — a stock transfer has no invoice, and a transfer SAP has not posted
+ * yet has no document number. The row prints whichever it has.
+ */
+export interface ShiftingShipment {
+  /** What the warehouse screen shows and the floor calls "the BST". */
+  entry_no: string;
+  /** SAP's own stock-transfer document. Empty until SAP posts it. */
+  sap_doc_num: string;
+  /** Only on an INVOICE transfer — the sale to Mart settles on this. */
+  invoice_no: string;
+  route: string;
+  route_name: string;
+  /** Destination warehouse code. Empty on a dispatch: the stock left. */
+  warehouse: string;
+  status: string;
+  dispatched_at: string;
+  boxes: number;
+  pieces: number;
+  item_count: number;
+  /** Null when SAP could not be reached: withheld, never reported as zero. */
+  tons: number | null;
+}
+
+/**
  * One stage of the BST register, folded onto the band's routes.
  *
  * Both tiles share this shape deliberately: the wall reads the same three rows
@@ -536,6 +597,8 @@ export interface PlantBoardShifting {
   shipped: ShiftingStage & {
     rejected_pieces: number;
     rejected_tons: number | null;
+    /** The individual transfers behind the tile, newest dispatch first. */
+    shipments: ShiftingShipment[];
   };
   basis: string;
 }

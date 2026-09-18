@@ -108,6 +108,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // Same reasoning for the Plant Control wall board: it mints no right of
         // its own, and the spread keeps the parent gate following it.
         ...PLANT_BOARD_VIEW_PERMISSIONS,
+        // The boards that are composed server-side now carry BOARD FEED rights
+        // as well as the operational ones, and a dashboard-only login holds
+        // nothing but those. Without these spreads such a login would be sent
+        // to /unauthorized by the landing page before ever reaching the board
+        // it was granted.
+        ...ADMIN_BOARD_VIEW_PERMISSIONS,
+        ...COMPANY_EXPENSE_VIEW_PERMISSIONS,
+        ...CUSTOMER_RETURNS_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -483,6 +491,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // login holding only this must not find the whole Dashboards menu
         // hidden, whatever any of those three gates is narrowed to later.
         ...BOARD_CAROUSEL_VIEW_PERMISSIONS,
+        // Plant Control and Company Expense were covered only because their
+        // OPERATIONAL rights happen to be listed individually above. That stops
+        // being true the moment a reader holds the board feed right instead --
+        // which is exactly what a dashboard-only login holds -- so both are now
+        // spread like their neighbours. Without this the whole Dashboards menu,
+        // not just one board, disappears for them.
+        ...PLANT_BOARD_VIEW_PERMISSIONS,
+        ...COMPANY_EXPENSE_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [

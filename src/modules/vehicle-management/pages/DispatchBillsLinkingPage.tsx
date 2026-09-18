@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { RefreshCw, Search, Truck } from 'lucide-react';
+import { Link2, RefreshCw, Search, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,22 +8,12 @@ import { VEHICLE_MANAGEMENT_PERMISSIONS } from '@/config/permissions';
 import { useAuth } from '@/core/auth/hooks/useAuth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import {
-  Button,
-  Input,
-  Label,
-  NativeSelect,
-  SelectOption,
-} from '@/shared/components/ui';
+import { FilterBar, FilterField, PageHeader } from '@/shared/components/page';
+import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 import { getErrorMessage } from '@/shared/utils/error';
 
-import {
-  useDispatchLinkingPlans,
-  useLinkDispatchVehicle,
-  useUnlinkDispatchVehicle,
-} from '../api';
+import { useDispatchLinkingPlans, useLinkDispatchVehicle, useUnlinkDispatchVehicle } from '../api';
 import { DispatchLinkingSheet, DispatchLinkingTable } from '../components';
 import type {
   DispatchLinkingBucket,
@@ -136,10 +126,12 @@ export default function DispatchBillsLinkingPage() {
   }, [plansQuery.data?.data, selectedBill, selectedDocEntries]);
 
   return (
-    <div className="space-y-6 p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
         title="Dispatch Bills Linking"
         description="Pick bills and link transport to them, one bill or a batch at a time"
+        icon={Link2}
+        accent="cyan"
       >
         <Button
           type="button"
@@ -160,68 +152,62 @@ export default function DispatchBillsLinkingPage() {
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </DashboardHeader>
+      </PageHeader>
 
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <Label htmlFor="dispatch-linking-search" className="text-xs">
-              Search
-            </Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="dispatch-linking-search"
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Bill, customer, city, vehicle"
-                className="pl-9"
-              />
-            </div>
+      <FilterBar isFetching={plansQuery.isFetching}>
+        <FilterField
+          label="Search"
+          htmlFor="dispatch-linking-search"
+          className="sm:min-w-[320px] sm:flex-1"
+        >
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="dispatch-linking-search"
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Bill, customer, city, vehicle"
+              className="pl-9"
+            />
           </div>
+        </FilterField>
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="dispatch-linking-date" className="text-xs font-semibold">
-                Dispatch Date
-              </Label>
-              <Input
-                id="dispatch-linking-date"
-                type="date"
-                value={filters.date}
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, date: event.target.value }))
-                }
-                className="w-full lg:w-40"
-              />
-            </div>
+        <FilterField label="Dispatch Date" htmlFor="dispatch-linking-date">
+          <Input
+            id="dispatch-linking-date"
+            type="date"
+            value={filters.date}
+            onChange={(event) =>
+              setFilters((current) => ({ ...current, date: event.target.value }))
+            }
+            className="w-full sm:w-40"
+          />
+        </FilterField>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="dispatch-linking-status" className="text-xs">
-                Status
-              </Label>
-              <NativeSelect
-                id="dispatch-linking-status"
-                value={filters.booking_status ?? 'all'}
-                onChange={(event) =>
-                  setFilters((current) => ({
-                    ...current,
-                    booking_status: event.target.value as DispatchLinkingFilters['booking_status'],
-                  }))
-                }
-                className="w-full lg:w-36"
-              >
-                <SelectOption value="all">All</SelectOption>
-                <SelectOption value="PENDING">Pending</SelectOption>
-                <SelectOption value="BOOKED">Booked</SelectOption>
-                <SelectOption value="DISPATCHED">Dispatched</SelectOption>
-                <SelectOption value="CANCELLED">Cancelled</SelectOption>
-              </NativeSelect>
-            </div>
-          </div>
-        </div>
+        <FilterField label="Status" htmlFor="dispatch-linking-status">
+          <NativeSelect
+            id="dispatch-linking-status"
+            value={filters.booking_status ?? 'all'}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                booking_status: event.target.value as DispatchLinkingFilters['booking_status'],
+              }))
+            }
+            className="h-10 w-full sm:w-36"
+          >
+            <SelectOption value="all">All</SelectOption>
+            <SelectOption value="PENDING">Pending</SelectOption>
+            <SelectOption value="BOOKED">Booked</SelectOption>
+            <SelectOption value="DISPATCHED">Dispatched</SelectOption>
+            <SelectOption value="CANCELLED">Cancelled</SelectOption>
+          </NativeSelect>
+        </FilterField>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        {/* The buckets are how this page is actually read — which trucks are
+            waiting, which are late — so they get their own line under the
+            fields rather than competing with them for the same row. */}
+        <div className="flex w-full flex-wrap gap-2 border-t pt-3">
           {BUCKET_OPTIONS.map((option) => {
             const count = bucketCounts[option.value];
             const isActive = filters.bucket === option.value;
@@ -249,7 +235,9 @@ export default function DispatchBillsLinkingPage() {
                     isActive
                       ? 'bg-primary-foreground/20 text-primary-foreground'
                       : 'bg-muted text-foreground',
-                    hasOverdueVehicles && !isActive && 'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
+                    hasOverdueVehicles &&
+                      !isActive &&
+                      'bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-400',
                     hasOverdueVehicles && isActive && 'bg-white/20 text-white',
                   )}
                 >
@@ -259,10 +247,10 @@ export default function DispatchBillsLinkingPage() {
             );
           })}
         </div>
-      </div>
+      </FilterBar>
 
       {plansQuery.error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load dispatch plans.
         </div>
       ) : (

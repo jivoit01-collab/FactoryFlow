@@ -108,7 +108,11 @@
  * `:fullscreen` needs its own background: the element is promoted out of the
  * page and the browser paints black behind anything transparent.
  */
-.exp-board:fullscreen,
+.exp-board:fullscreen {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
 .exp-board:-webkit-full-screen {
   height: 100vh;
   width: 100vw;
@@ -348,10 +352,12 @@
 
 .exp-grid {
   display: grid;
-  /* The company name column is fixed; the four cost columns and the total
-     share what is left equally, so no column can be squeezed out by a long
-     figure in its neighbour. */
-  grid-template-columns: calc(11 * var(--u)) repeat(4, 1fr) calc(11 * var(--u));
+  /* The company name column is fixed; the four cost columns share what is left
+     equally, so no column can be squeezed out by a long figure in its
+     neighbour. The total column is fixed WIDER than the name column: figures
+     are printed in full rupees, and a row total is the longest string on the
+     board — at 11u a seven-figure total lost its last digits to the ellipsis. */
+  grid-template-columns: calc(11 * var(--u)) repeat(4, 1fr) calc(14 * var(--u));
   /* The column heads size to their own text; every data row then shares what
      is left equally, so adding a company shrinks the rows rather than pushing
      the last one below the fold. */

@@ -63,6 +63,25 @@ export interface OpsDrillProps<Row> {
   empty?: string;
   /** Rows are still arriving. */
   loading?: boolean;
+  /**
+   * Open one row.
+   *
+   * Given, every row becomes clickable and the table says so — a pointer, a
+   * lifted hover, and a chevron in its own column. Withheld, the table is a
+   * read-only list exactly as before, because a row that looks clickable and
+   * is not is worse than one that never offered.
+   */
+  onRowClick?: (row: Row, index: number) => void;
+  /**
+   * Go back up one level, on a panel opened from another panel.
+   *
+   * Given, the header grows a back arrow and Escape goes UP rather than out:
+   * a reader two levels deep pressing Escape means "the level I just opened",
+   * not "throw away both".
+   */
+  onBack?: () => void;
+  /** What the back arrow returns to, for the reader and the screen reader. */
+  backLabel?: string;
   onClose: () => void;
 }
 
@@ -100,6 +119,9 @@ export function OpsDrill<Row>({
   rowKey,
   empty,
   loading = false,
+  onRowClick,
+  onBack,
+  backLabel,
   onClose,
 }: OpsDrillProps<Row>) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -109,12 +131,16 @@ export function OpsDrill<Row>({
   // board, so there has to be a way out that does not need a mouse.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+      // Up one level where there is one: a reader inside a row's own rows
+      // means the row, not the whole panel they opened it from.
+      if (onBack) onBack();
+      else onClose();
     };
     document.addEventListener('keydown', onKey);
     closeRef.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onBack, onClose]);
 
   /*
    * Mounted on the fullscreen element when there is one.
@@ -139,9 +165,22 @@ export function OpsDrill<Row>({
     >
       <div className="ops-drill__panel">
         <div className="ops-drill__head">
-          <div>
-            <h2>{title}</h2>
-            {subtitle && <p>{subtitle}</p>}
+          <div className="ops-drill__lede">
+            {onBack && (
+              <button
+                type="button"
+                className="ops-drill__back"
+                onClick={onBack}
+                aria-label={backLabel ? `Back to ${backLabel}` : 'Back'}
+                title={backLabel ? `Back to ${backLabel}` : 'Back'}
+              >
+                ‹
+              </button>
+            )}
+            <div>
+              <h2>{title}</h2>
+              {subtitle && <p>{subtitle}</p>}
+            </div>
           </div>
           <button
             ref={closeRef}
@@ -200,11 +239,33 @@ export function OpsDrill<Row>({
                       {column.label}
                     </th>
                   ))}
+                  {onRowClick && <th className="ops-drill__gocol" aria-label="Open" />}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => (
-                  <tr key={rowKey(row, index)}>
+                  <tr
+                    key={rowKey(row, index)}
+                    className={cn(onRowClick && 'ops-drill__rowopen')}
+                    // A row is opened by the same two gestures anything else on
+                    // this board is: the pointer, or the keyboard on the row the
+                    // focus ring is sitting on.
+                    // Focusable, but still a row: `role="button"` here would
+                    // trade the table's own row-and-cell semantics away, and a
+                    // screen-reader user would lose the column headers that
+                    // make the figures mean anything.
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onClick={onRowClick ? () => onRowClick(row, index) : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                            event.preventDefault();
+                            onRowClick(row, index);
+                          }
+                        : undefined
+                    }
+                  >
                     {columns.map((column) => (
                       <td
                         key={column.label}
@@ -213,6 +274,11 @@ export function OpsDrill<Row>({
                         {column.cell(row)}
                       </td>
                     ))}
+                    {onRowClick && (
+                      <td className="ops-drill__gocol" aria-hidden="true">
+                        ›
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

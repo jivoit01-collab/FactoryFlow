@@ -1,8 +1,9 @@
-import { AlertCircle, ArrowLeft, Printer, RefreshCw, Search, ShieldX, X } from 'lucide-react';
+import { AlertCircle, History, Printer, RefreshCw, Search, ShieldX, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
@@ -133,21 +134,14 @@ export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?
   return (
     <div className="service-grpo-history-page space-y-6">
       {!embedded && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => navigate('/dispatch/bilty-grpo')}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="text-3xl font-bold tracking-tight">Service GRPO History</h2>
-            </div>
-            <p className="text-muted-foreground">View transport service GRPO postings to SAP</p>
-          </div>
+        <PageHeader
+          title="Service GRPO History"
+          description="View transport service GRPO postings to SAP"
+          icon={History}
+          accent="slate"
+          backTo="/dispatch/bilty-grpo"
+          backLabel="Service GRPO"
+        >
           <div className="flex w-full gap-2 sm:w-auto">
             <Button
               variant="outline"
@@ -168,7 +162,7 @@ export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?
               Refresh
             </Button>
           </div>
-        </div>
+        </PageHeader>
       )}
 
       {/* Search + month filter */}
@@ -264,20 +258,38 @@ export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?
               No {currentFilter.label.toLowerCase()} service postings match the current filters
             </div>
           ) : (
-            <div className="rounded-md border bg-card overflow-hidden">
+            <div className="rounded-xl border bg-card overflow-hidden">
               <div className="service-grpo-history-print-table overflow-x-auto">
                 <table className="w-full min-w-[1240px]">
-                  <thead className="bg-muted/50">
+                  <thead className="bg-muted/40">
                     <tr>
-                      <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                      <th className="p-3 text-left text-sm font-medium">Dispatch Bill</th>
-                      <th className="p-3 text-left text-sm font-medium">Vehicle</th>
-                      <th className="p-3 text-left text-sm font-medium">Transporter</th>
-                      <th className="p-3 text-left text-sm font-medium">Status</th>
-                      <th className="p-3 text-left text-sm font-medium">Vendor</th>
-                      <th className="p-3 text-left text-sm font-medium">SAP GRPO</th>
-                      <th className="p-3 text-right text-sm font-medium">Total</th>
-                      <th className="p-3 text-right text-sm font-medium">Posted At</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Dispatch Bill
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Vehicle
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Transporter
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Status
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Vendor
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        SAP GRPO
+                      </th>
+                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Posted At
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -346,7 +358,7 @@ export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?
                               SAP {entry.sap_doc_num || '-'}
                             </div>
                           </td>
-                          <td className="p-3 text-right text-sm font-medium">
+                          <td className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                             {formatCurrency(entry.total_amount || entry.sap_doc_total)}
                           </td>
                           <td className="p-3 text-right text-sm text-muted-foreground">

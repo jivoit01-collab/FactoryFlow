@@ -45,9 +45,15 @@ export interface OpsBandProps {
    * the second tile of every band start on the same vertical line. Weighted
    * templates gave each band its own rhythm and the board lost that grid.
    *
-   * Pass one only where a band genuinely needs it — and note the units must be
-   * `minmax(0, …)` rather than bare `fr` if the tile holds anything that will
-   * not wrap, or its content widens the column and the row stops being even.
+   * Pass one only where a band genuinely needs it — and EVERY track must be
+   * written `minmax(0, …)`, never a bare `fr`. A bare `1fr` is `minmax(auto,
+   * 1fr)`, so its floor is its own content, and a tile full of figures that
+   * cannot wrap has a wide floor. Four of those floors added together exceed
+   * the band, the band grows past the board rather than being clipped by it,
+   * and what goes over the right-hand edge is the last thing in the row: the
+   * people strip. The board loses its headcount and nothing reports an error.
+   * The zero floor is what lets the tiles give way instead — they are built
+   * for it, every figure inside already clips or ellipses.
    */
   columns?: string;
   children: ReactNode;
@@ -94,7 +100,7 @@ export function OpsBand({
       </div>
 
       {unavailable ? (
-        <div className="ops-groups" style={{ gridTemplateColumns: '1fr' }}>
+        <div className="ops-groups" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <div className="ops-grp" style={{ gridTemplateRows: 'auto' }}>
             <p className="ops-note">{unavailable}</p>
           </div>

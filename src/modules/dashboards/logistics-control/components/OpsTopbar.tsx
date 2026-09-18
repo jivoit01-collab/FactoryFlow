@@ -107,9 +107,13 @@ export function OpsTopbar({
         <span title={scope}>{scope}</span>
       </div>
 
+      {/* Titled because a chip truncates: the row gives way before the clock and
+          the controls do, and a warning written for a person is the first thing
+          to run past its ceiling. The wall cannot hover, but the desks with the
+          same URL open can, and they are where somebody acts on it. */}
       <div className="ops-chips">
         {chips.map((chip) => (
-          <div key={chip.label} className="ops-chip">
+          <div key={chip.label} className="ops-chip" title={`${chip.label} ${chip.value}`}>
             <em>{chip.label}</em> {chip.value}
           </div>
         ))}

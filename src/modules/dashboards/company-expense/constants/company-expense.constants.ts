@@ -1,4 +1,4 @@
-import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
+import { BOARD_FEED_PERMISSIONS, DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 
 import type { ExpenseColumnKey, ExpenseSpanKey } from '../types';
 
@@ -11,8 +11,17 @@ import type { ExpenseColumnKey, ExpenseSpanKey } from '../types';
  * have to be added to the live database and granted to groups before anybody
  * could open the screen, which is the shortcut the Packing Material and
  * Logistics Control boards already set.
+ *
+ * THE FEED RIGHTS COME FIRST, AND THE OPERATIONAL ONES STAY.
+ * The `BOARD_FEED_PERMISSIONS` entries are what a dashboard-only login holds:
+ * they open this composed board on the server and reach no operational
+ * endpoint, so granting them puts nothing in the sidebar. The rights below them
+ * are the ones today's readers already hold, kept so nobody's access narrows —
+ * the same OR the API makes in `may_read`. Removing one would lock out a user
+ * who can read this board today.
  */
 export const COMPANY_EXPENSE_VIEW_PERMISSIONS: readonly string[] = [
+  BOARD_FEED_PERMISSIONS.FACTORY_EXPENSE,
   DASHBOARDS_PERMISSIONS.VIEW_FACTORY_EXPENSE,
   DASHBOARDS_PERMISSIONS.CONFIGURE_FACTORY_EXPENSE,
 ];

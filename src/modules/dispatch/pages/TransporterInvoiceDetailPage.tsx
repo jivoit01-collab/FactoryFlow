@@ -1,9 +1,10 @@
-import { AlertCircle, ArrowLeft, CheckCircle2, FileText, RefreshCw, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, Receipt, RefreshCw, Send } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import {
   Badge,
   Button,
@@ -67,7 +68,6 @@ const formatDateTime = (value?: string | null) => {
 };
 
 export default function TransporterInvoiceDetailPage() {
-  const navigate = useNavigate();
   const { postingId } = useParams<{ postingId: string }>();
   const id = postingId ? parseInt(postingId, 10) : null;
   const { data: posting, isLoading, error, refetch } = useTransporterInvoiceDetail(id);
@@ -126,29 +126,20 @@ export default function TransporterInvoiceDetailPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="mb-1 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/dispatch/transporter-invoices/history')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {posting?.invoice_number || 'A/P Invoice'}
-            </h2>
-          </div>
-          <p className="text-muted-foreground">A/P Invoice posting detail</p>
-        </div>
-        <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+    <div className="space-y-6">
+      <PageHeader
+        title={posting?.invoice_number || 'A/P Invoice'}
+        description="A/P Invoice posting detail"
+        icon={Receipt}
+        accent="violet"
+        backTo="/dispatch/transporter-invoices/history"
+        backLabel="A/P Invoice History"
+      >
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
         </Button>
-      </div>
+      </PageHeader>
 
       {apiError && (
         <div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
@@ -270,15 +261,29 @@ export default function TransporterInvoiceDetailPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[960px]">
-                  <thead className="bg-muted/50">
+                  <thead className="bg-muted/40">
                     <tr>
-                      <th className="p-3 text-left text-sm font-medium">Bilty</th>
-                      <th className="p-3 text-left text-sm font-medium">Bilty / GRPO Doc No.</th>
-                      <th className="p-3 text-left text-sm font-medium">GRPO DocEntry</th>
-                      <th className="p-3 text-left text-sm font-medium">Line</th>
-                      <th className="p-3 text-left text-sm font-medium">Description</th>
-                      <th className="p-3 text-left text-sm font-medium">Tax</th>
-                      <th className="p-3 text-right text-sm font-medium">Line Total</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bilty / GRPO Doc No.
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        GRPO DocEntry
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Line
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Description
+                      </th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Tax
+                      </th>
+                      <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Line Total
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -295,7 +300,7 @@ export default function TransporterInvoiceDetailPage() {
                         <td className="p-3 text-sm">{line.base_line}</td>
                         <td className="p-3 text-sm">{line.service_description}</td>
                         <td className="p-3 text-sm">{line.tax_code || '-'}</td>
-                        <td className="p-3 text-right text-sm font-medium">
+                        <td className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {formatCurrency(line.line_total)}
                         </td>
                       </tr>
@@ -463,10 +468,18 @@ function BaseLineSummary({ lines }: { lines: TransporterAPInvoiceLine[] }) {
         <table className="w-full min-w-[520px]">
           <thead className="bg-muted/40">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium">Bilty</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">Bilty / Doc No.</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">DocEntry</th>
-              <th className="px-3 py-2 text-left text-xs font-medium">Line</th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bilty
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bilty / Doc No.
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                DocEntry
+              </th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Line
+              </th>
             </tr>
           </thead>
           <tbody>

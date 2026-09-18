@@ -97,16 +97,23 @@ describe('cashBookApi', () => {
     expect(del.mock.calls[0][0]).toBe('/cash-book/entries/12/');
   });
 
-  it('sends a bunch as one list of entry ids', async () => {
-    await cashBookApi.sendForApproval({ entry_ids: [4, 5, 6], remarks: 'June vouchers' });
+  it('bundles approved vouchers as one list of entry ids', async () => {
+    await cashBookApi.createBunch([4, 5, 6], 'June vouchers');
     expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/');
     expect(post.mock.calls[0][1]).toEqual({ entry_ids: [4, 5, 6], remarks: 'June vouchers' });
   });
 
-  it('carries the reason on a rejection', async () => {
-    await cashBookApi.reject(7, 'Bill number missing');
-    expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/7/reject/');
-    expect(post.mock.calls[0][1]).toEqual({ note: 'Bill number missing' });
+  it('decides entries, not bunches -- approval belongs to the entry', async () => {
+    await cashBookApi.decideEntries([7, 8], false, 'Bill number missing');
+    expect(post.mock.calls[0][0]).toBe('/cash-book/entries/decide/');
+    expect(post.mock.calls[0][1]).toEqual({ entry_ids: [7, 8], note: 'Bill number missing' });
+    expect(post.mock.calls[0][2]).toEqual({ params: { reject: 'true' } });
+  });
+
+  it('fetches a batch as a file, so the request carries the auth header', async () => {
+    await cashBookApi.exportBunch(3);
+    expect(get.mock.calls[0][0]).toBe('/cash-book/bunches/3/export/');
+    expect(get.mock.calls[0][1]).toEqual({ responseType: 'blob' });
   });
 
   it('asks only for the branches in use unless retired ones are wanted', async () => {
@@ -188,9 +195,14 @@ describe('cashBookApi', () => {
     expect(get.mock.calls[0][0]).toBe('/cash-book/advances/holders/7/');
   });
 
-  it('omits remarks on a resend so the bunch keeps the ones it has', async () => {
-    await cashBookApi.resend(7);
-    expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/7/resend/');
-    expect(post.mock.calls[0][1]).toEqual({});
+  it('records that a batch has gone, and that it has not', async () => {
+    await cashBookApi.markBunchSent(7);
+    expect(post.mock.calls[0][0]).toBe('/cash-book/bunches/7/sent/');
+    expect(post.mock.calls[0][1]).toEqual({ sent: true });
+  });
+
+  it('takes a voucher back out of a batch', async () => {
+    await cashBookApi.removeFromBunch(41);
+    expect(del.mock.calls[0][0]).toBe('/cash-book/entries/41/bunch/');
   });
 });

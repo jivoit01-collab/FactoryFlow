@@ -1007,32 +1007,32 @@ function GatepassDocumentsPanel({ documents }: { documents: PrintableGatepassDoc
         <div className="text-sm text-muted-foreground">{formatDocumentLineCount(documents)}</div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-md border">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px]">
               <thead className="bg-muted/60">
                 <tr>
-                  <th className="w-[180px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+                  <th className="w-[180px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Document
                   </th>
-                  <th className="w-[260px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+                  <th className="w-[260px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Customer / Destination
                   </th>
-                  <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Address / Warehouse
                   </th>
                   {showEwayBill ? (
-                    <th className="w-[150px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="w-[150px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       E-way Bill
                     </th>
                   ) : null}
                   {showAmount ? (
-                    <th className="w-[120px] p-3 text-right text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="w-[120px] p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Amount
                     </th>
                   ) : null}
                   {showWeight ? (
-                    <th className="w-[130px] p-3 text-right text-xs font-semibold uppercase text-muted-foreground">
+                    <th className="w-[130px] p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       SAP Weight
                     </th>
                   ) : null}
@@ -1132,7 +1132,7 @@ function DocumentItemsTable({
   scanStatsByItem: Map<string, ItemScanStats>;
 }) {
   return (
-    <div className="overflow-hidden rounded-md border">
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="flex flex-col gap-1 border-b bg-muted/30 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="font-semibold">
           {formatDocumentType(document.document_type)} {formatValue(document.sap_doc_num)}
@@ -1145,25 +1145,25 @@ function DocumentItemsTable({
         <table className="w-full min-w-[900px]">
           <thead className="bg-muted/60">
             <tr>
-              <th className="w-[150px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[150px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Item Code
               </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Item Name
               </th>
-              <th className="w-[130px] p-3 text-right text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[130px] p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 SAP Qty
               </th>
-              <th className="w-[130px] p-3 text-right text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[130px] p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Actual Qty
               </th>
-              <th className="w-[90px] p-3 text-right text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[90px] p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Boxes
               </th>
-              <th className="w-[100px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[100px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 UOM
               </th>
-              <th className="w-[160px] p-3 text-left text-xs font-semibold uppercase text-muted-foreground">
+              <th className="w-[160px] p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Warehouse
               </th>
             </tr>

@@ -100,7 +100,14 @@ export default function AdvancesPage() {
       date: { value: (row) => row.date },
       kind: { value: (row) => MOVEMENT_LABEL[row.kind] ?? row.kind },
       detail: { value: (row) => row.detail },
+      // One amount, two columns: what they took, and what they cleared.
+      cleared: {
+        value: (row) => money(row.amount),
+        sortValue: (row) => Number(row.amount),
+        blankWhen: (row) => row.kind === 'GIVEN',
+      },
       amount: {
+        blankWhen: (row) => row.kind !== 'GIVEN',
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
       },
@@ -258,7 +265,7 @@ export default function AdvancesPage() {
                       <ColumnFilter {...column('kind', 'Movement')} />
                       <ColumnFilter {...column('detail', 'Detail')} />
                       <ColumnFilter {...column('amount', 'Taken', 'right')} />
-                      <th className="px-3 py-2 text-right">Cleared</th>
+                      <ColumnFilter {...column('cleared', 'Cleared', 'right')} />
                       <ColumnFilter {...column('balance', 'Holding', 'right')} />
                     </tr>
                   </thead>

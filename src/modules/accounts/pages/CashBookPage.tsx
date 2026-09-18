@@ -56,6 +56,7 @@ const EMPTY_RECONCILIATION: CashReconciliation = {
   awaiting_approval: '0',
   cash_in_hand: '0',
   advance_given: '0',
+  owed_to_people: '0',
   difference: '0',
 };
 
@@ -314,11 +315,16 @@ export default function CashBookPage() {
         )}
       </DashboardHeader>
 
-      {/* The six figures read as one sum, left to right: everything that came
-          in, less what has been agreed, less what is still waiting to be,
-          less what is in the box, less what is out with people -- and nothing
-          left over. The last card is the proof, not a number to act on. */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {/* The figures read as one sum, left to right: everything that came in,
+          less what has been agreed, less what is still waiting to be, less
+          what is in the box, less what is out with people, plus what people
+          have laid out for us -- and nothing left over. The last card is the
+          proof, not a number to act on.
+
+          Advance given and Owed to staff are deliberately NOT netted. They are
+          opposite movements, and one figure for both understates how much is
+          genuinely out with people while hiding the debt entirely. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Cash in</p>
@@ -364,6 +370,15 @@ export default function CashBookPage() {
               {money(recon.advance_given)}
             </p>
             <p className="text-xs text-muted-foreground">Out with people</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">Owed to staff</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
+              {money(recon.owed_to_people)}
+            </p>
+            <p className="text-xs text-muted-foreground">They paid it themselves</p>
           </CardContent>
         </Card>
         <Card className={settled ? '' : 'border-rose-400 dark:border-rose-500/40'}>
@@ -507,7 +522,7 @@ export default function CashBookPage() {
                   <ColumnFilter {...column('item', 'Item')} />
                   <ColumnFilter {...column('detail', 'Detail')} />
                   <ColumnFilter {...column('amount', 'Amount', 'right')} />
-                  <th className="px-3 py-2 text-right">In</th>
+                  <ColumnFilter {...column('in', 'In', 'right')} />
                   <ColumnFilter {...column('balance', 'Balance', 'right')} />
                   <ColumnFilter {...column('approval', 'Approval')} />
                   {canManage && <th className="px-3 py-2">Actions</th>}

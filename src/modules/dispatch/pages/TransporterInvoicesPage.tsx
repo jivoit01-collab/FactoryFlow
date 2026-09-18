@@ -6,6 +6,7 @@ import {
   FileText,
   History,
   List,
+  Receipt,
   ReceiptText,
   RefreshCw,
   XCircle,
@@ -13,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { PageHeader } from '@/shared/components/page';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
 import { useOpenBilties, useTransporterInvoiceHistory } from '../api';
@@ -40,12 +42,7 @@ const formatCurrency = (value?: string | number | null) => {
 
 export default function TransporterInvoicesPage() {
   const navigate = useNavigate();
-  const {
-    data: invoices = [],
-    isLoading,
-    error,
-    refetch,
-  } = useTransporterInvoiceHistory();
+  const { data: invoices = [], isLoading, error, refetch } = useTransporterInvoiceHistory();
   const { data: openBilties = [] } = useOpenBilties();
 
   const apiError = error as ApiError | null;
@@ -64,13 +61,12 @@ export default function TransporterInvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">A/P Invoice</h2>
-          <p className="text-muted-foreground">
-            Post submitted transporter invoices against bilty service GRPOs
-          </p>
-        </div>
+      <PageHeader
+        title="A/P Invoice"
+        description="Post submitted transporter invoices against bilty service GRPOs"
+        icon={Receipt}
+        accent="violet"
+      >
         <Button
           onClick={() => navigate('/dispatch/transporter-invoices/pending')}
           className="w-full sm:w-auto"
@@ -78,7 +74,7 @@ export default function TransporterInvoicesPage() {
           <List className="mr-2 h-4 w-4" />
           View Pending
         </Button>
-      </div>
+      </PageHeader>
 
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
@@ -201,9 +197,7 @@ export default function TransporterInvoicesPage() {
                       {historyCounts.failed}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">
-                    Failed
-                  </p>
+                  <p className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">Failed</p>
                 </CardContent>
               </Card>
             </div>

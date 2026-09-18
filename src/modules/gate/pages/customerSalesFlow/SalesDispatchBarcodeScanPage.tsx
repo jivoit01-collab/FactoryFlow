@@ -1155,17 +1155,27 @@ export default function SalesDispatchBarcodeScanPage() {
                         }}
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="font-medium">Bill {formatValue(choice.bill.sapDocNum)}</span>
+                        <span className="font-medium">
+                          Bill {formatValue(choice.bill.sapDocNum)}
+                        </span>
                         {choice.bill.customerName ? (
-                          <span className="text-muted-foreground"> · {choice.bill.customerName}</span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {choice.bill.customerName}
+                          </span>
                         ) : null}
                         {isArrivalMode && choice.bill.companyName ? (
-                          <span className="text-muted-foreground"> · {choice.bill.companyName}</span>
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {choice.bill.companyName}
+                          </span>
                         ) : null}
                         <span className="block text-xs text-muted-foreground">
                           {choice.bill.scannedBoxes}
-                          {choice.bill.expectedBoxes > 0 ? `/${choice.bill.expectedBoxes}` : ''} boxes
-                          scanned
+                          {choice.bill.expectedBoxes > 0
+                            ? `/${choice.bill.expectedBoxes}`
+                            : ''}{' '}
+                          boxes scanned
                           {choice.bill.expectedLoose > 0 || choice.bill.scannedLoose > 0
                             ? ` · ${formatNumber(choice.bill.scannedLoose)}/${formatNumber(choice.bill.expectedLoose)} PCS loose`
                             : ''}
@@ -1340,7 +1350,10 @@ function BarcodeScansDialog({
               const isOpen = expanded.has(session.session_id);
               const isSelected = selected.has(session.session_id);
               return (
-                <div key={session.session_id} className="overflow-hidden rounded-md border">
+                <div
+                  key={session.session_id}
+                  className="overflow-hidden rounded-xl border bg-card shadow-sm"
+                >
                   <div className="flex items-center gap-3 bg-muted/40 p-3">
                     <input
                       type="checkbox"
@@ -1401,11 +1414,21 @@ function BarcodeScansDialog({
                           <table className="w-full text-sm">
                             <thead className="border-b bg-muted/30">
                               <tr>
-                                <th className="p-3 text-left font-medium">Barcode</th>
-                                <th className="p-3 text-left font-medium">Item</th>
-                                <th className="p-3 text-left font-medium">Batch</th>
-                                <th className="p-3 text-left font-medium">Qty</th>
-                                <th className="p-3 text-left font-medium">Status</th>
+                                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Barcode
+                                </th>
+                                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Item
+                                </th>
+                                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Batch
+                                </th>
+                                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Qty
+                                </th>
+                                <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Status
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1963,12 +1986,12 @@ function BillScannedBoxes({
           setConfirmOpen(false);
         }}
       />
-      <div className="overflow-x-auto rounded-md border">
+      <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
         <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50">
+          <thead className="border-b bg-muted/40">
             <tr>
               {canRemove ? (
-                <th className="w-8 p-3 text-left font-medium">
+                <th className="w-8 p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <Checkbox
                     checked={allPicked}
                     onCheckedChange={toggleAllPicked}
@@ -1976,12 +1999,24 @@ function BillScannedBoxes({
                   />
                 </th>
               ) : null}
-              <th className="p-3 text-left font-medium">Barcode</th>
-              <th className="p-3 text-left font-medium">Item</th>
-              <th className="p-3 text-left font-medium">Batch</th>
-              <th className="p-3 text-left font-medium">Qty</th>
-              <th className="p-3 text-left font-medium">Warehouse</th>
-              <th className="p-3 text-right font-medium">Action</th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Barcode
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Item
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Batch
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Qty
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Warehouse
+              </th>
+              <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -2081,7 +2116,9 @@ function ScanSkipPanel({
               : "Approved for this truck's load on another company's docking. You can continue to attachments without scanning boxes."}
           </p>
           {skipRequest?.review_notes ? (
-            <p className="text-sm text-emerald-800 dark:text-emerald-400">Note: {skipRequest.review_notes}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">
+              Note: {skipRequest.review_notes}
+            </p>
           ) : null}
         </div>
       </div>
@@ -2099,7 +2136,9 @@ function ScanSkipPanel({
             still scan boxes to proceed normally.
           </p>
           {skipRequest?.reason ? (
-            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {skipRequest.reason}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-400">
+              Reason: {skipRequest.reason}
+            </p>
           ) : null}
         </div>
       </div>
@@ -2127,7 +2166,9 @@ function ScanSkipPanel({
               : 'Request admin approval to continue without scanning boxes for this Docking entry.'}
           </p>
           {wasRejected && skipRequest?.review_notes ? (
-            <p className="text-sm text-red-700 dark:text-red-400">Reason: {skipRequest.review_notes}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">
+              Reason: {skipRequest.review_notes}
+            </p>
           ) : null}
         </div>
       </div>
@@ -2183,7 +2224,9 @@ function PartialScanPanel({
             boxes scanned so far.
           </p>
           {summary.approved.length ? (
-            <p className="text-sm text-emerald-800 dark:text-emerald-400">Bills: {summary.approved.join(', ')}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-400">
+              Bills: {summary.approved.join(', ')}
+            </p>
           ) : null}
         </div>
       </div>
@@ -2210,7 +2253,9 @@ function PartialScanPanel({
             You can still scan the remaining boxes to proceed normally.
           </p>
           {partialRequests[0]?.reason ? (
-            <p className="text-sm text-amber-800 dark:text-amber-400">Reason: {partialRequests[0].reason}</p>
+            <p className="text-sm text-amber-800 dark:text-amber-400">
+              Reason: {partialRequests[0].reason}
+            </p>
           ) : null}
         </div>
       </div>
@@ -2241,7 +2286,9 @@ function PartialScanPanel({
                 } Request admin approval to dispatch this load with a partial scan.`}
           </p>
           {wasRejected && lastReviewed?.review_notes ? (
-            <p className="text-sm text-red-700 dark:text-red-400">Reason: {lastReviewed.review_notes}</p>
+            <p className="text-sm text-red-700 dark:text-red-400">
+              Reason: {lastReviewed.review_notes}
+            </p>
           ) : null}
         </div>
       </div>

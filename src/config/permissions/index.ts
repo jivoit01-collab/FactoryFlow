@@ -106,6 +106,11 @@ export {
 } from './planning-purchase.permissions';
 
 // Dashboards Module
+export {
+  BOARD_FEED_APP_LABEL,
+  BOARD_FEED_PERMISSIONS,
+  type BoardFeedPermission,
+} from './board-feeds.permissions';
 export { DASHBOARDS_PERMISSIONS, type DashboardsPermission } from './dashboards.permissions';
 
 // Dispatch Module

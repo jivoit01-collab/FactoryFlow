@@ -78,9 +78,16 @@ export default function AtmPage() {
       date: { value: (row) => row.date },
       kind: { value: (row) => (row.kind === 'RECEIPT' ? 'Paid on' : 'Withdrawn') },
       detail: { value: (row) => row.detail },
+      // One amount, two columns, the movement deciding which shows it.
       amount: {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
+        blankWhen: (row) => row.kind !== 'RECEIPT',
+      },
+      drawn: {
+        value: (row) => money(row.amount),
+        sortValue: (row) => Number(row.amount),
+        blankWhen: (row) => row.kind === 'RECEIPT',
       },
       balance: {
         value: (row) => money(row.balance_after),
@@ -194,7 +201,7 @@ export default function AtmPage() {
                       <ColumnFilter {...column('kind', 'Movement')} />
                       <ColumnFilter {...column('detail', 'Detail')} />
                       <ColumnFilter {...column('amount', 'Paid on', 'right')} />
-                      <th className="px-3 py-2 text-right">Drawn off</th>
+                      <ColumnFilter {...column('drawn', 'Drawn off', 'right')} />
                       <ColumnFilter {...column('balance', 'Balance', 'right')} />
                     </tr>
                   </thead>

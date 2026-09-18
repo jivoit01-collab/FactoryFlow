@@ -1,6 +1,7 @@
 import { Truck } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
+import { PageHeader } from '@/shared/components/page';
 import { Button } from '@/shared/components/ui';
 
 import ServiceGRPOHistoryPage from './ServiceGRPOHistoryPage';
@@ -30,15 +31,12 @@ export default function ServiceGRPODashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
-          <Truck className="h-8 w-8" />
-          Service GRPO
-        </h2>
-        <p className="text-muted-foreground">
-          Post transport service receipts for booked dispatch vehicles
-        </p>
-      </div>
+      <PageHeader
+        title="Service GRPO"
+        description="Post transport service receipts for booked dispatch vehicles"
+        icon={Truck}
+        accent="teal"
+      />
 
       <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (

@@ -6,17 +6,12 @@ import {
   ChevronUp,
   SquarePen,
   Trash2,
+  Truck,
 } from 'lucide-react';
 import { type KeyboardEvent } from 'react';
 
-import {
-  Button,
-  Card,
-  CardContent,
-  Checkbox,
-  NativeSelect as Select,
-  SelectOption,
-} from '@/shared/components/ui';
+import { TableCard, TableEmpty, TableLoading } from '@/shared/components/page';
+import { Button, Checkbox, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
 import { DISPATCH_PLAN_PAGE_SIZE_OPTIONS } from '../constants';
@@ -174,29 +169,30 @@ export function DispatchPlanTable({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-0">
-          {Array.from({ length: 7 }).map((_, index) => (
-            <div key={index} className="flex gap-4 border-b p-4">
-              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-              <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-28 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+      <TableCard>
+        <table className="w-full">
+          <tbody>
+            <TableLoading colSpan={1} message="Loading dispatch bills…" />
+          </tbody>
+        </table>
+      </TableCard>
     );
   }
 
   if (bills.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-12 text-center">
-          <p className="text-sm text-muted-foreground">No dispatch bills found.</p>
-        </CardContent>
-      </Card>
+      <TableCard>
+        <table className="w-full">
+          <tbody>
+            <TableEmpty
+              colSpan={1}
+              icon={Truck}
+              message="No dispatch bills found"
+              hint="Widen the date window or clear a filter above."
+            />
+          </tbody>
+        </table>
+      </TableCard>
     );
   }
 
@@ -209,290 +205,285 @@ export function DispatchPlanTable({
   const allSelected =
     selectableDocEntries.length > 0 && selectableDocEntries.every((de) => selected!.has(de));
 
-  const thClass =
-    'cursor-pointer whitespace-nowrap px-4 py-3 text-left font-medium text-muted-foreground hover:text-foreground';
-  const thRightClass =
-    'cursor-pointer whitespace-nowrap px-4 py-3 text-right font-medium text-muted-foreground hover:text-foreground';
+  // Same head as every other list in the module — a quiet uppercase label,
+  // with the pointer and hover only on the columns that actually sort.
+  const thBase =
+    'whitespace-nowrap px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground';
+  const thClass = `${thBase} cursor-pointer text-left transition-colors hover:text-foreground`;
+  const thRightClass = `${thBase} cursor-pointer text-right transition-colors hover:text-foreground`;
+  const thPlainClass = `${thBase} text-left`;
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1500px] text-sm">
-            <thead className="border-b bg-muted/40">
-              <tr>
-                {bulkEnabled && (
-                  <th className="w-10 px-4 py-3">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={() => onToggleAll!(selectableDocEntries)}
-                      aria-label="Select all bills for bulk dispatch date"
-                      disabled={selectableDocEntries.length === 0}
-                    />
-                  </th>
+    <TableCard bodyClassName="overflow-visible">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1500px] text-sm">
+          <thead className="border-b bg-muted/40">
+            <tr>
+              {bulkEnabled && (
+                <th className="w-10 px-4 py-2.5">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={() => onToggleAll!(selectableDocEntries)}
+                    aria-label="Select all bills for bulk dispatch date"
+                    disabled={selectableDocEntries.length === 0}
+                  />
+                </th>
+              )}
+              <th className={thClass} onClick={() => toggleSort('create_date')}>
+                Created <SortIcon col="create_date" ordering={ordering} />
+              </th>
+              <th className={thClass} onClick={() => toggleSort('doc_num')}>
+                Bill <SortIcon col="doc_num" ordering={ordering} />
+              </th>
+              <th className={thClass} onClick={() => toggleSort('card_name')}>
+                Party <SortIcon col="card_name" ordering={ordering} />
+              </th>
+              <th className={thPlainClass}>Location</th>
+              <th className={thRightClass} onClick={() => toggleSort('doc_total')}>
+                Value <SortIcon col="doc_total" ordering={ordering} />
+              </th>
+              <th className={thRightClass} onClick={() => toggleSort('total_litres')}>
+                Total Litres <SortIcon col="total_litres" ordering={ordering} />
+              </th>
+              <th className={`${thBase} text-right`}>Load</th>
+              <th className={thPlainClass}>SAP Transport</th>
+              <th className={thClass} onClick={() => toggleSort('booking_status')}>
+                Status <SortIcon col="booking_status" ordering={ordering} />
+              </th>
+              <th className={thPlainClass}>Transport Link</th>
+              <th className={thPlainClass}>Planning</th>
+              {/* Explicit action button — row-click alone doesn't work on every device. */}
+              <th className={`${thBase} text-right`}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bills.map((bill) => (
+              <tr
+                key={bill.doc_entry}
+                className={cn(
+                  'border-b transition-colors',
+                  canEdit &&
+                    'cursor-pointer hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                  bulkEnabled && selected!.has(bill.doc_entry) && 'bg-primary/5',
                 )}
-                <th className={thClass} onClick={() => toggleSort('create_date')}>
-                  Created <SortIcon col="create_date" ordering={ordering} />
-                </th>
-                <th className={thClass} onClick={() => toggleSort('doc_num')}>
-                  Bill <SortIcon col="doc_num" ordering={ordering} />
-                </th>
-                <th className={thClass} onClick={() => toggleSort('card_name')}>
-                  Party <SortIcon col="card_name" ordering={ordering} />
-                </th>
-                <th className={thClass}>Location</th>
-                <th className={thRightClass} onClick={() => toggleSort('doc_total')}>
-                  Value <SortIcon col="doc_total" ordering={ordering} />
-                </th>
-                <th className={thRightClass} onClick={() => toggleSort('total_litres')}>
-                  Total Litres <SortIcon col="total_litres" ordering={ordering} />
-                </th>
-                <th className={thRightClass}>Load</th>
-                <th className={thClass}>SAP Transport</th>
-                <th className={thClass} onClick={() => toggleSort('booking_status')}>
-                  Status <SortIcon col="booking_status" ordering={ordering} />
-                </th>
-                <th className={thClass}>Transport Link</th>
-                <th className={thClass}>Planning</th>
-                {/* Explicit action button — row-click alone doesn't work on every device. */}
-                <th className="whitespace-nowrap px-4 py-3 text-right font-medium text-muted-foreground">
-                  Action
-                </th>
+                role={canEdit ? 'button' : undefined}
+                tabIndex={canEdit ? 0 : undefined}
+                aria-label={canEdit ? `Open dispatch plan ${bill.doc_num}` : undefined}
+                onClick={canEdit ? () => onEdit(bill) : undefined}
+                onKeyDown={(event) => handleRowKeyDown(event, bill)}
+              >
+                {bulkEnabled && (
+                  <td
+                    className="px-4 py-3 align-top"
+                    // Ticking a bill must not open its edit sheet.
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {isBulkSelectable(bill) ? (
+                      <Checkbox
+                        checked={selected!.has(bill.doc_entry)}
+                        onCheckedChange={() => onToggle!(bill.doc_entry)}
+                        aria-label={`Select bill ${bill.doc_num} for bulk dispatch date`}
+                      />
+                    ) : null}
+                  </td>
+                )}
+                <td className="px-4 py-3 align-top">
+                  <div className="font-medium">{formatDate(bill.create_date)}</div>
+                  <div className="text-xs text-muted-foreground">{bill.create_time}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Inv {formatDate(bill.doc_date)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="font-mono text-xs font-semibold">{bill.doc_num}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{bill.branch_name}</div>
+                  <div
+                    className="mt-1 max-w-[170px] truncate text-xs text-muted-foreground"
+                    title={bill.base_refs}
+                  >
+                    Ref {compactText(bill.base_refs)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="max-w-[240px] truncate font-medium" title={bill.card_name}>
+                    {compactText(bill.card_name)}
+                  </div>
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {compactText(bill.card_code)}
+                  </div>
+                  <div
+                    className="mt-1 max-w-[240px] truncate text-xs text-muted-foreground"
+                    title={bill.item_summary}
+                  >
+                    {compactText(bill.item_summary)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div>{compactText(bill.city)}</div>
+                  <div className="text-xs text-muted-foreground">{compactText(bill.state)}</div>
+                  <div
+                    className="mt-1 max-w-[210px] truncate text-xs text-muted-foreground"
+                    title={bill.ship_to_address}
+                  >
+                    {compactText(bill.ship_to_address)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right align-top tabular-nums">
+                  <div className="font-medium">{formatNumber(bill.doc_total)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatNumber(bill.total_gross_amount)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right align-top tabular-nums">
+                  {hasQuantity(bill.total_litres) ? `${formatNumber(bill.total_litres, 2)} L` : '-'}
+                </td>
+                <td className="px-4 py-3 text-right align-top tabular-nums">
+                  <div className="text-xs text-muted-foreground">
+                    {hasQuantity(bill.total_boxes)
+                      ? `${formatNumber(bill.total_boxes, 2)} boxes`
+                      : 'Boxes not available'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatNumber(bill.total_weight, 3)} kg
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div
+                    className="max-w-[190px] truncate font-medium"
+                    title={bill.sap_transporter_name}
+                  >
+                    {compactText(bill.sap_transporter_name)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Vehicle {compactText(bill.sap_vehicle_no || bill.gst_vehicle_no)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Bilty {compactText(bill.sap_bilty_no || bill.sap_lr_number)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <StatusBadge status={bill.plan.booking_status} />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Driver {compactText(bill.plan.driver_name)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Transporter {compactText(bill.plan.transporter_name)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Bilty {compactText(bill.plan.bilty_no)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="font-medium">Dispatch {compactText(bill.plan.dispatch_date)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Priority {compactText(bill.plan.priority)}
+                  </div>
+                  <div
+                    className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground"
+                    title={bill.plan.remarks}
+                  >
+                    {compactText(bill.plan.remarks)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right align-top">
+                  {canEdit ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="whitespace-nowrap"
+                      // Stop the row's onClick from firing a second time.
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEdit(bill);
+                      }}
+                      aria-label={`Open dispatch plan ${bill.doc_num}`}
+                    >
+                      <SquarePen className="mr-1.5 h-3.5 w-3.5" />
+                      Open
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">-</span>
+                  )}
+                  {canEdit && onRemove && isRemovable(bill) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ml-1 whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={removingDocEntry === bill.doc_entry}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onRemove(bill);
+                      }}
+                      aria-label={`Remove bill ${bill.doc_num} from planning`}
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                      {removingDocEntry === bill.doc_entry ? 'Removing…' : 'Remove'}
+                    </Button>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {bills.map((bill) => (
-                <tr
-                  key={bill.doc_entry}
-                  className={cn(
-                    'border-b transition-colors',
-                    canEdit &&
-                      'cursor-pointer hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-                    bulkEnabled && selected!.has(bill.doc_entry) && 'bg-primary/5',
-                  )}
-                  role={canEdit ? 'button' : undefined}
-                  tabIndex={canEdit ? 0 : undefined}
-                  aria-label={canEdit ? `Open dispatch plan ${bill.doc_num}` : undefined}
-                  onClick={canEdit ? () => onEdit(bill) : undefined}
-                  onKeyDown={(event) => handleRowKeyDown(event, bill)}
-                >
-                  {bulkEnabled && (
-                    <td
-                      className="px-4 py-3 align-top"
-                      // Ticking a bill must not open its edit sheet.
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {isBulkSelectable(bill) ? (
-                        <Checkbox
-                          checked={selected!.has(bill.doc_entry)}
-                          onCheckedChange={() => onToggle!(bill.doc_entry)}
-                          aria-label={`Select bill ${bill.doc_num} for bulk dispatch date`}
-                        />
-                      ) : null}
-                    </td>
-                  )}
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-medium">{formatDate(bill.create_date)}</div>
-                    <div className="text-xs text-muted-foreground">{bill.create_time}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Inv {formatDate(bill.doc_date)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-mono text-xs font-semibold">{bill.doc_num}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{bill.branch_name}</div>
-                    <div
-                      className="mt-1 max-w-[170px] truncate text-xs text-muted-foreground"
-                      title={bill.base_refs}
-                    >
-                      Ref {compactText(bill.base_refs)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="max-w-[240px] truncate font-medium" title={bill.card_name}>
-                      {compactText(bill.card_name)}
-                    </div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {compactText(bill.card_code)}
-                    </div>
-                    <div
-                      className="mt-1 max-w-[240px] truncate text-xs text-muted-foreground"
-                      title={bill.item_summary}
-                    >
-                      {compactText(bill.item_summary)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div>{compactText(bill.city)}</div>
-                    <div className="text-xs text-muted-foreground">{compactText(bill.state)}</div>
-                    <div
-                      className="mt-1 max-w-[210px] truncate text-xs text-muted-foreground"
-                      title={bill.ship_to_address}
-                    >
-                      {compactText(bill.ship_to_address)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right align-top tabular-nums">
-                    <div className="font-medium">{formatNumber(bill.doc_total)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatNumber(bill.total_gross_amount)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right align-top tabular-nums">
-                    {hasQuantity(bill.total_litres)
-                      ? `${formatNumber(bill.total_litres, 2)} L`
-                      : '-'}
-                  </td>
-                  <td className="px-4 py-3 text-right align-top tabular-nums">
-                    <div className="text-xs text-muted-foreground">
-                      {hasQuantity(bill.total_boxes)
-                        ? `${formatNumber(bill.total_boxes, 2)} boxes`
-                        : 'Boxes not available'}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatNumber(bill.total_weight, 3)} kg
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div
-                      className="max-w-[190px] truncate font-medium"
-                      title={bill.sap_transporter_name}
-                    >
-                      {compactText(bill.sap_transporter_name)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Vehicle {compactText(bill.sap_vehicle_no || bill.gst_vehicle_no)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Bilty {compactText(bill.sap_bilty_no || bill.sap_lr_number)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <StatusBadge status={bill.plan.booking_status} />
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-medium">Vehicle {compactText(bill.plan.vehicle_no)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Driver {compactText(bill.plan.driver_name)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Transporter {compactText(bill.plan.transporter_name)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Bilty {compactText(bill.plan.bilty_no)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="font-medium">
-                      Dispatch {compactText(bill.plan.dispatch_date)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Priority {compactText(bill.plan.priority)}
-                    </div>
-                    <div
-                      className="mt-1 max-w-[220px] truncate text-xs text-muted-foreground"
-                      title={bill.plan.remarks}
-                    >
-                      {compactText(bill.plan.remarks)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right align-top">
-                    {canEdit ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="whitespace-nowrap"
-                        // Stop the row's onClick from firing a second time.
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onEdit(bill);
-                        }}
-                        aria-label={`Open dispatch plan ${bill.doc_num}`}
-                      >
-                        <SquarePen className="mr-1.5 h-3.5 w-3.5" />
-                        Open
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">-</span>
-                    )}
-                    {canEdit && onRemove && isRemovable(bill) && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="ml-1 whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        disabled={removingDocEntry === bill.doc_entry}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onRemove(bill);
-                        }}
-                        aria-label={`Remove bill ${bill.doc_num} from planning`}
-                      >
-                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                        {removingDocEntry === bill.doc_entry ? 'Removing…' : 'Remove'}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
-          <p className="text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{startIndex + 1}</span>–
-            <span className="font-medium text-foreground">
-              {Math.min(startIndex + bills.length, totalRows)}
-            </span>{' '}
-            of <span className="font-medium text-foreground">{totalRows}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="dispatch-plan-page-size"
-              className="whitespace-nowrap text-xs text-muted-foreground"
-            >
-              Rows per page
-            </label>
-            <Select
-              id="dispatch-plan-page-size"
-              value={String(rowsPerPage)}
-              onChange={(event) => onPageSizeChange(Number(event.target.value))}
-              className="w-20"
-            >
-              {DISPATCH_PLAN_PAGE_SIZE_OPTIONS.map((size) => (
-                <SelectOption key={size} value={String(size)}>
-                  {size}
-                </SelectOption>
-              ))}
-            </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage <= 1 || isLoading}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="whitespace-nowrap text-xs text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage >= totalPages || isLoading}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      <div className="flex flex-col items-center justify-between gap-3 border-t px-4 py-3 text-sm sm:flex-row">
+        <p className="text-muted-foreground">
+          Showing <span className="font-medium text-foreground">{startIndex + 1}</span>–
+          <span className="font-medium text-foreground">
+            {Math.min(startIndex + bills.length, totalRows)}
+          </span>{' '}
+          of <span className="font-medium text-foreground">{totalRows}</span>
+        </p>
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="dispatch-plan-page-size"
+            className="whitespace-nowrap text-xs text-muted-foreground"
+          >
+            Rows per page
+          </label>
+          <Select
+            id="dispatch-plan-page-size"
+            value={String(rowsPerPage)}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="w-20"
+          >
+            {DISPATCH_PLAN_PAGE_SIZE_OPTIONS.map((size) => (
+              <SelectOption key={size} value={String(size)}>
+                {size}
+              </SelectOption>
+            ))}
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            disabled={currentPage <= 1 || isLoading}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage >= totalPages || isLoading}
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </TableCard>
   );
 }

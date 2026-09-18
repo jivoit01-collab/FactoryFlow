@@ -1,9 +1,9 @@
-import { ArrowLeft, Camera, Plus, Search, Truck } from 'lucide-react';
+import { ArrowLeft, Camera, History, Plus, Search, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { CreateVehicleDialog } from '@/modules/gate/components/CreateVehicleDialog';
-import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { PageHeader } from '@/shared/components/page';
 import {
   Badge,
   Button,
@@ -52,8 +52,10 @@ export default function PreviouslyRegisteredVehiclePage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <DashboardHeader
+    <div className="space-y-6">
+      <PageHeader
+        icon={History}
+        accent="slate"
         title="Previously Registered Vehicle"
         description="Look up a vehicle by registration number to see its past details before linking."
       >
@@ -62,7 +64,7 @@ export default function PreviouslyRegisteredVehiclePage() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
-      </DashboardHeader>
+      </PageHeader>
 
       <Card>
         <CardContent className="flex flex-col gap-2 py-4 sm:flex-row">
@@ -197,7 +199,10 @@ function DriverCard({ driver }: { driver?: VehicleHistoryDriver | null }) {
             <Info label="Name" value={dash(d.name)} />
             <Info label="Mobile" value={dash(d.mobile_no)} />
             <Info label="License no." value={dash(d.license_no)} />
-            <Info label="ID proof" value={`${dash(d.id_proof_type)} ${d.id_proof_number || ''}`.trim()} />
+            <Info
+              label="ID proof"
+              value={`${dash(d.id_proof_type)} ${d.id_proof_number || ''}`.trim()}
+            />
           </div>
         )}
       </CardContent>
@@ -219,7 +224,13 @@ function PhotosCard({ photos }: { photos: VehicleHistoryPhoto[] }) {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {photos.map((p, i) => (
-              <a key={`${p.url}-${i}`} href={p.url} target="_blank" rel="noreferrer" className="block">
+              <a
+                key={`${p.url}-${i}`}
+                href={p.url}
+                target="_blank"
+                rel="noreferrer"
+                className="block"
+              >
                 <img
                   src={p.url}
                   alt={p.label}

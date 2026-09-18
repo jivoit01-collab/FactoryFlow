@@ -1,10 +1,10 @@
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   Eye,
   FileText,
   History,
+  PackageCheck,
   Paperclip,
   Printer,
   RefreshCw,
@@ -21,6 +21,7 @@ import type { ApiError } from '@/core/api/types';
 import type { Vendor } from '@/modules/gate/api/po/po.api';
 import { VendorSelect } from '@/modules/gate/components';
 import { SearchableSelect } from '@/shared/components';
+import { PageHeader } from '@/shared/components/page';
 import {
   Button,
   Card,
@@ -53,11 +54,11 @@ import type {
   ExtraCharge,
   PostServiceGRPOResponse,
   ServiceGRPOBranchOption,
+  ServiceGRPOExistingSapDoc,
   ServiceGRPOExpenseCodeOption,
   ServiceGRPOGLAccountOption,
   ServiceGRPOLocationOption,
   ServiceGRPOProjectOption,
-  ServiceGRPOExistingSapDoc,
   ServiceGRPOSACCodeOption,
   ServiceGRPOSubAccountOption,
   ServiceGRPOTaxCodeOption,
@@ -369,7 +370,10 @@ const varietyLabel = (variety: ServiceGRPOVarietyOption) =>
     : `${variety.variety_name} (${variety.variety_code})`;
 
 const normalizeDimensionText = (value?: string | null) =>
-  (value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 
 const findDefaultVarietyCode = (
   options: ServiceGRPOVarietyOption[],
@@ -553,7 +557,15 @@ export default function ServiceGRPOPreviewPage() {
       taxDate: date,
       shouldRoundoff: true,
     };
-  }, [branchOptions, glAccountOptions, locationOptions, preview, sacOptions, taxCodeOptions, varietyOptions]);
+  }, [
+    branchOptions,
+    glAccountOptions,
+    locationOptions,
+    preview,
+    sacOptions,
+    taxCodeOptions,
+    varietyOptions,
+  ]);
 
   const currentPlanId = preview?.dispatch_plan_id ?? null;
   const form = formDraft && formDraft.planId === currentPlanId ? formDraft.value : defaultForm;
@@ -659,8 +671,7 @@ export default function ServiceGRPOPreviewPage() {
       } catch (err) {
         setApiErrors((prev) => ({
           ...prev,
-          attachments:
-            (err as ApiError).message || 'Could not replace the bilty attachment.',
+          attachments: (err as ApiError).message || 'Could not replace the bilty attachment.',
         }));
       }
     };
@@ -681,8 +692,7 @@ export default function ServiceGRPOPreviewPage() {
       setShowDeleteAttachment(false);
       setApiErrors((prev) => ({
         ...prev,
-        attachments:
-          (err as ApiError).message || 'Could not delete the bilty attachment.',
+        attachments: (err as ApiError).message || 'Could not delete the bilty attachment.',
       }));
     }
   };
@@ -839,8 +849,7 @@ export default function ServiceGRPOPreviewPage() {
   const canManageBiltyAttachment = planAttachment
     ? planAttachment.can_modify
     : preview?.grpo_status !== GRPO_STATUS.POSTED;
-  const isAttachmentMutating =
-    replaceBiltyAttachment.isPending || deleteBiltyAttachment.isPending;
+  const isAttachmentMutating = replaceBiltyAttachment.isPending || deleteBiltyAttachment.isPending;
   const attachmentAudit = planAttachment?.audit ?? [];
   const attachmentCount = (form?.attachments.length ?? 0) + (preview?.bilty_attachment ? 1 : 0);
   const isMultiInvoicePreview = (preview?.invoice_count || 1) > 1;
@@ -852,25 +861,14 @@ export default function ServiceGRPOPreviewPage() {
 
   return (
     <div className="space-y-6 pb-32">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/dispatch/bilty-grpo/pending')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">
-              {billNo || 'Service GRPO Preview'}
-            </h2>
-          </div>
-          <p className="text-muted-foreground">
-            Review transport booking details and post the service GRPO to SAP
-          </p>
-        </div>
+      <PageHeader
+        title={billNo || 'Service GRPO Preview'}
+        description="Review transport booking details and post the service GRPO to SAP"
+        icon={PackageCheck}
+        accent="teal"
+        backTo="/dispatch/bilty-grpo/pending"
+        backLabel="Service GRPO Pending"
+      >
         <div className="flex w-full gap-2 sm:w-auto">
           {canPrintPostedPreview && (
             <Button
@@ -893,7 +891,7 @@ export default function ServiceGRPOPreviewPage() {
             Refresh
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {isPermissionError && (
         <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
@@ -1021,17 +1019,31 @@ export default function ServiceGRPOPreviewPage() {
                     {preview.invoice_lines.length === 1 ? '' : 's'}
                   </span>
                 </div>
-                <div className="overflow-x-auto rounded-md border">
+                <div className="overflow-x-auto rounded-xl border bg-card shadow-sm">
                   <table className="w-full min-w-[980px] text-sm">
-                    <thead className="bg-muted/50">
+                    <thead className="bg-muted/40">
                       <tr>
-                        <th className="p-3 text-left font-medium">SAP Invoice</th>
-                        <th className="p-3 text-left font-medium">Customer</th>
-                        <th className="p-3 text-left font-medium">State</th>
-                        <th className="p-3 text-left font-medium">Service</th>
-                        <th className="p-3 text-right font-medium">Litres</th>
-                        <th className="p-3 text-right font-medium">Weight</th>
-                        <th className="p-3 text-right font-medium">Freight</th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          SAP Invoice
+                        </th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Customer
+                        </th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          State
+                        </th>
+                        <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Service
+                        </th>
+                        <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Litres
+                        </th>
+                        <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Weight
+                        </th>
+                        <th className="p-3 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Freight
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1631,9 +1643,7 @@ export default function ServiceGRPOPreviewPage() {
                         onClick={handleReplaceBiltyAttachment}
                       >
                         <Upload className="h-3.5 w-3.5" />
-                        {replaceBiltyAttachment.isPending
-                          ? 'Uploading...'
-                          : 'Attach bilty to plan'}
+                        {replaceBiltyAttachment.isPending ? 'Uploading...' : 'Attach bilty to plan'}
                       </Button>
                     </div>
                   )}
@@ -1665,9 +1675,7 @@ export default function ServiceGRPOPreviewPage() {
                                   dateStyle: 'medium',
                                   timeStyle: 'short',
                                 })}
-                                {entry.source === 'VEHICLE_LINKING'
-                                  ? ' (via vehicle linking)'
-                                  : ''}
+                                {entry.source === 'VEHICLE_LINKING' ? ' (via vehicle linking)' : ''}
                                 {entry.reason ? ` — ${entry.reason}` : ''}
                               </span>
                               {entry.old_file_url && (
@@ -1743,17 +1751,14 @@ export default function ServiceGRPOPreviewPage() {
         </>
       )}
 
-      <Dialog
-        open={showDeleteAttachment}
-        onOpenChange={() => setShowDeleteAttachment(false)}
-      >
+      <Dialog open={showDeleteAttachment} onOpenChange={() => setShowDeleteAttachment(false)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Delete bilty attachment?</DialogTitle>
             <DialogDescription>
-              {biltyAttachmentName} will be removed from this dispatch plan and will not
-              go to SAP with the GRPO. The change is recorded in the attachment history,
-              and the old file stays viewable there.
+              {biltyAttachmentName} will be removed from this dispatch plan and will not go to SAP
+              with the GRPO. The change is recorded in the attachment history, and the old file
+              stays viewable there.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1">
@@ -1915,10 +1920,7 @@ export default function ServiceGRPOPreviewPage() {
               Cancel
             </Button>
             {alreadyInSap?.can_adopt && (
-              <Button
-                onClick={() => handleConfirmPost(true)}
-                disabled={postServiceGRPO.isPending}
-              >
+              <Button onClick={() => handleConfirmPost(true)} disabled={postServiceGRPO.isPending}>
                 {postServiceGRPO.isPending ? 'Recording...' : 'Record as posted'}
               </Button>
             )}

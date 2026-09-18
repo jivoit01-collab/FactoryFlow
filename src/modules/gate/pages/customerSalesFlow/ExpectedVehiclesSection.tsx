@@ -56,11 +56,21 @@ export function ExpectedVehiclesSection({
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-muted/40">
             <tr>
-              <th className="p-3 text-left font-medium text-muted-foreground">Vehicle</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Status</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Customer</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Bills</th>
-              <th className="p-3 text-left font-medium text-muted-foreground">Dispatch Date</th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Vehicle
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Status
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Customer
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Bills
+              </th>
+              <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Dispatch Date
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +90,9 @@ export function ExpectedVehiclesSection({
                   />
                 </td>
                 <td className="p-3">
-                  <div className="max-w-[240px] truncate">{vehicle.customers.join(', ') || '-'}</div>
+                  <div className="max-w-[240px] truncate">
+                    {vehicle.customers.join(', ') || '-'}
+                  </div>
                 </td>
                 <td className="p-3">
                   <div className="max-w-[220px] truncate">{vehicle.docNums.join(', ') || '-'}</div>

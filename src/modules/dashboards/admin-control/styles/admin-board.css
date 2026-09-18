@@ -503,7 +503,9 @@
  * `vh` term finally measure the same box. The unit goes back to `vw` for the
  * horizontal term because there is no longer a nav rail to subtract.
  */
-.admin-board.ops-board:fullscreen,
+.admin-board.ops-board:fullscreen {
+  --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
+}
 .admin-board.ops-board:-webkit-full-screen {
   --u: clamp(6px, min(0.833vw, 1.34vh), 32px);
 }
