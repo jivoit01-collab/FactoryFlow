@@ -96,8 +96,13 @@ export interface SalesDispatchGatepassReadiness {
   requires_eway_bill?: boolean;
   has_eway_bill?: boolean;
   has_eway_bill_attachment?: boolean;
-  /** True once a photo of the truck's security seal is attached (always required). */
+  /** True once a photo of the truck's security seal is attached. */
   has_seal_attachment?: boolean;
+  /**
+   * True when the server also holds the gatepass for that photo. Off while a docking
+   * build that cannot upload one is still live; this page asks for it either way.
+   */
+  requires_seal_photo?: boolean;
 }
 
 export interface SalesDispatchItem {
