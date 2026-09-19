@@ -9,6 +9,13 @@
  * walk the cells, and cell selection -- a dragged block, a row, a column or
  * the sheet -- with the figures for whatever is picked.
  */
+export {
+  blockToHtml,
+  blockToPng,
+  blockToTsv,
+  type CopyBlock,
+  copyBlock,
+} from './clipboard';
 export { ColumnFilter, type ColumnValue } from './ColumnFilter';
 export { SortHeader } from './SortHeader';
 export { type SortDirection, type SortState, toSortParam, useClientSort } from './sorting';
