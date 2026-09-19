@@ -6,6 +6,7 @@ import { useDispatchSheet } from '@/modules/dispatch/api/sheet.api';
 import {
   columnsFor,
   figure,
+  SHEET_COMPANIES,
   type SheetColumn,
 } from '@/modules/dispatch/components/sheet/sheetColumns';
 import { downloadSheet } from '@/modules/dispatch/components/sheet/sheetExport';
@@ -15,7 +16,7 @@ import {
   stageBadgeClass,
   stageRowClass,
 } from '@/modules/dispatch/components/sheet/vehicleStage';
-import type { DispatchSheetRow, DispatchSheetStream } from '@/modules/dispatch/types/sheet.types';
+import type { DispatchSheetRow } from '@/modules/dispatch/types/sheet.types';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   ColumnFilter,
@@ -78,13 +79,16 @@ export default function DispatchSheetPage() {
   const initial = thisMonth();
   const [dateFrom, setDateFrom] = useState(initial.from);
   const [dateTo, setDateTo] = useState(initial.to);
-  const [stream, setStream] = useState<DispatchSheetStream>('OIL');
+  const [company, setCompany] = useState<string>(SHEET_COMPANIES[0].code);
   const [search, setSearch] = useState('');
   // Which column's drop-down is open, so only that one's value list is built:
   // a year's worth of rows counted twenty times over on every render is real
   // time, and nineteen of those lists are not on screen.
   const [openColumn, setOpenColumn] = useState<string | null>(null);
-  const [allCompanies, setAllCompanies] = useState(false);
+  // On by default: the desk keeps ONE book for the group and turns to Oil,
+  // Beverages or Mart inside it. Reading a single company would leave two of
+  // the three tabs empty and looking broken.
+  const [allCompanies, setAllCompanies] = useState(true);
 
   const params = useMemo(
     () => ({
@@ -102,15 +106,31 @@ export default function DispatchSheetPage() {
   const { data, isLoading, isError, error } = useDispatchSheet(params);
 
   const allRows = useMemo(() => data?.data ?? [], [data]);
-  const streamRows = useMemo(
-    () => allRows.filter((row) => row.stream === stream),
-    [allRows, stream],
+  const companyRows = useMemo(
+    () => allRows.filter((row) => row.company_code === company),
+    [allRows, company],
   );
 
-  const columns = useMemo(
-    () => columnsFor(stream, { crossCompany: allCompanies }),
-    [stream, allCompanies],
-  );
+  const columns = useMemo(() => columnsFor(company), [company]);
+
+  /**
+   * The tabs: the three companies, plus any other the rows turn out to carry.
+   *
+   * The three are named whether or not they have a line today — a tab that
+   * comes and goes with the window would be worse than one reading zero. An
+   * unexpected company is added rather than swallowed, so its rows are never
+   * silently missing from a register that says it holds everything.
+   */
+  const tabs = useMemo(() => {
+    const known = SHEET_COMPANIES.map((entry) => ({ ...entry }));
+    const extra = [...new Set(allRows.map((row) => row.company_code))]
+      .filter((code) => !known.some((entry) => entry.code === code))
+      .map((code) => ({
+        code,
+        label: allRows.find((row) => row.company_code === code)?.company_name ?? code,
+      }));
+    return [...known, ...extra];
+  }, [allRows]);
 
   // The Excel filters and the sort, over the rows in hand. Every column offers
   // the values it actually holds, counted.
@@ -130,7 +150,7 @@ export default function DispatchSheetPage() {
     column: columnProps,
     filteredColumns,
     clearFilters,
-  } = useLocalColumns(streamRows, specs, { key: 'dispatch_date', direction: 'asc' }, {
+  } = useLocalColumns(companyRows, specs, { key: 'dispatch_date', direction: 'asc' }, {
     activeColumn: openColumn,
   });
 
@@ -147,7 +167,7 @@ export default function DispatchSheetPage() {
     textAt: (row, key) => byKey.get(key)?.value(row) ?? '',
     // A different tab, window or company scope is a different set of lines, so
     // "rows 3 to 10" no longer means anything and the selection goes.
-    reset: `${stream}|${dateFrom}|${dateTo}|${allCompanies}|${filteredColumns.join()}`,
+    reset: `${company}|${dateFrom}|${dateTo}|${allCompanies}|${filteredColumns.join()}`,
   });
 
   /**
@@ -189,10 +209,9 @@ export default function DispatchSheetPage() {
   }, [columns, rows]);
 
   const meta = data?.meta;
-  const counts = {
-    OIL: allRows.filter((row) => row.stream === 'OIL').length,
-    WATER: allRows.filter((row) => row.stream === 'WATER').length,
-  };
+  const counts = meta?.counts_by_company ?? {};
+  const companyLabel =
+    tabs.find((tab) => tab.code === company)?.label ?? company;
 
   return (
     <div className="space-y-4">
@@ -242,7 +261,7 @@ export default function DispatchSheetPage() {
           variant="outline"
           disabled={rows.length === 0}
           onClick={() =>
-            downloadSheet({ rows, columns, stream, dateFrom, dateTo })
+            downloadSheet({ rows, columns, sheet: companyLabel, dateFrom, dateTo })
           }
         >
           <Download className="mr-2 h-4 w-4" />
@@ -251,10 +270,15 @@ export default function DispatchSheetPage() {
       </DashboardHeader>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={stream} onValueChange={(value) => setStream(value as DispatchSheetStream)}>
+        {/* A sheet per company, all three named whether or not they have a
+            line today. */}
+        <Tabs value={company} onValueChange={setCompany}>
           <TabsList>
-            <TabsTrigger value="OIL">Oil · {counts.OIL}</TabsTrigger>
-            <TabsTrigger value="WATER">Water · {counts.WATER}</TabsTrigger>
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.code} value={tab.code}>
+                {tab.label} · {counts[tab.code] ?? 0}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
 
@@ -310,7 +334,7 @@ export default function DispatchSheetPage() {
             <p className="text-muted-foreground">
               {filteredColumns.length > 0
                 ? 'No line matches those column filters.'
-                : `Nothing went out on the ${stream === 'WATER' ? 'water' : 'oil'} sheet between these dates.`}
+                : `Nothing went out on the ${companyLabel} sheet between these dates.`}
             </p>
           </CardContent>
         </Card>
@@ -486,7 +510,7 @@ export default function DispatchSheetPage() {
             )}
             <span className="ml-auto">
               {meta ? `${meta.date_from} to ${meta.date_to}` : ''}
-              {filteredColumns.length > 0 ? ` · ${rows.length} of ${streamRows.length}` : ''}
+              {filteredColumns.length > 0 ? ` · ${rows.length} of ${companyRows.length}` : ''}
             </span>
           </div>
         </div>

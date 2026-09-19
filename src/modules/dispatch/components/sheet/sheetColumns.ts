@@ -1,13 +1,14 @@
-import type { DispatchSheetRow, DispatchSheetStream } from '../../types/sheet.types';
+import type { DispatchSheetRow } from '../../types/sheet.types';
 
 /**
  * The workbook's columns, in the workbook's order.
  *
- * The Excel file the dispatch desk has kept since FY26 has two tabs, and they
- * are not quite the same sheet: oil counts litres and never counts boxes,
- * water counts both and puts the weight before the priority. Rather than one
- * grid with everything on it and half the cells blank, each sheet is its own
- * list of columns here — the way the book is actually kept.
+ * A sheet per company, and they are not quite the same sheet: Oil counts
+ * litres and never counts boxes, Beverages counts both and puts the weight
+ * before the priority, Mart ships boxes of everything and has no sister
+ * invoice to quote. Rather than one grid with everything on it and half the
+ * cells blank, each company's sheet is its own list of columns here — the way
+ * the book is actually kept.
  *
  * FOUR COLUMNS THE APP DOES NOT KEEP
  * Mart Invoice, ASM, the factory bilty's dispatch date and the bill-and-
@@ -209,23 +210,38 @@ const WATER_COLUMNS: SheetColumn[] = [
   STATUS,
 ];
 
-const COMPANY: SheetColumn = {
-  key: 'company_code',
-  label: 'Company',
-  value: (row) => row.company_name,
+/** The companies whose sheets this book has — these are the tabs on top. */
+export const SHEET_COMPANIES = [
+  { code: 'JIVO_OIL', label: 'Oil' },
+  { code: 'JIVO_BEVERAGES', label: 'Beverages' },
+  { code: 'JIVO_MART', label: 'Mart' },
+] as const;
+
+/**
+ * Mart's own sheet.
+ *
+ * Beverages' layout, with the two differences it has to have: its litres are
+ * not "Water+WG", because Mart ships whatever the group makes, and the Mart
+ * invoice column comes off — quoting Mart's invoice beside Mart's invoice
+ * says nothing.
+ */
+const MART_COLUMNS: SheetColumn[] = WATER_COLUMNS.filter(
+  (column) => column.key !== 'mart_invoice',
+).map((column) => (column.key === 'litres' ? { ...column, label: 'Litres' } : column));
+
+const BY_COMPANY: Record<string, SheetColumn[]> = {
+  JIVO_OIL: OIL_COLUMNS,
+  JIVO_BEVERAGES: WATER_COLUMNS,
+  JIVO_MART: MART_COLUMNS,
 };
 
 /**
- * The columns one sheet shows.
+ * The columns one company's sheet shows.
  *
- * Reading across companies puts a Company column at the front, because a row
- * on a combined register is ambiguous without one — two companies number their
- * invoices separately, so the same invoice number can appear twice.
+ * A company nobody has written a layout for falls back to Oil's, the fullest
+ * of the three: better a sheet with a column too many than one that refuses
+ * to draw.
  */
-export function columnsFor(
-  stream: DispatchSheetStream,
-  { crossCompany = false }: { crossCompany?: boolean } = {},
-): SheetColumn[] {
-  const columns = stream === 'WATER' ? WATER_COLUMNS : OIL_COLUMNS;
-  return crossCompany ? [COMPANY, ...columns] : columns;
+export function columnsFor(companyCode: string): SheetColumn[] {
+  return BY_COMPANY[companyCode] ?? OIL_COLUMNS;
 }

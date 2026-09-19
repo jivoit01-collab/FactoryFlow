@@ -10,7 +10,6 @@ const ROW: DispatchSheetRow = {
   sap_invoice_doc_entry: 4001,
   company_code: 'JIVO_OIL',
   company_name: 'Jivo Oil',
-  stream: 'OIL',
   booking_status: 'DISPATCHED',
   vehicle_stage: 'DISPATCHED',
   vehicle_stage_label: 'Dispatched',
@@ -36,12 +35,11 @@ const ROW: DispatchSheetRow = {
   eway_bill: '',
 };
 
-const labels = (stream: 'OIL' | 'WATER', crossCompany = false) =>
-  columnsFor(stream, { crossCompany }).map((column) => column.label);
+const labels = (company: string) => columnsFor(company).map((column) => column.label);
 
 describe('the workbook’s columns', () => {
-  it('gives the oil sheet the columns the oil tab has, in its order', () => {
-    expect(labels('OIL')).toEqual([
+  it('gives Oil the columns the oil tab has, in its order', () => {
+    expect(labels('JIVO_OIL')).toEqual([
       'Dispatch Date',
       'Invoice Date',
       'Party',
@@ -65,21 +63,29 @@ describe('the workbook’s columns', () => {
     ]);
   });
 
-  it('gives the water sheet its own columns — boxes, and the weight before the priority', () => {
-    const water = labels('WATER');
+  it('gives Beverages its own columns — boxes, and the weight before the priority', () => {
+    const water = labels('JIVO_BEVERAGES');
     expect(water).toContain('Water+WG Ltr');
     expect(water).toContain('Total Box');
     expect(water).not.toContain('Oil LTR');
     expect(water.indexOf('Kanta Weight')).toBeLessThan(water.indexOf('Priority'));
   });
 
-  it('puts the company first when the register spans more than one', () => {
-    expect(labels('OIL', true)[0]).toBe('Company');
-    expect(labels('OIL')[0]).toBe('Dispatch Date');
+  it('gives Mart plain litres and no invoice of its own to quote', () => {
+    const mart = labels('JIVO_MART');
+    expect(mart).toContain('Litres');
+    expect(mart).toContain('Total Box');
+    expect(mart).not.toContain('Water+WG Ltr');
+    // Quoting Mart's invoice beside Mart's invoice says nothing.
+    expect(mart).not.toContain('Mart Invoice');
+  });
+
+  it('falls back to the fullest sheet for a company nobody wrote a layout for', () => {
+    expect(labels('JIVO_SOMETHING_NEW')).toEqual(labels('JIVO_OIL'));
   });
 
   it('marks the columns the book has that nothing in the app fills', () => {
-    const unkept = columnsFor('OIL')
+    const unkept = columnsFor('JIVO_OIL')
       .filter((column) => column.notKeptYet)
       .map((column) => column.label);
     expect(unkept).toEqual([
@@ -88,7 +94,7 @@ describe('the workbook’s columns', () => {
       'Bill & Receiving Date',
     ]);
     // Marked, and genuinely empty — never a stale or invented value.
-    for (const column of columnsFor('OIL').filter((c) => c.notKeptYet)) {
+    for (const column of columnsFor('JIVO_OIL').filter((c) => c.notKeptYet)) {
       expect(column.value(ROW)).toBe('');
     }
   });
@@ -104,11 +110,11 @@ describe('the download', () => {
   it('writes figures as numbers, so the file totals in Excel', () => {
     const workbook = buildSheetWorkbook({
       rows: [ROW],
-      columns: columnsFor('OIL'),
-      stream: 'OIL',
+      columns: columnsFor('JIVO_OIL'),
+      sheet: 'Oil',
     });
 
-    const sheet = workbook.Sheets.OIL;
+    const sheet = workbook.Sheets.Oil;
     const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
     expect(rows[0]['Oil LTR']).toBe(10913);
     expect(rows[0]['Total Freight']).toBe(29990);
@@ -117,14 +123,26 @@ describe('the download', () => {
     expect(sheet['!autofilter']).toBeTruthy();
   });
 
+  it('trims a tab name Excel would refuse', () => {
+    const workbook = buildSheetWorkbook({
+      rows: [],
+      columns: columnsFor('JIVO_OIL'),
+      sheet: 'Jivo Oil / Beverages [north] — a very long name indeed',
+    });
+
+    const [name] = workbook.SheetNames;
+    expect(name.length).toBeLessThanOrEqual(31);
+    expect(name).not.toMatch(/[:\\/?*[\]]/);
+  });
+
   it('still writes the headings when everything has been filtered away', () => {
     const workbook = buildSheetWorkbook({
       rows: [],
-      columns: columnsFor('WATER'),
-      stream: 'WATER',
+      columns: columnsFor('JIVO_BEVERAGES'),
+      sheet: 'Beverages',
     });
 
-    const [headers] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets.WATER, {
+    const [headers] = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets.Beverages, {
       header: 1,
     });
     expect(headers).toContain('Water+WG Ltr');
