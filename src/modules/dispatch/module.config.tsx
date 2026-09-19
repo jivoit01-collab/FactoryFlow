@@ -22,6 +22,7 @@ const PreviouslyRegisteredVehiclePage = lazy(
   () => import('@/modules/vehicle-management/pages/PreviouslyRegisteredVehiclePage'),
 );
 const DispatchTrackingPage = lazy(() => import('@/modules/dispatch/pages/DispatchTrackingPage'));
+const DispatchSheetPage = lazy(() => import('./pages/DispatchSheetPage'));
 const ServiceGRPODashboardPage = lazy(
   () => import('@/modules/warehouse/grpo/pages/ServiceGRPODashboardPage'),
 );
@@ -69,6 +70,7 @@ const dispatchViewPermissions = [
   // /dispatch landing. Every other child's view perm is represented here too.
   DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
   DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW,
+  DISPATCH_PERMISSIONS.VIEW_SHEET,
   // Service GRPO (transporter bilty) is a dispatch function — gate the module on
   // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
   // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
@@ -151,6 +153,14 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW],
       breadcrumb: { label: 'Inside Vehicle Manager' },
+    },
+    {
+      // The outward register the desk used to keep in Excel.
+      path: '/dispatch/sheet',
+      element: <DispatchSheetPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET, DISPATCH_PERMISSIONS.VIEW_PLANS],
+      breadcrumb: { label: 'Dispatch Sheet' },
     },
     {
       path: '/dispatch/tracking',
@@ -352,6 +362,11 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/docking',
           title: 'Docking',
           permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
+        },
+        {
+          path: '/dispatch/sheet',
+          title: 'Sheet',
+          permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET],
         },
         {
           path: '/dispatch/tracking',

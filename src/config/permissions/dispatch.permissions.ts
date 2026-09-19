@@ -22,6 +22,10 @@ export const DISPATCH_PERMISSIONS = {
   CREATE_BILL_SUMMARY: 'dispatch_plans.can_create_bill_summary',
   PICK_BILL_SUMMARY: 'dispatch_plans.can_pick_bill_summary',
   CANCEL_BILL_SUMMARY: 'dispatch_plans.can_cancel_bill_summary',
+  // The Dispatch Sheet — the outward register, read-only. Anyone who can see
+  // the plans sees it too; the right of its own is for the office staff who
+  // keep the register and have no business editing a plan.
+  VIEW_SHEET: 'dispatch_plans.can_view_dispatch_sheet',
   // Dispatch Tracking (post-dispatch truck status log).
   DISPATCH_TRACKING_VIEW: 'gate_core.can_view_dispatch_tracking',
   DISPATCH_TRACKING_UPDATE: 'gate_core.can_update_dispatch_tracking',

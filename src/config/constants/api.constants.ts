@@ -710,6 +710,8 @@ export const API_ENDPOINTS = {
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
     PLAN_REMOVE: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/remove/`,
     BULK_DISPATCH_DATE: '/dispatch-plans/bills/plan/bulk-dispatch-date/',
+    // The Dispatch Sheet: the outward register, a window of days at a time.
+    SHEET: '/dispatch-plans/sheet/',
   },
   // Dispatch Pipeline Dashboard (vehicle stage board)
   DISPATCH_PIPELINE: {
