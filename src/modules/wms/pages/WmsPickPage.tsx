@@ -7,6 +7,7 @@
  * item, then entering the quantity. When a stop consumes a whole pallet, the
  * mandatory outbound audit is applied before it leaves.
  */
+import { formatDay } from '@/shared/utils';
 import { CheckCircle2, MapPin, ScanLine } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -207,7 +208,7 @@ export default function WmsPickPage() {
                 Pick <span className="font-medium text-foreground">{current.quantity}</span> of{' '}
                 {current.itemName || current.itemCode}
                 {current.lotNumber ? ` · lot ${current.lotNumber}` : ''}
-                {current.expiryDate ? ` · exp ${current.expiryDate.slice(0, 10)}` : ''}
+                {current.expiryDate ? ` · exp ${formatDay(current.expiryDate)}` : ''}
                 {isFullPallet ? ' · whole pallet (audit required)' : ''}
               </p>
             </div>

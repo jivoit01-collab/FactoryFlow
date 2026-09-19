@@ -38,7 +38,7 @@ import {
   DialogTitle,
   Input,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { getErrorMessage, formatDay } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import { MpChannelSelect } from '../components/MpChannelSelect';
@@ -436,7 +436,7 @@ function SheetRow({
                   <Package className="h-3.5 w-3.5" /> {sheet.parcels} parcels
                 </span>
                 · {sheet.orders} orders
-                {sheet.created_at && <span>· {sheet.created_at.slice(0, 10)}</span>}
+                {sheet.created_at && <span>· {formatDay(sheet.created_at)}</span>}
               </div>
               {/* progress */}
               <div className="mt-2 flex items-center gap-2">

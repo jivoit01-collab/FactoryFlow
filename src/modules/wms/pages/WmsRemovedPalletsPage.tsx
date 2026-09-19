@@ -9,6 +9,7 @@
  * drops off the list. The rest — removed from the map but still live in barcode —
  * remain, with a Restore action to put them back.
  */
+import { formatDay } from '@/shared/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRightLeft, PackageX, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
@@ -26,7 +27,7 @@ const TERMINAL_BARCODE_STATUSES = new Set(['DISPATCHED', 'VOID']);
 
 function formatWhen(iso: string): string {
   if (!iso) return '';
-  return iso.length >= 16 ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10);
+  return iso.length >= 16 ? `${formatDay(iso)} ${iso.slice(11, 16)}` : formatDay(iso);
 }
 
 export default function WmsRemovedPalletsPage() {

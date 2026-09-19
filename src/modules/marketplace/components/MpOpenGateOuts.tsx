@@ -35,7 +35,7 @@ import {
   DialogTitle,
   Input,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { getErrorMessage, formatDay } from '@/shared/utils';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import type { MarketplaceChannel, MpGatePass } from '../types/marketplace.types';
@@ -134,7 +134,7 @@ export function MpOpenGateOuts({ channel, passes, loading, onDone }: Props) {
                     tare {kg(p.tare_weight)} · gross {kg(p.gross_weight)} · net {kg(p.net_weight)}
                   </span>
                 )}
-                <span>raised {p.created_at.slice(0, 10)}</span>
+                <span>raised {formatDay(p.created_at)}</span>
                 {p.attachments.length > 0 && (
                   <a
                     href={p.attachments[0].file_url}

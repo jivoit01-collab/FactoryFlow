@@ -31,7 +31,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 const today = () => new Date().toISOString().slice(0, 10);
@@ -79,7 +79,7 @@ export default function AtmPage() {
   } = useLocalColumns(
     statement?.movements ?? [],
     {
-      date: { value: (row) => row.date },
+      date: { value: (row) => formatDay(row.date) },
       kind: { value: (row) => (row.kind === 'RECEIPT' ? 'Paid on' : 'Withdrawn') },
       detail: { value: (row) => row.detail },
       // One amount, two columns, the movement deciding which shows it.
@@ -232,7 +232,7 @@ export default function AtmPage() {
                       const paidOn = row.kind === 'RECEIPT';
                       return (
                         <tr key={`${row.kind}-${row.id}`} className="border-b hover:bg-muted/40">
-                          <td className="whitespace-nowrap px-3 py-2">{row.date}</td>
+                          <td className="whitespace-nowrap px-3 py-2">{formatDay(row.date)}</td>
                           <td className="px-3 py-2">
                             <Badge
                               variant="outline"

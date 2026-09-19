@@ -5,7 +5,9 @@ export const APP_DESCRIPTION = 'Jivo Info - Management System for Jivo Wellness'
 export const APP_DEFAULTS = {
   language: 'en',
   theme: 'light' as const,
-  dateFormat: 'DD/MM/YYYY',
+  // dd-mm-yyyy throughout. Slashes read as ambiguous to anybody who has
+  // ever met an American date; the dashes are the house style.
+  dateFormat: 'DD-MM-YYYY',
   timeFormat: 'HH:mm',
   timezone: 'Asia/Kolkata',
 } as const;

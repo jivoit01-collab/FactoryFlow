@@ -27,50 +27,54 @@ export function formatDateTime(date: Date | string): string {
 }
 
 /**
- * Formats a date/time for short display (e.g., "Jan 15, 10:30 AM").
- * Used commonly in dashboard lists and tables.
+ * A date and time for a list or a table: `17-09-2026 14:05`.
  *
- * @param dateTime - The date/time string or Date object
- * @returns Formatted string or '-' if input is empty/invalid
+ * Was "Sep 17, 02:05 PM", which is an American way of writing a date in an
+ * Indian factory, and left the year off entirely -- fine until a register
+ * holds two years of it.
  */
 export function formatDateTimeShort(dateTime?: string | Date | null): string {
   if (!dateTime) return '-';
   try {
     const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime;
     if (isNaN(date.getTime())) return '-';
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return `${formatDate(date)} ${formatTime(date)}`;
   } catch {
     return typeof dateTime === 'string' ? dateTime : '-';
   }
 }
 
 /**
- * Formats a date/time for full display (e.g., "15 Jan 2024, 10:30 AM").
- * Used in detail views and forms.
- *
- * @param dateTime - The date/time string or Date object
- * @returns Formatted string or '-' if input is empty/invalid
+ * The same, spelled out for a detail view: `17-09-2026 14:05:33`.
  */
 export function formatDateTimeFull(dateTime?: string | Date | null): string {
   if (!dateTime) return '-';
   try {
     const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime;
     if (isNaN(date.getTime())) return '-';
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return `${formatDate(date)} ${formatTime(date, 'HH:mm:ss')}`;
   } catch {
     return typeof dateTime === 'string' ? dateTime : '-';
   }
+}
+
+/**
+ * A day on its own, from whatever the server sent: `17-09-2026`.
+ *
+ * Built for the plain `YYYY-MM-DD` a date column arrives as, which is read
+ * here rather than handed to `new Date` -- that would read it as UTC midnight
+ * and show the day before to anybody east of Greenwich, which is everybody
+ * using this.
+ */
+export function formatDay(value?: string | Date | null): string {
+  if (!value) return '-';
+  if (typeof value === 'string') {
+    const iso = value.slice(0, 10);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+  }
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return isNaN(date.getTime()) ? '-' : formatDate(date);
 }
 
 /**

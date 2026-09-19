@@ -40,7 +40,7 @@ import {
   useSpreadsheetKeys,
 } from '@/shared/components/sheetGrid';
 import { Badge, Button, Card, CardContent, Checkbox } from '@/shared/components/ui';
-import { formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
 
 import { CashEntryDialog } from './CashEntryDialog';
 
@@ -417,7 +417,19 @@ export default function CashBookPage() {
           Show cancelled
         </label>
 
-        <div className="flex items-center gap-1 rounded-md border p-0.5">
+        {filteredColumns.length > 0 && (
+          <>
+            <span className="text-sm text-muted-foreground">
+              Filtered by {filteredColumns.join(', ')}
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          </>
+        )}
+        {/* Pushed to the right: this changes the whole view, so it does
+            not belong among the controls that change what is in it. */}
+        <div className="ml-auto flex items-center gap-1 rounded-md border p-0.5">
           <Button
             variant={sheetMode ? 'ghost' : 'secondary'}
             size="sm"
@@ -435,17 +447,6 @@ export default function CashBookPage() {
             <Table2 className="mr-1 h-3 w-3" /> Sheet
           </Button>
         </div>
-
-        {filteredColumns.length > 0 && (
-          <>
-            <span className="text-sm text-muted-foreground">
-              Filtered by {filteredColumns.join(', ')}
-            </span>
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          </>
-        )}
       </div>
 
       {/* A greyed-out tick column explains nothing by itself. When none of
@@ -609,7 +610,7 @@ export default function CashBookPage() {
                         </td>
                       )}
                       <td className="px-3 py-2 tabular-nums">{row.serial_number ?? '—'}</td>
-                      <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatDay(row.entry_date)}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.bunch ? row.bunch.number : '—'}
                       </td>
@@ -686,7 +687,7 @@ export default function CashBookPage() {
                         </Badge>
                         {row.approval_decided_at ? (
                           <p className="mt-1 text-[10px] text-muted-foreground">
-                            {row.approval_decided_at.slice(0, 10)}
+                            {formatDay(row.approval_decided_at)}
                           </p>
                         ) : (
                           row.approver_name && (

@@ -105,7 +105,7 @@ describe('toClipboardRows', () => {
     const lines = text.split('\r\n');
     expect(lines).toHaveLength(2);
     expect(lines[0]).toBe(
-      '12/09/2026\tHARPREET SINGH CASH SALE\t\t626090350\t1100\tPosted\tNot tracked',
+      '12-09-2026\tHARPREET SINGH CASH SALE\t\t626090350\t1100\tPosted\tNot tracked',
     );
     expect(lines[1]).toContain('AVNEESH JI');
   });
@@ -125,7 +125,7 @@ describe('buildArInvoiceWorkbook', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
-      Date: '12/09/2026',
+      Date: '12-09-2026',
       Customer: 'HARPREET SINGH CASH SALE',
       'SAP invoice': '626090350',
       Amount: 1100,

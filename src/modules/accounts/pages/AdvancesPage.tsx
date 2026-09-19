@@ -39,7 +39,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
-import { formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 const today = () => new Date().toISOString().slice(0, 10);
@@ -127,7 +127,7 @@ export default function AdvancesPage() {
   } = useLocalColumns(
     statement?.movements ?? [],
     {
-      date: { value: (row) => row.date },
+      date: { value: (row) => formatDay(row.date) },
       kind: { value: (row) => MOVEMENT_LABEL[row.kind] ?? row.kind },
       detail: { value: (row) => row.detail },
       // One amount, two columns: what they took, and what they cleared.
@@ -366,7 +366,7 @@ export default function AdvancesPage() {
                             removed ? 'text-muted-foreground line-through' : ''
                           }`}
                         >
-                          <td className="whitespace-nowrap px-3 py-2">{row.date}</td>
+                          <td className="whitespace-nowrap px-3 py-2">{formatDay(row.date)}</td>
                           <td className="px-3 py-2">
                             <Badge variant="outline" className={MOVEMENT_TONE[row.kind] ?? ''}>
                               {MOVEMENT_LABEL[row.kind] ?? row.kind}

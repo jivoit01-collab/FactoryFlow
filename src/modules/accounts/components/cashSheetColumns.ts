@@ -1,5 +1,5 @@
 import type { CashEntry } from '@/modules/accounts/api';
-import { formatNumber } from '@/shared/utils';
+import { formatDay,formatNumber } from '@/shared/utils';
 
 /**
  * The columns of the cash book read as a sheet.
@@ -34,7 +34,7 @@ export interface CashSheetColumn {
  */
 export const CASH_SHEET_COLUMNS: CashSheetColumn[] = [
   { key: 'serial', label: 'Sr.', align: 'right', value: (row) => String(row.serial_number ?? '') },
-  { key: 'date', label: 'Date', value: (row) => row.entry_date },
+  { key: 'date', label: 'Date', value: (row) => formatDay(row.entry_date) },
   { key: 'bunch', label: 'Bunch', value: (row) => (row.bunch ? String(row.bunch.number) : '') },
   { key: 'branch', label: 'Branch', value: (row) => row.branch_name ?? '' },
   { key: 'gl_code', label: 'G/L', value: (row) => row.gl_account_code },

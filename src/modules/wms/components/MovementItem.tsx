@@ -6,6 +6,7 @@
  * Out (left here); the counterpart location's code is shown when resolvable via
  * `codeById`.
  */
+import { formatDay } from '@/shared/utils';
 import { Badge } from '@/shared/components/ui';
 
 import type { MovementLogEntry, WmsId } from '../types';
@@ -13,7 +14,7 @@ import type { MovementLogEntry, WmsId } from '../types';
 /** ISO datetime → "YYYY-MM-DD HH:MM". */
 function formatWhen(iso: string): string {
   if (!iso) return '';
-  return iso.length >= 16 ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10);
+  return iso.length >= 16 ? `${formatDay(iso)} ${iso.slice(11, 16)}` : formatDay(iso);
 }
 
 interface MovementItemProps {

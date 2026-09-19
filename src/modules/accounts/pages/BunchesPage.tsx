@@ -27,7 +27,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
-import { formatDateTimeShort, formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDateTimeShort, formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
@@ -65,7 +65,7 @@ export default function BunchesPage() {
         value: (bunch) => `Bunch ${bunch.number}`,
         sortValue: (bunch) => bunch.number,
       },
-      created: { value: (bunch) => bunch.created_at.slice(0, 10) },
+      created: { value: (bunch) => formatDay(bunch.created_at) },
       by: { value: (bunch) => bunch.created_by_name },
       vouchers: {
         value: (bunch) => String(bunch.entry_count),
@@ -77,7 +77,7 @@ export default function BunchesPage() {
         sortValue: (bunch) => Number(bunch.total),
         total: (bunch) => Number(bunch.total),
       },
-      sent: { value: (bunch) => (bunch.is_sent ? bunch.sent_at!.slice(0, 10) : null) },
+      sent: { value: (bunch) => (bunch.is_sent ? formatDay(bunch.sent_at) : null) },
     },
     { key: 'number', direction: 'desc' },
   );
@@ -366,7 +366,7 @@ export default function BunchesPage() {
                   {detail.entries.map((entry) => (
                     <tr key={entry.id} className="border-b align-top">
                       <td className="px-3 py-2 font-mono text-xs">{entry.id}</td>
-                      <td className="whitespace-nowrap px-3 py-2">{entry.entry_date}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{formatDay(entry.entry_date)}</td>
                       <td className="px-3 py-2">{entry.branch_name ?? '—'}</td>
                       <td className="px-3 py-2 text-xs">{entry.gl_account_name}</td>
                       <td className="max-w-[420px] px-3 py-2">{entry.detail}</td>

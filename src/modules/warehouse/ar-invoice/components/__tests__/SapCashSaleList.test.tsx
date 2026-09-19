@@ -130,8 +130,8 @@ describe('SapCashSaleList', () => {
     expect(html).toContain('Akash');
     expect(html).toContain('₹850.00');
     // The range is stated: an invisible window reads as "SAP has nothing".
-    expect(html).toContain('13/06/2026');
-    expect(html).toContain('11/09/2026');
+    expect(html).toContain('13-06-2026');
+    expect(html).toContain('11-09-2026');
   });
 
   it('says which side raised each invoice', () => {
@@ -240,6 +240,6 @@ describe('SapCashSaleList', () => {
     state({ data: history({ invoices: [], count: 0 }) });
     const html = renderToStaticMarkup(<SapCashSaleList />);
     expect(html).toContain('No cash sales in SAP');
-    expect(html).toContain('13/06/2026');
+    expect(html).toContain('13-06-2026');
   });
 });

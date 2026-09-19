@@ -24,7 +24,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
-import { formatDateTimeShort, formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDateTimeShort, formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
@@ -82,7 +82,7 @@ export default function CashApprovalsPage() {
   const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
     all,
     {
-      date: { value: (row) => row.entry_date },
+      date: { value: (row) => formatDay(row.entry_date) },
       branch: { value: (row) => row.branch_name },
       gl: { value: (row) => row.gl_account_name },
       item: { value: (row) => row.item },
@@ -302,7 +302,7 @@ export default function CashApprovalsPage() {
                         />
                       </td>
                     )}
-                    <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
+                    <td className="whitespace-nowrap px-3 py-2">{formatDay(row.entry_date)}</td>
                     <td className="px-3 py-2">{row.branch_name ?? '—'}</td>
                     <td className="px-3 py-2">
                       {row.gl_account_code ? (

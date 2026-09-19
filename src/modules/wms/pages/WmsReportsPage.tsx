@@ -6,6 +6,7 @@
  * inverse, filterable movement/audit history, replenishment, and expiry. Pure
  * report functions live in services/reports; this page just wires inputs to them.
  */
+import { formatDay } from '@/shared/utils';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -316,7 +317,7 @@ function History({ movements }: { movements: Parameters<typeof filterMovements>[
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
                 {entry.quantity ? `${entry.quantity}` : ''}
                 {entry.discrepancy ? <span className="text-amber-600">Δ</span> : null}
-                {entry.createdAt.slice(0, 10)}
+                {formatDay(entry.createdAt)}
               </span>
             </Row>
           ))}
