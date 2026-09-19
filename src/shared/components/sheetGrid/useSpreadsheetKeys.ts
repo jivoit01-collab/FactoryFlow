@@ -32,9 +32,17 @@ const PAGE_JUMP = 10;
 
 export function useSpreadsheetKeys({
   onCopy,
+  copyText,
 }: {
-  /** Called with the cell's text when it is copied, for whatever feedback. */
+  /** Called with the text when it is copied, for whatever feedback. */
   onCopy?: (text: string) => void;
+  /**
+   * What Ctrl+C should put on the clipboard instead of the cell under the
+   * cursor — the selected block, on a page that has selections. Returning
+   * null falls back to the cell, so a page with nothing picked still copies
+   * the one the cursor is on.
+   */
+  copyText?: () => string | null;
 } = {}) {
   const gridRef = useRef<HTMLTableElement>(null);
 
@@ -95,9 +103,12 @@ export function useSpreadsheetKeys({
       }
 
       if (step && (key === 'c' || key === 'C')) {
-        // innerText where there is a layout to ask (it keeps the line
-        // breaks a cell shows); textContent everywhere else.
-        const text = (cell.innerText ?? cell.textContent ?? '').trim();
+        // The picked block if there is one -- tab-separated, so it pastes
+        // into a spreadsheet as cells. Otherwise the cell under the cursor:
+        // innerText where there is a layout to ask (it keeps the line breaks
+        // a cell shows), textContent everywhere else.
+        const text =
+          copyText?.() ?? (cell.innerText ?? cell.textContent ?? '').trim();
         if (!text) return;
         event.preventDefault();
         void navigator.clipboard
@@ -108,7 +119,7 @@ export function useSpreadsheetKeys({
           });
       }
     },
-    [onCopy],
+    [onCopy, copyText],
   );
 
   /**

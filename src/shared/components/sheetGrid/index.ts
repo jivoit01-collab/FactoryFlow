@@ -6,17 +6,18 @@
  * dispatch sheet. They are read the same way, so the parts that make a table
  * read like a sheet live here rather than inside whichever module happened to
  * need them first: a filter and a sort on every column header, arrow keys that
- * walk the cells, and row-and-column selection with the figures for what is
- * picked.
+ * walk the cells, and cell selection -- a dragged block, a row, a column or
+ * the sheet -- with the figures for whatever is picked.
  */
 export { ColumnFilter, type ColumnValue } from './ColumnFilter';
 export { SortHeader } from './SortHeader';
 export { type SortDirection, type SortState, toSortParam, useClientSort } from './sorting';
 export { BLANK, type ColumnSpec, useLocalColumns } from './useLocalColumns';
 export {
+  type CellRange,
   columnLetter,
+  rangeAddress,
   type SelectionFigures,
-  type SheetSelection,
   useSheetSelection,
 } from './useSheetSelection';
 export { useSpreadsheetKeys } from './useSpreadsheetKeys';

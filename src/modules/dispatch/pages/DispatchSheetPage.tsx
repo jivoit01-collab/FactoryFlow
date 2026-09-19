@@ -127,8 +127,6 @@ export default function DispatchSheetPage() {
     activeColumn: openColumn,
   });
 
-  const { gridProps } = useSpreadsheetKeys({ onCopy: () => toast.success('Copied') });
-
   const byKey = useMemo(() => {
     const map = new Map<string, SheetColumn>();
     for (const column of columns) map.set(column.key, column);
@@ -139,9 +137,18 @@ export default function DispatchSheetPage() {
     rows,
     columnKeys: columns.map((column) => column.key),
     numberAt: (row, key) => byKey.get(key)?.number?.(row) ?? null,
+    textAt: (row, key) => byKey.get(key)?.value(row) ?? '',
     // A different tab, window or company scope is a different set of lines, so
     // "rows 3 to 10" no longer means anything and the selection goes.
     reset: `${stream}|${dateFrom}|${dateTo}|${allCompanies}|${filteredColumns.join()}`,
+  });
+
+  // Ctrl+C hands over the picked block, tab-separated, so what is copied here
+  // pastes into a spreadsheet as cells rather than as one run of text in one.
+  // Nothing picked falls back to the cell under the cursor.
+  const { gridProps } = useSpreadsheetKeys({
+    copyText: () => selection.selectionText(),
+    onCopy: () => toast.success('Copied'),
   });
 
   /** Column totals over what is on screen — the sheet's own footing line. */
@@ -272,7 +279,12 @@ export default function DispatchSheetPage() {
       ) : (
         <div className="rounded-md border">
           <div className="max-h-[70vh] overflow-auto">
-            <table {...gridProps} className={`w-full text-sm ${gridProps.className}`}>
+            <table
+              {...gridProps}
+              className={`w-full text-sm ${gridProps.className} ${
+                selection.dragging ? 'select-none' : ''
+              }`}
+            >
               <thead className="sticky top-0 z-10 bg-muted">
                 {/* The letters across the top of a sheet. Clicking one picks
                     the column; the corner picks everything. They are a
@@ -290,9 +302,13 @@ export default function DispatchSheetPage() {
                     <th
                       key={column.key}
                       className={`cursor-pointer border-r px-1 py-0.5 text-center font-normal hover:bg-primary/20 ${
-                        selection.isColumnPicked(column.key) ? 'bg-primary/20' : ''
+                        selection.isColumnPicked(index)
+                          ? 'bg-primary/30'
+                          : selection.isColumnTouched(index)
+                            ? 'bg-primary/10'
+                            : ''
                       }`}
-                      onClick={(event) => selection.pickColumn(column.key, event.shiftKey)}
+                      onClick={(event) => selection.pickColumn(index, event.shiftKey)}
                       title={`Select column ${column.label}`}
                     >
                       {columnLetter(index)}
@@ -321,22 +337,30 @@ export default function DispatchSheetPage() {
                     <th
                       scope="row"
                       className={`w-10 cursor-pointer border-r bg-muted/60 px-1 py-1 text-center text-[10px] font-normal text-muted-foreground hover:bg-primary/20 ${
-                        selection.isRowPicked(index) ? 'bg-primary/20' : ''
+                        selection.isRowPicked(index)
+                          ? 'bg-primary/30'
+                          : selection.isRowTouched(index)
+                            ? 'bg-primary/10'
+                            : ''
                       }`}
                       onClick={(event) => selection.pickRow(index, event.shiftKey)}
                       title={`Select row ${index + 1}`}
                     >
                       {index + 1}
                     </th>
-                    {columns.map((column) => (
+                    {columns.map((column, columnIndex) => (
                       <td
                         key={column.key}
                         className={`px-3 py-1.5 ${
                           column.align === 'right' ? 'text-right tabular-nums' : ''
                         } ${column.wide ? 'max-w-[280px] truncate' : 'whitespace-nowrap'} ${
-                          selection.cellClass(index, column.key)
+                          selection.cellClass(index, columnIndex)
                         }`}
                         title={column.wide ? column.value(row) : undefined}
+                        onMouseDown={(event) =>
+                          selection.startCell(index, columnIndex, event.shiftKey)
+                        }
+                        onMouseEnter={() => selection.extendCell(index, columnIndex)}
                       >
                         {column.value(row)}
                       </td>
@@ -374,14 +398,9 @@ export default function DispatchSheetPage() {
           <div className="flex flex-wrap items-center gap-4 border-t bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             {selection.figures ? (
               <>
-                <span>
-                  {selection.selection.kind === 'all'
-                    ? 'Whole sheet'
-                    : selection.selection.kind === 'rows'
-                      ? `${selection.selection.rows.size} ${selection.selection.rows.size === 1 ? 'row' : 'rows'}`
-                      : `${selection.selection.columns.size} ${selection.selection.columns.size === 1 ? 'column' : 'columns'}`}{' '}
-                  picked
-                </span>
+                {/* The address first, as a sheet's name box has it. */}
+                <span className="font-mono text-foreground">{selection.address}</span>
+                <span>{selection.describe()}</span>
                 <span>Count {selection.figures.cells.toLocaleString('en-IN')}</span>
                 <span>Numbers {selection.figures.numbers.toLocaleString('en-IN')}</span>
                 <span className="font-medium text-foreground">
@@ -396,8 +415,9 @@ export default function DispatchSheetPage() {
               </>
             ) : (
               <span>
-                Click a row number or a column letter to pick one — shift-click to extend.
-                Click a cell and the arrow keys walk the sheet; Ctrl+C copies it.
+                Drag across cells to pick a block — or a row number, a column letter or the
+                corner for the whole of one. Shift extends it, Ctrl+C copies it, and the
+                arrow keys walk the sheet.
               </span>
             )}
             <span className="ml-auto">
