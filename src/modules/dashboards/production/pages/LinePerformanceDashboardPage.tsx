@@ -43,11 +43,13 @@ const BLOWING_YIELD_TARGET = 99;
  * it should have made in the time it ran; for a blowing machine, good bottles
  * against what the counter says it blew.
  *
- * The board's shape is the day's own: one tile per machine that carried a run,
- * so five lines on 17 September give five tiles and nothing else. A machine the
- * plant did not touch has no tile — every tile here is something somebody has
- * to answer for, and padding the grid out would push the ones that matter off
- * the screen.
+ * The board's shape is the day's own. A machine the plant did not touch has no
+ * tile — every tile here is something somebody has to answer for, and padding
+ * the grid out would push the ones that matter off the screen. A filling line
+ * gets a tile per SKU it ran rather than per line: a changeover is two
+ * different jobs at two different ratings, and folding them together produced a
+ * running time and an efficiency that belonged to neither. A blowing machine
+ * gets one tile, since it blows one preform.
  *
  * Both halves read their configuration as well as their runs. A filling line
  * whose run was entered without a preset still gets a rated speed and a pack
@@ -240,7 +242,7 @@ export default function LinePerformanceDashboardPage() {
               ))
             : board.tiles.map((tile) => (
                 <LinePerformanceTile
-                  key={tile.lineId}
+                  key={tile.key}
                   tile={tile}
                   unitNoun={unitNoun}
                   unit={unit}

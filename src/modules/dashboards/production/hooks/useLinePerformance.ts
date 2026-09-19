@@ -3,8 +3,8 @@
  *
  * The day wall answers "what did the plant make"; this answers "which line is
  * carrying it and which one is losing it" — the same figures, cut per line
- * instead of per plant. Five lines carrying runs on the day give five tiles:
- * the board's shape is the day's own.
+ * instead of per plant, and per SKU within a line that changed over. The
+ * board's shape is the day's own.
  *
  * Three sources, all app-side. There is deliberately no SAP reconciliation
  * here: a Service Layer outage must not empty a board whose whole subject is

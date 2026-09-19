@@ -91,10 +91,12 @@ describe('buildLineTiles', () => {
 
     expect(board.tiles).toHaveLength(5);
     expect(board.lines).toBe(5);
+    expect(board.cards).toBe(5);
     expect(board.tiles.map((tile) => tile.lineId).sort()).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it('gives a line with three runs one tile, not three', () => {
+  it('gives a line three runs of ONE SKU as one tile, not three', () => {
+    // A lunch break splits a job in two on the register; it is still one job.
     const board = build([
       row(1, 'COMPLETED', 1),
       row(1, 'COMPLETED', 2),
@@ -103,6 +105,101 @@ describe('buildLineTiles', () => {
 
     expect(board.tiles).toHaveLength(1);
     expect(board.tiles[0].runs).toHaveLength(3);
+  });
+
+  it('gives a line that changed over a tile per SKU, each on its own clock', () => {
+    // 6 Head on 2026-09-18: 1,720 cases of one SKU in 8h 8m, then 336 of
+    // another in 12h 54m. One tile read "2 runs · 21h 2m", a running time
+    // nothing on the floor ever did.
+    const board = build([
+      row(1, 'COMPLETED', 3, {
+        itemCode: 'FG0000372',
+        metrics: metrics({ producedCases: 1_720, runningMinutes: 488, expectedCases: 1_626 }),
+      }),
+      row(1, 'COMPLETED', 4, {
+        itemCode: 'FG0000466',
+        metrics: metrics({ producedCases: 336, runningMinutes: 774, expectedCases: 4_257 }),
+      }),
+    ]);
+
+    expect(board.tiles).toHaveLength(2);
+    expect(board.tiles.map((tile) => [tile.itemCode, tile.cases, tile.runningMinutes])).toEqual([
+      ['FG0000372', 1_720, 488],
+      ['FG0000466', 336, 774],
+    ]);
+    // Each SKU is graded against its own rating rather than the line's day.
+    expect(board.tiles.map((tile) => tile.efficiencyPct)).toEqual([105.8, 7.9]);
+    // Every tile carries the line it ran on, and its own React key.
+    expect(board.tiles.every((tile) => tile.lineId === 1)).toBe(true);
+    expect(new Set(board.tiles.map((tile) => tile.key)).size).toBe(2);
+  });
+
+  it('counts the machines, not the tiles, when a line ran two SKUs', () => {
+    const board = build([
+      row(1, 'COMPLETED', 1, { itemCode: 'FG001' }),
+      row(1, 'RUNNING', 2, { itemCode: 'FG002' }),
+      row(2, 'COMPLETED', 1, { itemCode: 'FG003' }),
+    ]);
+
+    expect(board.cards).toBe(3);
+    // Two lines ran, and the one carrying a live SKU is a running line.
+    expect(board.lines).toBe(2);
+    expect(board.running).toBe(1);
+    expect(board.finished).toBe(1);
+  });
+
+  it('keeps a line’s tiles together and in the order it ran them', () => {
+    const segment = (start: string): ProductionSegment => ({
+      id: Math.random(),
+      start_time: start,
+      end_time: '2026-09-18T23:00:00Z',
+      produced_cases: '10',
+      is_active: false,
+      is_manual: false,
+      duration_minutes: 0,
+      remarks: '',
+      created_at: start,
+      updated_at: start,
+    });
+
+    const board = build([
+      row(1, 'COMPLETED', 4, {
+        itemCode: 'FG002',
+        segments: [segment('2026-09-18T15:35:00Z')],
+      }),
+      row(1, 'COMPLETED', 3, {
+        itemCode: 'FG001',
+        segments: [segment('2026-09-18T03:31:00Z')],
+      }),
+      row(2, 'COMPLETED', 1, { itemCode: 'FG003' }),
+    ]);
+
+    expect(board.tiles.map((tile) => [tile.lineName, tile.itemCode])).toEqual([
+      ['Line 1', 'FG001'],
+      ['Line 1', 'FG002'],
+      ['Line 2', 'FG003'],
+    ]);
+  });
+
+  it('gives a run with no item code a tile of its own rather than pooling it', () => {
+    // Two unidentified jobs summed under one heading is the exact reading the
+    // split exists to stop.
+    const board = build([
+      row(1, 'COMPLETED', 1, { itemCode: '', product: '' }),
+      row(1, 'COMPLETED', 2, { itemCode: '', product: '' }),
+    ]);
+
+    expect(board.tiles).toHaveLength(2);
+  });
+
+  it('falls back to the product name when only the item code is missing', () => {
+    const board = build([
+      row(1, 'COMPLETED', 1, { itemCode: '', product: 'MUSTARD 1 LTR' }),
+      row(1, 'COMPLETED', 2, { itemCode: '', product: 'MUSTARD 1 LTR' }),
+    ]);
+
+    expect(board.tiles).toHaveLength(1);
+    expect(board.tiles[0].runs).toHaveLength(2);
   });
 
   it('shows no tile at all on a day nothing ran', () => {

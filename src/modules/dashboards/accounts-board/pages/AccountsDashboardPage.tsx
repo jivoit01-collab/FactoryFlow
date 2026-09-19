@@ -1,13 +1,14 @@
 import '../styles/accounts-board.css';
 
 import { Wallet, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
-import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
+import { Badge, Card, CardContent } from '@/shared/components/ui';
 import { formatNumber } from '@/shared/utils';
 
 import { useAccountsBoard } from '../api';
 import { BUCKET_COLOUR_FALLBACK, BUCKET_COLOURS } from '../constants';
+import { useSectionRotation } from '../hooks';
 import type {
   AccountsBoardResponse,
   AccountsBucket,
@@ -308,11 +309,9 @@ function RowTable<T>({
 function Details({
   selection,
   namesVisible,
-  onClose,
 }: {
   selection: AccountsSelection;
   namesVisible: boolean;
-  onClose: () => void;
 }) {
   if (!selection) {
     return (
@@ -427,9 +426,6 @@ function Details({
             Names are hidden for your login. The figures are complete.
           </p>
         )}
-      <Button variant="ghost" className="ab-details-close" onClick={onClose}>
-        <X className="mr-2 h-4 w-4" /> Clear selection
-      </Button>
     </>
   );
 }
@@ -447,6 +443,42 @@ export default function AccountsDashboardPage() {
   const meta = data?.meta;
   const headline = data?.headline;
   const detail = data?.detail;
+
+  /**
+   * The Details panel cycles the breakdown lines when nobody has picked one.
+   *
+   * It is the only panel on the page with nothing to show at rest — every
+   * other one is a list that is always worth reading — so leaving it on
+   * "Select any row to see its full record" is a third of the screen saying
+   * nothing. Rotating it turns that space into Vendor A/P, then Expenses, then
+   * Salary adjustment, then Payment pending, with each line's G/L heads under
+   * it.
+   *
+   * TWO INDEPENDENT REASONS TO STOP, kept apart because they clear at
+   * different moments: a manual selection, and the pointer resting on the
+   * panel. Folded into one boolean, moving the mouse away restarted the clock
+   * while the row somebody had clicked was still open, and the panel changed
+   * out from under them.
+   */
+  const [hovering, setHovering] = useState(false);
+  const holdDetails = useCallback((holding: boolean) => setHovering(holding), []);
+  const buckets = detail?.buckets ?? [];
+  const rotation = useSectionRotation(
+    buckets.length,
+    hovering || selection !== null,
+  );
+
+  /**
+   * What the Details panel is actually showing.
+   *
+   * A manual selection always wins; otherwise it is whichever breakdown line
+   * has the stage. One value, so the panel and the highlighted line in the
+   * rail can never disagree about which is current.
+   */
+  const shown: AccountsSelection =
+    selection ??
+    (buckets.length > 0 ? { kind: 'bucket', row: buckets[rotation.index] } : null);
+
 
   /**
    * Default to the newest month the book has, once we know what that is.
@@ -613,9 +645,11 @@ export default function AccountsDashboardPage() {
                       key={bucket.key}
                       bucket={bucket}
                       max={bucketMax}
+                      // Follows what the panel is SHOWING, not what was
+                      // clicked, so the lit line and the open record can never
+                      // disagree while the panel is cycling on its own.
                       selected={
-                        selection?.kind === 'bucket' &&
-                        selection.row.key === bucket.key
+                        shown?.kind === 'bucket' && shown.row.key === bucket.key
                       }
                       onSelect={() =>
                         setSelection({ kind: 'bucket', row: bucket })
@@ -635,10 +669,14 @@ export default function AccountsDashboardPage() {
         </div>
 
         {/* middle: the details panel */}
-        <Card className="ab-panel ab-details">
+        <Card
+          className="ab-panel ab-details"
+          onMouseEnter={() => holdDetails(true)}
+          onMouseLeave={() => holdDetails(false)}
+        >
           <div className="ab-panel-head">
             <h3>Details</h3>
-            {selection && (
+            {selection ? (
               <button
                 type="button"
                 className="ab-icon-button"
@@ -647,18 +685,36 @@ export default function AccountsDashboardPage() {
               >
                 <X className="h-4 w-4" />
               </button>
+            ) : (
+              !rotation.paused &&
+              buckets.length > 1 && (
+                <span className="ab-details-auto">
+                  {rotation.index + 1} / {buckets.length}
+                </span>
+              )
             )}
           </div>
+
+          {/* How long this line has left. Only while it is actually moving —
+              a bar frozen at some arbitrary width reads as a broken one.
+              Not a `progressbar` role: it measures a dwell nobody is waiting
+              on, and announcing a value that changes ten times a second would
+              be noise. */}
+          {!selection && !rotation.paused && buckets.length > 1 && (
+            <div className="ab-stage-progress" aria-hidden="true">
+              <span
+                className="ab-stage-progress-fill"
+                style={{ width: `${rotation.progress * 100}%` }}
+              />
+            </div>
+          )}
+
           <div className="ab-panel-body">
-            <Details
-              selection={selection}
-              namesVisible={meta?.names_visible ?? true}
-              onClose={() => setSelection(null)}
-            />
+            <Details selection={shown} namesVisible={meta?.names_visible ?? true} />
           </div>
         </Card>
 
-        {/* right: the three tables */}
+        {/* right: the detail tables, and the people list */}
         <div className="ab-tables">
           <Panel
             title="Imprest issued"
@@ -815,7 +871,10 @@ export default function AccountsDashboardPage() {
 
       {/* The book's own check, stated rather than asserted. */}
       {headline && (
-        <p className="ab-foot">
+        // A <div>, not a <p>: the Badge below renders a <div>, and a block
+        // element inside a paragraph is invalid HTML that React reports as a
+        // hydration error.
+        <div className="ab-foot">
           {headline.reconciliation.balances ? (
             <>
               <Wallet className="h-3.5 w-3.5" /> The book balances: cash in less
@@ -827,7 +886,7 @@ export default function AccountsDashboardPage() {
               The book is out by {rupees(headline.reconciliation.difference)}
             </Badge>
           )}
-        </p>
+        </div>
       )}
 
     </div>
