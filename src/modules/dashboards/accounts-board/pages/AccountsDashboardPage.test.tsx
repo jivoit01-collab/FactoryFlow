@@ -387,6 +387,41 @@ describe('money out with people', () => {
     // 21,626 + 3,790. If this ever renders, the two have been netted.
     expect(screen.queryByText('₹25,416')).not.toBeInTheDocument();
   });
+
+  it('stands them in two columns, each headed with its own total', () => {
+    /**
+     * Not one running list. Stacked, the second block reads as more of the
+     * first — which is the exact misreading the register keeps them apart to
+     * prevent.
+     */
+    const { container } = show(board());
+    const columns = container.querySelectorAll('.ab-people .ab-people-col');
+
+    expect(columns).toHaveLength(2);
+    expect(
+      within(columns[0] as HTMLElement).getByText(/Out with people · ₹21,626/i),
+    ).toBeInTheDocument();
+    expect(
+      within(columns[1] as HTMLElement).getByText(/Owed back to people · ₹3,790/i),
+    ).toBeInTheDocument();
+  });
+
+  it('gives the whole width to one column when nobody is owed anything', () => {
+    const base = board();
+    const { container } = show(
+      board({
+        cash_issued: {
+          ...base.cash_issued!,
+          holders: {
+            ...base.cash_issued!.holders,
+            owed: { rows: [], people: 0, total: 0 },
+          },
+        },
+      }),
+    );
+
+    expect(container.querySelectorAll('.ab-people .ab-people-col')).toHaveLength(1);
+  });
 });
 
 describe('the salary section', () => {

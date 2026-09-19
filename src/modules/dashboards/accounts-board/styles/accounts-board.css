@@ -305,13 +305,61 @@
  * Wide content scrolls inside its own box. The page body must never scroll
  * sideways — a name plus two figures overflows on a narrow laptop, and a
  * horizontally-scrolling page is how a column gets lost entirely.
+ *
+ * The overflow lives on a WRAPPER, not on the table. `display: block` on a
+ * <table> is the obvious way to make it scroll and it silently destroys the
+ * table's own layout: the element becomes a plain block box, its rows shrink
+ * to fit their content, and it stops filling its panel. That is what left
+ * "Cash out with people" rendering as a narrow column against half a panel of
+ * white space. The table keeps `display: table`; scrolling is the wrapper's
+ * job.
  */
+.ab-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
 .ab-table {
   border-collapse: collapse;
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
   width: 100%;
+}
+
+/* Figures and dates must not break mid-value; the wrapper scrolls instead. */
+.ab-table th,
+.ab-table td {
+  white-space: nowrap;
+}
+
+/*
+ * The name column takes the slack, so the figures sit at the right edge where
+ * they can be compared straight down rather than floating wherever the longest
+ * name leaves them.
+ */
+.ab-table th:first-child,
+.ab-table td:first-child {
+  width: 100%;
+}
+
+/*
+ * Out with people, and owed back to them, side by side.
+ *
+ * They are two answers to one question — what is between us and this person —
+ * so they belong in one panel. They are NOT one list, because the money points
+ * opposite ways and a single column invites reading the second block as more
+ * of the first. Two columns state the split by shape.
+ *
+ * `auto-fit` rather than a fixed pair: on a narrow panel, or when nobody is
+ * owed anything, the single remaining column takes the whole width instead of
+ * sitting in half of it.
+ */
+.ab-people {
+  display: grid;
+  gap: 0.5rem 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.ab-people-col {
+  min-width: 0;
 }
 
 .ab-table thead th {
@@ -357,6 +405,12 @@
   margin-top: 0.5rem;
 }
 
+/* Account names are long and this panel is narrow, so wrapping beats
+   scrolling here — there is nothing to compare down a column. */
+.ab-table-tight td {
+  white-space: normal;
+}
+
 .ab-table-tight td {
   font-size: 0.75rem;
   padding: 0.3rem 0;
@@ -371,13 +425,12 @@
 }
 
 .ab-subhead {
-  border-top: 1px solid var(--ab-line);
   color: var(--ab-ink-soft);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  margin: 0.5rem 0 0;
-  padding: 0.5rem 0.75rem 0;
+  margin: 0;
+  padding: 0.25rem 0.75rem 0;
   text-transform: uppercase;
 }
 

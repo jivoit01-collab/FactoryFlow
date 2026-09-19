@@ -252,39 +252,44 @@ function RowTable<T>({
   if (!rows.length) return <p className="ab-empty">{empty}</p>;
 
   return (
-    <table className="ab-table">
-      <thead>
-        <tr>
-          {head.map((label, index) => (
-            <th key={label} className={index === 0 ? '' : 'ab-right'}>
-              {label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, index) => (
-          <tr
-            key={index}
-            className={isSelected(row) ? 'is-selected' : ''}
-            onClick={() => onSelect(row)}
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(row);
-              }
-            }}
-          >
-            {render(row).map((cell, cellIndex) => (
-              <td key={cellIndex} className={cellIndex === 0 ? '' : 'ab-right'}>
-                {cell}
-              </td>
+    // The wrapper carries the overflow. Putting it on the table needs
+    // `display: block`, which throws the table's layout away and leaves it
+    // shrink-wrapped against an empty half-panel.
+    <div className="ab-table-scroll">
+      <table className="ab-table">
+        <thead>
+          <tr>
+            {head.map((label, index) => (
+              <th key={label} className={index === 0 ? '' : 'ab-right'}>
+                {label}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr
+              key={index}
+              className={isSelected(row) ? 'is-selected' : ''}
+              onClick={() => onSelect(row)}
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSelect(row);
+                }
+              }}
+            >
+              {render(row).map((cell, cellIndex) => (
+                <td key={cellIndex} className={cellIndex === 0 ? '' : 'ab-right'}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -753,47 +758,33 @@ export default function AccountsDashboardPage() {
           </Panel>
 
           <Panel
+            // No panel-level total: each column states its own, and one figure
+            // in the header would silently be the left column's while sitting
+            // above both.
             title="Cash out with people"
-            total={rupees(data?.cash_issued?.holders.holding.total)}
             unavailable={absence('cash_issued', meta, 'The advance holders')}
           >
-            <RowTable
-              head={['Name', 'Amount', 'Last cleared']}
-              rows={data?.cash_issued?.holders.holding.rows ?? []}
-              empty="Nobody is holding the factory's cash."
-              isSelected={(row) =>
-                selection?.kind === 'holder' &&
-                !selection.owed &&
-                selection.row.name === row.name
-              }
-              onSelect={(row) =>
-                setSelection({ kind: 'holder', row, owed: false })
-              }
-              render={(row) => [
-                row.name,
-                rupees(row.amount),
-                day(row.last_updated),
-              ]}
-            />
-            {(data?.cash_issued?.holders.owed.people ?? 0) > 0 && (
-              <>
-                {/* Never added to the figure above: one is our money in their
-                    pocket, the other is theirs in our till. */}
+            {/* Side by side, never stacked into one running list: the two
+                point opposite ways — our cash in their pocket, theirs in our
+                till — and a single column invites reading the second block as
+                more of the first. They are also never added together. */}
+            <div className="ab-people">
+              <div className="ab-people-col">
                 <p className="ab-subhead">
-                  Owed back to people ·{' '}
-                  {rupees(data?.cash_issued?.holders.owed.total)}
+                  Out with people ·{' '}
+                  {rupees(data?.cash_issued?.holders.holding.total)}
                 </p>
                 <RowTable
                   head={['Name', 'Amount', 'Last cleared']}
-                  rows={data?.cash_issued?.holders.owed.rows ?? []}
-                  empty=""
+                  rows={data?.cash_issued?.holders.holding.rows ?? []}
+                  empty="Nobody is holding the factory's cash."
                   isSelected={(row) =>
                     selection?.kind === 'holder' &&
-                    selection.owed &&
+                    !selection.owed &&
                     selection.row.name === row.name
                   }
                   onSelect={(row) =>
-                    setSelection({ kind: 'holder', row, owed: true })
+                    setSelection({ kind: 'holder', row, owed: false })
                   }
                   render={(row) => [
                     row.name,
@@ -801,8 +792,35 @@ export default function AccountsDashboardPage() {
                     day(row.last_updated),
                   ]}
                 />
-              </>
-            )}
+              </div>
+
+              {(data?.cash_issued?.holders.owed.people ?? 0) > 0 && (
+                <div className="ab-people-col">
+                  <p className="ab-subhead">
+                    Owed back to people ·{' '}
+                    {rupees(data?.cash_issued?.holders.owed.total)}
+                  </p>
+                  <RowTable
+                    head={['Name', 'Amount', 'Last cleared']}
+                    rows={data?.cash_issued?.holders.owed.rows ?? []}
+                    empty=""
+                    isSelected={(row) =>
+                      selection?.kind === 'holder' &&
+                      selection.owed &&
+                      selection.row.name === row.name
+                    }
+                    onSelect={(row) =>
+                      setSelection({ kind: 'holder', row, owed: true })
+                    }
+                    render={(row) => [
+                      row.name,
+                      rupees(row.amount),
+                      day(row.last_updated),
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
           </Panel>
         </div>
       </div>
