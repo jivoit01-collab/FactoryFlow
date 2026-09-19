@@ -39,6 +39,8 @@ export interface CashEntryDialogProps {
   entry: CashEntry | null;
   /** Which way a new entry moves money. Ignored when correcting. */
   presetDirection?: CashDirection;
+  /** What the next voucher is called, for a new entry. */
+  nextSerial?: number;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -67,12 +69,14 @@ export function CashEntryDialog({
   onOpenChange,
   entry,
   presetDirection = 'OUT',
+  nextSerial,
 }: CashEntryDialogProps) {
   const isCorrection = entry != null;
   const { data: options } = useCashBookOptions();
   const record = useRecordCashEntry();
   const update = useUpdateCashEntry();
 
+  const [serial, setSerial] = useState(String(entry?.serial_number ?? nextSerial ?? ''));
   const [direction, setDirection] = useState<CashDirection>(entry?.direction ?? presetDirection);
   const [entryDate, setEntryDate] = useState(entry?.entry_date ?? today());
   const [amount, setAmount] = useState(entry?.amount ?? '');
@@ -144,6 +148,9 @@ export function CashEntryDialog({
 
     const payload = {
       entry_date: entryDate,
+      // Blank means "whatever comes next" -- the server decides, so two
+      // people filling the form at once cannot both claim one number.
+      serial_number: serial.trim() ? Number(serial) : null,
       direction,
       amount: String(amount),
       detail: detail.trim(),
@@ -224,7 +231,7 @@ export function CashEntryDialog({
             scrollbars and a list cut off after two names. This dialog is
             short enough not to need an inner scroller at all. */}
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-1">
               <Label htmlFor="cash-direction">Direction</Label>
               <NativeSelect
@@ -235,6 +242,18 @@ export function CashEntryDialog({
                 <SelectOption value="OUT">Cash out (payment)</SelectOption>
                 <SelectOption value="IN">Cash in (receipt)</SelectOption>
               </NativeSelect>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="cash-serial">Voucher no.</Label>
+              <Input
+                id="cash-serial"
+                type="number"
+                min={1}
+                value={serial}
+                placeholder="Next"
+                onChange={(e) => setSerial(e.target.value)}
+              />
             </div>
 
             <div className="space-y-1">

@@ -160,6 +160,8 @@ export interface AttachResult {
 
 export interface CashEntry {
   id: number;
+  /** The voucher's own number — the sheet's Sr.no., not the database id. */
+  serial_number: number | null;
   entry_date: string;
   direction: CashDirection;
   direction_label: string;
@@ -244,6 +246,8 @@ export interface CashEntryPage {
   previous: boolean;
   /** The book's balance, not the filtered set's. Sent on every page. */
   balance: string;
+  /** What the next voucher will be called, so the form can fill it in. */
+  next_serial: number;
   totals: CashTotals;
   reconciliation: CashReconciliation;
 }
@@ -350,6 +354,8 @@ export interface RecordEntryPayload {
   branch?: number | null;
   atm_account?: number | null;
   advance_holder?: number | null;
+  /** Left out, the next free voucher number is used. */
+  serial_number?: number | null;
   /** Required on a payment, refused on a receipt. */
   approver?: number | null;
   gl_account_code?: string;

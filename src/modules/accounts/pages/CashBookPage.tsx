@@ -509,6 +509,7 @@ export default function CashBookPage() {
                       </span>
                     </th>
                   )}
+                  <ColumnFilter {...column('serial', 'Sr.')} />
                   <ColumnFilter {...column('date', 'Date')} />
                   <ColumnFilter {...column('bunch', 'Bunch')} />
                   <ColumnFilter {...column('branch', 'Branch')} />
@@ -532,7 +533,7 @@ export default function CashBookPage() {
                     running total is a number the book never held. */}
                 <tr className={TOTALS_ROW_CLASS}>
                   {canManage && <td />}
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     Total of {data?.count ?? 0} {(data?.count ?? 0) === 1 ? 'entry' : 'entries'}
                     {filteredColumns.length > 0 ? ' matching the filters' : ''}
                   </td>
@@ -563,6 +564,7 @@ export default function CashBookPage() {
                           )}
                         </td>
                       )}
+                      <td className="px-3 py-2 tabular-nums">{row.serial_number ?? '—'}</td>
                       <td className="whitespace-nowrap px-3 py-2">{row.entry_date}</td>
                       <td className="px-3 py-2 tabular-nums">
                         {row.bunch ? row.bunch.number : '—'}
@@ -706,6 +708,7 @@ export default function CashBookPage() {
           onOpenChange={setDialogOpen}
           entry={editing}
           presetDirection={newDirection}
+          nextSerial={data?.next_serial}
         />
       )}
     </div>
