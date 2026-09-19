@@ -1,11 +1,11 @@
 import { Check, ClipboardList, Loader2, Settings2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { useAuth } from '@/core/auth/hooks/useAuth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { EntryApprovalStatus } from '@/modules/accounts/api';
+import type { CashEntry, EntryApprovalStatus } from '@/modules/accounts/api';
 import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
 import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
@@ -75,6 +75,19 @@ export default function CashApprovalsPage() {
   const summary = data?.summary;
   const deciding = state === 'PENDING' && canApprove;
 
+  /**
+   * Whether this reader may decide a given payment.
+   *
+   * The queue shows everything now, so the page has to say which of it is
+   * theirs. A payment addressed to nobody -- the ones off the sheet -- is
+   * open to any approver; one addressed to somebody is theirs alone, and the
+   * server refuses anybody else however the screen behaves.
+   */
+  const isMine = useCallback(
+    (row: CashEntry) => row.approver == null || row.approver === user?.id,
+    [user?.id],
+  );
+
   // The queue arrives whole (capped at 500), so its column filters are built
   // from the rows themselves rather than asked for.
   const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
@@ -101,9 +114,11 @@ export default function CashApprovalsPage() {
 
   // Scoped to the rows actually on screen: a selection surviving a filter
   // change would let somebody decide entries they can no longer see.
+  const decidable = useMemo(() => rows.filter(isMine), [rows, isMine]);
+
   const chosen = useMemo(
-    () => selected.filter((id) => rows.some((row) => row.id === id)),
-    [selected, rows],
+    () => selected.filter((id) => decidable.some((row) => row.id === id)),
+    [selected, decidable],
   );
   const chosenTotal = rows
     .filter((row) => chosen.includes(row.id))
@@ -299,10 +314,11 @@ export default function CashApprovalsPage() {
                   {deciding && (
                     <th className="w-10 px-3 py-2">
                       <Checkbox
-                        aria-label="Select every entry shown"
-                        checked={rows.length > 0 && chosen.length === rows.length}
+                        aria-label="Select every entry you can decide"
+                        checked={decidable.length > 0 && chosen.length === decidable.length}
+                        disabled={decidable.length === 0}
                         onCheckedChange={(checked) =>
-                          setSelected(checked === true ? rows.map((row) => row.id) : [])
+                          setSelected(checked === true ? decidable.map((row) => row.id) : [])
                         }
                       />
                     </th>
@@ -330,11 +346,22 @@ export default function CashApprovalsPage() {
                   <tr key={row.id} className="border-b align-top hover:bg-muted/40">
                     {deciding && (
                       <td className="px-3 py-2">
-                        <Checkbox
-                          aria-label={`Select entry ${row.id}`}
-                          checked={chosen.includes(row.id)}
-                          onCheckedChange={() => toggle(row.id)}
-                        />
+                        {isMine(row) ? (
+                          <Checkbox
+                            aria-label={`Select entry ${row.id}`}
+                            checked={chosen.includes(row.id)}
+                            onCheckedChange={() => toggle(row.id)}
+                          />
+                        ) : (
+                          // Shown, but not this reader's to decide. A tick box
+                          // here would be a button that always fails.
+                          <span
+                            className="text-[10px] text-muted-foreground"
+                            title={`Only ${row.approver_name} can decide this`}
+                          >
+                            —
+                          </span>
+                        )}
                       </td>
                     )}
                     <td className="whitespace-nowrap px-3 py-2">{formatDay(row.entry_date)}</td>
