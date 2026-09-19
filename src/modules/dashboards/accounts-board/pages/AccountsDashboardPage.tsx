@@ -1,11 +1,8 @@
 import '../styles/accounts-board.css';
 
-import { FileDown, Plus, Wallet, X } from 'lucide-react';
+import { Wallet, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
-import { usePermission } from '@/core/auth/hooks/usePermission';
-import { CashEntryDialog } from '@/modules/accounts/pages/CashEntryDialog';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { formatNumber } from '@/shared/utils';
 
@@ -49,14 +46,20 @@ import type {
  * a zero, with the context that makes it an answer — "nothing waiting, 47
  * already gone".
  *
- * THE ACTIONS ARE THE REGISTER'S, NOT THIS SCREEN'S
- * --------------------------------------------------
- * "Add entry" opens the cash book's own dialog and "View ledger" links into the
- * register in the Accounts module. This page writes nothing itself. The mock's "Record settlement"
- * button is deliberately absent: nothing in the register records a settlement,
- * so the button would either do nothing or need a model invented behind it.
- * See the note in `_pending_ho` — reimbursement is the one thing the cash book
+ * IT IS READ-ONLY, AND HAS NO ACTIONS AT ALL
+ * -------------------------------------------
+ * Not one control on this page writes anything. Recording, correcting and
+ * approving all belong to the register itself, in the Accounts module, and a
+ * second door into them from a summary screen is a second place for the same
+ * mistake to be made.
+ *
+ * That includes the mock's "Record settlement": nothing in the register records
+ * a settlement, so the button would either do nothing or need a model invented
+ * behind it. See `_pending_ho` — reimbursement is the one thing the cash book
  * genuinely cannot see.
+ *
+ * The only interactive parts are the month selector and row selection, and
+ * both only change what is on screen.
  */
 
 /**
@@ -439,11 +442,7 @@ export default function AccountsDashboardPage() {
   // fetching everything, reading the month list off it and fetching again.
   const [period, setPeriod] = useState<AccountsPeriodChoice>({ kind: 'latest' });
   const [selection, setSelection] = useState<AccountsSelection>(null);
-  const [addOpen, setAddOpen] = useState(false);
-
   const { data, isLoading, isError } = useAccountsBoard(period);
-  const { hasPermission } = usePermission();
-  const canRecord = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
 
   const meta = data?.meta;
   const headline = data?.headline;
@@ -477,10 +476,6 @@ export default function AccountsDashboardPage() {
       </div>
     );
   }
-
-  const periodLabel = meta?.period
-    ? `${MONTHS[meta.period.month - 1]} ${meta.period.year}`
-    : 'the whole book';
 
   return (
     <div className="ab-page">
@@ -526,18 +521,6 @@ export default function AccountsDashboardPage() {
               ))}
             </select>
           </label>
-
-          <Button variant="outline" asChild>
-            <a href="/accounts/cash-book">
-              <FileDown className="mr-2 h-4 w-4" /> View ledger
-            </a>
-          </Button>
-
-          {canRecord && (
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add entry
-            </Button>
-          )}
         </div>
       </header>
 
@@ -563,25 +546,23 @@ export default function AccountsDashboardPage() {
                   label="Imprest issued"
                   value={rupees(headline.imprest_issued)}
                   hint={`${headline.imprest_count} top-ups`}
-                  // The card balance rather than a restatement of the period:
-                  // "on minus off" is the subtraction this pair invites, and it
-                  // is wrong — the real figure carries the card's opening and
-                  // every earlier month. Showing it here means nobody needs to
-                  // do the sum.
-                  note={`Onto the card, ${periodLabel} · ₹${money(
-                    data?.imprest?.card_balance,
-                  )} still on it`}
+                  // The card balance, not a restatement of the period — the
+                  // selector above already says which month this is. "On minus
+                  // off" is the subtraction this pair invites and it is wrong;
+                  // the real figure carries the card's opening balance and
+                  // every earlier month, so showing it means nobody does the
+                  // sum. "on", not "onto": one is a balance, the other a
+                  // movement, and 2,07,478 never went onto anything.
+                  note={`₹${money(data?.imprest?.card_balance)} on the card`}
                 />
                 <StatCard
                   label="Cash issued"
                   value={rupees(headline.cash_issued)}
                   hint={`${headline.cash_issued_count} withdrawals`}
-                  // Drawn off the card is the other end of the float above.
-                  // What was SPENT is a third figure again, so it is stated
-                  // here rather than left to be confused with either.
-                  note={`Drawn off the card, ${periodLabel} · ₹${money(
-                    headline.paid_out,
-                  )} spent out of the box`}
+                  // What was SPENT is a third figure again — neither the money
+                  // on the card nor the money off it — so it is named in full
+                  // rather than left to be confused with either.
+                  note={`₹${money(headline.paid_out)} spent out of the box`}
                 />
                 <StatCard
                   label="Cash pending from HO"
@@ -591,17 +572,25 @@ export default function AccountsDashboardPage() {
                       ? `${headline.pending_ho_count} vouchers`
                       : 'Nothing waiting'
                   }
-                  note="Not yet sent · all time"
+                  note={
+                    data?.pending_ho
+                      ? `${data.pending_ho.sent_bunches} bunches already sent`
+                      : 'Not yet sent'
+                  }
                 />
                 <StatCard
                   label="Cash in hand"
                   value={rupees(headline.cash_in_hand)}
                   hint="Closing balance"
                   tone={headline.in_hand_negative ? 'alert' : 'filled'}
+                  // The ONE note that must keep saying this. Three cards above
+                  // follow the month selector and this one does not; with the
+                  // period text gone from theirs, this line is what stops the
+                  // balance being read as September's.
                   note={
                     headline.in_hand_negative
-                      ? 'Below zero: more has left the box than the register shows arriving. Usually a receipt not yet typed.'
-                      : 'As of now, all time — not the period'
+                      ? 'Below zero — more has left the box than arrived. Usually a receipt not yet typed.'
+                      : 'As of now, not the period'
                   }
                 />
               </>
@@ -842,14 +831,6 @@ export default function AccountsDashboardPage() {
         </p>
       )}
 
-      {addOpen && (
-        <CashEntryDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          entry={null}
-          presetDirection="OUT"
-        />
-      )}
     </div>
   );
 }

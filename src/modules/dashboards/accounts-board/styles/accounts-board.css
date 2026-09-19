@@ -196,15 +196,23 @@
 }
 
 /*
- * The sub-label is load-bearing, not decoration: three of these cards are
- * flows over the selected month and one is an all-time balance. It is what
- * stops somebody subtracting the second from the first.
+ * The companion figure, bottom right.
+ *
+ * Right-aligned to sit under the value's last digit rather than under its
+ * first, so the eye that has just read the big number finds it without
+ * travelling back across the card.
+ *
+ * Still not decoration. On three of these cards it carries a SECOND figure
+ * that is deliberately not the headline — the card balance, what was spent,
+ * how many bunches have gone — and on the fourth it is what says that card
+ * ignores the month selector while the others follow it.
  */
 .ab-stat-note {
   color: var(--ab-ink-soft);
   font-size: 0.6875rem;
   line-height: 1.35;
   margin: 0.3rem 0 0;
+  text-align: right;
 }
 
 /* Cash in hand, healthy: the one figure the page exists for. */

@@ -19,16 +19,6 @@ vi.mock('../api', () => ({
   useAccountsBoard: (...args: unknown[]) => useAccountsBoard(...args),
 }));
 
-// The register's own dialog. Not under test here, and importing it for real
-// drags the whole SAP G/L picker into a page test.
-vi.mock('@/modules/accounts/pages/CashEntryDialog', () => ({
-  CashEntryDialog: () => null,
-}));
-
-vi.mock('@/core/auth/hooks/usePermission', () => ({
-  usePermission: () => ({ hasPermission: () => true }),
-}));
-
 import AccountsDashboardPage from './AccountsDashboardPage';
 
 function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse {
@@ -192,20 +182,25 @@ beforeEach(() => {
 });
 
 describe('the four headline figures', () => {
-  it('labels the flows with the period and the balance without one', () => {
+  it('marks the one card that is a balance rather than a flow', () => {
     /**
-     * The one distinction the screen rests on. Three cards answer "during the
-     * period" and one answers "as of now"; they sit in one column, so only
-     * these sub-labels stop somebody subtracting the fourth from the first.
+     * The distinction the screen rests on. Three cards answer "during the
+     * selected month" and the fourth answers "as of now"; they sit in one
+     * column, and this label is what stops the fourth being subtracted from
+     * the first.
      */
     show(board());
 
-    expect(screen.getByText(/Onto the card, the whole book/i)).toBeInTheDocument();
-    expect(screen.getByText(/Drawn off the card, the whole book/i)).toBeInTheDocument();
     expect(screen.getByText(/not the period/i)).toBeInTheDocument();
   });
 
-  it('names the selected month on the flow cards', () => {
+  it('says the balance ignores the month, whatever month is selected', () => {
+    /**
+     * The three flow cards follow the selector and this one does not. The
+     * selector itself states the month, so the cards no longer repeat it —
+     * which makes THIS line the only thing left saying the fourth card is a
+     * different kind of number. It must survive.
+     */
     show(
       board({
         meta: {
@@ -215,9 +210,7 @@ describe('the four headline figures', () => {
       }),
     );
 
-    expect(screen.getByText(/Onto the card, September 2026/i)).toBeInTheDocument();
-    // The balance still refuses the period.
-    expect(screen.getByText(/not the period/i)).toBeInTheDocument();
+    expect(screen.getByText(/As of now, not the period/i)).toBeInTheDocument();
   });
 
   it('groups rupees the Indian way, and drops the paise', () => {
@@ -252,7 +245,7 @@ describe('the imprest figure', () => {
      */
     show(board());
 
-    expect(screen.getByText(/₹2,07,478 still on it/i)).toBeInTheDocument();
+    expect(screen.getByText(/₹2,07,478 on the card/i)).toBeInTheDocument();
     expect(screen.queryByText(/₹1,87,940/)).not.toBeInTheDocument();
   });
 
