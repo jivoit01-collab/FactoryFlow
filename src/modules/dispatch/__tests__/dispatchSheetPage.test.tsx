@@ -80,6 +80,11 @@ vi.mock('@/modules/dispatch/api/sheet.api', () => ({
   }),
 }));
 
+/** One body cell, by its place on screen — the row gutter is not a cell. */
+function cellAt(row: number, column: number) {
+  return bodyRows()[row].children[column + 1] as HTMLElement;
+}
+
 /** The grid, excluding the letter strip and the totals line. */
 function bodyRows() {
   return within(screen.getByRole('table')).getAllByRole('row').slice(2, -1);
@@ -132,18 +137,62 @@ describe('the Dispatch Sheet', () => {
 
     fireEvent.click(screen.getByTitle('Select row 1'));
 
-    expect(screen.getByText('1 row picked')).toBeInTheDocument();
+    expect(screen.getByText('1 row × 20 columns')).toBeInTheDocument();
     expect(screen.getByText('Sum 10,913.00')).toBeInTheDocument();
   });
 
   it('picks a column from its letter, and totals it down the sheet', () => {
     openSheet();
 
-    // L is the twelfth column: Oil LTR.
     fireEvent.click(screen.getByTitle('Select column Oil LTR'));
 
-    expect(screen.getByText('1 column picked')).toBeInTheDocument();
+    expect(screen.getByText('2 rows × 1 column')).toBeInTheDocument();
     expect(screen.getByText('Sum 22,909.00')).toBeInTheDocument();
+  });
+
+  it('picks the cell pressed on, and names it the way a sheet does', () => {
+    openSheet();
+
+    // Row 1, the Party column — the third, so C1.
+    fireEvent.mouseDown(cellAt(0, 2));
+
+    expect(screen.getByText('C1')).toBeInTheDocument();
+    expect(screen.getByText('1 cell')).toBeInTheDocument();
+  });
+
+  it('takes the block dragged across the cells', () => {
+    openSheet();
+
+    // Press on the litres of the first line and drag onto the second's.
+    fireEvent.mouseDown(cellAt(0, 11));
+    fireEvent.mouseEnter(cellAt(1, 11));
+
+    expect(screen.getByText('L1:L2')).toBeInTheDocument();
+    expect(screen.getByText('2 rows × 1 column')).toBeInTheDocument();
+    expect(screen.getByText('Sum 22,909.00')).toBeInTheDocument();
+  });
+
+  it('stops extending once the mouse is let go', () => {
+    openSheet();
+
+    fireEvent.mouseDown(cellAt(0, 11));
+    fireEvent.mouseUp(window);
+    fireEvent.mouseEnter(cellAt(1, 11));
+
+    // Still the one cell: the drag was over before the mouse moved.
+    expect(screen.getByText('L1')).toBeInTheDocument();
+    expect(screen.getByText('Sum 10,913.00')).toBeInTheDocument();
+  });
+
+  it('shift-pressing a second cell extends from the first', () => {
+    openSheet();
+
+    fireEvent.mouseDown(cellAt(0, 11));
+    fireEvent.mouseUp(window);
+    fireEvent.mouseDown(cellAt(1, 12), { shiftKey: true });
+
+    expect(screen.getByText('L1:M2')).toBeInTheDocument();
+    expect(screen.getByText('2 rows × 2 columns')).toBeInTheDocument();
   });
 
   it('sorts a column when its heading is clicked', () => {

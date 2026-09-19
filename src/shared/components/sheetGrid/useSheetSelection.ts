@@ -1,41 +1,37 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 /**
- * Picking whole rows and whole columns, the way a spreadsheet does.
+ * Selecting cells, the way a spreadsheet does.
  *
- * A sheet has two margins you can click: the numbers down the left and the
- * letters across the top. Click a number and the row is picked; click a letter
- * and the column is; shift-click extends from the last one; the corner takes
- * everything. This hook is that, and the figures the status bar shows for
- * whatever is picked.
+ * One rectangle, held as the four edges it covers. Everything that can be
+ * picked is that rectangle in some shape: drag across cells and it is the
+ * block you dragged; click a row number and it is that row, full width; click
+ * a column letter and it is that column, full height; click the corner and it
+ * is the sheet. Shift extends from where the last one started, exactly as it
+ * does in Excel — which is why there is one model here and not three.
+ *
+ * Coordinates are positions in what is ON SCREEN — row 0 is the top line as
+ * currently sorted and filtered, not a record id. Picking B3:F12 means that
+ * block where it lies now; re-sorting makes it a different twelve rows, which
+ * is what a sheet does and what anyone dragging down a column of freight
+ * expects. When the rows underneath become a different set the selection is
+ * dropped rather than left pointing at lines that are gone — the caller says
+ * when by changing `reset`.
  *
  * WHY THIS IS NOT THE ARROW-KEY CURSOR
  * `useSpreadsheetKeys` deliberately keeps no state: the cursor IS the focused
- * cell, and the browser already tracks that. A selection is a different thing
- * — it outlives focus, it can be a hundred rows, and its whole point is the
- * total at the bottom — so it is state, and the two never fight because one is
- * about where you are and the other about what you have picked.
- *
- * ROWS ARE PICKED BY INDEX INTO WHAT IS ON SCREEN
- * Not by id. Picking rows 3 to 10 means those seven lines as they are laid out
- * now; re-sorting or filtering makes "rows 3 to 10" a different seven lines,
- * which is exactly what a spreadsheet does and what anyone dragging down a
- * column of freight expects. The selection is therefore cleared when the rows
- * underneath change identity — the caller does that by passing a new `reset`
- * key.
+ * cell, and the browser already tracks that. A selection outlives focus, can
+ * be five hundred cells, and exists to be totalled and copied — so it is
+ * state. The two never fight: one is where you are, the other is what you have
+ * picked, and in a sheet those are also two different things.
  */
 
-export type SelectionKind = 'none' | 'rows' | 'columns' | 'all';
-
-export interface SheetSelection {
-  kind: SelectionKind;
-  /** Row indexes (into the displayed order) when `kind` is 'rows'. */
-  rows: Set<number>;
-  /** Column keys when `kind` is 'columns'. */
-  columns: Set<string>;
+export interface CellRange {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
 }
-
-const EMPTY: SheetSelection = { kind: 'none', rows: new Set(), columns: new Set() };
 
 /** Excel's own column names: A, B, … Z, AA, AB, … */
 export function columnLetter(index: number): string {
@@ -48,11 +44,18 @@ export function columnLetter(index: number): string {
   return out;
 }
 
+/** "C4", or "B3:F12" for a block — the address Excel puts in its name box. */
+export function rangeAddress(range: CellRange): string {
+  const from = `${columnLetter(range.left)}${range.top + 1}`;
+  const to = `${columnLetter(range.right)}${range.bottom + 1}`;
+  return from === to ? from : `${from}:${to}`;
+}
+
 /** What the status bar says about a picked block of numbers. */
 export interface SelectionFigures {
-  /** Cells in the selection, blank ones included — Excel's "Count". */
+  /** Cells in the block, blank ones included — Excel's "Count". */
   cells: number;
-  /** Of those, the ones that hold a number — Excel's "Numerical count". */
+  /** Of those, the ones holding a number — Excel's "Numerical count". */
   numbers: number;
   sum: number;
   average: number | null;
@@ -60,115 +63,150 @@ export interface SelectionFigures {
   max: number | null;
 }
 
+function span(a: number, b: number): [number, number] {
+  return a <= b ? [a, b] : [b, a];
+}
+
 export function useSheetSelection<T>({
   rows,
   columnKeys,
   numberAt,
+  textAt,
   reset,
 }: {
   /** The rows as displayed, after filtering and sorting. */
   rows: T[];
-  /** Every column key, left to right — the order the letters follow. */
+  /** Every column key, left to right. */
   columnKeys: string[];
   /** What one cell is worth as a number, or null where it is text or blank. */
   numberAt: (row: T, columnKey: string) => number | null;
-  /**
-   * Changes whenever the rows underneath become a different set (a new
-   * window, another sheet). The selection is dropped rather than left pointing
-   * at lines that are no longer there.
-   */
+  /** What one cell reads as, for copying a block out to the clipboard. */
+  textAt?: (row: T, columnKey: string) => string;
+  /** Changes when the rows underneath become a different set. */
   reset?: unknown;
 }) {
-  const [selection, setSelection] = useState<SheetSelection>(EMPTY);
-  const [anchor, setAnchor] = useState<{ row?: number; column?: string }>({});
+  const [range, setRange] = useState<CellRange | null>(null);
+  /** Where the current selection started, so shift and drag extend from it. */
+  const [anchor, setAnchor] = useState<{ row: number; column: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [resetKey, setResetKey] = useState(reset);
 
-  // Cleared in render rather than in an effect: an effect would paint one
-  // frame of a selection that belongs to rows that are already gone.
+  // Cleared during render, not in an effect: an effect would paint one frame
+  // of a selection belonging to rows that are already gone.
   if (resetKey !== reset) {
     setResetKey(reset);
-    if (selection.kind !== 'none') setSelection(EMPTY);
+    if (range) setRange(null);
+    setAnchor(null);
   }
 
-  function pickRow(index: number, extend = false) {
-    setSelection((current) => {
-      if (extend && current.kind === 'rows' && anchor.row !== undefined) {
-        const [lo, hi] = [anchor.row, index].sort((a, b) => a - b);
-        const next = new Set<number>();
-        for (let i = lo; i <= hi; i += 1) next.add(i);
-        return { kind: 'rows', rows: next, columns: new Set() };
-      }
-      // Clicking the row already picked on its own clears it, so there is a
-      // way back out that is not hunting for a Clear button.
-      if (current.kind === 'rows' && current.rows.size === 1 && current.rows.has(index)) {
-        return EMPTY;
-      }
-      return { kind: 'rows', rows: new Set([index]), columns: new Set() };
-    });
-    setAnchor({ row: index });
-  }
+  const lastRow = rows.length - 1;
+  const lastColumn = columnKeys.length - 1;
 
-  function pickColumn(key: string, extend = false) {
-    setSelection((current) => {
-      if (extend && current.kind === 'columns' && anchor.column !== undefined) {
-        const from = columnKeys.indexOf(anchor.column);
-        const to = columnKeys.indexOf(key);
-        if (from >= 0 && to >= 0) {
-          const [lo, hi] = [from, to].sort((a, b) => a - b);
-          return {
-            kind: 'columns',
-            rows: new Set(),
-            columns: new Set(columnKeys.slice(lo, hi + 1)),
-          };
-        }
+  const to = useCallback(
+    (row: number, column: number, from: { row: number; column: number }): CellRange => {
+      const [top, bottom] = span(from.row, row);
+      const [left, right] = span(from.column, column);
+      return { top, left, bottom, right };
+    },
+    [],
+  );
+
+  /** Mouse down on a cell: a new selection, or shift to extend the one held. */
+  const startCell = useCallback(
+    (row: number, column: number, extend = false) => {
+      if (extend && anchor) {
+        setRange(to(row, column, anchor));
+      } else {
+        setAnchor({ row, column });
+        setRange({ top: row, left: column, bottom: row, right: column });
       }
-      if (
-        current.kind === 'columns' &&
-        current.columns.size === 1 &&
-        current.columns.has(key)
-      ) {
-        return EMPTY;
-      }
-      return { kind: 'columns', rows: new Set(), columns: new Set([key]) };
-    });
-    setAnchor({ column: key });
-  }
+      setDragging(true);
+    },
+    [anchor, to],
+  );
 
-  function pickAll() {
-    setSelection((current) =>
-      current.kind === 'all'
-        ? EMPTY
-        : { kind: 'all', rows: new Set(), columns: new Set() },
-    );
-    setAnchor({});
-  }
+  /** Dragged onto a cell: the block from where the drag began to here. */
+  const extendCell = useCallback(
+    (row: number, column: number) => {
+      if (!dragging || !anchor) return;
+      setRange(to(row, column, anchor));
+    },
+    [dragging, anchor, to],
+  );
 
-  const isRowPicked = (index: number) =>
-    selection.kind === 'all' || (selection.kind === 'rows' && selection.rows.has(index));
-  const isColumnPicked = (key: string) =>
-    selection.kind === 'all' ||
-    (selection.kind === 'columns' && selection.columns.has(key));
+  // The mouse is let go anywhere, including outside the table, so the drag
+  // ends on the window rather than on a cell.
+  useEffect(() => {
+    if (!dragging) return;
+    const stop = () => setDragging(false);
+    window.addEventListener('mouseup', stop);
+    return () => window.removeEventListener('mouseup', stop);
+  }, [dragging]);
 
-  /** The shading one cell gets. Rows and columns are never picked at once. */
-  const cellClass = (index: number, key: string) =>
-    isRowPicked(index) || isColumnPicked(key) ? 'bg-primary/10' : '';
+  const pickRow = useCallback(
+    (row: number, extend = false) => {
+      const from = extend && anchor ? anchor.row : row;
+      const [top, bottom] = span(from, row);
+      setRange({ top, bottom, left: 0, right: Math.max(0, lastColumn) });
+      if (!extend) setAnchor({ row, column: 0 });
+    },
+    [anchor, lastColumn],
+  );
+
+  const pickColumn = useCallback(
+    (column: number, extend = false) => {
+      const from = extend && anchor ? anchor.column : column;
+      const [left, right] = span(from, column);
+      setRange({ left, right, top: 0, bottom: Math.max(0, lastRow) });
+      if (!extend) setAnchor({ row: 0, column });
+    },
+    [anchor, lastRow],
+  );
+
+  const pickAll = useCallback(() => {
+    setRange({ top: 0, left: 0, bottom: Math.max(0, lastRow), right: Math.max(0, lastColumn) });
+    setAnchor({ row: 0, column: 0 });
+  }, [lastRow, lastColumn]);
+
+  const clear = useCallback(() => {
+    setRange(null);
+    setAnchor(null);
+  }, []);
+
+  const isCellPicked = (row: number, column: number) =>
+    !!range &&
+    row >= range.top &&
+    row <= range.bottom &&
+    column >= range.left &&
+    column <= range.right;
+
+  /**
+   * A margin lights up two ways, as a sheet's do: faintly for a row the block
+   * merely reaches into, solidly for one it spans end to end.
+   */
+  const isRowTouched = (row: number) => !!range && row >= range.top && row <= range.bottom;
+  const isColumnTouched = (column: number) =>
+    !!range && column >= range.left && column <= range.right;
+
+  const isRowPicked = (row: number) =>
+    isRowTouched(row) && !!range && range.left === 0 && range.right >= lastColumn;
+
+  const isColumnPicked = (column: number) =>
+    isColumnTouched(column) && !!range && range.top === 0 && range.bottom >= lastRow;
+
+  /** The shading one cell gets. */
+  const cellClass = (row: number, column: number) =>
+    isCellPicked(row, column) ? 'bg-primary/10' : '';
 
   const figures = useMemo<SelectionFigures | null>(() => {
-    if (selection.kind === 'none') return null;
-
-    const pickedRows =
-      selection.kind === 'rows'
-        ? [...selection.rows].filter((i) => i < rows.length).map((i) => rows[i])
-        : rows;
-    const pickedColumns =
-      selection.kind === 'columns' ? columnKeys.filter((k) => selection.columns.has(k)) : columnKeys;
+    if (!range) return null;
 
     const values: number[] = [];
     let cells = 0;
-    for (const row of pickedRows) {
-      for (const key of pickedColumns) {
+    for (let r = range.top; r <= Math.min(range.bottom, lastRow); r += 1) {
+      for (let c = range.left; c <= Math.min(range.right, lastColumn); c += 1) {
         cells += 1;
-        const value = numberAt(row, key);
+        const value = numberAt(rows[r], columnKeys[c]);
         if (value !== null && Number.isFinite(value)) values.push(value);
       }
     }
@@ -183,20 +221,58 @@ export function useSheetSelection<T>({
       max: values.length ? Math.max(...values) : null,
     };
     // `numberAt` is written inline by callers and is a new function every
-    // render, so naming it here would never hit the cache; the selection and
-    // the rows are what actually change the answer.
+    // render, so naming it would never hit the cache; the block and the rows
+    // are what change the answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection, rows, columnKeys]);
+  }, [range, rows, columnKeys, lastRow, lastColumn]);
+
+  /**
+   * The block as tab-separated text, which is what a spreadsheet puts on the
+   * clipboard — so a selection copied here pastes into Excel as cells rather
+   * than as one run of text in one cell.
+   */
+  const selectionText = useCallback((): string | null => {
+    if (!range || !textAt) return null;
+    const lines: string[] = [];
+    for (let r = range.top; r <= Math.min(range.bottom, lastRow); r += 1) {
+      const line: string[] = [];
+      for (let c = range.left; c <= Math.min(range.right, lastColumn); c += 1) {
+        line.push(textAt(rows[r], columnKeys[c]));
+      }
+      lines.push(line.join('\t'));
+    }
+    return lines.join('\n');
+  }, [range, rows, columnKeys, textAt, lastRow, lastColumn]);
+
+  /** "12 rows × 3 columns", or "1 cell" — what is picked, in words. */
+  const describe = useCallback((): string => {
+    if (!range) return '';
+    const height = Math.min(range.bottom, lastRow) - range.top + 1;
+    const width = Math.min(range.right, lastColumn) - range.left + 1;
+    if (height === 1 && width === 1) return '1 cell';
+    const rowPart = `${height} ${height === 1 ? 'row' : 'rows'}`;
+    const columnPart = `${width} ${width === 1 ? 'column' : 'columns'}`;
+    return `${rowPart} × ${columnPart}`;
+  }, [range, lastRow, lastColumn]);
 
   return {
-    selection,
+    range,
+    address: range ? rangeAddress(range) : '',
     figures,
+    dragging,
+    startCell,
+    extendCell,
     pickRow,
     pickColumn,
     pickAll,
-    clear: () => setSelection(EMPTY),
+    clear,
+    isCellPicked,
+    isRowTouched,
+    isColumnTouched,
     isRowPicked,
     isColumnPicked,
     cellClass,
+    selectionText,
+    describe,
   };
 }
