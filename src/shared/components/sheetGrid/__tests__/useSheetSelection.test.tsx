@@ -120,6 +120,39 @@ describe('selecting from the margins', () => {
     expect(result.current.figures?.sum).toBe(630);
   });
 
+  it('grows the block to take in the row clicked, however it was built', () => {
+    // Pick 1, shift 3 -> rows 1..3. Shift 2 again and it must still be 1..3,
+    // not 3..2: the block grows to what was clicked, it does not pivot on
+    // whichever end happened to be clicked first.
+    const { result } = setup();
+    act(() => result.current.pickRow(0));
+    act(() => result.current.pickRow(2, true));
+    expect(result.current.address).toBe('A1:C3');
+  });
+
+  it('keeps the far end when the block was built upwards', () => {
+    // The one that was wrong on screen: pick row 3, shift row 1 (block is
+    // 1..3), then shift row 3 of a longer sheet. An anchor would pivot on the
+    // row first clicked and lose the top.
+    const { result } = setup();
+    act(() => result.current.pickRow(2));
+    act(() => result.current.pickRow(0, true));
+    expect(result.current.address).toBe('A1:C3');
+
+    act(() => result.current.pickRow(2, true));
+    // Still anchored on the top of the block, not on row 3 where it began.
+    expect(result.current.address).toBe('A1:C3');
+  });
+
+  it('shrinks from the far side when the click lands inside the block', () => {
+    const { result } = setup();
+    act(() => result.current.pickRow(0));
+    act(() => result.current.pickRow(2, true));
+    act(() => result.current.pickRow(1, true));
+
+    expect(result.current.address).toBe('A1:C2');
+  });
+
   it('picks a whole column from its letter, and totals it down the sheet', () => {
     const { result } = setup();
     act(() => result.current.pickColumn(0));
@@ -158,6 +191,38 @@ describe('selecting from the margins', () => {
     // solidly, because it stops short of C.
     expect(result.current.isRowTouched(0)).toBe(true);
     expect(result.current.isRowPicked(0)).toBe(false);
+  });
+});
+
+describe('the sequence that was wrong on screen', () => {
+  /** Eight lines, so a block can be built upwards and then grown downwards. */
+  function eightRows() {
+    const rows = Array.from({ length: 8 }, (_, n) => ({
+      litres: n + 1,
+      freight: null,
+      party: String(n + 1),
+    }));
+    return renderHook(() =>
+      useSheetSelection({
+        rows,
+        columnKeys: COLUMNS,
+        numberAt: (row) => row.litres,
+        textAt: (row) => row.party,
+      }),
+    );
+  }
+
+  it('row 5, shift row 3, shift row 8 covers rows 3 to 8', () => {
+    const { result } = eightRows();
+    act(() => result.current.pickRow(4));
+    act(() => result.current.pickRow(2, true));
+    expect(result.current.address).toBe('A3:C5');
+
+    act(() => result.current.pickRow(7, true));
+
+    // Not A5:C8, which is what pivoting on the first row clicked would give.
+    expect(result.current.address).toBe('A3:C8');
+    expect(result.current.describe()).toBe('6 rows × 3 columns');
   });
 });
 
