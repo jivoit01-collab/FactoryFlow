@@ -3,17 +3,17 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/core/auth';
 
 import { ACCOUNTS_BOARD_REFRESH_MS } from '../constants';
-import type { AccountsPeriod } from '../types';
+import type { AccountsPeriodChoice } from '../types';
 import { accountsBoardApi } from './accounts-board.api';
 
 export const ACCOUNTS_BOARD_QUERY_KEYS = {
   all: ['accounts-board'] as const,
-  board: (companyId?: number | string, period?: AccountsPeriod | null) =>
+  board: (companyId: number | string | undefined, period: AccountsPeriodChoice) =>
     [
       'accounts-board',
       'board',
       companyId,
-      period ? `${period.year}-${period.month}` : 'all',
+      period.kind === 'month' ? `${period.year}-${period.month}` : period.kind,
     ] as const,
 };
 
@@ -43,7 +43,7 @@ export const ACCOUNTS_BOARD_QUERY_KEYS = {
  * from and leaves, and polling a finance screen in a hidden tab only spends
  * queries on a figure no-one is reading.
  */
-export function useAccountsBoard(period?: AccountsPeriod | null, enabled = true) {
+export function useAccountsBoard(period: AccountsPeriodChoice, enabled = true) {
   const { currentCompany } = useAuth();
 
   return useQuery({

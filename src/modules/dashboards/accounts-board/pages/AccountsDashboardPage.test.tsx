@@ -34,8 +34,10 @@ import AccountsDashboardPage from './AccountsDashboardPage';
 function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse {
   return {
     headline: {
-      imprest_issued: 991933,
-      imprest_count: 30,
+      imprest_issued: 1165000,
+      imprest_count: 12,
+      into_box: 993209,
+      into_box_count: 31,
       cash_issued: 921662,
       cash_issued_count: 466,
       pending_ho: 0,
@@ -53,20 +55,44 @@ function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse
       },
     },
     imprest: {
-      total: 991933,
-      count: 30,
+      total: 1165000,
+      count: 12,
       holders: 1,
       rows: [
         {
+          id: 21,
+          name: 'Ginni Vg Imprest Debit Card (Vishal)',
+          amount: 150000,
+          last_updated: '2026-09-17',
+          detail: '',
+        },
+        {
+          id: 20,
+          name: 'Ginni Vg Imprest Debit Card (Vishal)',
+          amount: 100000,
+          last_updated: '2026-09-02',
+          detail: '',
+        },
+      ],
+      truncated: false,
+      cards: [
+        {
           id: 6,
           name: 'Ginni Vg Imprest Debit Card (Vishal)',
-          amount: 1065000,
-          count: 11,
+          amount: 1165000,
+          count: 12,
           last_updated: '2026-09-17',
         },
       ],
-      sources: [],
-      span: { from: '2026-04-01', to: '2026-09-17' },
+      into_box: {
+        total: 993209,
+        count: 31,
+        drawn_off_card: 941933,
+        drawn_off_card_count: 29,
+        handed_in: 51276,
+        handed_in_count: 2,
+      },
+      span: { from: '2026-06-04', to: '2026-09-17' },
     },
     cash_issued: {
       total: 921662,
@@ -171,7 +197,7 @@ describe('the four headline figures', () => {
      */
     show(board());
 
-    expect(screen.getByText(/Into the box, the whole book/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loaded onto the card, the whole book/i)).toBeInTheDocument();
     expect(screen.getByText(/Out of the box, the whole book/i)).toBeInTheDocument();
     expect(screen.getByText(/not the period/i)).toBeInTheDocument();
   });
@@ -186,17 +212,52 @@ describe('the four headline figures', () => {
       }),
     );
 
-    expect(screen.getByText(/Into the box, September 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loaded onto the card, September 2026/i)).toBeInTheDocument();
     // The balance still refuses the period.
     expect(screen.getByText(/not the period/i)).toBeInTheDocument();
   });
 
   it('groups rupees the Indian way, and drops the paise', () => {
-    // Lakhs, not thousands: 9,91,933 rather than 991,933. It appears on the
+    // Lakhs, not thousands: 11,65,000 rather than 1,165,000. It appears on the
     // stat card and again as the imprest panel's total, so both are accepted.
     show(board());
-    expect(screen.getAllByText('₹9,91,933').length).toBeGreaterThan(0);
-    expect(screen.queryByText('₹9,91,933.00')).not.toBeInTheDocument();
+    expect(screen.getAllByText('₹11,65,000').length).toBeGreaterThan(0);
+    expect(screen.queryByText('₹11,65,000.00')).not.toBeInTheDocument();
+  });
+});
+
+describe('the imprest figure', () => {
+  /**
+   * Two populations that look like one. A card is loaded, and later drawn off
+   * at a machine — only the second is a receipt into the box. Adding them
+   * would double the money, and the numbers are close enough that a wrong one
+   * would never look wrong.
+   */
+  it('is what was loaded onto the card, not what reached the box', () => {
+    show(board());
+
+    expect(screen.getAllByText('₹11,65,000').length).toBeGreaterThan(0);
+    // 11,65,000 + 9,93,209. If this renders, the two have been summed.
+    expect(screen.queryByText('₹21,58,209')).not.toBeInTheDocument();
+  });
+
+  it('states the box figure beside it rather than leaving it assumed', () => {
+    show(board());
+    expect(screen.getByText(/reached the box/i)).toBeInTheDocument();
+  });
+
+  it('counts top-ups, not receipts', () => {
+    show(board());
+    expect(screen.getByText('12 top-ups')).toBeInTheDocument();
+  });
+
+  it('lists every top-up, newest first, not one row per card', () => {
+    show(board());
+
+    const rows = screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)');
+    expect(rows.length).toBe(2);
+    expect(screen.getByText('₹1,50,000')).toBeInTheDocument();
+    expect(screen.getByText('₹1,00,000')).toBeInTheDocument();
   });
 });
 
@@ -339,13 +400,18 @@ describe('a band that is missing', () => {
 
 describe('the details panel', () => {
   it('opens the record for the row that was clicked', () => {
-    show(board());
+    // Both top-ups are on the same card, so the panel has to identify the one
+    // that was clicked by its own date and amount, not by the card's name.
+    const { container } = show(board());
 
-    fireEvent.click(screen.getByText('Ginni Vg Imprest Debit Card (Vishal)'));
+    fireEvent.click(screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)')[1]);
 
+    const panel = within(container.querySelector('.ab-details') as HTMLElement);
     expect(
-      screen.getByText(/Imprest · Ginni Vg Imprest Debit Card/i),
+      panel.getByText(/Imprest top-up · Ginni Vg Imprest Debit Card/i),
     ).toBeInTheDocument();
+    expect(panel.getByText('₹1,00,000')).toBeInTheDocument();
+    expect(panel.getByText('2 Sep 2026')).toBeInTheDocument();
   });
 
   it('tells a masked reader the figures are still complete', () => {
@@ -382,6 +448,29 @@ describe('the book’s own check', () => {
 });
 
 describe('the period selector', () => {
+  it('asks the server for the newest month on first load', () => {
+    /**
+     * Not 'all'. The screen opens on the month somebody is working in, and
+     * `latest` is resolved server-side so that costs one round trip rather
+     * than fetching the whole book to find out which month is newest.
+     */
+    show(board());
+    expect(useAccountsBoard).toHaveBeenCalledWith({ kind: 'latest' });
+  });
+
+  it('shows the month the server resolved, not the word it was asked for', () => {
+    show(
+      board({
+        meta: {
+          ...board().meta,
+          period: { year: 2026, month: 9, from: '2026-09-01', to: '2026-09-30' },
+        },
+      }),
+    );
+
+    expect(screen.getByRole('combobox')).toHaveValue('2026-9');
+  });
+
   it('offers only the months the book actually traded in', () => {
     show(board());
 

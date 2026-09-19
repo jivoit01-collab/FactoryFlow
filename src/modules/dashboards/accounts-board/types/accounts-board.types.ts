@@ -31,9 +31,16 @@ export interface AccountsHead {
  * another. Do not "fix" this by filtering the balance.
  */
 export interface AccountsHeadline {
-  /** Everything that arrived in the box, inside the period. */
+  /** Loaded onto the imprest card(s), inside the period. */
   imprest_issued: number;
+  /** Top-ups, not receipts. */
   imprest_count: number;
+  /**
+   * Cash that reached the drawer, inside the period. A DIFFERENT population
+   * from `imprest_issued` — never add the two.
+   */
+  into_box: number;
+  into_box_count: number;
   /** Everything paid out of it, inside the period, agreed or not. */
   cash_issued: number;
   cash_issued_count: number;
@@ -56,7 +63,7 @@ export interface AccountsHeadline {
   };
 }
 
-/** One imprest card, and what has been loaded onto it. */
+/** One imprest card, and what has been loaded onto it in total. */
 export interface AccountsCard {
   id: number;
   /** The card's own name. Printed on the card, so never masked. */
@@ -66,13 +73,42 @@ export interface AccountsCard {
   last_updated: string | null;
 }
 
+/** One loading of an imprest card. */
+export interface AccountsLoad {
+  id: number;
+  /** Which card was loaded. */
+  name: string;
+  amount: number;
+  /** The day it was loaded. */
+  last_updated: string;
+  detail: string;
+}
+
 export interface AccountsImprest {
-  /** Money into the DRAWER. Never the sum of the card loads — see the service. */
+  /**
+   * Money paid ONTO the imprest card(s) — the headline figure.
+   *
+   * NOT the cash that reached the drawer. A card is loaded, then drawn off at
+   * a machine, and only the second of those is a receipt; adding the two would
+   * double the money. The drawer is `into_box`, and the two are never summed.
+   */
   total: number;
+  /** Top-ups, not receipts. */
   count: number;
   holders: number;
-  rows: AccountsCard[];
-  sources: Array<{ key: string; label: string; amount: number; count: number }>;
+  /** One row per top-up, newest first. */
+  rows: AccountsLoad[];
+  truncated: boolean;
+  cards: AccountsCard[];
+  /** A different population: cash that actually reached the box. */
+  into_box: {
+    total: number;
+    count: number;
+    drawn_off_card: number;
+    drawn_off_card_count: number;
+    handed_in: number;
+    handed_in_count: number;
+  };
   span: { from: string | null; to: string | null };
 }
 
@@ -181,6 +217,19 @@ export interface AccountsPeriod {
   to?: string;
 }
 
+/**
+ * What the screen is asking for.
+ *
+ * `latest` is the default and is resolved by the SERVER, so the page opens on
+ * the newest month in one round trip rather than fetching the whole book,
+ * reading the month list off it and fetching again. `all` is a real choice
+ * here, not a missing default, which is why `latest` has to be named.
+ */
+export type AccountsPeriodChoice =
+  | { kind: 'latest' }
+  | { kind: 'all' }
+  | { kind: 'month'; year: number; month: number };
+
 export interface AccountsBoardMeta {
   company: string;
   as_of: string;
@@ -209,7 +258,7 @@ export interface AccountsBoardResponse {
 
 /** What the Details panel is currently showing. */
 export type AccountsSelection =
-  | { kind: 'imprest'; row: AccountsCard }
+  | { kind: 'imprest'; row: AccountsLoad }
   | { kind: 'pending'; row: AccountsPendingRow }
   | { kind: 'salary'; row: AccountsPerson }
   | { kind: 'holder'; row: AccountsPerson; owed: boolean }

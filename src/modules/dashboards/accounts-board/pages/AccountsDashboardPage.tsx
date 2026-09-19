@@ -14,7 +14,7 @@ import { BUCKET_COLOUR_FALLBACK, BUCKET_COLOURS } from '../constants';
 import type {
   AccountsBoardResponse,
   AccountsBucket,
-  AccountsPeriod,
+  AccountsPeriodChoice,
   AccountsSelection,
 } from '../types';
 
@@ -326,17 +326,15 @@ function Details({
   let body: React.ReactNode = null;
 
   if (selection.kind === 'imprest') {
-    heading = `Imprest · ${selection.row.name}`;
+    heading = `Imprest top-up · ${selection.row.name}`;
     fields = [
-      field('Loaded', rupees(selection.row.amount)),
-      field('Top-ups', selection.row.count),
-      field('Last loaded', day(selection.row.last_updated)),
+      field('Amount', rupees(selection.row.amount)),
+      field('Loaded on', day(selection.row.last_updated)),
     ];
     body = (
       <p className="ab-details-note">
-        What is paid onto a card and what is drawn off it into the box are two
-        views of one float. This is the card side, and it is never added to the
-        drawer total.
+        {selection.row.detail ||
+          'Money paid onto the imprest card. It becomes cash in the box later, when it is drawn off at a machine — so it is never added to the box total.'}
       </p>
     );
   } else if (selection.kind === 'pending') {
@@ -431,7 +429,10 @@ function Details({
 // ──────────────────────────────── the page ────────────────────────────────
 
 export default function AccountsDashboardPage() {
-  const [period, setPeriod] = useState<AccountsPeriod | null>(null);
+  // Opens on the newest month the book has, not on a five-month total. The
+  // SERVER resolves `latest`, so this costs one round trip rather than
+  // fetching everything, reading the month list off it and fetching again.
+  const [period, setPeriod] = useState<AccountsPeriodChoice>({ kind: 'latest' });
   const [selection, setSelection] = useState<AccountsSelection>(null);
   const [addOpen, setAddOpen] = useState(false);
 
@@ -451,7 +452,11 @@ export default function AccountsDashboardPage() {
    * page of zeroes for a book whose last entry was in August.
    */
   const periods = meta?.periods ?? [];
-  const periodValue = period ? `${period.year}-${period.month}` : 'all';
+  // Driven by what came BACK, not by what was asked for: with `latest` the
+  // client does not know which month it got until the server says so.
+  const periodValue = meta?.period
+    ? `${meta.period.year}-${meta.period.month}`
+    : 'all';
 
   const bucketMax = useMemo(
     () => Math.max(0, ...(detail?.buckets ?? []).map((b) => b.amount)),
@@ -498,11 +503,11 @@ export default function AccountsDashboardPage() {
               onChange={(event) => {
                 const next = event.target.value;
                 if (next === 'all') {
-                  setPeriod(null);
+                  setPeriod({ kind: 'all' });
                   return;
                 }
                 const [year, month] = next.split('-').map(Number);
-                setPeriod({ year, month });
+                setPeriod({ kind: 'month', year, month });
               }}
             >
               <option value="all">Whole book</option>
@@ -552,8 +557,14 @@ export default function AccountsDashboardPage() {
                 <StatCard
                   label="Imprest issued"
                   value={rupees(headline.imprest_issued)}
-                  hint={`${headline.imprest_count} receipts`}
-                  note={`Into the box, ${periodLabel}`}
+                  hint={`${headline.imprest_count} top-ups`}
+                  // Says "onto the card" rather than leaving it to be assumed:
+                  // this is NOT the cash that reached the drawer, and the two
+                  // figures differ because a card is loaded first and drawn off
+                  // later. The box figure is on its own line beneath.
+                  note={`Loaded onto the card, ${periodLabel} · ₹${money(
+                    headline.into_box,
+                  )} reached the box`}
                 />
                 <StatCard
                   label="Cash issued"
@@ -655,7 +666,7 @@ export default function AccountsDashboardPage() {
             unavailable={absence('imprest', meta, 'The imprest cards')}
           >
             <RowTable
-              head={['Name', 'Amount', 'Last loaded']}
+              head={['Card', 'Amount', 'Loaded on']}
               rows={data?.imprest?.rows ?? []}
               empty="No imprest card was loaded in this period."
               isSelected={(row) =>
@@ -668,6 +679,12 @@ export default function AccountsDashboardPage() {
                 day(row.last_updated),
               ]}
             />
+            {data?.imprest?.truncated && (
+              <p className="ab-other">
+                Showing the {data.imprest.rows.length} most recent of{' '}
+                {data.imprest.count}.
+              </p>
+            )}
           </Panel>
 
           <Panel

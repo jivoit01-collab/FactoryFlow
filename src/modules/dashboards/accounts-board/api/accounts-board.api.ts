@@ -1,7 +1,7 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
-import type { AccountsBoardResponse, AccountsPeriod } from '../types';
+import type { AccountsBoardResponse, AccountsPeriodChoice } from '../types';
 
 export const accountsBoardApi = {
   /**
@@ -11,15 +11,25 @@ export const accountsBoardApi = {
    * on each poll, and six round trips would only add latency to a screen that
    * is looked at more than it is used.
    *
-   * `period` scopes the movement figures. Omitting it means the whole book —
-   * which is a real choice on this screen, not a missing default — so it is
-   * only sent when there is one, and both parts go together because the API
-   * rejects a year without a month rather than guessing January.
+   * `period` scopes the movement figures, and has three answers rather than
+   * two: `latest` (the newest month the book has, resolved server-side so the
+   * page opens on it in ONE round trip), a named month, or `all` for the whole
+   * book — which is a real choice on this screen, not a missing default.
+   *
+   * Year and month always travel together: the API rejects a year alone rather
+   * than quietly meaning January.
    */
-  async getBoard(period?: AccountsPeriod | null): Promise<AccountsBoardResponse> {
+  async getBoard(period: AccountsPeriodChoice): Promise<AccountsBoardResponse> {
+    const params =
+      period.kind === 'latest'
+        ? { period: 'latest' }
+        : period.kind === 'month'
+          ? { year: period.year, month: period.month }
+          : undefined;
+
     const response = await apiClient.get<AccountsBoardResponse>(
       API_ENDPOINTS.ACCOUNTS_BOARD.BOARD,
-      period ? { params: { year: period.year, month: period.month } } : undefined,
+      params ? { params } : undefined,
     );
     return response.data;
   },
