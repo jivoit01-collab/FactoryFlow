@@ -89,6 +89,11 @@ function rupees(value: number | null | undefined): string {
   return `${n < 0 ? '−' : ''}₹${money(Math.abs(n))}`;
 }
 
+/** "1 voucher", "4 vouchers". Only ever needed for words with a plain -s. */
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
 const MONTHS = [
   'January',
   'February',
@@ -601,7 +606,7 @@ export default function AccountsDashboardPage() {
                   value={rupees(headline.pending_ho)}
                   hint={
                     headline.pending_ho_count > 0
-                      ? `${headline.pending_ho_count} vouchers`
+                      ? plural(headline.pending_ho_count, 'voucher')
                       : 'Nothing waiting'
                   }
                   note={
@@ -659,7 +664,7 @@ export default function AccountsDashboardPage() {
                   {detail.other.count > 0 && (
                     <p className="ab-other">
                       Other heads {rupees(detail.other.amount)} over{' '}
-                      {detail.other.count} vouchers
+                      {plural(detail.other.count, 'voucher')}
                     </p>
                   )}
                 </>

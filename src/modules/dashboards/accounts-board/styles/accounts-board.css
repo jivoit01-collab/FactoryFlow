@@ -21,11 +21,15 @@
   --ab-ink: #1c1b18;
   --ab-ink-soft: #6b6862;
   --ab-line: #e4e0d7;
-  --ab-accent: #14563c;
-  --ab-accent-ink: #ffffff;
-  --ab-alert: #a12a1f;
-  --ab-alert-soft: #fdf2f0;
-  --ab-selected: #eef4f0;
+  /* The filled "Cash in hand" card and the selected row follow the app theme,
+     so they track whichever company is active instead of sitting in a fixed
+     green that fights an amber or blue page. --primary is dark in light mode,
+     so a solid fill with --primary-foreground on it is the right way round. */
+  --ab-accent: hsl(var(--primary));
+  --ab-accent-ink: hsl(var(--primary-foreground));
+  --ab-alert: hsl(var(--destructive));
+  --ab-alert-soft: color-mix(in srgb, hsl(var(--destructive)) 8%, var(--ab-card));
+  --ab-selected: color-mix(in srgb, hsl(var(--primary)) 9%, var(--ab-card));
 
   /* The four breakdown lines. Chosen so no two are confusable under
      deuteranopia or protanopia — the pair that would collide, red against
@@ -53,11 +57,15 @@
   --ab-ink: #eceae5;
   --ab-ink-soft: #9c9a94;
   --ab-line: #2f3339;
-  --ab-accent: #1f7d57;
-  --ab-accent-ink: #f2fbf6;
-  --ab-alert: #e4776a;
-  --ab-alert-soft: #2a1c1a;
-  --ab-selected: #1b2b24;
+  /* Dark mode inverts which end of the ramp --primary sits at: it is a LIGHT
+     tint here, so filling the card with it solid would put a light source on
+     a dark page. Mixed 30% into the card instead — still clearly the one
+     filled card, and 6.0–7.6:1 for its ink across all three companies. */
+  --ab-accent: color-mix(in srgb, hsl(var(--primary)) 30%, var(--ab-card));
+  --ab-accent-ink: hsl(var(--foreground));
+  --ab-alert: hsl(var(--destructive));
+  --ab-alert-soft: color-mix(in srgb, hsl(var(--destructive)) 14%, var(--ab-card));
+  --ab-selected: color-mix(in srgb, hsl(var(--primary)) 14%, var(--ab-card));
 
   --ab-bar-1: #2f9e6e;
   --ab-bar-2: #5aa7b8;
