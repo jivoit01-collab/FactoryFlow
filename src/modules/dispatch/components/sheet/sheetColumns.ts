@@ -135,6 +135,16 @@ const STATUS: SheetColumn = {
   value: (row) => row.vehicle_stage_label,
 };
 
+/**
+ * Status leads every sheet, ahead of even the dispatch date.
+ *
+ * It is not a column of the book -- the book had no way to know -- but it is
+ * the first thing anyone reading the register wants, and the only one that
+ * says whether a line still needs doing something about. Left at the far
+ * right it sat twenty columns off the edge of the screen, where a colour on
+ * the row was the only hint it existed.
+ */
+
 /** On the book, kept nowhere in the app. */
 const blank = (key: string, label: string): SheetColumn => ({
   key,
@@ -144,6 +154,7 @@ const blank = (key: string, label: string): SheetColumn => ({
 });
 
 const OIL_COLUMNS: SheetColumn[] = [
+  STATUS,
   DISPATCH_DATE,
   INVOICE_DATE,
   PARTY,
@@ -170,10 +181,10 @@ const OIL_COLUMNS: SheetColumn[] = [
   REMARKS,
   blank('factory_bilty_date', 'Factory Bilty Dispatch Date'),
   blank('bill_receiving_date', 'Bill & Receiving Date'),
-  STATUS,
 ];
 
 const WATER_COLUMNS: SheetColumn[] = [
+  STATUS,
   DISPATCH_DATE,
   INVOICE_DATE,
   PARTY,
@@ -207,7 +218,6 @@ const WATER_COLUMNS: SheetColumn[] = [
   },
   REMARKS,
   blank('asm', 'ASM'),
-  STATUS,
 ];
 
 /** The companies whose sheets this book has — these are the tabs on top. */

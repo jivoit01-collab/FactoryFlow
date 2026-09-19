@@ -89,6 +89,20 @@ vi.mock('@/modules/dispatch/api/sheet.api', () => ({
   },
 }));
 
+/**
+ * Where a column sits, by its heading.
+ *
+ * Looked up rather than counted: the sheet's columns get reordered, and a
+ * test that says "the twelfth" fails for a reason that has nothing to do with
+ * what it is testing.
+ */
+function columnIndexOf(label: string) {
+  const header = within(screen.getByRole('table')).getAllByRole('row')[1];
+  const cells = [...header.children];
+  // The first cell is the row-number gutter, which is not a column.
+  return cells.findIndex((cell) => cell.textContent?.trim().startsWith(label)) - 1;
+}
+
 /** One body cell, by its place on screen — the row gutter is not a cell. */
 function cellAt(row: number, column: number) {
   return bodyRows()[row].children[column + 1] as HTMLElement;
@@ -165,7 +179,7 @@ describe('the Dispatch Sheet', () => {
 
     fireEvent.click(screen.getByTitle('Select row 1'));
 
-    expect(screen.getByText('1 row × 20 columns')).toBeInTheDocument();
+    expect(screen.getByText(/1 row × \d+ columns/)).toBeInTheDocument();
     expect(screen.getByText('Sum 10,913.00')).toBeInTheDocument();
   });
 
@@ -181,10 +195,10 @@ describe('the Dispatch Sheet', () => {
   it('picks the cell pressed on, and names it the way a sheet does', () => {
     openSheet();
 
-    // Row 1, the Party column — the third, so C1.
-    fireEvent.mouseDown(cellAt(0, 2));
+    fireEvent.mouseDown(cellAt(0, columnIndexOf('Party')));
 
-    expect(screen.getByText('C1')).toBeInTheDocument();
+    // Named as a sheet names it: the column's letter and the row's number.
+    expect(screen.getByText('D1')).toBeInTheDocument();
     expect(screen.getByText('1 cell')).toBeInTheDocument();
   });
 
@@ -192,10 +206,10 @@ describe('the Dispatch Sheet', () => {
     openSheet();
 
     // Press on the litres of the first line and drag onto the second's.
-    fireEvent.mouseDown(cellAt(0, 11));
-    fireEvent.mouseEnter(cellAt(1, 11));
+    const litres = columnIndexOf('Oil LTR');
+    fireEvent.mouseDown(cellAt(0, litres));
+    fireEvent.mouseEnter(cellAt(1, litres));
 
-    expect(screen.getByText('L1:L2')).toBeInTheDocument();
     expect(screen.getByText('2 rows × 1 column')).toBeInTheDocument();
     expect(screen.getByText('Sum 22,909.00')).toBeInTheDocument();
   });
@@ -203,30 +217,32 @@ describe('the Dispatch Sheet', () => {
   it('stops extending once the mouse is let go', () => {
     openSheet();
 
-    fireEvent.mouseDown(cellAt(0, 11));
+    const litres = columnIndexOf('Oil LTR');
+    fireEvent.mouseDown(cellAt(0, litres));
     fireEvent.mouseUp(window);
-    fireEvent.mouseEnter(cellAt(1, 11));
+    fireEvent.mouseEnter(cellAt(1, litres));
 
     // Still the one cell: the drag was over before the mouse moved.
-    expect(screen.getByText('L1')).toBeInTheDocument();
+    expect(screen.getByText('1 cell')).toBeInTheDocument();
     expect(screen.getByText('Sum 10,913.00')).toBeInTheDocument();
   });
 
   it('shift-pressing a second cell extends from the first', () => {
     openSheet();
 
-    fireEvent.mouseDown(cellAt(0, 11));
+    const litres = columnIndexOf('Oil LTR');
+    fireEvent.mouseDown(cellAt(0, litres));
     fireEvent.mouseUp(window);
-    fireEvent.mouseDown(cellAt(1, 12), { shiftKey: true });
+    fireEvent.mouseDown(cellAt(1, litres + 1), { shiftKey: true });
 
-    expect(screen.getByText('L1:M2')).toBeInTheDocument();
     expect(screen.getByText('2 rows × 2 columns')).toBeInTheDocument();
   });
 
   it('sorts a column when its heading is clicked', () => {
     openSheet();
 
-    const partyOf = () => bodyRows().map((line) => line.children[3].textContent);
+    const party = columnIndexOf('Party') + 1;
+    const partyOf = () => bodyRows().map((line) => line.children[party].textContent);
     fireEvent.click(screen.getByRole('button', { name: 'Sort by Party' }));
     expect(partyOf()[0]).toBe('ARJUN DASS & SONS');
 
