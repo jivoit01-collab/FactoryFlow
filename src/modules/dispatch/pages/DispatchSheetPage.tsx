@@ -162,10 +162,48 @@ export default function DispatchSheetPage() {
 
   return (
     <div className="space-y-4">
+      {/* Window, search and scope sit in the header beside Download, because
+          they are the same decision: which lines this is a register OF. The
+          labels are beside their boxes rather than above them, so the strip
+          stays the height of the title it sits next to. */}
       <DashboardHeader
         title="Dispatch Sheet"
         description="Every invoice that left the gate, day by day — the register, filled from the plans"
       >
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          From
+          <Input
+            type="date"
+            value={dateFrom}
+            max={dateTo}
+            onChange={(event) => setDateFrom(event.target.value)}
+            className="h-9 w-[9.5rem] text-foreground"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          To
+          <Input
+            type="date"
+            value={dateTo}
+            min={dateFrom}
+            onChange={(event) => setDateTo(event.target.value)}
+            className="h-9 w-[9.5rem] text-foreground"
+          />
+        </label>
+        <Input
+          placeholder="Invoice, party, bilty, vehicle…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label="Find"
+          className="h-9 w-56"
+        />
+        <label className="flex h-9 items-center gap-2 text-sm">
+          <Checkbox
+            checked={allCompanies}
+            onCheckedChange={(checked) => setAllCompanies(checked === true)}
+          />
+          All companies
+        </label>
         <Button
           variant="outline"
           disabled={rows.length === 0}
@@ -178,46 +216,18 @@ export default function DispatchSheetPage() {
         </Button>
       </DashboardHeader>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="mb-1 block text-muted-foreground">From</span>
-          <Input
-            type="date"
-            value={dateFrom}
-            max={dateTo}
-            onChange={(event) => setDateFrom(event.target.value)}
-            className="h-9 w-40"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-muted-foreground">To</span>
-          <Input
-            type="date"
-            value={dateTo}
-            min={dateFrom}
-            onChange={(event) => setDateTo(event.target.value)}
-            className="h-9 w-40"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-muted-foreground">Find</span>
-          <Input
-            placeholder="Invoice, party, bilty, vehicle…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="h-9 w-64"
-          />
-        </label>
-        <label className="flex h-9 items-center gap-2 text-sm">
-          <Checkbox
-            checked={allCompanies}
-            onCheckedChange={(checked) => setAllCompanies(checked === true)}
-          />
-          All companies
-        </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={stream} onValueChange={(value) => setStream(value as DispatchSheetStream)}>
+          <TabsList>
+            <TabsTrigger value="OIL">Oil · {counts.OIL}</TabsTrigger>
+            <TabsTrigger value="WATER">Water · {counts.WATER}</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
+        {/* Column filters belong to the sheet on screen, not to the window
+            being asked for, so they are said here rather than in the header. */}
         {filteredColumns.length > 0 && (
-          <div className="flex h-9 items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               Filtered by {filteredColumns.join(', ')}
             </span>
@@ -227,13 +237,6 @@ export default function DispatchSheetPage() {
           </div>
         )}
       </div>
-
-      <Tabs value={stream} onValueChange={(value) => setStream(value as DispatchSheetStream)}>
-        <TabsList>
-          <TabsTrigger value="OIL">Oil · {counts.OIL}</TabsTrigger>
-          <TabsTrigger value="WATER">Water · {counts.WATER}</TabsTrigger>
-        </TabsList>
-      </Tabs>
 
       {meta && !meta.sap_available && (
         <p className="flex items-start gap-2 rounded-md border border-amber-400/50 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-300">
