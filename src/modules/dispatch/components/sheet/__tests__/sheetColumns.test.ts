@@ -40,6 +40,9 @@ const labels = (company: string) => columnsFor(company).map((column) => column.l
 describe('the workbook’s columns', () => {
   it('gives Oil the columns the oil tab has, in its order', () => {
     expect(labels('JIVO_OIL')).toEqual([
+      // Status first: not a column of the book, but the first thing anyone
+      // reading the register wants to know.
+      'Status',
       'Dispatch Date',
       'Invoice Date',
       'Party',
@@ -59,7 +62,6 @@ describe('the workbook’s columns', () => {
       'Remarks',
       'Factory Bilty Dispatch Date',
       'Bill & Receiving Date',
-      'Status',
     ]);
   });
 
