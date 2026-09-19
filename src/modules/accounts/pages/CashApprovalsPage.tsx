@@ -1,11 +1,13 @@
-import { Check, ClipboardList, Loader2, X } from 'lucide-react';
+import { Check, ClipboardList, Loader2, Settings2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
+import { useAuth } from '@/core/auth/hooks/useAuth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { EntryApprovalStatus } from '@/modules/accounts/api';
 import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
+import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
@@ -55,10 +57,14 @@ const STATE_TONE: Record<EntryApprovalStatus, string> = {
 export default function CashApprovalsPage() {
   const { hasPermission } = usePermission();
   const canApprove = hasPermission(CASH_BOOK_PERMISSIONS.APPROVE);
+  // Choosing who agrees to spending is administration, not book-keeping,
+  // so it sits behind the same right as the other cash book settings.
+  const canManageApprovers = hasPermission(CASH_BOOK_PERMISSIONS.BRANCHES);
+  const { user } = useAuth();
+  const [approverSettingsOpen, setApproverSettingsOpen] = useState(false);
 
   const [state, setState] = useState<EntryApprovalStatus>('PENDING');
   const [selected, setSelected] = useState<number[]>([]);
-
 
   const { data, isLoading } = useApprovalQueue(state);
   const decide = useDecideEntries();
@@ -157,6 +163,12 @@ export default function CashApprovalsPage() {
         description="Payments from the cash book waiting on a decision"
       >
         <div className="flex flex-wrap items-center gap-2">
+          {canManageApprovers && (
+            <Button variant="outline" onClick={() => setApproverSettingsOpen(true)}>
+              <Settings2 className="mr-2 h-4 w-4" />
+              Approvers
+            </Button>
+          )}
           <NativeSelect
             aria-label="Which entries to show"
             className="w-[210px]"
@@ -283,9 +295,7 @@ export default function CashApprovalsPage() {
                       {row.gl_account_code ? (
                         <>
                           <p className="font-mono text-xs">{row.gl_account_code}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {row.gl_account_name}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{row.gl_account_name}</p>
                         </>
                       ) : (
                         '—'
@@ -321,9 +331,7 @@ export default function CashApprovalsPage() {
                       {row.approval_decided_at && (
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {formatDateTimeShort(row.approval_decided_at)}
-                          {row.approval_decided_by_name
-                            ? ` · ${row.approval_decided_by_name}`
-                            : ''}
+                          {row.approval_decided_by_name ? ` · ${row.approval_decided_by_name}` : ''}
                         </p>
                       )}
                     </td>
@@ -333,6 +341,14 @@ export default function CashApprovalsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {approverSettingsOpen && (
+        <ApproverSettingsDialog
+          open={approverSettingsOpen}
+          onOpenChange={setApproverSettingsOpen}
+          currentUserId={user?.id ?? null}
+        />
       )}
     </div>
   );

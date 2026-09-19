@@ -393,6 +393,15 @@ export const cashBookApi = {
     return data;
   },
 
+  /** Make somebody an approver of this company's cash, or stop them being one. */
+  async setApprover(person: number, approving: boolean): Promise<CashPerson> {
+    const { data } = await apiClient.post<CashPerson>(
+      API_ENDPOINTS.CASH_BOOK.APPROVERS,
+      { person, approving },
+    );
+    return data;
+  },
+
   async approvalQueue(state: EntryApprovalStatus = 'PENDING'): Promise<ApprovalQueue> {
     const { data } = await apiClient.get<ApprovalQueue>(
       API_ENDPOINTS.CASH_BOOK.APPROVALS,

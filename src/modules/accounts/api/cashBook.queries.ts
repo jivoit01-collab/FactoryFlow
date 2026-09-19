@@ -249,6 +249,12 @@ export function useApprovalQueue(state: EntryApprovalStatus = 'PENDING') {
   });
 }
 
+export function useSetCashApprover() {
+  return useCashBookMutation((vars: { person: number; approving: boolean }) =>
+    cashBookApi.setApprover(vars.person, vars.approving),
+  );
+}
+
 export function useDecideEntries() {
   return useCashBookMutation((vars: { ids: number[]; approve: boolean; note?: string }) =>
     cashBookApi.decideEntries(vars.ids, vars.approve, vars.note ?? ''),

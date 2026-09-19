@@ -62,6 +62,7 @@ export {
   useRecordCashEntry,
   useRemoveFromBunch,
   useRetireCashBranch,
+  useSetCashApprover,
   useUpdateCashBranch,
   useUpdateCashEntry,
 } from './cashBook.queries';
