@@ -164,6 +164,9 @@ export interface CashEntry {
   approval_sent_at: string | null;
   approval_decided_at: string | null;
   approval_decided_by_name: string | null;
+  /** Who it was sent to. Null on a receipt, and on the imported history. */
+  approver: number | null;
+  approver_name: string | null;
   approval_note: string;
   /** True while the entry sits with an approver, or has been approved. */
   is_locked: boolean;
@@ -326,6 +329,8 @@ export interface RecordEntryPayload {
   branch?: number | null;
   atm_account?: number | null;
   advance_holder?: number | null;
+  /** Required on a payment, refused on a receipt. */
+  approver?: number | null;
   gl_account_code?: string;
   /** Sent with the code; only used if SAP is down when the entry is saved. */
   gl_account_name?: string;
@@ -376,6 +381,14 @@ export const cashBookApi = {
       API_ENDPOINTS.CASH_BOOK.ENTRIES_DECIDE,
       { entry_ids: entryIds, note },
       { params: approve ? {} : { reject: 'true' } },
+    );
+    return data;
+  },
+
+  /** Who a payment may be sent to for approval. */
+  async approvers(): Promise<CashPerson[]> {
+    const { data } = await apiClient.get<CashPerson[]>(
+      API_ENDPOINTS.CASH_BOOK.APPROVERS,
     );
     return data;
   },

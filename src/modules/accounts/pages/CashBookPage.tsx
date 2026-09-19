@@ -609,10 +609,16 @@ export default function CashBookPage() {
                         >
                           {row.approval_label}
                         </Badge>
-                        {row.approval_decided_at && (
+                        {row.approval_decided_at ? (
                           <p className="mt-1 text-[10px] text-muted-foreground">
                             {row.approval_decided_at.slice(0, 10)}
                           </p>
+                        ) : (
+                          row.approver_name && (
+                            <p className="mt-1 text-[10px] text-muted-foreground">
+                              with {row.approver_name}
+                            </p>
+                          )
                         )}
                       </td>
                       {canManage && (

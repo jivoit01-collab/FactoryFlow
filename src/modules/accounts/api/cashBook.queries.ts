@@ -28,6 +28,7 @@ export const CASH_BOOK_QUERY_KEYS = {
   advanceStatement: (id: number, includeCancelled = false) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id, includeCancelled] as const,
   approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
+  approvers: () => [...CASH_BOOK_QUERY_KEYS.all, 'approvers'] as const,
   columnValues: (column: string, filters: ColumnFilters, includeCancelled: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
   people: (search: string, holdingOnly: boolean) =>
@@ -223,6 +224,20 @@ export function useCashPeople(search = '', holdingOnly = false) {
     queryKey: CASH_BOOK_QUERY_KEYS.people(search, holdingOnly),
     queryFn: () => cashBookApi.people(search, holdingOnly),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Who a payment may be sent to.
+ *
+ * Long-lived: the list changes when somebody is made an approver, which is an
+ * administrative act, not something that happens while a form is open.
+ */
+export function useCashApprovers() {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.approvers(),
+    queryFn: () => cashBookApi.approvers(),
+    staleTime: 10 * 60 * 1000,
   });
 }
 

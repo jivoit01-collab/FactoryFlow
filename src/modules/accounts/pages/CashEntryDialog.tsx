@@ -10,6 +10,7 @@ import type {
 } from '@/modules/accounts/api';
 import {
   useAtmAccounts,
+  useCashApprovers,
   useCashBookOptions,
   useCashPeople,
   useGLAccounts,
@@ -89,6 +90,8 @@ export function CashEntryDialog({
   const [atmAccount, setAtmAccount] = useState(
     entry?.atm_account ? String(entry.atm_account) : '',
   );
+  const [approverId, setApproverId] = useState<number | null>(entry?.approver ?? null);
+  const [approverName, setApproverName] = useState(entry?.approver_name ?? '');
   const [holderId, setHolderId] = useState<number | null>(entry?.advance_holder ?? null);
   const [holderName, setHolderName] = useState(entry?.advance_holder_name ?? '');
   const [holderSearch, setHolderSearch] = useState('');
@@ -114,6 +117,12 @@ export function CashEntryDialog({
     // Only people holding a float: a payment clears an advance somebody
     // actually has, and naming anybody else would create one out of nothing.
   } = useCashPeople(holderSearch, true);
+
+  const {
+    data: approverList = [],
+    isLoading: approversLoading,
+    isError: approversError,
+  } = useCashApprovers();
   const saving = record.isPending || update.isPending;
 
   const problem = useMemo(() => {
@@ -122,8 +131,9 @@ export function CashEntryDialog({
     if (!detail.trim()) return 'Write what the money was for.';
     if (isPayment && !branch) return 'Say which branch this was spent for.';
     if (isPayment && !glCode) return 'Pick the G/L head this payment belongs to.';
+    if (isPayment && !approverId) return 'Say who should approve this payment.';
     return null;
-  }, [entryDate, amount, detail, isPayment, branch, glCode]);
+  }, [entryDate, amount, detail, isPayment, branch, glCode, approverId]);
 
   async function submit() {
     if (problem) {
@@ -142,6 +152,9 @@ export function CashEntryDialog({
       branch: isPayment ? Number(branch) : null,
       atm_account: !isPayment && atmAccount ? Number(atmAccount) : null,
       advance_holder: isPayment ? holderId : null,
+      // Required on a payment and refused on a receipt -- the server holds
+      // the rule; this only shapes what the form sends.
+      approver: isPayment ? approverId : null,
       gl_account_code: isPayment ? glCode : '',
       gl_account_name: isPayment ? glName : '',
     };
@@ -346,6 +359,40 @@ export function CashEntryDialog({
               <p className="text-xs text-muted-foreground">
                 Naming somebody clears this much of what they are holding. Leave it blank
                 when the money came straight out of the box.
+              </p>
+            </div>
+          )}
+
+          {isPayment && (
+            <div className="space-y-1">
+              <SearchableSelect<CashPerson>
+                inputId="cash-approver"
+                label="Send for approval to"
+                required
+                value={approverName}
+                items={approverList}
+                isLoading={approversLoading}
+                isError={approversError}
+                placeholder="Who should agree to this?"
+                getItemKey={(person) => person.id}
+                getItemLabel={(person) => person.name}
+                onItemSelect={(person) => {
+                  setApproverId(person.id);
+                  setApproverName(person.name);
+                }}
+                onClear={() => {
+                  setApproverId(null);
+                  setApproverName('');
+                }}
+                loadingText="Loading approvers…"
+                emptyText="Nobody has been made an approver yet"
+                notFoundText="No approver matches that"
+                errorText="The approver list could not be loaded."
+              />
+              <p className="text-xs text-muted-foreground">
+                {approverList.length === 0 && !approversLoading
+                  ? 'Until somebody is put in the Cash Book Approver group there is nobody to send this to.'
+                  : 'Only this person can approve it. It will not appear in anybody else’s queue.'}
               </p>
             </div>
           )}

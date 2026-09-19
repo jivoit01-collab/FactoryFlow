@@ -43,6 +43,7 @@ export {
   useCancelAdvance,
   useCancelAtmReceipt,
   useCancelCashEntry,
+  useCashApprovers,
   useCashBookOptions,
   useCashBranches,
   useCashBunch,

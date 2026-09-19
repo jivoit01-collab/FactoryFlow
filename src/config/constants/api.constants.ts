@@ -1795,6 +1795,9 @@ export const API_ENDPOINTS = {
     // DECIDE takes ?reject=true to send one back.
     ENTRIES_DECIDE: '/cash-book/entries/decide/',
     APPROVALS: '/cash-book/approvals/',
+    // Who a payment may be sent to. Not everyone the permission
+    // system would allow -- see cash_book.services.approvers.
+    APPROVERS: '/cash-book/approvers/',
     // A bunch is the paper batch: approved vouchers bundled, downloaded as
     // one spreadsheet and mailed to head office.
     BUNCHES: '/cash-book/bunches/',
