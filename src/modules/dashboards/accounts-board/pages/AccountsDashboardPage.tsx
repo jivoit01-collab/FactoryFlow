@@ -5,10 +5,10 @@ import { useMemo, useState } from 'react';
 
 import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { CashEntryDialog } from '@/modules/accounts/pages/CashEntryDialog';
 import { Badge, Button, Card, CardContent } from '@/shared/components/ui';
 import { formatNumber } from '@/shared/utils';
 
-import { CashEntryDialog } from '../../pages/CashEntryDialog';
 import { useAccountsBoard } from '../api';
 import { BUCKET_COLOUR_FALLBACK, BUCKET_COLOURS } from '../constants';
 import type {
@@ -52,7 +52,7 @@ import type {
  * THE ACTIONS ARE THE REGISTER'S, NOT THIS SCREEN'S
  * --------------------------------------------------
  * "Add entry" opens the cash book's own dialog and "View ledger" links into the
- * register. This page writes nothing itself. The mock's "Record settlement"
+ * register in the Accounts module. This page writes nothing itself. The mock's "Record settlement"
  * button is deliberately absent: nothing in the register records a settlement,
  * so the button would either do nothing or need a model invented behind it.
  * See the note in `_pending_ho` — reimbursement is the one thing the cash book

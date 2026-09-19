@@ -3,16 +3,22 @@ import { CASH_BOOK_ACCESS } from '@/config/permissions';
 /**
  * Who is offered the accounts dashboard.
  *
- * The same list the rest of the module uses. The board mints no right of its
- * own: it is the register summarised, so being allowed to read the register is
- * being allowed to read this.
+ * The cash book's own rights, reused rather than a new one being minted: this
+ * board IS that register summarised, so being allowed to read the register is
+ * being allowed to read this. Nothing has to be created on the live database
+ * before anybody can open it.
+ *
+ * **This list must also be spread onto the Dashboards PARENT nav entry.** A
+ * cash book viewer holds none of the other boards' rights, so without it there
+ * the whole Dashboards menu — not merely this one row — stays hidden from
+ * exactly the people the board was built for.
  *
  * The board feed right (`control_boards.can_read_cash_book_feed`) is NOT listed
- * here on purpose. It exists for a dashboard-only login — the carousel display
- * user — which reaches the screen by its URL rather than through this sidebar,
- * and which the API answers with the names masked. Adding it here would put an
- * "Accounts" section in the sidebar of a login that can open exactly one page
- * in it, which is the parent-nav trap in reverse.
+ * here, on purpose. It exists for a dashboard-only login — the carousel display
+ * user — whose copy of this board comes back with the per-person names masked.
+ * It opens the screen through the backend's own permission check; listing it
+ * here as well would offer a menu row promising a board that login sees only
+ * half of.
  */
 export const ACCOUNTS_BOARD_VIEW_PERMISSIONS = CASH_BOOK_ACCESS;
 

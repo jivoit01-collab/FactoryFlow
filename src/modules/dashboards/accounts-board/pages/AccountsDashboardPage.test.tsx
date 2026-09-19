@@ -21,7 +21,7 @@ vi.mock('../api', () => ({
 
 // The register's own dialog. Not under test here, and importing it for real
 // drags the whole SAP G/L picker into a page test.
-vi.mock('../../pages/CashEntryDialog', () => ({
+vi.mock('@/modules/accounts/pages/CashEntryDialog', () => ({
   CashEntryDialog: () => null,
 }));
 

@@ -23,7 +23,6 @@ import {
   CreditCard,
   HandCoins,
   IndianRupee,
-  LayoutDashboard,
   Package,
   Wallet,
 } from 'lucide-react';
@@ -37,9 +36,6 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
-const AccountsDashboardPage = lazy(
-  () => import('./accounts-board/pages/AccountsDashboardPage'),
-);
 const CashBookPage = lazy(() => import('./pages/CashBookPage'));
 const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
 const CashBranchSettingsPage = lazy(() => import('./pages/CashBranchSettingsPage'));
@@ -50,17 +46,6 @@ const BunchesPage = lazy(() => import('./pages/BunchesPage'));
 export const accountsModuleConfig: ModuleConfig = {
   name: 'accounts',
   routes: [
-    {
-      // The dashboard over the register: the four figures, the outstanding
-      // breakdown, and who is holding what. Reads only -- every action on it
-      // opens the register's own screens -- so it is gated on plain read
-      // access like the Cash Book itself.
-      path: '/accounts/dashboard',
-      element: <AccountsDashboardPage />,
-      layout: 'main',
-      permissions: CASH_BOOK_ACCESS,
-      breadcrumb: { label: 'Accounts Dashboard' },
-    },
     {
       path: '/accounts/cash-book',
       element: <CashBookPage />,
@@ -116,12 +101,6 @@ export const accountsModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       modulePrefix: CASH_BOOK_MODULE_PREFIX,
       children: [
-        {
-          path: '/accounts/dashboard',
-          title: 'Dashboard',
-          icon: LayoutDashboard,
-          permissions: CASH_BOOK_ACCESS,
-        },
         {
           path: '/accounts/cash-book',
           title: 'Cash Book',

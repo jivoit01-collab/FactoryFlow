@@ -35,10 +35,10 @@ import {
   SAP_REPORTS_ACCESS,
 } from '@/config/permissions';
 import { useAuth, usePermission } from '@/core/auth';
-import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '@/modules/accounts/accounts-board/constants';
 import type { AccentKey } from '@/shared/components/dashboard/accents';
 import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/components/navigation';
 
+import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
@@ -64,12 +64,6 @@ interface DashboardsModuleCard {
 // Kept in the same order as the Dashboards sidebar, and holding the same
 // entries: a board that is reachable from the menu but missing here reads as
 // one this login cannot open at all. `landingParity.test.ts` enforces it.
-//
-// That parity is about boards this module OWNS, which is why it is expressed
-// over `/dashboards/…` routes. A card pointing somewhere else is a board that
-// lives in another module and is listed here only so it can be found — it has
-// its own sidebar entry there, and no Dashboards menu row is expected. The
-// Accounts card below is the one such entry today.
 const dashboardsModules: DashboardsModuleCard[] = [
   {
     title: 'Board Carousel',
@@ -220,15 +214,13 @@ const dashboardsModules: DashboardsModuleCard[] = [
     permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
   },
   {
-    // Lives in the Accounts module rather than under /dashboards, because it
-    // is the cash book's own screen and its actions open the register. Listed
-    // here anyway: people look for a dashboard on the dashboards page, and a
-    // board findable only through a different module's sidebar is a board
-    // nobody finds. The route is the one truth -- there is still exactly one
-    // page, reached two ways.
+    // The cash box: what came in, what went out, what is in the drawer and who
+    // is holding the rest. Gated on the register's own rights rather than a new
+    // one -- this board IS the cash book summarised, so being allowed to read
+    // that is being allowed to read this.
     title: 'Accounts',
     icon: <Wallet className="h-5 w-5" />,
-    route: '/accounts/dashboard',
+    route: '/dashboards/accounts-board',
     accent: 'emerald',
     permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
   },
