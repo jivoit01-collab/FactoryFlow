@@ -12,6 +12,8 @@ function row(overrides: Partial<DispatchSheetRow>): DispatchSheetRow {
     company_name: 'Jivo Oil',
     stream: 'OIL',
     booking_status: 'DISPATCHED',
+    vehicle_stage: 'DISPATCHED',
+    vehicle_stage_label: 'Dispatched',
     dispatch_date: '2026-04-01',
     invoice_date: '2026-03-30',
     party: 'CHIRAG ENTERPRISES MUMBAI',
@@ -40,6 +42,8 @@ const ROWS: DispatchSheetRow[] = [
   row({ plan_id: 1, party: 'CHIRAG ENTERPRISES MUMBAI', litres: 10913 }),
   row({
     plan_id: 2,
+    vehicle_stage: 'DOCKED',
+    vehicle_stage_label: 'Docked',
     party: 'ARJUN DASS & SONS',
     invoice_no: '626030604',
     litres: 11996,
@@ -47,6 +51,8 @@ const ROWS: DispatchSheetRow[] = [
   }),
   row({
     plan_id: 3,
+    vehicle_stage: 'EMPTY_IN',
+    vehicle_stage_label: 'Empty Vehicle In',
     stream: 'WATER',
     party: 'ROYAL HOSPITALITY HARYANA',
     invoice_no: '626038217',
@@ -217,6 +223,32 @@ describe('the Dispatch Sheet', () => {
     expect(bodyRows()).toHaveLength(1);
     expect(screen.getByText('ARJUN DASS & SONS')).toBeInTheDocument();
     expect(screen.getByText(/Filtered by transport_name/)).toBeInTheDocument();
+  });
+
+  it('colours a line by where its truck has got to', () => {
+    openSheet();
+
+    const [gone, loading] = bodyRows();
+    // Dispatched is the finished line; docked is still in hand.
+    expect(gone.className).toContain('emerald');
+    expect(loading.className).toContain('sky');
+  });
+
+  it('names the stage in the Status cell, since two stages share a colour', () => {
+    openSheet();
+
+    // "Dispatched" is on the key as well, so look in the row's own cells.
+    const [gone, loading] = bodyRows();
+    expect(within(gone).getByText('Dispatched')).toBeInTheDocument();
+    expect(within(loading).getByText('Docked')).toBeInTheDocument();
+  });
+
+  it('puts a key on the page for what the colours mean', () => {
+    openSheet();
+
+    expect(screen.getByText('At the gate')).toBeInTheDocument();
+    expect(screen.getByText('Loading')).toBeInTheDocument();
+    expect(screen.getByText('Not in yet')).toBeInTheDocument();
   });
 
   it('says which cells are blank because SAP did not answer', () => {
