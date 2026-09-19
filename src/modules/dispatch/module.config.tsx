@@ -155,11 +155,13 @@ export const dispatchModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Inside Vehicle Manager' },
     },
     {
-      // The outward register the desk used to keep in Excel.
+      // The outward register the desk used to keep in Excel. Gated on its own
+      // permission and nothing else -- seeing the plans is a different right,
+      // and it does not carry this one with it.
       path: '/dispatch/sheet',
       element: <DispatchSheetPage />,
       layout: 'main',
-      permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET, DISPATCH_PERMISSIONS.VIEW_PLANS],
+      permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET],
       breadcrumb: { label: 'Dispatch Sheet' },
     },
     {
