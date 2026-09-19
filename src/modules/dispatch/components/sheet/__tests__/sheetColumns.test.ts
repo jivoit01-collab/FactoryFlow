@@ -12,6 +12,8 @@ const ROW: DispatchSheetRow = {
   company_name: 'Jivo Oil',
   stream: 'OIL',
   booking_status: 'DISPATCHED',
+  vehicle_stage: 'DISPATCHED',
+  vehicle_stage_label: 'Dispatched',
   dispatch_date: '2026-04-01',
   invoice_date: '2026-03-30',
   party: 'CHIRAG ENTERPRISES MUMBAI',

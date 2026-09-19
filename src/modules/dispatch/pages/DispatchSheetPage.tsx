@@ -9,6 +9,12 @@ import {
   type SheetColumn,
 } from '@/modules/dispatch/components/sheet/sheetColumns';
 import { downloadSheet } from '@/modules/dispatch/components/sheet/sheetExport';
+import {
+  legendSwatchClass,
+  STAGE_LEGEND,
+  stageBadgeClass,
+  stageRowClass,
+} from '@/modules/dispatch/components/sheet/vehicleStage';
 import type { DispatchSheetRow, DispatchSheetStream } from '@/modules/dispatch/types/sheet.types';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -252,6 +258,17 @@ export default function DispatchSheetPage() {
           </TabsList>
         </Tabs>
 
+        {/* What the row colours mean. Beside the tabs rather than under the
+            sheet: a key is no use once you have scrolled past the rows. */}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {STAGE_LEGEND.map((entry) => (
+            <span key={entry.tone} className="flex items-center gap-1.5">
+              <span className={`h-3 w-3 rounded-sm ${legendSwatchClass(entry.tone)}`} />
+              {entry.label}
+            </span>
+          ))}
+        </div>
+
         {/* Column filters belong to the sheet on screen, not to the window
             being asked for, so they are said here rather than in the header. */}
         {filteredColumns.length > 0 && (
@@ -352,7 +369,7 @@ export default function DispatchSheetPage() {
                 {rows.map((row, index) => (
                   <tr
                     key={`${row.company_code}-${row.plan_id}`}
-                    className="border-b hover:bg-muted/40"
+                    className={`border-b hover:bg-muted/40 ${stageRowClass(row.vehicle_stage)}`}
                   >
                     {/* The numbers down the left. Clicking one picks the row. */}
                     <th
@@ -383,7 +400,21 @@ export default function DispatchSheetPage() {
                         }
                         onMouseEnter={() => selection.extendCell(index, columnIndex)}
                       >
-                        {column.value(row)}
+                        {/* The tint says which of the four states a line is
+                            in; the badge names the stage inside it, because
+                            "docked" and "gatepass printed" are the same
+                            colour and are not the same thing. */}
+                        {column.key === 'vehicle_stage' ? (
+                          <span
+                            className={`inline-block rounded px-1.5 py-0.5 text-[11px] ${stageBadgeClass(
+                              row.vehicle_stage,
+                            )}`}
+                          >
+                            {column.value(row)}
+                          </span>
+                        ) : (
+                          column.value(row)
+                        )}
                       </td>
                     ))}
                   </tr>

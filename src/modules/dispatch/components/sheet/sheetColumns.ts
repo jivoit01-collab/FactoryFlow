@@ -121,10 +121,17 @@ const REMARKS: SheetColumn = {
   wide: true,
   value: (row) => row.remarks,
 };
+/**
+ * Where the truck is, not what the booking says.
+ *
+ * The plan's own booking status only ever reads Pending, Booked or
+ * Dispatched; the register wants to know whether the vehicle is at the gate,
+ * on the dock or gone, which is the same reading the pipeline board makes.
+ */
 const STATUS: SheetColumn = {
-  key: 'booking_status',
+  key: 'vehicle_stage',
   label: 'Status',
-  value: (row) => row.booking_status,
+  value: (row) => row.vehicle_stage_label,
 };
 
 /** On the book, kept nowhere in the app. */

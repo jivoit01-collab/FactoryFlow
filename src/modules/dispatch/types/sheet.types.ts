@@ -3,6 +3,22 @@
 /** Which of the workbook's two sheets a row belongs on. */
 export type DispatchSheetStream = 'OIL' | 'WATER';
 
+/**
+ * Where the truck itself has got to, from booked through the gate and the
+ * dock to gone. The same stages the dispatch pipeline board works in.
+ */
+export type VehicleStage =
+  | 'BOOKED'
+  | 'EMPTY_IN'
+  | 'READY_TO_DOCK'
+  | 'DOCKED'
+  | 'PHOTO_ATTACHED'
+  | 'READY_FOR_GATEPASS'
+  | 'GATEPASS_PRINTED'
+  | 'PRINT_COMMITTED'
+  | 'DISPATCHED'
+  | 'REJECTED';
+
 export interface DispatchSheetRow {
   plan_id: number;
   sap_invoice_doc_entry: number;
@@ -10,6 +26,8 @@ export interface DispatchSheetRow {
   company_name: string;
   stream: DispatchSheetStream;
   booking_status: string;
+  vehicle_stage: VehicleStage;
+  vehicle_stage_label: string;
 
   dispatch_date: string | null;
   invoice_date: string | null;
