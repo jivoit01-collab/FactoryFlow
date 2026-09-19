@@ -16,6 +16,7 @@ const lead = {
 
 function tile(overrides: Partial<LineTile> = {}): LineTile {
   return {
+    key: '1::FG001',
     lineId: 1,
     lineName: 'JP Machine',
     state: 'RUNNING',
@@ -192,10 +193,19 @@ describe('LinePerformanceTile', () => {
     expect(screen.getByText(/no volume in SAP/)).toBeInTheDocument();
   });
 
-  it('says a line carried several runs rather than naming one', () => {
-    draw(tile({ runs: [lead, lead, lead] }));
+  it('names the runs a split job was booked under, not just how many', () => {
+    // A tile only holds more than one run when the floor split ONE SKU across
+    // two records, and the numbers are what tie it to the run screen.
+    draw(
+      tile({
+        runs: [
+          { ...lead, runNumber: 3 },
+          { ...lead, runNumber: 2 },
+        ],
+      }),
+    );
 
-    expect(screen.getByText(/FG001 · 3 runs/)).toBeInTheDocument();
+    expect(screen.getByText(/FG001 · runs #2, #3/)).toBeInTheDocument();
   });
 
   it('says when the rating came from the line’s preset rather than the run', () => {

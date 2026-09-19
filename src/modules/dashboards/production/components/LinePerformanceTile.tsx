@@ -91,13 +91,15 @@ function Note({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /**
- * One production line, in full.
+ * One job — one line running one SKU — in full.
  *
- * There is a tile for each line that ran and no others, so the board's shape is
- * the day's: five lines on 17 September, five tiles. That keeps every tile big
- * enough to carry the line's whole picture — what it made, how fast, against
- * what, for how long, at what cost, with whom — instead of a headline the
- * reader has to leave the board to understand.
+ * There is a tile for each SKU a line ran and no others, so a line that changed
+ * over at lunch has two: one per product, each with its own clock, its own
+ * rating and its own efficiency. A line that ran one thing all day still has
+ * exactly one. That keeps every tile big enough to carry the whole picture —
+ * what it made, how fast, against what, for how long, at what cost, with whom —
+ * instead of a headline the reader has to leave the board to understand, and it
+ * keeps the running time under it a stretch of clock that actually happened.
  *
  * It is built around the comparison rather than the count, because a case count
  * on its own cannot be judged: 900 cases is excellent from four hours and poor
@@ -145,7 +147,12 @@ export function LinePerformanceTile({
     <button
       type="button"
       onClick={onOpen}
-      aria-label={`${tile.lineName} — ${output.text} ${output.noun ?? ''}, open the run`}
+      // The product is in the label as well as the line: two tiles of the same
+      // line differ only by what it was making, and a reader who cannot see
+      // them side by side would otherwise hear the same button twice.
+      aria-label={`${tile.lineName}, ${tile.product} — ${output.text} ${
+        output.noun ?? ''
+      }, open the run`}
       className={cn(
         'flex min-w-0 flex-col rounded-2xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50',
         alarming
@@ -164,8 +171,15 @@ export function LinePerformanceTile({
           </p>
           <p className="truncate text-[11px] font-medium text-muted-foreground">
             {tile.itemCode && `${tile.itemCode} · `}
+            {/* The run numbers themselves, not "2 runs": a tile only holds
+                more than one when the floor split a single SKU across two run
+                records, and naming them is what lets a reader match the tile
+                against the run screen and the yield report. */}
             {tile.runs.length > 1
-              ? `${count(tile.runs.length)} runs`
+              ? `runs ${tile.runs
+                  .map((run) => `#${run.runNumber}`)
+                  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+                  .join(', ')}`
               : `run #${tile.lead.runNumber}`}
             {tile.startedAt &&
               ` · ${clockTime(tile.startedAt)}–${tile.endedAt ? clockTime(tile.endedAt) : 'now'}${

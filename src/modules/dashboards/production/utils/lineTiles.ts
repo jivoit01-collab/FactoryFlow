@@ -1,22 +1,32 @@
 /**
- * The day's runs, folded into one tile per line that RAN.
+ * The day's runs, folded into one tile per SKU a line RAN.
  *
- * The board's shape is the day's own: five lines carrying runs on 17 September
- * give five tiles, and a line the plant did not touch that day has no tile at
- * all. That is deliberate — every tile on this board is a line somebody has to
- * answer for, and padding it out with lines nothing was planned on would push
- * the ones that matter off the screen.
+ * The board's shape is the day's own: a line the plant did not touch that day
+ * has no tile at all. That is deliberate — every tile on this board is work
+ * somebody has to answer for, and padding it out with lines nothing was planned
+ * on would push the ones that matter off the screen.
+ *
+ * **The cut is line + SKU, not line.** A line that changes over mid-day is
+ * doing two different jobs: 6 Head on 2026-09-18 made 1,720 cases of one SKU in
+ * 8h 8m and 336 of another in 12h 54m. Folded onto one tile that read "2 runs ·
+ * 21h 2m", which is a running time no single thing on the floor ever did, and a
+ * 40% efficiency that belonged to neither job. Split, each tile is one product
+ * at one rating for one stretch of clock — the only shape in which output,
+ * speed and efficiency mean anything.
+ *
+ * Runs of the SAME SKU still fold together, because that is one job the floor
+ * split in two: a changeover makes a new tile, a lunch break does not.
  *
  * Pure, so the arithmetic that decides which line looks bad can be tested
  * without a server behind it — the same split Production Control keeps between
  * its `buildLineBoard` and the hook that feeds it.
  *
- * A line usually carries several runs in a day, and the fold is where the two
- * dangerous roll-ups live:
+ * A tile can still carry several runs, and the fold is where the two dangerous
+ * roll-ups live:
  *
- *  - **State is worst-wins.** A line with one run broken down and another
- *    running is a broken line. BREAKDOWN > RUNNING > STOPPED > COMPLETED >
- *    DRAFT is severity order, not lifecycle order.
+ *  - **State is worst-wins.** A tile with one run broken down and another
+ *    running is broken. BREAKDOWN > RUNNING > STOPPED > COMPLETED > DRAFT is
+ *    severity order, not lifecycle order.
  *  - **Efficiency is only summed over the runs that HAVE a rating.** Dividing
  *    every run's output by the expectation of some of them would price a rated
  *    run's shortfall against an unrated run's output and quietly flatter, or
@@ -33,17 +43,23 @@ import { addStoppage, rankStoppages, type Stoppage } from './stoppages';
 export type LineStoppage = Stoppage;
 
 export interface LineTile {
+  /**
+   * Line and SKU together — what the tile actually is, and what React keys it
+   * by. `lineId` alone stopped being unique when the board split a changeover
+   * into two tiles.
+   */
+  key: string;
   lineId: number;
   lineName: string;
-  /** The worst state across the line's runs on the day. */
+  /** The worst state across the tile's runs on the day. */
   state: LiveStatus;
-  /** The line's runs, worst state first. */
+  /** The runs of this SKU on this line, worst state first. */
   runs: ProductionRunRow[];
   /** The run the tile's headline reads from — the worst-state one. */
   lead: ProductionRunRow;
   product: string;
   itemCode: string;
-  /** When the line first started producing, from its earliest segment. */
+  /** When the line first started producing THIS SKU, from its earliest segment. */
   startedAt: string | null;
   /**
    * When it last stopped producing, from its latest closed segment.
@@ -53,15 +69,14 @@ export interface LineTile {
    * time on a line the reader can see is still going.
    */
   endedAt: string | null;
-  /** Cases across every run on the line that day. */
+  /** Cases across every run of this SKU on the line that day. */
   cases: number;
   /**
-   * The same output in litres, or null where the line ran a SKU SAP holds no
-   * volume for.
+   * The same output in litres, or null where SAP holds no volume for the SKU.
    *
-   * Null rather than a partial sum: a line that ran one volumed SKU and one
-   * weight-packed pouch has no honest litre total, and showing the half that
-   * converts under the line's name would understate it silently.
+   * Null rather than a partial sum: a weight-packed pouch has no volume at all,
+   * and converting the runs that do have one would understate the tile
+   * silently.
    */
   litres: number | null;
   expectedLitres: number | null;
@@ -155,8 +170,18 @@ export interface LineTile {
 
 export interface LineTileBoard {
   tiles: LineTile[];
-  /** Lines that ran at all on the day — the number of tiles. */
+  /**
+   * Lines that ran at all on the day — DISTINCT lines, not tiles.
+   *
+   * A line that changed over carries two tiles and is still one line. "Two
+   * lines ran" under a board showing three tiles is the honest reading: the
+   * capacity box beside it is a statement about the plant's machines, not
+   * about how many jobs they were split into.
+   */
   lines: number;
+  /** Tiles on the board — one per SKU each line ran. */
+  cards: number;
+  /** Lines by their worst state across the SKUs they ran. */
   running: number;
   /** Lines stopped or broken down — output the plant is not making. */
   down: number;
@@ -217,6 +242,23 @@ function minutesSince(iso: string, now: number): number {
   return Math.max(0, Math.floor((now - then) / 60_000));
 }
 
+/**
+ * Which tile a run belongs on: its line and its SKU.
+ *
+ * The item code is what the floor changes over to and what the rating, the pack
+ * size and the litres all hang off, so it is the identity — the product name is
+ * only a fallback for a run entered without one. A run carrying neither is its
+ * own tile rather than being pooled with every other unidentified run on the
+ * line: two nameless jobs summed under one heading would be exactly the reading
+ * this split exists to stop.
+ */
+function jobKey(row: ProductionRunRow): string {
+  const sku = row.itemCode?.trim() || row.product?.trim() || `run-${row.id}`;
+  // The line id is digits and the separator is not, so the split point is never
+  // ambiguous: line 1 running "2:FOO" and line 12 running "FOO" stay apart.
+  return `${row.lineId}::${sku}`;
+}
+
 /** Whole minutes between two stamps (or a stamp and a clock), never negative. */
 function minutesBetween(from: string, to: string | number): number {
   const start = new Date(from).getTime();
@@ -235,15 +277,17 @@ export function buildLineTiles({
   /** The clock an unfinished stoppage is measured against. */
   now?: number;
 }): LineTileBoard {
-  const byLine = new Map<number, ProductionRunRow[]>();
+  const byJob = new Map<string, ProductionRunRow[]>();
   for (const row of rows) {
-    const existing = byLine.get(row.lineId);
+    const key = jobKey(row);
+    const existing = byJob.get(key);
     if (existing) existing.push(row);
-    else byLine.set(row.lineId, [row]);
+    else byJob.set(key, [row]);
   }
 
-  const tiles: LineTile[] = [...byLine.entries()].map(([lineId, lineRuns]) => {
-    const ordered = [...lineRuns].sort(
+  const tiles: LineTile[] = [...byJob.entries()].map(([key, jobRuns]) => {
+    const lineId = jobRuns[0].lineId;
+    const ordered = [...jobRuns].sort(
       (a, b) => severityOf(a.liveStatus) - severityOf(b.liveStatus) || b.runNumber - a.runNumber,
     );
     const lead = ordered[0];
@@ -339,6 +383,7 @@ export function buildLineTiles({
     const idleMinutes = Math.max(0, spanMinutes - runningMinutes - breakdownMinutes);
 
     return {
+      key,
       lineId,
       lineName: lead.line,
       state: lead.liveStatus,
@@ -395,8 +440,15 @@ export function buildLineTiles({
     };
   });
 
+  // Attention first, then the line, then the order the line ran them in: a
+  // changeover's two tiles sit side by side and read left to right as the shift
+  // happened, rather than in whatever order the map handed them over.
   tiles.sort(
-    (a, b) => severityOf(a.state) - severityOf(b.state) || a.lineName.localeCompare(b.lineName),
+    (a, b) =>
+      severityOf(a.state) - severityOf(b.state) ||
+      a.lineName.localeCompare(b.lineName) ||
+      (a.startedAt ?? '').localeCompare(b.startedAt ?? '') ||
+      a.lead.runNumber - b.lead.runNumber,
   );
 
   // The plant's own efficiency, weighted by expectation rather than averaged
@@ -410,7 +462,19 @@ export function buildLineTiles({
     plantProduced += (tile.efficiencyPct / 100) * tile.expectedCases;
   }
 
-  const count = (state: LiveStatus) => tiles.filter((tile) => tile.state === state).length;
+  // The state counts are about MACHINES, not tiles: a line that finished one
+  // SKU and is running another is one running line, and counting its two tiles
+  // would report the plant with more lines than it owns. Worst state wins, the
+  // same rule the tiles themselves fold by.
+  const worstByLine = new Map<number, LiveStatus>();
+  for (const tile of tiles) {
+    const held = worstByLine.get(tile.lineId);
+    if (held == null || severityOf(tile.state) < severityOf(held)) {
+      worstByLine.set(tile.lineId, tile.state);
+    }
+  }
+  const count = (state: LiveStatus) =>
+    [...worstByLine.values()].filter((held) => held === state).length;
 
   const plantCauses = new Map<string, LineStoppage>();
   let unrecoveredMinutes = 0;
@@ -428,7 +492,8 @@ export function buildLineTiles({
 
   return {
     tiles,
-    lines: tiles.length,
+    lines: worstByLine.size,
+    cards: tiles.length,
     running: count('RUNNING'),
     down: count('BREAKDOWN') + count('STOPPED'),
     finished: count('COMPLETED'),
