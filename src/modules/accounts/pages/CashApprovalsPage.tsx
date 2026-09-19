@@ -6,10 +6,9 @@ import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { EntryApprovalStatus } from '@/modules/accounts/api';
 import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
-import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
-import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,

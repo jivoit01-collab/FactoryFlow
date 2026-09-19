@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { useSpreadsheetKeys } from '../components/useSpreadsheetKeys';
+import { useSpreadsheetKeys } from '../useSpreadsheetKeys';
 
 /**
  * A register in miniature: three rows, four columns, and a button inside one
