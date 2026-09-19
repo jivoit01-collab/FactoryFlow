@@ -2,12 +2,7 @@ import { ArrowDownLeft, ArrowUpRight, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import type {
-  CashDirection,
-  CashEntry,
-  CashPerson,
-  GLAccount,
-} from '@/modules/accounts/api';
+import type { CashDirection, CashEntry, CashPerson, GLAccount } from '@/modules/accounts/api';
 import {
   useAtmAccounts,
   useCashApprovers,
@@ -87,9 +82,7 @@ export function CashEntryDialog({
   const [glSearch, setGlSearch] = useState('');
   // A receipt says which card it came off; a payment says whose advance it
   // clears. Never both -- the server refuses the crossover.
-  const [atmAccount, setAtmAccount] = useState(
-    entry?.atm_account ? String(entry.atm_account) : '',
-  );
+  const [atmAccount, setAtmAccount] = useState(entry?.atm_account ? String(entry.atm_account) : '');
   const [approverId, setApproverId] = useState<number | null>(entry?.approver ?? null);
   const [approverName, setApproverName] = useState(entry?.approver_name ?? '');
   const [holderId, setHolderId] = useState<number | null>(entry?.advance_holder ?? null);
@@ -179,7 +172,11 @@ export function CashEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px]">
+      {/* Wider than the usual form so the two person pickers sit side by
+          side. The dialog cannot scroll -- see the note on the body
+          below -- so its height is managed by laying fields out, not by
+          letting it overflow. */}
+      <DialogContent className="sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>
             {isCorrection ? 'Correct entry' : direction === 'IN' ? 'Cash in' : 'Cash out'}
@@ -189,7 +186,7 @@ export function CashEntryDialog({
               ? 'Correcting an amount rewrites the running balance of every entry recorded after this one.'
               : direction === 'IN'
                 ? 'Money arriving in the cash box. It raises the balance and belongs to no branch.'
-                : 'A payment out of the cash box, against a branch and a SAP G/L head. It goes for approval as soon as it is recorded, and stays editable until somebody agrees it.'}
+                : 'A payment out of the box. It goes to the approver you name and stays editable until they agree it.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -301,99 +298,97 @@ export function CashEntryDialog({
                 ))}
               </NativeSelect>
               <p className="text-xs text-muted-foreground">
-                Naming the card takes this off its balance. Leave it blank for cash from
-                anywhere else — handed over by a director, say.
+                Takes this off the card's balance. Blank for cash from anywhere else.
               </p>
             </div>
           )}
 
           {isPayment && (
-            <div className="space-y-1">
-              <SearchableSelect<CashPerson>
-                inputId="cash-advance-holder"
-                label="Spent out of cash somebody is holding"
-                value={holderName}
-                items={people}
-                isLoading={peopleLoading}
-                isError={peopleError}
-                placeholder="Nobody — paid from the cash box"
-                getItemKey={(person) => person.id}
-                getItemLabel={(person) => person.name}
-                renderItem={(person) => (
-                  <div className="flex w-full items-center justify-between gap-3">
-                    <span className="min-w-0 truncate">{person.name}</span>
-                    {person.balance != null && (
-                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                        holding {formatNumber(Number(person.balance))}
-                      </span>
-                    )}
-                  </div>
-                )}
-                onSearchChange={setHolderSearch}
-                onItemSelect={(person) => {
-                  setHolderId(person.id);
-                  setHolderName(person.name);
-                }}
-                onClear={() => {
-                  setHolderId(null);
-                  setHolderName('');
-                }}
-                loadingText="Loading people…"
-                emptyText="Nobody is holding cash"
-                notFoundText="Nobody holding cash matches that"
-                addNewLabel="Add somebody"
-                renderCreateDialog={(open, onOpenChange, updateSelection) => (
-                  <AddPersonDialog
-                    open={open}
-                    onOpenChange={onOpenChange}
-                    suggestedName={holderSearch}
-                    onAdded={(person) => {
-                      updateSelection(person.id, person.name);
-                      setHolderId(person.id);
-                      setHolderName(person.name);
-                    }}
-                  />
-                )}
-                errorText="The people list could not be loaded."
-              />
-              <p className="text-xs text-muted-foreground">
-                Naming somebody clears this much of what they are holding. Leave it blank
-                when the money came straight out of the box.
-              </p>
-            </div>
-          )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <SearchableSelect<CashPerson>
+                  inputId="cash-advance-holder"
+                  label="Spent out of cash somebody is holding"
+                  value={holderName}
+                  items={people}
+                  isLoading={peopleLoading}
+                  isError={peopleError}
+                  placeholder="Nobody — paid from the cash box"
+                  getItemKey={(person) => person.id}
+                  getItemLabel={(person) => person.name}
+                  renderItem={(person) => (
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <span className="min-w-0 truncate">{person.name}</span>
+                      {person.balance != null && (
+                        <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                          holding {formatNumber(Number(person.balance))}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  onSearchChange={setHolderSearch}
+                  onItemSelect={(person) => {
+                    setHolderId(person.id);
+                    setHolderName(person.name);
+                  }}
+                  onClear={() => {
+                    setHolderId(null);
+                    setHolderName('');
+                  }}
+                  loadingText="Loading people…"
+                  emptyText="Nobody is holding cash"
+                  notFoundText="Nobody holding cash matches that"
+                  addNewLabel="Add somebody"
+                  renderCreateDialog={(open, onOpenChange, updateSelection) => (
+                    <AddPersonDialog
+                      open={open}
+                      onOpenChange={onOpenChange}
+                      suggestedName={holderSearch}
+                      onAdded={(person) => {
+                        updateSelection(person.id, person.name);
+                        setHolderId(person.id);
+                        setHolderName(person.name);
+                      }}
+                    />
+                  )}
+                  errorText="The people list could not be loaded."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Clears this much of what they hold. Blank means straight out of the box.
+                </p>
+              </div>
 
-          {isPayment && (
-            <div className="space-y-1">
-              <SearchableSelect<CashPerson>
-                inputId="cash-approver"
-                label="Send for approval to"
-                required
-                value={approverName}
-                items={approverList}
-                isLoading={approversLoading}
-                isError={approversError}
-                placeholder="Who should agree to this?"
-                getItemKey={(person) => person.id}
-                getItemLabel={(person) => person.name}
-                onItemSelect={(person) => {
-                  setApproverId(person.id);
-                  setApproverName(person.name);
-                }}
-                onClear={() => {
-                  setApproverId(null);
-                  setApproverName('');
-                }}
-                loadingText="Loading approvers…"
-                emptyText="Nobody has been made an approver yet"
-                notFoundText="No approver matches that"
-                errorText="The approver list could not be loaded."
-              />
-              <p className="text-xs text-muted-foreground">
-                {approverList.length === 0 && !approversLoading
-                  ? 'Until somebody is put in the Cash Book Approver group there is nobody to send this to.'
-                  : 'Only this person can approve it. It will not appear in anybody else’s queue.'}
-              </p>
+              <div className="space-y-1">
+                <SearchableSelect<CashPerson>
+                  inputId="cash-approver"
+                  label="Send for approval to"
+                  required
+                  value={approverName}
+                  items={approverList}
+                  isLoading={approversLoading}
+                  isError={approversError}
+                  placeholder="Who should agree to this?"
+                  getItemKey={(person) => person.id}
+                  getItemLabel={(person) => person.name}
+                  onItemSelect={(person) => {
+                    setApproverId(person.id);
+                    setApproverName(person.name);
+                  }}
+                  onClear={() => {
+                    setApproverId(null);
+                    setApproverName('');
+                  }}
+                  loadingText="Loading approvers…"
+                  emptyText="Nobody has been made an approver yet"
+                  notFoundText="No approver matches that"
+                  errorText="The approver list could not be loaded."
+                />
+                <p className="text-xs text-muted-foreground">
+                  {approverList.length === 0 && !approversLoading
+                    ? 'Nobody is in the Cash Book Approver group yet.'
+                    : 'Only they can approve it; it reaches no other queue.'}
+                </p>
+              </div>
             </div>
           )}
 
@@ -406,16 +401,14 @@ export function CashEntryDialog({
               value={item}
               onChange={(e) => setItem(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">
-              What was actually bought. A note under the G/L head — optional.
-            </p>
+            <p className="text-xs text-muted-foreground">What was actually bought — optional.</p>
           </div>
 
           <div className="space-y-1">
             <Label htmlFor="cash-detail">Detail</Label>
             <Textarea
               id="cash-detail"
-              rows={3}
+              rows={2}
               placeholder="Cash paid to Ravi kumar for refreshment exp for some visitor at site"
               value={detail}
               onChange={(e) => setDetail(e.target.value)}
