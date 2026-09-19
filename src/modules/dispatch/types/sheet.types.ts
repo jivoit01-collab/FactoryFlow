@@ -70,6 +70,5 @@ export interface DispatchSheetParams {
   date_from: string;
   date_to: string;
   booking_status?: string;
-  search?: string;
   all_companies?: boolean;
 }

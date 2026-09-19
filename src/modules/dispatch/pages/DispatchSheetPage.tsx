@@ -90,14 +90,16 @@ export default function DispatchSheetPage() {
   // the three tabs empty and looking broken.
   const [allCompanies, setAllCompanies] = useState(true);
 
+  // Deliberately without the search box: typing filters the rows already in
+  // hand, so a keystroke costs nothing. In the request it was a new query key,
+  // a round trip and a SAP read per letter.
   const params = useMemo(
     () => ({
       date_from: dateFrom,
       date_to: dateTo,
-      ...(search.trim() ? { search: search.trim() } : {}),
       ...(allCompanies ? { all_companies: true } : {}),
     }),
-    [dateFrom, dateTo, search, allCompanies],
+    [dateFrom, dateTo, allCompanies],
   );
 
   // Both sheets come down together and the tab picks between them here: the
@@ -112,6 +114,21 @@ export default function DispatchSheetPage() {
   );
 
   const columns = useMemo(() => columnsFor(company), [company]);
+
+  /**
+   * Find, over the rows on this sheet.
+   *
+   * Matches any cell the sheet actually shows, so what it finds is what is in
+   * front of you — a hit in a column nobody can see would read as the box
+   * being broken.
+   */
+  const searched = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return companyRows;
+    return companyRows.filter((row) =>
+      columns.some((column) => column.value(row).toLowerCase().includes(needle)),
+    );
+  }, [companyRows, columns, search]);
 
   /**
    * The tabs: the three companies, plus any other the rows turn out to carry.
@@ -150,7 +167,7 @@ export default function DispatchSheetPage() {
     column: columnProps,
     filteredColumns,
     clearFilters,
-  } = useLocalColumns(companyRows, specs, { key: 'dispatch_date', direction: 'asc' }, {
+  } = useLocalColumns(searched, specs, { key: 'dispatch_date', direction: 'asc' }, {
     activeColumn: openColumn,
   });
 
@@ -167,7 +184,7 @@ export default function DispatchSheetPage() {
     textAt: (row, key) => byKey.get(key)?.value(row) ?? '',
     // A different tab, window or company scope is a different set of lines, so
     // "rows 3 to 10" no longer means anything and the selection goes.
-    reset: `${company}|${dateFrom}|${dateTo}|${allCompanies}|${filteredColumns.join()}`,
+    reset: `${company}|${dateFrom}|${dateTo}|${allCompanies}|${search}|${filteredColumns.join()}`,
   });
 
   /**
@@ -332,8 +349,8 @@ export default function DispatchSheetPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <SheetIcon className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {filteredColumns.length > 0
-                ? 'No line matches those column filters.'
+              {filteredColumns.length > 0 || search.trim()
+                ? 'No line matches that.'
                 : `Nothing went out on the ${companyLabel} sheet between these dates.`}
             </p>
           </CardContent>
@@ -510,7 +527,9 @@ export default function DispatchSheetPage() {
             )}
             <span className="ml-auto">
               {meta ? `${meta.date_from} to ${meta.date_to}` : ''}
-              {filteredColumns.length > 0 ? ` · ${rows.length} of ${companyRows.length}` : ''}
+              {rows.length !== companyRows.length
+                ? ` · ${rows.length} of ${companyRows.length}`
+                : ''}
             </span>
           </div>
         </div>
