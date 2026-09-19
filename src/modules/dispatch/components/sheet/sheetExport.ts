@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-import type { DispatchSheetRow, DispatchSheetStream } from '../../types/sheet.types';
+import type { DispatchSheetRow } from '../../types/sheet.types';
 import type { SheetColumn } from './sheetColumns';
 
 /**
@@ -18,11 +18,12 @@ import type { SheetColumn } from './sheetColumns';
 export function buildSheetWorkbook({
   rows,
   columns,
-  stream,
+  sheet,
 }: {
   rows: DispatchSheetRow[];
   columns: SheetColumn[];
-  stream: DispatchSheetStream;
+  /** The tab's own name — the company whose sheet this is. */
+  sheet: string;
 }): XLSX.WorkBook {
   const body = rows.map((row) => {
     const line: Record<string, string | number | null> = {};
@@ -60,7 +61,11 @@ export function buildSheetWorkbook({
   };
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, stream === 'WATER' ? 'WATER' : 'OIL');
+  // Excel refuses a tab name longer than 31 characters, or one carrying any
+  // of : \ / ? * [ ] -- so a company name is trimmed to fit rather than
+  // failing the download.
+  const tab = sheet.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31) || 'Sheet';
+  XLSX.utils.book_append_sheet(workbook, worksheet, tab);
   return workbook;
 }
 
@@ -74,12 +79,12 @@ export function buildSheetWorkbook({
 export function downloadSheet(args: {
   rows: DispatchSheetRow[];
   columns: SheetColumn[];
-  stream: DispatchSheetStream;
+  sheet: string;
   dateFrom: string;
   dateTo: string;
 }) {
   XLSX.writeFile(
     buildSheetWorkbook(args),
-    `Dispatch Sheet ${args.stream} ${args.dateFrom} to ${args.dateTo}.xlsx`,
+    `Dispatch Sheet ${args.sheet} ${args.dateFrom} to ${args.dateTo}.xlsx`,
   );
 }

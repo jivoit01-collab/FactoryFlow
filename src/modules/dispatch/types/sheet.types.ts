@@ -1,7 +1,5 @@
 /** The Dispatch Sheet — the outward register, one row per invoice dispatched. */
 
-/** Which of the workbook's two sheets a row belongs on. */
-export type DispatchSheetStream = 'OIL' | 'WATER';
 
 /**
  * Where the truck itself has got to, from booked through the gate and the
@@ -24,7 +22,6 @@ export interface DispatchSheetRow {
   sap_invoice_doc_entry: number;
   company_code: string;
   company_name: string;
-  stream: DispatchSheetStream;
   booking_status: string;
   vehicle_stage: VehicleStage;
   vehicle_stage_label: string;
@@ -55,9 +52,8 @@ export interface DispatchSheetMeta {
   total: number;
   date_from: string;
   date_to: string;
-  stream: string;
-  oil_count: number;
-  water_count: number;
+  /** How many lines each company has, so a tab can be labelled unopened. */
+  counts_by_company: Record<string, number>;
   companies: string[];
   /** False when a company's invoices could not be read: those cells are blank. */
   sap_available: boolean;
@@ -73,8 +69,6 @@ export interface DispatchSheetResponse {
 export interface DispatchSheetParams {
   date_from: string;
   date_to: string;
-  /** Left off for both sheets at once; the page asks for one at a time. */
-  stream?: 'oil' | 'water' | 'all';
   booking_status?: string;
   search?: string;
   all_companies?: boolean;
