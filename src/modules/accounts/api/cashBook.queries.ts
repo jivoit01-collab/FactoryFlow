@@ -29,8 +29,8 @@ export const CASH_BOOK_QUERY_KEYS = {
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id, includeCancelled] as const,
   approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
   approvers: () => [...CASH_BOOK_QUERY_KEYS.all, 'approvers'] as const,
-  approverCandidates: () =>
-    [...CASH_BOOK_QUERY_KEYS.all, 'approver-candidates'] as const,
+  approverCandidates: (search: string) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'approver-candidates', search] as const,
   columnValues: (column: string, filters: ColumnFilters, includeCancelled: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
   people: (search: string, holdingOnly: boolean) =>
@@ -251,12 +251,18 @@ export function useApprovalQueue(state: EntryApprovalStatus = 'PENDING') {
   });
 }
 
-/** Everybody who could approve, and whether they already do. */
-export function useApproverCandidates(enabled = true) {
+/**
+ * People matching a search who could approve, each saying whether they do.
+ *
+ * A search, not a listing: the server answers a blank one with nobody, so the
+ * settings screen shows nothing until it is typed into rather than handing
+ * over the whole staff directory.
+ */
+export function useApproverCandidates(enabled: boolean, search: string) {
   return useQuery({
-    queryKey: CASH_BOOK_QUERY_KEYS.approverCandidates(),
-    queryFn: () => cashBookApi.approverCandidates(),
-    enabled,
+    queryKey: CASH_BOOK_QUERY_KEYS.approverCandidates(search),
+    queryFn: () => cashBookApi.approverCandidates(search),
+    enabled: enabled && search.trim().length > 0,
   });
 }
 

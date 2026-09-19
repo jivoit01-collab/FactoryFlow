@@ -406,10 +406,10 @@ export const cashBookApi = {
    * refuse — it once offered seventeen drivers off the sheet — and cannot say
    * "nobody approves" about people it has just appointed.
    */
-  async approverCandidates(): Promise<ApproverCandidate[]> {
+  async approverCandidates(search: string): Promise<ApproverCandidate[]> {
     const { data } = await apiClient.get<ApproverCandidate[]>(
       API_ENDPOINTS.CASH_BOOK.APPROVERS,
-      { params: { candidates: true } },
+      { params: { candidates: true, search } },
     );
     return data;
   },
