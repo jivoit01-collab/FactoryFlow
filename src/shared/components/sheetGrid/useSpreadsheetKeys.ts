@@ -32,17 +32,17 @@ const PAGE_JUMP = 10;
 
 export function useSpreadsheetKeys({
   onCopy,
-  copyText,
+  copySelection,
 }: {
   /** Called with the text when it is copied, for whatever feedback. */
   onCopy?: (text: string) => void;
   /**
-   * What Ctrl+C should put on the clipboard instead of the cell under the
-   * cursor — the selected block, on a page that has selections. Returning
-   * null falls back to the cell, so a page with nothing picked still copies
-   * the one the cursor is on.
+   * Handle Ctrl+C itself — a page with a selection copies the whole picked
+   * block, in whatever forms it wants to offer. Return true when it has been
+   * dealt with; false or nothing falls back to the cell under the cursor, so
+   * a page without selections still copies the one it is on.
    */
-  copyText?: () => string | null;
+  copySelection?: () => boolean;
 } = {}) {
   const gridRef = useRef<HTMLTableElement>(null);
 
@@ -103,12 +103,14 @@ export function useSpreadsheetKeys({
       }
 
       if (step && (key === 'c' || key === 'C')) {
-        // The picked block if there is one -- tab-separated, so it pastes
-        // into a spreadsheet as cells. Otherwise the cell under the cursor:
-        // innerText where there is a layout to ask (it keeps the line breaks
-        // a cell shows), textContent everywhere else.
-        const text =
-          copyText?.() ?? (cell.innerText ?? cell.textContent ?? '').trim();
+        // The picked block, if the page has one and took it. Otherwise the
+        // cell under the cursor: innerText where there is a layout to ask (it
+        // keeps the line breaks a cell shows), textContent everywhere else.
+        if (copySelection?.()) {
+          event.preventDefault();
+          return;
+        }
+        const text = (cell.innerText ?? cell.textContent ?? '').trim();
         if (!text) return;
         event.preventDefault();
         void navigator.clipboard
@@ -119,7 +121,7 @@ export function useSpreadsheetKeys({
           });
       }
     },
-    [onCopy, copyText],
+    [onCopy, copySelection],
   );
 
   /**

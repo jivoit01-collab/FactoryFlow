@@ -227,22 +227,25 @@ export function useSheetSelection<T>({
   }, [range, rows, columnKeys, lastRow, lastColumn]);
 
   /**
-   * The block as tab-separated text, which is what a spreadsheet puts on the
-   * clipboard — so a selection copied here pastes into Excel as cells rather
-   * than as one run of text in one cell.
+   * The picked cells as text, row by row, with the keys of the columns they
+   * came from — enough for a caller to put the block on the clipboard in
+   * whatever forms it wants (see `copyBlock`).
    */
-  const selectionText = useCallback((): string | null => {
+  const selectionGrid = useCallback((): { cells: string[][]; columns: string[] } | null => {
     if (!range || !textAt) return null;
-    const lines: string[] = [];
+    const picked = columnKeys.slice(range.left, Math.min(range.right, lastColumn) + 1);
+    const cells: string[][] = [];
     for (let r = range.top; r <= Math.min(range.bottom, lastRow); r += 1) {
-      const line: string[] = [];
-      for (let c = range.left; c <= Math.min(range.right, lastColumn); c += 1) {
-        line.push(textAt(rows[r], columnKeys[c]));
-      }
-      lines.push(line.join('\t'));
+      cells.push(picked.map((key) => textAt(rows[r], key)));
     }
-    return lines.join('\n');
+    return { cells, columns: picked };
   }, [range, rows, columnKeys, textAt, lastRow, lastColumn]);
+
+  /** The same block as tab-separated text, for anything that wants just that. */
+  const selectionText = useCallback((): string | null => {
+    const grid = selectionGrid();
+    return grid ? grid.cells.map((line) => line.join('\t')).join('\n') : null;
+  }, [selectionGrid]);
 
   /** "12 rows × 3 columns", or "1 cell" — what is picked, in words. */
   const describe = useCallback((): string => {
@@ -272,6 +275,7 @@ export function useSheetSelection<T>({
     isRowPicked,
     isColumnPicked,
     cellClass,
+    selectionGrid,
     selectionText,
     describe,
   };
