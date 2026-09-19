@@ -10,9 +10,8 @@ import {
   useAtmStatement,
   useCreateAtmAccount,
 } from '@/modules/accounts/api';
-import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
-import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,

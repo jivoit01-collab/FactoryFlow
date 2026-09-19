@@ -22,6 +22,7 @@ import {
   Truck,
   Undo2,
   Users,
+  Wallet,
   Wind,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -37,6 +38,7 @@ import { useAuth, usePermission } from '@/core/auth';
 import type { AccentKey } from '@/shared/components/dashboard/accents';
 import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/components/navigation';
 
+import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
@@ -61,7 +63,7 @@ interface DashboardsModuleCard {
 
 // Kept in the same order as the Dashboards sidebar, and holding the same
 // entries: a board that is reachable from the menu but missing here reads as
-// one this login cannot open at all.
+// one this login cannot open at all. `landingParity.test.ts` enforces it.
 const dashboardsModules: DashboardsModuleCard[] = [
   {
     title: 'Board Carousel',
@@ -210,6 +212,17 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/dispatch-tracking',
     accent: 'indigo',
     permissions: [DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW],
+  },
+  {
+    // The cash box: what came in, what went out, what is in the drawer and who
+    // is holding the rest. Gated on the register's own rights rather than a new
+    // one -- this board IS the cash book summarised, so being allowed to read
+    // that is being allowed to read this.
+    title: 'Accounts',
+    icon: <Wallet className="h-5 w-5" />,
+    route: '/dashboards/accounts-board',
+    accent: 'emerald',
+    permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
   },
   {
     title: 'Factory Expense',

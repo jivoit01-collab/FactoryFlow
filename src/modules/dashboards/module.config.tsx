@@ -11,6 +11,7 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from './accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from './admin-control/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
@@ -81,6 +82,9 @@ const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
 const HrBoardDashboardPage = lazy(() => import('./hr-board/pages/HrBoardDashboardPage'));
+const AccountsDashboardPage = lazy(
+  () => import('./accounts-board/pages/AccountsDashboardPage'),
+);
 const BoardCarouselPage = lazy(() => import('./carousel/pages/BoardCarouselPage'));
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
@@ -227,6 +231,25 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: HR_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'HR Control' },
+    },
+    {
+      // The cash box: what came in, what went out, what is still waiting to go
+      // to head office, what is in the drawer, and who is holding the rest.
+      //
+      // Unlike its neighbours this one is worked from rather than watched --
+      // rows select, a detail panel opens, and "Add entry" hands off to the
+      // register's own dialog. It sits here because this is where people look
+      // for a dashboard, not because it is a wall board.
+      //
+      // Gated on the cash book's own rights rather than a new one: this board
+      // IS that register summarised, so being allowed to read it is being
+      // allowed to read this. A dashboard-only login reaches it instead through
+      // control_boards' cash_book feed right, and the API then masks the names.
+      path: '/dashboards/accounts-board',
+      element: <AccountsDashboardPage />,
+      layout: 'main',
+      permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Accounts' },
     },
     {
       // Production lines and the finished-goods floor they feed, on one screen:
@@ -544,6 +567,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // entire Dashboards menu -- not just this board -- is hidden from the
         // very people it was granted to.
         ...HR_BOARD_VIEW_PERMISSIONS,
+        // And the Accounts board. A cash book viewer holds none of the rights
+        // above, so without this spread the entire Dashboards menu -- not just
+        // this one board -- stays hidden from the people it was built for.
+        ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
@@ -575,6 +602,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/hr-board',
           title: 'HR Control',
           permissions: HR_BOARD_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/accounts-board',
+          title: 'Accounts',
+          permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/warehouse-control',

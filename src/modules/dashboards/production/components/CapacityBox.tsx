@@ -92,17 +92,34 @@ export function CapacityBox({
 
       {known ? (
         <>
+          {/* What the lines could have made, then what they did, then the gap
+              between the two, then the ratio — read left to right as the
+              sentence somebody would say out loud. All one size: the gap is
+              the figure an admin acts on and was the smallest thing here. */}
           <div className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+            <span className="text-2xl font-bold tabular-nums text-muted-foreground">
+              {able.text}
+              <span className="ml-2 text-sm font-semibold text-muted-foreground">
+                {able.noun} capacity
+              </span>
+            </span>
             <span className="text-2xl font-bold tabular-nums text-foreground">
               {made.text}
               <span className="ml-2 text-sm font-semibold text-muted-foreground">
                 {made.noun} made
               </span>
             </span>
-            <span className="text-2xl font-bold tabular-nums text-muted-foreground">
-              {able.text}
+            <span
+              className={cn(
+                'text-2xl font-bold tabular-nums',
+                left > 0
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-emerald-600 dark:text-emerald-400',
+              )}
+            >
+              {count(left > 0 ? left : ahead)}
               <span className="ml-2 text-sm font-semibold text-muted-foreground">
-                {able.noun} capacity
+                {able.noun} {left > 0 ? 'short' : 'ahead'}
               </span>
             </span>
             <span
@@ -119,16 +136,6 @@ export function CapacityBox({
             >
               {capacityPct == null ? '—' : `${capacityPct.toFixed(0)}%`}
               <span className="ml-2 text-sm font-semibold text-muted-foreground">used</span>
-            </span>
-            <span
-              className={cn(
-                'text-sm font-semibold',
-                left > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400',
-              )}
-            >
-              {left > 0
-                ? `${count(left)} ${able.noun} short`
-                : `${count(ahead)} ${able.noun} ahead`}
             </span>
           </div>
 

@@ -26,15 +26,10 @@ import {
   useColumnValues,
   useCreateBunch,
 } from '@/modules/accounts/api';
-import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
-import {
-  type SortState,
-  toSortParam,
-} from '@/modules/accounts/components/sorting';
-import { useSpreadsheetKeys } from '@/modules/accounts/components/useSpreadsheetKeys';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
+import { ColumnFilter, type SortState, toSortParam, useSpreadsheetKeys } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,

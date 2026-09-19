@@ -11,10 +11,9 @@ import {
   useRetireCashBranch,
   useUpdateCashBranch,
 } from '@/modules/accounts/api';
-import { ColumnFilter } from '@/modules/accounts/components/ColumnFilter';
-import { useLocalColumns } from '@/modules/accounts/components/useLocalColumns';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 

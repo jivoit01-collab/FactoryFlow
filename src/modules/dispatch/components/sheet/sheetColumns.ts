@@ -1,0 +1,224 @@
+import type { DispatchSheetRow, DispatchSheetStream } from '../../types/sheet.types';
+
+/**
+ * The workbook's columns, in the workbook's order.
+ *
+ * The Excel file the dispatch desk has kept since FY26 has two tabs, and they
+ * are not quite the same sheet: oil counts litres and never counts boxes,
+ * water counts both and puts the weight before the priority. Rather than one
+ * grid with everything on it and half the cells blank, each sheet is its own
+ * list of columns here — the way the book is actually kept.
+ *
+ * FOUR COLUMNS THE APP DOES NOT KEEP
+ * Mart Invoice, ASM, the factory bilty's dispatch date and the bill-and-
+ * receiving date are on the workbook and have no source anywhere in the app.
+ * They are listed, and marked `notKeptYet`, so the sheet and the file it
+ * downloads line up column-for-column with the book they replace — and so the
+ * header says plainly that the cell is empty because nothing fills it, rather
+ * than leaving somebody to wonder which row is missing its data.
+ */
+
+export interface SheetColumn {
+  key: string;
+  label: string;
+  align?: 'left' | 'right';
+  /** Wide free text, so the cell is allowed to be narrow and truncate. */
+  wide?: boolean;
+  /** What the cell shows. */
+  value: (row: DispatchSheetRow) => string;
+  /** What it is worth when sorted or totalled; absent for text columns. */
+  number?: (row: DispatchSheetRow) => number | null;
+  /** Summed in the totals row at the foot of the sheet. */
+  total?: boolean;
+  /** On the workbook, but nothing in the app fills it yet. */
+  notKeptYet?: boolean;
+}
+
+const text = (value: string | null | undefined) => (value ?? '').toString();
+
+/** A figure as the sheet writes it: thousands separated, blanks left blank. */
+export function figure(value: number | null | undefined, decimals = 0): string {
+  if (value === null || value === undefined) return '';
+  return value.toLocaleString('en-IN', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+const DISPATCH_DATE: SheetColumn = {
+  key: 'dispatch_date',
+  label: 'Dispatch Date',
+  value: (row) => text(row.dispatch_date),
+};
+const INVOICE_DATE: SheetColumn = {
+  key: 'invoice_date',
+  label: 'Invoice Date',
+  value: (row) => text(row.invoice_date),
+};
+const PARTY: SheetColumn = { key: 'party', label: 'Party', value: (row) => row.party };
+const LOCATION: SheetColumn = {
+  key: 'location',
+  label: 'Location',
+  wide: true,
+  value: (row) => row.location,
+};
+const STATE: SheetColumn = { key: 'state', label: 'State', value: (row) => row.state };
+const INVOICE_NO: SheetColumn = {
+  key: 'invoice_no',
+  label: 'Invoice No.',
+  value: (row) => row.invoice_no,
+};
+const BILTY_NO: SheetColumn = {
+  key: 'bilty_no',
+  label: 'Bilty No.',
+  value: (row) => row.bilty_no,
+};
+const VEHICLE_NO: SheetColumn = {
+  key: 'vehicle_no',
+  label: 'Vehicle No.',
+  value: (row) => row.vehicle_no,
+};
+const TRANSPORT: SheetColumn = {
+  key: 'transport_name',
+  label: 'Transport Name',
+  value: (row) => row.transport_name,
+};
+const MOBILE: SheetColumn = {
+  key: 'mobile_no',
+  label: 'Mobile No',
+  value: (row) => row.mobile_no,
+};
+const PRIORITY: SheetColumn = {
+  key: 'priority',
+  label: 'Priority',
+  value: (row) => row.priority,
+};
+const KANTA: SheetColumn = {
+  key: 'kanta_weight',
+  label: 'Kanta Weight',
+  align: 'right',
+  value: (row) => figure(row.kanta_weight),
+  number: (row) => row.kanta_weight,
+};
+const FREIGHT: SheetColumn = {
+  key: 'freight',
+  label: 'Freight',
+  align: 'right',
+  value: (row) => figure(row.freight, 2),
+  number: (row) => row.freight,
+};
+const TOTAL_FREIGHT: SheetColumn = {
+  key: 'total_freight',
+  label: 'Total Freight',
+  align: 'right',
+  value: (row) => figure(row.total_freight, 2),
+  number: (row) => row.total_freight,
+  total: true,
+};
+const REMARKS: SheetColumn = {
+  key: 'remarks',
+  label: 'Remarks',
+  wide: true,
+  value: (row) => row.remarks,
+};
+const STATUS: SheetColumn = {
+  key: 'booking_status',
+  label: 'Status',
+  value: (row) => row.booking_status,
+};
+
+/** On the book, kept nowhere in the app. */
+const blank = (key: string, label: string): SheetColumn => ({
+  key,
+  label,
+  notKeptYet: true,
+  value: () => '',
+});
+
+const OIL_COLUMNS: SheetColumn[] = [
+  DISPATCH_DATE,
+  INVOICE_DATE,
+  PARTY,
+  LOCATION,
+  STATE,
+  INVOICE_NO,
+  blank('mart_invoice', 'Jivo Mart Invoice'),
+  BILTY_NO,
+  VEHICLE_NO,
+  TRANSPORT,
+  MOBILE,
+  {
+    key: 'litres',
+    label: 'Oil LTR',
+    align: 'right',
+    value: (row) => figure(row.litres),
+    number: (row) => row.litres,
+    total: true,
+  },
+  PRIORITY,
+  KANTA,
+  FREIGHT,
+  TOTAL_FREIGHT,
+  REMARKS,
+  blank('factory_bilty_date', 'Factory Bilty Dispatch Date'),
+  blank('bill_receiving_date', 'Bill & Receiving Date'),
+  STATUS,
+];
+
+const WATER_COLUMNS: SheetColumn[] = [
+  DISPATCH_DATE,
+  INVOICE_DATE,
+  PARTY,
+  LOCATION,
+  STATE,
+  INVOICE_NO,
+  blank('mart_invoice', 'Mart Invoice'),
+  BILTY_NO,
+  VEHICLE_NO,
+  TRANSPORT,
+  MOBILE,
+  {
+    key: 'litres',
+    label: 'Water+WG Ltr',
+    align: 'right',
+    value: (row) => figure(row.litres),
+    number: (row) => row.litres,
+    total: true,
+  },
+  KANTA,
+  PRIORITY,
+  FREIGHT,
+  TOTAL_FREIGHT,
+  {
+    key: 'total_boxes',
+    label: 'Total Box',
+    align: 'right',
+    value: (row) => figure(row.total_boxes),
+    number: (row) => row.total_boxes,
+    total: true,
+  },
+  REMARKS,
+  blank('asm', 'ASM'),
+  STATUS,
+];
+
+const COMPANY: SheetColumn = {
+  key: 'company_code',
+  label: 'Company',
+  value: (row) => row.company_name,
+};
+
+/**
+ * The columns one sheet shows.
+ *
+ * Reading across companies puts a Company column at the front, because a row
+ * on a combined register is ambiguous without one — two companies number their
+ * invoices separately, so the same invoice number can appear twice.
+ */
+export function columnsFor(
+  stream: DispatchSheetStream,
+  { crossCompany = false }: { crossCompany?: boolean } = {},
+): SheetColumn[] {
+  const columns = stream === 'WATER' ? WATER_COLUMNS : OIL_COLUMNS;
+  return crossCompany ? [COMPANY, ...columns] : columns;
+}

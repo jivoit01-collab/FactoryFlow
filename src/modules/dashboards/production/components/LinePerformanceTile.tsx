@@ -85,7 +85,7 @@ function Note({ label, children }: { label: string; children: ReactNode }) {
   return (
     <span className="truncate">
       <span className="font-medium text-muted-foreground">{label} </span>
-      <span className="font-semibold text-foreground/80">{children}</span>
+      <span className="font-bold text-foreground">{children}</span>
     </span>
   );
 }
@@ -377,7 +377,7 @@ export function LinePerformanceTile({
         </p>
       )}
 
-      <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-black/[0.06] pt-2.5 text-[11px] dark:border-white/5">
+      <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-black/[0.06] pt-2.5 text-sm dark:border-white/5">
         <Note label="Target">
           {target != null ? `${count(target)} · ${percent(tile.targetPct)}` : 'none set'}
         </Note>

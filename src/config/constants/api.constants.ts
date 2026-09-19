@@ -547,6 +547,14 @@ export const API_ENDPOINTS = {
   HR_BOARD: {
     BOARD: '/dashboards/hr-board/board/',
   },
+  // The accounts dashboard. One read like its neighbours, but this one takes a
+  // period: `?year=&month=` scopes the MOVEMENT tiles, and sending neither
+  // means the whole book. Cash in hand ignores the period either way -- a
+  // balance filtered to a month is a fabricated figure rather than a narrower
+  // one -- which is why there is no default month baked in here.
+  ACCOUNTS_BOARD: {
+    BOARD: '/dashboards/accounts-board/board/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',
@@ -710,6 +718,8 @@ export const API_ENDPOINTS = {
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
     PLAN_REMOVE: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/remove/`,
     BULK_DISPATCH_DATE: '/dispatch-plans/bills/plan/bulk-dispatch-date/',
+    // The Dispatch Sheet: the outward register, a window of days at a time.
+    SHEET: '/dispatch-plans/sheet/',
   },
   // Dispatch Pipeline Dashboard (vehicle stage board)
   DISPATCH_PIPELINE: {
