@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DispatchSheetPage from '../pages/DispatchSheetPage';
 import type { DispatchSheetRow } from '../types/sheet.types';
@@ -62,26 +62,31 @@ const ROWS: DispatchSheetRow[] = [
 ];
 
 const sapAvailable = vi.hoisted(() => ({ current: true }));
+/** Every set of params the page asked the API for, in order. */
+const sheetCalls = vi.hoisted(() => [] as Record<string, unknown>[]);
 
 vi.mock('@/modules/dispatch/api/sheet.api', () => ({
-  useDispatchSheet: () => ({
-    data: {
-      data: ROWS,
-      meta: {
-        total: ROWS.length,
-        date_from: '2026-04-01',
-        date_to: '2026-04-30',
-        counts_by_company: { JIVO_OIL: 2, JIVO_BEVERAGES: 1 },
-        companies: ['JIVO_BEVERAGES', 'JIVO_OIL'],
-        sap_available: sapAvailable.current,
-        sap_error: '',
-        fetched_at: '2026-04-30T10:00:00Z',
+  useDispatchSheet: (params: Record<string, unknown>) => {
+    sheetCalls.push(params);
+    return {
+      data: {
+        data: ROWS,
+        meta: {
+          total: ROWS.length,
+          date_from: '2026-04-01',
+          date_to: '2026-04-30',
+          counts_by_company: { JIVO_OIL: 2, JIVO_BEVERAGES: 1 },
+          companies: ['JIVO_BEVERAGES', 'JIVO_OIL'],
+          sap_available: sapAvailable.current,
+          sap_error: '',
+          fetched_at: '2026-04-30T10:00:00Z',
+        },
       },
-    },
-    isLoading: false,
-    isError: false,
-    error: null,
-  }),
+      isLoading: false,
+      isError: false,
+      error: null,
+    };
+  },
 }));
 
 /** One body cell, by its place on screen — the row gutter is not a cell. */
@@ -99,6 +104,10 @@ function openSheet() {
 }
 
 describe('the Dispatch Sheet', () => {
+  beforeEach(() => {
+    sheetCalls.length = 0;
+  });
+
   it('opens on Oil, showing only that company’s lines', () => {
     openSheet();
 
@@ -262,6 +271,39 @@ describe('the Dispatch Sheet', () => {
     expect(screen.getByText('At the gate')).toBeInTheDocument();
     expect(screen.getByText('Loading')).toBeInTheDocument();
     expect(screen.getByText('Not in yet')).toBeInTheDocument();
+  });
+
+  it('finds rows without going back to the server', () => {
+    openSheet();
+
+    fireEvent.change(screen.getByPlaceholderText('Invoice, party, bilty, vehicle…'), {
+      target: { value: 'arjun' },
+    });
+
+    expect(bodyRows()).toHaveLength(1);
+    expect(screen.getByText('ARJUN DASS & SONS')).toBeInTheDocument();
+    // The read is keyed on the window alone, so a keystroke cannot refetch.
+    expect(sheetCalls.every((call) => !('search' in call))).toBe(true);
+  });
+
+  it('matches any cell the sheet actually shows', () => {
+    openSheet();
+
+    fireEvent.change(screen.getByPlaceholderText('Invoice, party, bilty, vehicle…'), {
+      target: { value: '626030604' },
+    });
+
+    expect(bodyRows()).toHaveLength(1);
+  });
+
+  it('says so when nothing matches what was typed', () => {
+    openSheet();
+
+    fireEvent.change(screen.getByPlaceholderText('Invoice, party, bilty, vehicle…'), {
+      target: { value: 'nobody by that name' },
+    });
+
+    expect(screen.getByText('No line matches that.')).toBeInTheDocument();
   });
 
   it('says which cells are blank because SAP did not answer', () => {

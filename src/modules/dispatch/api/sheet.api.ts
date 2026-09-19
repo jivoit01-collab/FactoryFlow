@@ -16,7 +16,6 @@ export const dispatchSheetApi = {
           ...(params.booking_status && params.booking_status !== 'all'
             ? { booking_status: params.booking_status }
             : {}),
-          ...(params.search ? { search: params.search } : {}),
           ...(params.all_companies ? { all_companies: 1 } : {}),
         },
       },
@@ -40,6 +39,12 @@ export function useDispatchSheet(params: DispatchSheetParams, enabled = true) {
     queryKey: [DISPATCH_SHEET_QUERY_KEY, params],
     queryFn: () => dispatchSheetApi.get(params),
     enabled,
-    staleTime: 60 * 1000,
+    // A posted invoice does not change, and the plans behind the rows move a
+    // few times a day at most. Five minutes keeps the sheet off the network
+    // for tab-switching and back-navigation, which is most of how it is used.
+    staleTime: 5 * 60 * 1000,
+    // Changing the window keeps the rows on screen until the new ones land,
+    // rather than blanking the sheet and jumping the page.
+    placeholderData: (previous) => previous,
   });
 }
