@@ -214,13 +214,35 @@ export interface AccountsDetail {
   debits: number;
 }
 
+/** One salary advance or cash increment, as the register recorded it. */
+export interface AccountsSalaryRow {
+  id: number;
+  /**
+   * The voucher's own words — its Item ("Parveen khatun") or, when that is one
+   * of the custodian's generic words, its narrative. Already masked to
+   * "Voucher N" when the reader may not see names, so the client renders it
+   * verbatim and decides nothing.
+   */
+  description: string;
+  amount: number;
+  entry_date: string;
+  gl_account_name: string;
+  /** The full narrative. Empty when names are masked. */
+  detail: string;
+}
+
+/**
+ * Salary advances, one row per voucher.
+ *
+ * NOT grouped by person, and that is deliberate: `advance_holder` means "whose
+ * float this clears", not "who this was for". On the live register only 1 of 26
+ * salary vouchers has one and it names the wrong person. See `_salary`.
+ */
 export interface AccountsSalary {
   total: number;
   count: number;
-  people: number;
-  rows: AccountsPerson[];
-  /** On a salary head but naming nobody the app can resolve. In the total. */
-  unattributed: AccountsAmount;
+  rows: AccountsSalaryRow[];
+  truncated: boolean;
   heads: AccountsHead[];
   span: { from: string | null; to: string | null };
 }
@@ -276,7 +298,7 @@ export interface AccountsBoardResponse {
 export type AccountsSelection =
   | { kind: 'imprest'; row: AccountsLoad }
   | { kind: 'pending'; row: AccountsPendingRow }
-  | { kind: 'salary'; row: AccountsPerson }
+  | { kind: 'salary'; row: AccountsSalaryRow }
   | { kind: 'holder'; row: AccountsPerson; owed: boolean }
   | { kind: 'bucket'; row: AccountsBucket }
   | null;

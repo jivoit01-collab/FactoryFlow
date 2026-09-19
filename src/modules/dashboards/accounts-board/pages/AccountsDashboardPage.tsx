@@ -360,16 +360,16 @@ function Details({
     ];
     body = row.detail ? <p className="ab-details-note">{row.detail}</p> : null;
   } else if (selection.kind === 'salary') {
-    heading = `Salary advance · ${selection.row.name}`;
+    heading = selection.row.description;
     fields = [
       field('Amount', rupees(selection.row.amount)),
-      field('Vouchers', selection.row.count ?? '—'),
-      field('Last dated', day(selection.row.last_updated)),
+      field('Dated', day(selection.row.entry_date)),
+      field('G/L head', selection.row.gl_account_name || '—'),
     ];
     body = (
       <p className="ab-details-note">
-        Read from the cash book&apos;s salary heads. No payroll figure is shown
-        anywhere on this screen.
+        {selection.row.detail ||
+          'Read from the cash book’s salary heads. No payroll figure is shown anywhere on this screen.'}
       </p>
     );
   } else if (selection.kind === 'holder') {
@@ -724,24 +724,23 @@ export default function AccountsDashboardPage() {
             unavailable={absence('salary', meta, 'The salary advances')}
           >
             <RowTable
-              head={['Name', 'Amount', 'Last dated']}
+              head={['Paid to', 'Amount', 'Dated']}
               rows={data?.salary?.rows ?? []}
               empty="No salary advance in this period."
               isSelected={(row) =>
-                selection?.kind === 'salary' && selection.row.name === row.name
+                selection?.kind === 'salary' && selection.row.id === row.id
               }
               onSelect={(row) => setSelection({ kind: 'salary', row })}
               render={(row) => [
-                row.name,
+                row.description,
                 rupees(row.amount),
-                day(row.last_updated),
+                day(row.entry_date),
               ]}
             />
-            {(data?.salary?.unattributed.count ?? 0) > 0 && (
+            {data?.salary?.truncated && (
               <p className="ab-other">
-                {rupees(data?.salary?.unattributed.amount)} over{' '}
-                {data?.salary?.unattributed.count} vouchers names nobody the
-                register can resolve. It is in the total above.
+                Showing the {data.salary.rows.length} most recent of{' '}
+                {data.salary.count}.
               </p>
             )}
           </Panel>

@@ -143,9 +143,25 @@ function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse
     salary: {
       total: 49617,
       count: 26,
-      people: 1,
-      rows: [{ name: 'Bunty', amount: 5000, count: 2, last_updated: '2026-06-10' }],
-      unattributed: { amount: 42117, count: 24 },
+      rows: [
+        {
+          id: 901,
+          description: 'Parveen khatun',
+          amount: 1000,
+          entry_date: '2026-09-17',
+          gl_account_name: 'SUNDRY DEBTORS STAFF',
+          detail: 'Cash paid advance to Parveen khatun (Deduct of sep. month salary)',
+        },
+        {
+          id: 902,
+          description: 'Cash paid Advance to Sachin (Deduct of July month salary)',
+          amount: 1000,
+          entry_date: '2026-07-29',
+          gl_account_name: 'SUNDRY DEBTORS STAFF',
+          detail: 'Cash paid Advance to Sachin (Deduct of July month salary)',
+        },
+      ],
+      truncated: true,
       heads: [],
       span: { from: '2026-04-01', to: '2026-09-17' },
     },
@@ -418,13 +434,33 @@ describe('money out with people', () => {
 });
 
 describe('the salary section', () => {
-  it('declares the money it could not attribute to a person', () => {
+  it("shows a row per voucher, labelled with the register's own words", () => {
+    /**
+     * It used to group by `advance_holder` and showed a total above an empty
+     * table: only 1 of 26 live salary vouchers has that field, and the one
+     * that does names the wrong person.
+     */
     show(board());
 
+    expect(screen.getByText('Parveen khatun')).toBeInTheDocument();
     expect(
-      screen.getByText(/names nobody the register can resolve/i),
+      screen.getByText(/Cash paid Advance to Sachin/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/₹42,117/)).toBeInTheDocument();
+  });
+
+  it('never claims more rows than it has', () => {
+    show(board());
+    expect(screen.getByText(/Showing the 2 most recent of 26/i)).toBeInTheDocument();
+  });
+
+  it('opens the voucher, not a person, in the details panel', () => {
+    const { container } = show(board());
+
+    fireEvent.click(screen.getByText('Parveen khatun'));
+    const panel = within(container.querySelector('.ab-details') as HTMLElement);
+
+    expect(panel.getByText(/Deduct of sep. month salary/i)).toBeInTheDocument();
+    expect(panel.getByText('17 Sep 2026')).toBeInTheDocument();
   });
 });
 
