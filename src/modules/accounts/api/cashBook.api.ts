@@ -282,6 +282,13 @@ export interface ApprovalQueue {
   results: CashEntry[];
   total: string;
   counts: Record<EntryApprovalStatus, number>;
+  /**
+   * Count and value per state, over the same queue the table is drawn from.
+   *
+   * Scoped to the reader, like the table: counting the whole company put
+   * "Awaiting approval (19)" above a table holding eighteen.
+   */
+  summary: Record<EntryApprovalStatus, { count: number; total: string }>;
 }
 
 /** One SAP account, straight out of the chart of accounts. */

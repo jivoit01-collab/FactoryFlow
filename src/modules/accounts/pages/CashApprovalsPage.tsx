@@ -10,11 +10,7 @@ import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
 import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import {
-  ColumnFilter,
-  TOTALS_ROW_CLASS,
-  useLocalColumns,
-} from '@/shared/components/sheetGrid';
+import { ColumnFilter, TOTALS_ROW_CLASS, useLocalColumns } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -24,7 +20,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
-import { formatDateTimeShort, formatDay,formatNumber, getErrorMessage } from '@/shared/utils';
+import { formatDateTimeShort, formatDay, formatNumber, getErrorMessage } from '@/shared/utils';
 
 const money = (value: string | number) => formatNumber(Number(value ?? 0));
 
@@ -75,6 +71,8 @@ export default function CashApprovalsPage() {
 
   const all = useMemo(() => data?.results ?? [], [data]);
   const counts = data?.counts;
+  // Count and value per state, over the same queue the table is drawn from.
+  const summary = data?.summary;
   const deciding = state === 'PENDING' && canApprove;
 
   // The queue arrives whole (capped at 500), so its column filters are built
@@ -88,6 +86,9 @@ export default function CashApprovalsPage() {
       item: { value: (row) => row.item },
       detail: { value: (row) => row.detail },
       advance: { value: (row) => row.advance_holder_name },
+      // Who it was sent to. Blank on the entries that came off the sheet,
+      // which were never addressed to anybody and are open to any approver.
+      with: { value: (row) => row.approver_name },
       amount: {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
@@ -215,19 +216,52 @@ export default function CashApprovalsPage() {
         </div>
       </DashboardHeader>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{STATE_LABEL[state]}</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {money(rows.reduce((sum, row) => sum + Number(row.amount), 0))}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {rows.length} {rows.length === 1 ? 'entry' : 'entries'}
-              {filtering ? ` of ${all.length}` : ''}
-            </p>
-          </CardContent>
-        </Card>
+      {/* The three states, each with what it holds and what it is worth.
+          Clicking one is the same act as choosing it in the drop-down --
+          which stays, because a card is a poor thing to search for when you
+          already know which state you want. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {(['PENDING', 'APPROVED', 'REJECTED'] as const).map((value) => {
+          const figures = summary?.[value];
+          const current = state === value;
+          return (
+            <Card
+              key={value}
+              role="button"
+              tabIndex={0}
+              aria-pressed={current}
+              onClick={() => changeState(value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  changeState(value);
+                }
+              }}
+              className={`cursor-pointer transition hover:border-primary/60 ${
+                current ? 'border-primary ring-1 ring-primary' : ''
+              }`}
+            >
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">{STATE_LABEL[value]}</p>
+                <p
+                  className={`mt-1 text-2xl font-bold tabular-nums ${
+                    value === 'PENDING'
+                      ? 'text-amber-700 dark:text-amber-400'
+                      : value === 'REJECTED'
+                        ? 'text-rose-700 dark:text-rose-400'
+                        : 'text-emerald-700 dark:text-emerald-400'
+                  }`}
+                >
+                  {money(figures?.total ?? 0)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {figures?.count ?? 0} {(figures?.count ?? 0) === 1 ? 'entry' : 'entries'}
+                  {current && filtering ? ` · ${rows.length} shown` : ''}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        })}
         {chosen.length > 0 && (
           <Card>
             <CardContent className="p-4">
@@ -278,6 +312,7 @@ export default function CashApprovalsPage() {
                   <ColumnFilter {...column('gl', 'G/L head')} />
                   <ColumnFilter {...column('detail', 'Detail')} />
                   <ColumnFilter {...column('advance', 'Advance')} />
+                  <ColumnFilter {...column('with', 'With')} />
                   <ColumnFilter {...column('amount', 'Amount', 'right')} />
                   <ColumnFilter {...column('state', 'State')} />
                 </tr>
@@ -285,7 +320,7 @@ export default function CashApprovalsPage() {
               <tbody>
                 <tr className={TOTALS_ROW_CLASS}>
                   {deciding && <td />}
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     Total of {rows.length} {rows.length === 1 ? 'payment' : 'payments'}
                   </td>
                   <td className="text-right tabular-nums">{money(totals.amount ?? 0)}</td>
@@ -329,6 +364,15 @@ export default function CashApprovalsPage() {
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">From the box</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.approver_name ? (
+                        <span className="text-xs">{row.approver_name}</span>
+                      ) : (
+                        // Off the sheet, addressed to nobody -- so it sits in
+                        // every approver's queue rather than one person's.
+                        <span className="text-xs text-muted-foreground">Anyone</span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right font-medium tabular-nums">
