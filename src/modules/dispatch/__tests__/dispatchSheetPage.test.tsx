@@ -10,7 +10,6 @@ function row(overrides: Partial<DispatchSheetRow>): DispatchSheetRow {
     sap_invoice_doc_entry: 4001,
     company_code: 'JIVO_OIL',
     company_name: 'Jivo Oil',
-    stream: 'OIL',
     booking_status: 'DISPATCHED',
     vehicle_stage: 'DISPATCHED',
     vehicle_stage_label: 'Dispatched',
@@ -53,7 +52,8 @@ const ROWS: DispatchSheetRow[] = [
     plan_id: 3,
     vehicle_stage: 'EMPTY_IN',
     vehicle_stage_label: 'Empty Vehicle In',
-    stream: 'WATER',
+    company_code: 'JIVO_BEVERAGES',
+    company_name: 'Jivo Beverages',
     party: 'ROYAL HOSPITALITY HARYANA',
     invoice_no: '626038217',
     litres: 3000,
@@ -71,10 +71,8 @@ vi.mock('@/modules/dispatch/api/sheet.api', () => ({
         total: ROWS.length,
         date_from: '2026-04-01',
         date_to: '2026-04-30',
-        stream: 'all',
-        oil_count: 2,
-        water_count: 1,
-        companies: ['JIVO_OIL'],
+        counts_by_company: { JIVO_OIL: 2, JIVO_BEVERAGES: 1 },
+        companies: ['JIVO_BEVERAGES', 'JIVO_OIL'],
         sap_available: sapAvailable.current,
         sap_error: '',
         fetched_at: '2026-04-30T10:00:00Z',
@@ -101,16 +99,31 @@ function openSheet() {
 }
 
 describe('the Dispatch Sheet', () => {
-  it('opens on the oil sheet, showing only what went out as oil', () => {
+  it('opens on Oil, showing only that company’s lines', () => {
     openSheet();
 
     expect(screen.getByText('Oil · 2')).toBeInTheDocument();
-    expect(screen.getByText('Water · 1')).toBeInTheDocument();
     expect(screen.getByText('CHIRAG ENTERPRISES MUMBAI')).toBeInTheDocument();
     expect(screen.queryByText('ROYAL HOSPITALITY HARYANA')).not.toBeInTheDocument();
   });
 
-  it('lays out the columns the oil tab of the workbook has', () => {
+  it('names all three companies, and counts each before any is opened', () => {
+    openSheet();
+
+    expect(screen.getByRole('tab', { name: 'Oil · 2' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Beverages · 1' })).toBeInTheDocument();
+    // Mart has no line today and is still named: a tab that comes and goes
+    // with the window would be worse than one reading zero.
+    expect(screen.getByRole('tab', { name: 'Mart · 0' })).toBeInTheDocument();
+  });
+
+  it('reads every company by default', () => {
+    openSheet();
+
+    expect(screen.getByLabelText('All companies')).toBeChecked();
+  });
+
+  it('lays out the columns the Oil tab of the workbook has', () => {
     openSheet();
 
     for (const label of ['Dispatch Date', 'Party', 'Bilty No.', 'Oil LTR', 'Total Freight']) {
@@ -120,10 +133,10 @@ describe('the Dispatch Sheet', () => {
     expect(screen.queryByRole('button', { name: 'Sort by Total Box' })).not.toBeInTheDocument();
   });
 
-  it('switches to the water sheet, columns and all', () => {
+  it('switches to the Beverages sheet, columns and all', () => {
     openSheet();
     // Radix switches a tab on mouse-down, not on a synthesised click.
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Water · 1' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Beverages · 1' }));
 
     expect(screen.getByText('ROYAL HOSPITALITY HARYANA')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sort by Total Box' })).toBeInTheDocument();

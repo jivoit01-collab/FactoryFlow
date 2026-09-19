@@ -13,7 +13,6 @@ export const dispatchSheetApi = {
         params: {
           date_from: params.date_from,
           date_to: params.date_to,
-          ...(params.stream && params.stream !== 'all' ? { stream: params.stream } : {}),
           ...(params.booking_status && params.booking_status !== 'all'
             ? { booking_status: params.booking_status }
             : {}),
