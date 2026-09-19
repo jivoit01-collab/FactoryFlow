@@ -43,8 +43,32 @@ export interface BOMRequestLine {
   status: BOMLineStatus;
   remarks: string;
   stock_warehouses?: StockWarehouse[];
+  /**
+   * The warehouse this line's bill consumes from — its stock is already at the
+   * line and was subtracted from `required_qty` when the request was raised, so
+   * it is never a godown the quantity can be drawn out of.
+   */
+  consumption_warehouse?: string;
+  at_consumption?: number;
+  /** Every other godown holding the item, less what live approvals hold. */
+  source_options?: BOMLineSourceOption[];
+  /** Where an already-approved quantity was drawn from. */
+  sources?: BOMLineSource[];
   created_at: string;
   updated_at: string;
+}
+
+export interface BOMLineSourceOption {
+  warehouse: string;
+  on_hand: number;
+  /** Held by another run's approval that has not been issued yet. */
+  claimed: number;
+  available: number;
+}
+
+export interface BOMLineSource {
+  warehouse_code: string;
+  qty: string;
 }
 
 export interface BOMRequest {
@@ -150,6 +174,11 @@ export interface BOMLineApproval {
   approved_qty: number;
   status: 'APPROVED' | 'REJECTED';
   remarks?: string;
+  /**
+   * Which godowns the approved quantity is drawn out of. They must add up to
+   * `approved_qty`, and none may be drawn beyond what it has available.
+   */
+  sources?: { warehouse: string; qty: number }[];
 }
 
 export interface ApproveBOMRequestPayload {
