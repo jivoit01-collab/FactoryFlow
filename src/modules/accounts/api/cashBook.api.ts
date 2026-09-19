@@ -34,6 +34,11 @@ export interface NewCashPerson extends CashPerson {
   created: boolean;
 }
 
+export interface ApproverCandidate extends CashPerson {
+  /** Whether they approve this company's cash today. */
+  approves: boolean;
+}
+
 export interface CashPerson {
   id: number;
   name: string;
@@ -389,6 +394,22 @@ export const cashBookApi = {
   async approvers(): Promise<CashPerson[]> {
     const { data } = await apiClient.get<CashPerson[]>(
       API_ENDPOINTS.CASH_BOOK.APPROVERS,
+    );
+    return data;
+  },
+
+  /**
+   * Everybody who could be made an approver, each saying whether they already
+   * are.
+   *
+   * One list, so the settings screen cannot offer somebody the server would
+   * refuse — it once offered seventeen drivers off the sheet — and cannot say
+   * "nobody approves" about people it has just appointed.
+   */
+  async approverCandidates(): Promise<ApproverCandidate[]> {
+    const { data } = await apiClient.get<ApproverCandidate[]>(
+      API_ENDPOINTS.CASH_BOOK.APPROVERS,
+      { params: { candidates: true } },
     );
     return data;
   },

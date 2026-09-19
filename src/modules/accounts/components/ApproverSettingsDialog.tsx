@@ -2,8 +2,7 @@ import { Check, Loader2, Search, ShieldCheck, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { useCashApprovers, useSetCashApprover } from '@/modules/accounts/api';
-import { useCompanyUsers } from '@/modules/notifications/api/sendNotification.queries';
+import { useApproverCandidates, useSetCashApprover } from '@/modules/accounts/api';
 import {
   Badge,
   Button,
@@ -24,6 +23,13 @@ import { getErrorMessage } from '@/shared/utils';
  * setup command creates — so this screen and the command cannot drift into
  * two different ideas of who approves.
  *
+ * ONE LIST, FROM THE SERVER
+ * Everybody offered here can actually be appointed, and each row says whether
+ * they already approve. Built the other way — the whole directory on one side,
+ * the approvers on the other — it offered seventeen drivers off the sheet who
+ * cannot sign in, and went on saying nobody approved cash about somebody it
+ * had just appointed.
+ *
  * Nobody can appoint themselves. The person who records a payment holds the
  * settings right, and without that rule they could name themselves as its
  * approver and agree to their own spending, which is the one thing the
@@ -41,28 +47,29 @@ export function ApproverSettingsDialog({
   currentUserId?: number | null;
 }) {
   const [search, setSearch] = useState('');
-  const { data: approvers = [], isLoading: approversLoading } = useCashApprovers();
-  const { data: users = [], isLoading: usersLoading } = useCompanyUsers();
+  const { data: people = [], isLoading } = useApproverCandidates(open);
   const setApprover = useSetCashApprover();
 
-  const approverIds = useMemo(() => new Set(approvers.map((person) => person.id)), [approvers]);
+  const approvers = useMemo(
+    () => people.filter((person) => person.approves),
+    [people],
+  );
 
   const shown = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const rows = users.filter(
-      (user) =>
+    const rows = people.filter(
+      (person) =>
         !needle ||
-        (user.full_name ?? '').toLowerCase().includes(needle) ||
-        user.email.toLowerCase().includes(needle),
+        person.name.toLowerCase().includes(needle) ||
+        person.email.toLowerCase().includes(needle),
     );
-    // Approvers first: the question this screen answers is "who approves",
-    // and the rest of the directory is only there to add somebody.
+    // Approvers first: the question this screen answers is who approves, and
+    // the rest are only there to add somebody.
     return [...rows].sort((a, b) => {
-      const mine = Number(approverIds.has(b.id)) - Number(approverIds.has(a.id));
-      if (mine !== 0) return mine;
-      return (a.full_name ?? a.email).localeCompare(b.full_name ?? b.email);
+      const byRole = Number(b.approves) - Number(a.approves);
+      return byRole !== 0 ? byRole : a.name.localeCompare(b.name);
     });
-  }, [users, search, approverIds]);
+  }, [people, search]);
 
   async function toggle(id: number, name: string, approving: boolean) {
     try {
@@ -72,8 +79,6 @@ export function ApproverSettingsDialog({
       toast.error(getErrorMessage(err, 'That could not be changed.'));
     }
   }
-
-  const loading = approversLoading || usersLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,7 +108,7 @@ export function ApproverSettingsDialog({
               : `${approvers.length} ${approvers.length === 1 ? 'person approves' : 'people approve'} cash.`}
           </p>
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex items-center justify-center py-10 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading people…
             </div>
@@ -111,20 +116,24 @@ export function ApproverSettingsDialog({
             <div className="max-h-[320px] overflow-y-auto rounded-md border">
               {shown.length === 0 ? (
                 <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-                  Nobody matches that.
+                  {search
+                    ? 'Nobody matches that.'
+                    : 'Nobody here can approve cash — people need a login for this company.'}
                 </p>
               ) : (
-                shown.map((user) => {
-                  const approves = approverIds.has(user.id);
-                  const self = currentUserId != null && user.id === currentUserId;
+                shown.map((person) => {
+                  const approves = person.approves;
+                  const self = currentUserId != null && person.id === currentUserId;
                   return (
                     <div
-                      key={user.id}
+                      key={person.id}
                       className="flex items-center justify-between gap-3 border-b px-3 py-2 last:border-b-0"
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-sm">{user.full_name || user.email}</p>
-                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                        <p className="truncate text-sm">{person.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {person.email}
+                        </p>
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2">
@@ -144,7 +153,7 @@ export function ApproverSettingsDialog({
                             variant={approves ? 'ghost' : 'outline'}
                             size="sm"
                             disabled={setApprover.isPending}
-                            onClick={() => toggle(user.id, user.full_name || user.email, !approves)}
+                            onClick={() => toggle(person.id, person.name, !approves)}
                           >
                             {approves ? (
                               <>

@@ -29,6 +29,8 @@ export const CASH_BOOK_QUERY_KEYS = {
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id, includeCancelled] as const,
   approvals: (state: string) => [...CASH_BOOK_QUERY_KEYS.all, 'approvals', state] as const,
   approvers: () => [...CASH_BOOK_QUERY_KEYS.all, 'approvers'] as const,
+  approverCandidates: () =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'approver-candidates'] as const,
   columnValues: (column: string, filters: ColumnFilters, includeCancelled: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'column', column, filters, includeCancelled] as const,
   people: (search: string, holdingOnly: boolean) =>
@@ -246,6 +248,15 @@ export function useApprovalQueue(state: EntryApprovalStatus = 'PENDING') {
   return useQuery({
     queryKey: CASH_BOOK_QUERY_KEYS.approvals(state),
     queryFn: () => cashBookApi.approvalQueue(state),
+  });
+}
+
+/** Everybody who could approve, and whether they already do. */
+export function useApproverCandidates(enabled = true) {
+  return useQuery({
+    queryKey: CASH_BOOK_QUERY_KEYS.approverCandidates(),
+    queryFn: () => cashBookApi.approverCandidates(),
+    enabled,
   });
 }
 
