@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AccountsBoardResponse } from '../types';
@@ -195,6 +195,7 @@ function show(response: AccountsBoardResponse) {
 
 beforeEach(() => {
   useAccountsBoard.mockReset();
+  vi.useRealTimers();
 });
 
 describe('the four headline figures', () => {
@@ -275,6 +276,7 @@ describe('the imprest figure', () => {
 
     const rows = screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)');
     expect(rows.length).toBe(2);
+    expect(rows[0]).toBeVisible();
     expect(screen.getByText('₹1,50,000')).toBeInTheDocument();
     expect(screen.getByText('₹1,00,000')).toBeInTheDocument();
   });
@@ -377,7 +379,7 @@ describe('a zero that is an answer', () => {
 
     expect(
       screen.getByText(/All 47 bunches have gone to head office/i),
-    ).toBeInTheDocument();
+    ).toBeVisible();
   });
 });
 
@@ -442,7 +444,7 @@ describe('the salary section', () => {
      */
     show(board());
 
-    expect(screen.getByText('Parveen khatun')).toBeInTheDocument();
+    expect(screen.getByText('Parveen khatun')).toBeVisible();
     expect(
       screen.getByText(/Cash paid Advance to Sachin/i),
     ).toBeInTheDocument();
@@ -450,7 +452,7 @@ describe('the salary section', () => {
 
   it('never claims more rows than it has', () => {
     show(board());
-    expect(screen.getByText(/Showing the 2 most recent of 26/i)).toBeInTheDocument();
+    expect(screen.getByText(/Showing the 2 most recent of 26/i)).toBeVisible();
   });
 
   it('opens the voucher, not a person, in the details panel', () => {
@@ -488,6 +490,149 @@ describe('a band that is missing', () => {
     expect(
       screen.queryByText(/needs a permission you do not hold/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('the details panel cycling on its own', () => {
+  /** One dwell, inside act() so React flushes the state the timer sets. */
+  function advance(ms = 12_000) {
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  }
+
+  /** Whichever breakdown line the panel is currently showing. */
+  function heading(container: HTMLElement): string {
+    return (
+      container.querySelector('.ab-details-selected h4')?.textContent ?? ''
+    );
+  }
+
+  it('shows a breakdown line instead of sitting empty', () => {
+    /**
+     * It is the only panel with nothing to show at rest, so "Select any row"
+     * was a third of the screen saying nothing.
+     */
+    const { container } = show(board());
+
+    expect(heading(container)).toBe('Vendor A/P');
+    expect(
+      screen.queryByText(/Select any row in the tables/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it('moves to the next line on its own', () => {
+    vi.useFakeTimers();
+    const { container } = show(board());
+
+    expect(heading(container)).toBe('Vendor A/P');
+    advance();
+    expect(heading(container)).toBe('Payment pending');
+  });
+
+  it('wraps back to the first line', () => {
+    vi.useFakeTimers();
+    const { container } = show(board());
+
+    advance();
+    advance();
+
+    expect(heading(container)).toBe('Vendor A/P');
+  });
+
+  it('lights the line in the rail that it is showing', () => {
+    /** One value drives both, so the lit line and the open record cannot
+        disagree while the panel is cycling. */
+    vi.useFakeTimers();
+    const { container } = show(board());
+
+    const lit = () =>
+      container.querySelector('.ab-bucket.is-selected')?.textContent ?? '';
+
+    expect(lit()).toContain('Vendor A/P');
+    advance();
+    expect(lit()).toContain('Payment pending');
+  });
+
+  it('holds still while the pointer is on it', () => {
+    vi.useFakeTimers();
+    const { container } = show(board());
+    const panel = container.querySelector('.ab-details') as HTMLElement;
+
+    fireEvent.mouseEnter(panel);
+    advance();
+
+    expect(heading(container)).toBe('Vendor A/P');
+  });
+
+  it('holds still on a row somebody picked, even after the pointer leaves', () => {
+    /**
+     * The one that actually bit: moving the mouse away restarted the clock
+     * while the clicked row was still open, and the panel changed out from
+     * under the reader.
+     */
+    vi.useFakeTimers();
+    const { container } = show(board());
+    const panel = container.querySelector('.ab-details') as HTMLElement;
+
+    fireEvent.click(screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)')[0]);
+    fireEvent.mouseEnter(panel);
+    fireEvent.mouseLeave(panel);
+    advance();
+    advance();
+
+    expect(heading(container)).toMatch(/Imprest top-up/i);
+  });
+
+  it('resumes once the selection is cleared', () => {
+    vi.useFakeTimers();
+    const { container } = show(board());
+
+    fireEvent.click(screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)')[0]);
+    fireEvent.click(screen.getByRole('button', { name: /clear selection/i }));
+    advance();
+
+    expect(heading(container)).toMatch(/Vendor A\/P|Payment pending/);
+  });
+
+  it('hides its clock while a row is selected', () => {
+    const { container } = show(board());
+
+    expect(container.querySelector('.ab-stage-progress')).not.toBeNull();
+    fireEvent.click(screen.getAllByText('Ginni Vg Imprest Debit Card (Vishal)')[0]);
+    expect(container.querySelector('.ab-stage-progress')).toBeNull();
+  });
+});
+
+describe('the other sections', () => {
+  it('do not rotate — every one is on screen at once', () => {
+    /**
+     * Only the Details panel cycles. These are lists worth reading whenever
+     * somebody looks up, and a figure that is only up a third of the time is
+     * one people wait for instead of reading.
+     */
+    vi.useFakeTimers();
+    const { container } = show(board());
+
+    // By panel heading, not by text: "Imprest issued" is also a stat card
+    // label, and matching both would pass even with the panel gone.
+    const panels = () =>
+      Array.from(container.querySelectorAll('.ab-panel > .ab-panel-head > h3')).map(
+        (h) => h.textContent,
+      );
+
+    const expected = [
+      'Imprest issued',
+      'Pending expenses from HO',
+      'Salary advance',
+      'Cash out with people',
+    ];
+
+    expect(panels()).toEqual(expect.arrayContaining(expected));
+    act(() => {
+      vi.advanceTimersByTime(36_000);
+    });
+    expect(panels()).toEqual(expect.arrayContaining(expected));
   });
 });
 

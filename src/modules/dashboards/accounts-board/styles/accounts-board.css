@@ -579,6 +579,81 @@
   width: 100%;
 }
 
+/* ── the details panel's own clock ───────────────────────────── */
+
+/*
+ * The Details panel cycles the breakdown lines when nobody has picked one, and
+ * these two are all that says so.
+ *
+ * Deliberately almost invisible. It is the only moving thing on a screen full
+ * of money figures, and anything louder than a hairline pulls the eye off
+ * every one of them.
+ */
+.ab-details-auto {
+  color: var(--ab-ink-soft);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.ab-stage-progress {
+  background: var(--ab-line);
+  height: 2px;
+  overflow: hidden;
+}
+
+.ab-stage-progress-fill {
+  background: var(--ab-accent);
+  display: block;
+  height: 100%;
+  /* Matches the hook's tick, so the bar creeps rather than stepping ten times
+     a second. */
+  transition: width 100ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The hook stops rotating; this stops the bar creeping. Every line is still
+     reachable by clicking it in the rail — it just waits to be asked. */
+  .ab-stage-progress-fill {
+    transition: none;
+  }
+}
+
+/* ── the people list ─────────────────────────────────────────── */
+
+/*
+ * Pinned below the stage rather than joining the rotation.
+ *
+ * It is the list people come to this screen to scan — who is holding what —
+ * and a figure that is only on screen a third of the time is one somebody
+ * waits for instead of reading. So it stays put, and is capped and scrolled
+ * instead: fourteen holders today, and the cap is what stops thirty pushing
+ * everything else off the page.
+ */
+.ab-people-col .ab-table-scroll {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+/*
+ * The column headings stay put while the rows move under them. Two figures and
+ * a date are unreadable without their headings, and a scrolled list that has
+ * lost them is a list of anonymous numbers.
+ */
+.ab-people-col thead th {
+  background: var(--ab-card);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The hook stops rotating; this stops the bar creeping. The tabs still
+     work, so nothing is unreachable — it just waits to be asked. */
+  .ab-stage-progress-fill {
+    transition: none;
+  }
+}
+
 /* ── absences ────────────────────────────────────────────────── */
 
 /*
