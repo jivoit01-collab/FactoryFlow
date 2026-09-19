@@ -6,6 +6,7 @@ import {
   Package,
   Paperclip,
   Pencil,
+  Table2,
   Wallet,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -27,6 +28,7 @@ import {
   useColumnValues,
   useCreateBunch,
 } from '@/modules/accounts/api';
+import { CashSheetTable } from '@/modules/accounts/components/CashSheetTable';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
@@ -92,6 +94,10 @@ export default function CashBookPage() {
   const canManage = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
 
   const [includeCancelled, setIncludeCancelled] = useState(false);
+  // A second way of reading the same page. The register carries the tick
+  // boxes, the row buttons and the dialogs; a grid you drag a selection
+  // across is no place for any of them.
+  const [sheetMode, setSheetMode] = useState(false);
   // One entry per column that is filtering. Empty means the column is not.
   const [filters, setFilters] = useState<ColumnFilters>({});
   // Which drop-down is open, so only that column's values are fetched.
@@ -411,6 +417,25 @@ export default function CashBookPage() {
           Show cancelled
         </label>
 
+        <div className="flex items-center gap-1 rounded-md border p-0.5">
+          <Button
+            variant={sheetMode ? 'ghost' : 'secondary'}
+            size="sm"
+            className="h-7"
+            onClick={() => setSheetMode(false)}
+          >
+            Register
+          </Button>
+          <Button
+            variant={sheetMode ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-7"
+            onClick={() => setSheetMode(true)}
+          >
+            <Table2 className="mr-1 h-3 w-3" /> Sheet
+          </Button>
+        </div>
+
         {filteredColumns.length > 0 && (
           <>
             <span className="text-sm text-muted-foreground">
@@ -482,6 +507,25 @@ export default function CashBookPage() {
             </p>
           </CardContent>
         </Card>
+      ) : sheetMode ? (
+        <>
+          <CashSheetTable
+            rows={rows}
+            resetKey={`${page}|${pageSize}|${toSortParam(sort)}|${includeCancelled}|${JSON.stringify(filters)}`}
+          />
+          <PaginationControls
+            page={data?.page ?? page}
+            pageSize={pageSize}
+            total={data?.count ?? 0}
+            totalPages={data?.total_pages ?? 1}
+            isLoading={isLoading}
+            onPageChange={setPage}
+            onPageSizeChange={(next) => {
+              setPageSize(next);
+              resetPage();
+            }}
+          />
+        </>
       ) : (
         <div className="rounded-md border">
           <div className="overflow-x-auto">
