@@ -338,6 +338,14 @@ export const dispatchModuleConfig: ModuleConfig = {
       permissions: dispatchViewPermissions,
       hasSubmenu: true,
       children: [
+        // First: the register is what most of the desk opens the module for,
+        // and it is the one page here that answers "what went out" rather
+        // than asking for something to be done.
+        {
+          path: '/dispatch/sheet',
+          title: 'Sheet',
+          permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET],
+        },
         {
           path: '/dispatch/bill-selection',
           title: 'Bill Selection',
@@ -362,11 +370,6 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/docking',
           title: 'Docking',
           permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
-        },
-        {
-          path: '/dispatch/sheet',
-          title: 'Sheet',
-          permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET],
         },
         {
           path: '/dispatch/tracking',
