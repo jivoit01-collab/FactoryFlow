@@ -99,7 +99,15 @@ export function ColumnFilter({
   }
 
   return (
-    <th className={`px-3 py-2 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+    // `whitespace-nowrap`: a heading sets the column's width, it does not wrap
+    // to fit one. "Jivo Mart Invoice" stacked three lines high and took the
+    // whole header row with it, on every column. Wider is cheap -- the sheet
+    // scrolls sideways already -- and a tall header band is not.
+    <th
+      className={`whitespace-nowrap px-3 py-2 ${
+        align === 'right' ? 'text-right' : 'text-left'
+      }`}
+    >
       <div
         className={`flex items-center gap-1 ${
           align === 'right' ? 'justify-end' : ''
