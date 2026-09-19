@@ -65,13 +65,16 @@ describe('CapacityBox', () => {
   it('says how far ahead of the rating the day finished', () => {
     draw();
 
-    expect(screen.getByText('1,410 cases ahead')).toBeInTheDocument();
+    // The figure and its noun are separate spans, as the others are.
+    expect(screen.getByText('1,410')).toBeInTheDocument();
+    expect(screen.getByText('cases ahead')).toBeInTheDocument();
   });
 
   it('says how far short when the lines are behind their rating', () => {
     draw({ produced: 3_000, capacity: 4_110, capacityPct: 73 });
 
-    expect(screen.getByText('1,110 cases short')).toBeInTheDocument();
+    expect(screen.getByText('1,110')).toBeInTheDocument();
+    expect(screen.getByText('cases short')).toBeInTheDocument();
   });
 
   it('carries the hours that made nothing, now the strip is gone', () => {
@@ -93,7 +96,8 @@ describe('CapacityBox', () => {
 
     expect(screen.getByText('1,10,400')).toBeInTheDocument();
     expect(screen.getByText('82,200')).toBeInTheDocument();
-    expect(screen.getByText('28,200 ltr ahead')).toBeInTheDocument();
+    expect(screen.getByText('28,200')).toBeInTheDocument();
+    expect(screen.getByText('ltr ahead')).toBeInTheDocument();
   });
 
   it('says why rather than showing a capacity it cannot stand behind', () => {
