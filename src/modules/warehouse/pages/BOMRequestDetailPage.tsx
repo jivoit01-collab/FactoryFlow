@@ -1,4 +1,13 @@
-import { ArrowLeft, Check, Loader2, Package, Send, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  Loader2,
+  Package,
+  RotateCcw,
+  Send,
+  Warehouse,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -11,7 +20,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Input,
   Label,
   Textarea,
 } from '@/shared/components/ui';
@@ -27,41 +35,49 @@ import {
   useBOMRequestDetail,
   useIssueMaterials,
   useRejectBOMRequest,
+  useReRequestBOMShortfall,
 } from '../api';
+import { BOMSourcePickerDialog } from '../components/BOMSourcePickerDialog';
 import type { BOMLineApproval, BOMRequestLine } from '../types';
+import { toStorableQty } from '../utils/qty';
 
 // ============================================================================
 // Line Row Component
 // ============================================================================
 
-// Approved qty is stored with 3 decimals, but live SAP stock comes back with more
-// (e.g. 6197.0849). Floor rather than round so a prefilled "approve everything in
-// stock" can never land above the stock it was derived from.
-const QTY_DECIMALS = 3;
-
-function toStorableQty(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  const factor = 10 ** QTY_DECIMALS;
-  // toFixed first: 1.005 * 1000 is 1004.999..., which would floor away a thousandth.
-  return Math.floor(Number((value * factor).toFixed(6))) / factor;
+/** The godowns an approved quantity was drawn from, as one readable line. */
+function SourceSummary({ sources }: { sources: { warehouse: string; qty: number }[] }) {
+  if (sources.length === 0) {
+    return <span className="text-xs text-muted-foreground">not chosen yet</span>;
+  }
+  return (
+    <span className="text-xs">
+      {sources.map((s) => `${s.warehouse} ${s.qty}`).join(' · ')}
+    </span>
+  );
 }
 
 function LineRow({
   line,
   editable,
   approval,
+  sources,
+  onPickSources,
   onApprovalChange,
 }: {
   line: BOMRequestLine;
   editable: boolean;
   approval?: BOMLineApproval;
+  sources: { warehouse: string; qty: number }[];
+  onPickSources?: () => void;
   onApprovalChange?: (a: BOMLineApproval) => void;
 }) {
+  // What the store can actually hand over: every godown holding the item bar
+  // the one production already consumes it from, less what other live
+  // approvals hold. The server enforces the same figure.
   const stock = line.available_stock ?? 0;
   const required = parseFloat(line.required_qty);
-  const maxApprovalQty = toStorableQty(Math.max(stock, 0));
-  const defaultApprovalQty = toStorableQty(Math.min(required, maxApprovalQty));
-  const canApproveLine = maxApprovalQty > 0;
+  const canApproveLine = stock > 0;
   const stockColor =
     stock >= required ? 'text-green-600' : stock > 0 ? 'text-amber-600' : 'text-red-600';
 
@@ -75,53 +91,47 @@ function LineRow({
         {line.required_qty} {line.uom}
       </td>
       <td className={`py-2 px-2 text-right text-sm font-medium ${stockColor}`}>
-        {stock.toFixed(1)}
+        {stock.toFixed(3)}
+        {(line.at_consumption ?? 0) > 0 && (
+          <span className="block text-xs font-normal text-muted-foreground">
+            {line.at_consumption} at {line.consumption_warehouse}
+          </span>
+        )}
       </td>
       {editable && approval && onApprovalChange ? (
         <>
           <td className="py-2 px-2">
-            <Input
-              type="number"
-              min={0}
-              max={maxApprovalQty}
-              step="0.001"
-              className="w-24 h-8 text-sm"
-              value={approval.approved_qty}
-              disabled={!canApproveLine || approval.status === 'REJECTED'}
-              onChange={(e) =>
-                onApprovalChange({
-                  ...approval,
-                  approved_qty: toStorableQty(
-                    Math.min(parseFloat(e.target.value) || 0, maxApprovalQty),
-                  ),
-                })
-              }
-            />
+            <div className="flex flex-col gap-1">
+              <Button
+                size="sm"
+                variant={approval.status === 'APPROVED' ? 'default' : 'outline'}
+                className="h-7 px-2 justify-start"
+                disabled={!canApproveLine}
+                title={
+                  !canApproveLine
+                    ? `No godown outside ${line.consumption_warehouse || 'the line'} holds this material`
+                    : undefined
+                }
+                onClick={onPickSources}
+              >
+                <Warehouse className="h-3 w-3 mr-1" />
+                {approval.status === 'APPROVED' && approval.approved_qty > 0
+                  ? `${approval.approved_qty} ${line.uom}`
+                  : 'Choose godowns'}
+              </Button>
+              {approval.status === 'APPROVED' && <SourceSummary sources={sources} />}
+            </div>
           </td>
           <td className="py-2 px-2">
             <div className="flex gap-1">
               <Button
                 size="sm"
-                variant={approval.status === 'APPROVED' ? 'default' : 'outline'}
-                className="h-7 px-2"
-                disabled={!canApproveLine}
-                title={!canApproveLine ? 'No stock available for this material' : undefined}
-                onClick={() => onApprovalChange({
-                  ...approval,
-                  approved_qty: approval.approved_qty > 0
-                    ? toStorableQty(Math.min(approval.approved_qty, maxApprovalQty))
-                    : defaultApprovalQty,
-                  status: 'APPROVED',
-                })}
-              >
-                <Check className="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
                 variant={approval.status === 'REJECTED' ? 'destructive' : 'outline'}
                 className="h-7 px-2"
                 onClick={() =>
-                  onApprovalChange({ ...approval, status: 'REJECTED', approved_qty: 0 })
+                  onApprovalChange({
+                    ...approval, status: 'REJECTED', approved_qty: 0, sources: [],
+                  })
                 }
               >
                 <X className="h-3 w-3" />
@@ -131,7 +141,14 @@ function LineRow({
         </>
       ) : (
         <>
-          <td className="py-2 px-2 text-right text-sm">{line.approved_qty}</td>
+          <td className="py-2 px-2 text-right text-sm">
+            {line.approved_qty}
+            {(line.sources?.length ?? 0) > 0 && (
+              <span className="block text-xs font-normal text-muted-foreground">
+                {line.sources!.map((s) => `${s.warehouse_code} ${s.qty}`).join(' · ')}
+              </span>
+            )}
+          </td>
           <td className="py-2 px-2 text-right text-sm">{line.issued_qty}</td>
           <td className="py-2 px-2">
             <Badge
@@ -167,25 +184,45 @@ export default function BOMRequestDetailPage() {
   const approveMut = useApproveBOMRequest();
   const rejectMut = useRejectBOMRequest();
   const issueMut = useIssueMaterials();
+  const reRequestMut = useReRequestBOMShortfall();
 
   const [approvals, setApprovals] = useState<Record<number, BOMLineApproval>>({});
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [issueOpen, setIssueOpen] = useState(false);
+  const [sourceLineId, setSourceLineId] = useState<number | null>(null);
 
   const isPending = detail?.status === 'PENDING';
   const isApproved = detail?.status === 'APPROVED' || detail?.status === 'PARTIALLY_APPROVED';
+  const isShort = detail?.status === 'PARTIALLY_APPROVED' || detail?.status === 'REJECTED';
 
-  // Initialize approvals from lines
+  /**
+   * The godowns are pre-filled from the fullest down, so the common case is one
+   * click — but they are shown, and the approver can redistribute them. Nothing
+   * is assumed about which godowns the store is willing to pick from; that is
+   * the approver's knowledge, not a list in a config file.
+   */
   const getApproval = (line: BOMRequestLine): BOMLineApproval => {
     if (approvals[line.id]) return approvals[line.id];
-    const stock = Math.max(line.available_stock ?? 0, 0);
     const required = parseFloat(line.required_qty);
-    const approvedQty = toStorableQty(Math.min(required, stock));
+    let outstanding = required;
+    const sources: { warehouse: string; qty: number }[] = [];
+    for (const option of line.source_options ?? []) {
+      if (outstanding <= 0) break;
+      const take = toStorableQty(Math.min(outstanding, option.available));
+      if (take > 0) {
+        sources.push({ warehouse: option.warehouse, qty: take });
+        outstanding -= take;
+      }
+    }
+    const approvedQty = toStorableQty(
+      sources.reduce((sum, s) => sum + s.qty, 0),
+    );
     return {
       line_id: line.id,
       approved_qty: approvedQty,
       status: approvedQty > 0 ? 'APPROVED' : 'REJECTED',
+      sources,
     };
   };
 
@@ -212,6 +249,15 @@ export default function BOMRequestDetailPage() {
     line.status === 'APPROVED' && line.approved_qty > 0
   );
 
+  // What a short approval left unanswered, summed across the lines.
+  const shortfallQty = (detail?.lines ?? []).reduce(
+    (sum, line) =>
+      sum + Math.max(0, parseFloat(line.required_qty) - parseFloat(line.approved_qty)),
+    0,
+  );
+
+  const sourceLine = detail?.lines.find((l) => l.id === sourceLineId) ?? null;
+
   const handleApprove = async () => {
     if (!detail) return;
     if (!hasApprovedLine) {
@@ -225,6 +271,8 @@ export default function BOMRequestDetailPage() {
           lines: pendingApprovalLines.map((line) => ({
             ...line,
             approved_qty: toStorableQty(line.approved_qty),
+            // Only an approved line names godowns; a rejected one holds none.
+            sources: line.status === 'APPROVED' ? (line.sources ?? []) : undefined,
           })),
         },
       });
@@ -233,6 +281,17 @@ export default function BOMRequestDetailPage() {
           ? 'BOM request partially approved'
           : 'BOM request approved',
       );
+    } catch {
+      // Error handled by interceptor
+    }
+  };
+
+  const handleReRequest = async () => {
+    if (!detail) return;
+    try {
+      const followUp = await reRequestMut.mutateAsync({ requestId: detail.id });
+      toast.success(`Shortfall raised as BOM request #${followUp.id}`);
+      navigate(`/warehouse/bom-requests/${followUp.id}`);
     } catch {
       // Error handled by interceptor
     }
@@ -334,17 +393,15 @@ export default function BOMRequestDetailPage() {
                   <th className="py-2 px-2">Material</th>
                   <th className="py-2 px-2 text-right">Required</th>
                   <th className="py-2 px-2 text-right">
-                    In Stock
-                    {stockSourceLabel && (
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        {stockSourceLabel}
-                      </span>
-                    )}
+                    Can be fetched
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {stockSourceLabel ?? 'across godowns'}
+                    </span>
                   </th>
                   {isPending ? (
                     <>
-                      <th className="py-2 px-2">Approve Qty</th>
-                      <th className="py-2 px-2">Action</th>
+                      <th className="py-2 px-2">Approve &amp; draw from</th>
+                      <th className="py-2 px-2">Reject</th>
                     </>
                   ) : (
                     <>
@@ -353,7 +410,7 @@ export default function BOMRequestDetailPage() {
                       <th className="py-2 px-2">Status</th>
                     </>
                   )}
-                  <th className="py-2 px-2">Warehouse</th>
+                  <th className="py-2 px-2">Consume at</th>
                 </tr>
               </thead>
               <tbody>
@@ -363,6 +420,8 @@ export default function BOMRequestDetailPage() {
                     line={line}
                     editable={isPending}
                     approval={isPending ? getApproval(line) : undefined}
+                    sources={isPending ? (getApproval(line).sources ?? []) : []}
+                    onPickSources={isPending ? () => setSourceLineId(line.id) : undefined}
                     onApprovalChange={
                       isPending ? (a) => updateApproval(line.id, a) : undefined
                     }
@@ -393,6 +452,21 @@ export default function BOMRequestDetailPage() {
             <Send className="h-4 w-4 mr-1" /> Issue Materials to SAP
           </Button>
         )}
+
+        {/* The balance of a short approval. Without this the un-approved
+            remainder had nowhere to go: raising a fresh request is refused
+            while this one is open, so the quantity was simply lost. */}
+        {isShort && shortfallQty > 0 && (
+          <Button
+            variant="outline"
+            onClick={handleReRequest}
+            disabled={reRequestMut.isPending}
+          >
+            {reRequestMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Request shortfall ({shortfallQty.toFixed(3)})
+          </Button>
+        )}
       </div>
 
       {/* SAP Issue History */}
@@ -420,6 +494,24 @@ export default function BOMRequestDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Which godowns this line's quantity comes out of */}
+      <BOMSourcePickerDialog
+        line={sourceLine}
+        open={sourceLineId !== null}
+        initial={sourceLine ? (getApproval(sourceLine).sources ?? []) : []}
+        onOpenChange={(open) => !open && setSourceLineId(null)}
+        onConfirm={(picked) => {
+          if (!sourceLine) return;
+          updateApproval(sourceLine.id, {
+            ...getApproval(sourceLine),
+            approved_qty: picked.reduce((sum, s) => sum + s.qty, 0),
+            status: 'APPROVED',
+            sources: picked,
+          });
+          setSourceLineId(null);
+        }}
+      />
 
       {/* Reject Dialog */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
