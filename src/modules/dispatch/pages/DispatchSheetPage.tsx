@@ -317,11 +317,16 @@ export default function DispatchSheetPage() {
       ) : (
         <div className="rounded-md border">
           <div className="max-h-[70vh] overflow-auto">
+            {/* `select-none` always, not only mid-drag. A sheet does not let
+                you drag a highlight through the text inside its cells --
+                dragging picks cells -- and the browser's own text selection
+                fights this one: it starts before React can re-render, and
+                shift-click extends it from wherever you last clicked. There
+                is nothing lost, because copying a block is what Copy and
+                Ctrl+C are for. */}
             <table
               {...gridProps}
-              className={`w-full text-sm ${gridProps.className} ${
-                selection.dragging ? 'select-none' : ''
-              }`}
+              className={`w-full select-none text-sm ${gridProps.className}`}
             >
               <thead className="sticky top-0 z-10 bg-muted">
                 {/* The letters across the top of a sheet. Clicking one picks
@@ -395,9 +400,13 @@ export default function DispatchSheetPage() {
                           selection.cellClass(index, columnIndex)
                         }`}
                         title={column.wide ? column.value(row) : undefined}
-                        onMouseDown={(event) =>
-                          selection.startCell(index, columnIndex, event.shiftKey)
-                        }
+                        onMouseDown={(event) => {
+                          // Anything the browser had highlighted elsewhere on
+                          // the page is let go, so there is one selection on
+                          // screen and it is this one.
+                          window.getSelection()?.removeAllRanges();
+                          selection.startCell(index, columnIndex, event.shiftKey);
+                        }}
                         onMouseEnter={() => selection.extendCell(index, columnIndex)}
                       >
                         {/* The tint says which of the four states a line is
