@@ -1,5 +1,5 @@
 import type { CashEntry } from '@/modules/accounts/api';
-import { formatDay,formatNumber } from '@/shared/utils';
+import { formatDay, formatNumber } from '@/shared/utils';
 
 /**
  * The columns of the cash book read as a sheet.
@@ -15,6 +15,14 @@ const money = (value: string | number | null | undefined) =>
 /** One column of the sheet. The same shape the dispatch sheet uses. */
 export interface CashSheetColumn {
   key: string;
+  /**
+   * The server's name for this column, for its filter and its sort.
+   *
+   * Most match the key; the two money columns do not, because the server
+   * calls the payments column `amount` while the sheet calls it what the
+   * heading says.
+   */
+  filterKey?: string;
   label: string;
   align?: 'left' | 'right';
   /** Wide free text, so the cell may be narrow and truncate. */
@@ -38,11 +46,18 @@ export const CASH_SHEET_COLUMNS: CashSheetColumn[] = [
   { key: 'bunch', label: 'Bunch', value: (row) => (row.bunch ? String(row.bunch.number) : '') },
   { key: 'branch', label: 'Branch', value: (row) => row.branch_name ?? '' },
   { key: 'gl_code', label: 'G/L', value: (row) => row.gl_account_code },
-  { key: 'gl_name', label: 'G/L head', wide: true, value: (row) => row.gl_account_name },
+  {
+    key: 'gl_name',
+    filterKey: 'gl',
+    label: 'G/L head',
+    wide: true,
+    value: (row) => row.gl_account_name,
+  },
   { key: 'item', label: 'Item', value: (row) => row.item },
   { key: 'detail', label: 'Detail', wide: true, value: (row) => row.detail },
   {
     key: 'out',
+    filterKey: 'amount',
     label: 'Amount',
     align: 'right',
     value: (row) => (row.direction === 'OUT' ? money(row.amount) : ''),

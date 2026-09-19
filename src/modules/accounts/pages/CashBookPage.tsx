@@ -512,6 +512,8 @@ export default function CashBookPage() {
         <>
           <CashSheetTable
             rows={rows}
+            column={column}
+            onOpenColumn={setOpenColumn}
             resetKey={`${page}|${pageSize}|${toSortParam(sort)}|${includeCancelled}|${JSON.stringify(filters)}`}
           />
           <PaginationControls

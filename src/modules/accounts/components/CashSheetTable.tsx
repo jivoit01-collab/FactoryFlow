@@ -1,5 +1,5 @@
 import { Copy } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { type ComponentProps, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import type { CashEntry } from '@/modules/accounts/api';
@@ -8,6 +8,7 @@ import {
   type CashSheetColumn,
 } from '@/modules/accounts/components/cashSheetColumns';
 import {
+  ColumnFilter,
   columnLetter,
   copyBlock,
   useSheetSelection,
@@ -31,8 +32,25 @@ import { formatNumber } from '@/shared/utils';
 export function CashSheetTable({
   rows,
   resetKey,
+  column,
+  onOpenColumn,
 }: {
   rows: CashEntry[];
+  /**
+   * The register's own column helper, so a filter or a sort here is the same
+   * act as on the register.
+   *
+   * It has to be the register's rather than a local one: the book is paged,
+   * and a sort worked out in the browser would only shuffle the fifty rows
+   * that happened to land on this page.
+   */
+  column: (
+    key: string,
+    label: string,
+    align?: 'left' | 'right',
+  ) => Omit<ComponentProps<typeof ColumnFilter>, 'onOpen'>;
+  /** Told which drop-down opened, so only that column's values are fetched. */
+  onOpenColumn: (key: string) => void;
   /**
    * Changes whenever the rows are a different set of lines — a new page, a
    * filter, a sort. "Rows 3 to 10" means nothing afterwards, so the selection
@@ -110,16 +128,20 @@ export function CashSheetTable({
                 </th>
               ))}
             </tr>
+            {/* The headings, each with its own sort and filter -- the same
+                ones the register uses, because they are the register's. */}
             <tr className="border-b text-left">
               <th className="w-10 border-r bg-muted px-1 py-2" />
-              {CASH_SHEET_COLUMNS.map((column) => (
-                <th
-                  key={column.key}
-                  className={`px-3 py-2 ${column.align === 'right' ? 'text-right' : ''}`}
-                >
-                  {column.label}
-                </th>
-              ))}
+              {CASH_SHEET_COLUMNS.map((sheetColumn) => {
+                const key = sheetColumn.filterKey ?? sheetColumn.key;
+                return (
+                  <ColumnFilter
+                    key={sheetColumn.key}
+                    {...column(key, sheetColumn.label, sheetColumn.align ?? 'left')}
+                    onOpen={() => onOpenColumn(key)}
+                  />
+                );
+              })}
             </tr>
           </thead>
 
