@@ -13,7 +13,11 @@ import {
 } from '@/modules/accounts/api';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  TOTALS_ROW_CLASS,
+  useLocalColumns,
+} from '@/shared/components/sheetGrid';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
@@ -45,6 +49,7 @@ export default function CashBranchSettingsPage() {
   const { data: all = [], isLoading } = useCashBranches(showRetired);
   const {
     rows: branches,
+    totals,
     column,
     filteredColumns,
     clearFilters,
@@ -55,6 +60,7 @@ export default function CashBranchSettingsPage() {
       entries: {
         value: (branch) => String(branch.entry_count),
         sortValue: (branch) => branch.entry_count,
+        total: (branch) => branch.entry_count,
       },
       status: { value: (branch) => (branch.is_active ? 'In use' : 'Retired') },
     },
@@ -211,6 +217,15 @@ export default function CashBranchSettingsPage() {
               </tr>
             </thead>
             <tbody>
+              <tr className={TOTALS_ROW_CLASS}>
+                <td>
+                  Total of {branches.length}{' '}
+                  {branches.length === 1 ? 'branch' : 'branches'}
+                </td>
+                <td className="text-right tabular-nums">{totals.entries ?? 0}</td>
+                <td />
+                {canManage && <td />}
+              </tr>
               {branches.map((branch) => {
                 const editing = editingId === branch.id;
                 return (

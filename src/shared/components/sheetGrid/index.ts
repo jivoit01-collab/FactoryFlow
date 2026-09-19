@@ -28,3 +28,13 @@ export {
   useSheetSelection,
 } from './useSheetSelection';
 export { useSpreadsheetKeys } from './useSpreadsheetKeys';
+
+/**
+ * The look of a totals row, so every sheet's reads the same.
+ *
+ * It sits at the TOP of the body rather than the foot: these tables scroll,
+ * and a total you have to reach the bottom of four hundred rows to see is one
+ * nobody reads.
+ */
+export const TOTALS_ROW_CLASS =
+  'border-b-2 bg-muted/50 font-semibold [&>td]:px-3 [&>td]:py-2';

@@ -39,6 +39,17 @@ export interface ColumnSpec<T> {
    * blank one at least does not lie about what it did.
    */
   blankWhen?: (row: T) => boolean;
+  /**
+   * What this row contributes to the column's total. Omit and the column has
+   * none.
+   *
+   * Opt-in rather than "sum anything that looks like a number", because the
+   * columns most obviously made of numbers are the ones it is maddest to add
+   * up: a Balance or a Holding column is a running total, and the sum of a
+   * running total is a figure the book never held at any moment. Those
+   * columns simply do not declare this, and their total cell stays empty.
+   */
+  total?: (row: T) => number | null | undefined;
 }
 
 /** Stands for an empty cell, so "no branch" can be ticked like any other value. */
@@ -128,6 +139,25 @@ export function useLocalColumns<T>(
     .filter(([, picked]) => picked.length > 0)
     .map(([key]) => key);
 
+  /**
+   * What each summable column adds up to across the rows on screen.
+   *
+   * The rows on screen, not the whole table: a total that ignored the filters
+   * would contradict every figure under it the moment anything was ticked.
+   */
+  const totals: Record<string, number> = {};
+  const shown = survivors(null);
+  for (const [key, spec] of Object.entries(columns)) {
+    if (!spec.total) continue;
+    let sum = 0;
+    for (const row of shown) {
+      if (spec.blankWhen?.(row)) continue;
+      const figure = spec.total(row);
+      if (typeof figure === 'number' && Number.isFinite(figure)) sum += figure;
+    }
+    totals[key] = sum;
+  }
+
   /** Everything a `<ColumnFilter>` needs for one column. */
   const column = (key: string, label: string, align: 'left' | 'right' = 'left') => ({
     label,
@@ -142,6 +172,7 @@ export function useLocalColumns<T>(
 
   return {
     rows: sorted,
+    totals,
     column,
     filteredColumns,
     clearFilters: () => setFilters({}),

@@ -29,7 +29,13 @@ import {
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { PaginationControls } from '@/shared/components/PaginationControls';
-import { ColumnFilter, type SortState, toSortParam, useSpreadsheetKeys } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  type SortState,
+  toSortParam,
+  TOTALS_ROW_CLASS,
+  useSpreadsheetKeys,
+} from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -141,6 +147,9 @@ export default function CashBookPage() {
   // Always the whole book, never the filter: a reconciliation of part of a
   // book proves nothing.
   const recon = data?.reconciliation ?? EMPTY_RECONCILIATION;
+  // The filtered set's own figures, added up by the server over every entry
+  // the filters match rather than the fifty on this page.
+  const totals = data?.totals ?? { cash_in: '0', cash_out: '0', net: '0', count: 0 };
   const settled = Number(recon.difference) === 0;
 
   const filteredColumns = Object.entries(filters)
@@ -531,6 +540,24 @@ export default function CashBookPage() {
                 </tr>
               </thead>
               <tbody>
+                {/* The whole filtered book, not this page of it: the server
+                    adds it up over every entry the filters match, which is
+                    what somebody who has just filtered wants to know. Balance
+                    has no total -- it is a running figure, and the sum of a
+                    running total is a number the book never held. */}
+                <tr className={TOTALS_ROW_CLASS}>
+                  {canManage && <td />}
+                  <td colSpan={8}>
+                    Total of {data?.count ?? 0}{' '}
+                    {(data?.count ?? 0) === 1 ? 'entry' : 'entries'}
+                    {filteredColumns.length > 0 ? ' matching the filters' : ''}
+                  </td>
+                  <td className="text-right tabular-nums">{money(totals.cash_out)}</td>
+                  <td className="text-right tabular-nums">{money(totals.cash_in)}</td>
+                  <td />
+                  <td />
+                  {canManage && <td />}
+                </tr>
                 {rows.map((row) => {
                   const cancelled = !row.is_active;
                   const editable = canManage && !cancelled && !row.is_locked;

@@ -11,7 +11,11 @@ import {
   useCreateAtmAccount,
 } from '@/modules/accounts/api';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  TOTALS_ROW_CLASS,
+  useLocalColumns,
+} from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -68,6 +72,7 @@ export default function AtmPage() {
   // rows themselves rather than asked for.
   const {
     rows: sorted,
+    totals,
     column,
     filteredColumns,
     clearFilters,
@@ -82,11 +87,13 @@ export default function AtmPage() {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
         blankWhen: (row) => row.kind !== 'RECEIPT',
+        total: (row) => Number(row.amount),
       },
       drawn: {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
         blankWhen: (row) => row.kind === 'RECEIPT',
+        total: (row) => Number(row.amount),
       },
       balance: {
         value: (row) => money(row.balance_after),
@@ -205,6 +212,22 @@ export default function AtmPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* Balance has no total: it is the card's running figure,
+                        and adding those up gives a number the card never
+                        held. */}
+                    <tr className={TOTALS_ROW_CLASS}>
+                      <td colSpan={3}>
+                        Total of {sorted.length}{' '}
+                        {sorted.length === 1 ? 'movement' : 'movements'}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {money(totals.amount ?? 0)}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {money(totals.drawn ?? 0)}
+                      </td>
+                      <td />
+                    </tr>
                     {sorted.map((row) => {
                       const paidOn = row.kind === 'RECEIPT';
                       return (

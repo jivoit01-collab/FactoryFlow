@@ -14,7 +14,11 @@ import {
 } from '@/modules/accounts/api';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  TOTALS_ROW_CLASS,
+  useLocalColumns,
+} from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -54,7 +58,7 @@ export default function BunchesPage() {
   const markSent = useMarkBunchSent();
   const removeEntry = useRemoveFromBunch();
 
-  const { rows, column, filteredColumns, clearFilters } = useLocalColumns(
+  const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
     all,
     {
       number: {
@@ -66,10 +70,12 @@ export default function BunchesPage() {
       vouchers: {
         value: (bunch) => String(bunch.entry_count),
         sortValue: (bunch) => bunch.entry_count,
+        total: (bunch) => bunch.entry_count,
       },
       total: {
         value: (bunch) => money(bunch.total),
         sortValue: (bunch) => Number(bunch.total),
+        total: (bunch) => Number(bunch.total),
       },
       sent: { value: (bunch) => (bunch.is_sent ? bunch.sent_at!.slice(0, 10) : null) },
     },
@@ -230,6 +236,15 @@ export default function BunchesPage() {
                 </tr>
               </thead>
               <tbody>
+                <tr className={TOTALS_ROW_CLASS}>
+                  <td colSpan={3}>
+                    Total of {rows.length} {rows.length === 1 ? 'batch' : 'batches'}
+                  </td>
+                  <td className="text-right tabular-nums">{totals.vouchers ?? 0}</td>
+                  <td className="text-right tabular-nums">{money(totals.total ?? 0)}</td>
+                  <td />
+                  <td />
+                </tr>
                 {rows.map((bunch) => (
                   <tr key={bunch.id} className="border-b align-top hover:bg-muted/40">
                     <td className="px-3 py-2">

@@ -16,7 +16,11 @@ import { AddPersonDialog } from '@/modules/accounts/components/AddPersonDialog';
 import { confirmDialog } from '@/shared/components';
 import { SearchableSelect } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  TOTALS_ROW_CLASS,
+  useLocalColumns,
+} from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -116,6 +120,7 @@ export default function AdvancesPage() {
   // themselves rather than asked for.
   const {
     rows: sorted,
+    totals,
     column,
     filteredColumns,
     clearFilters,
@@ -130,6 +135,7 @@ export default function AdvancesPage() {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
         blankWhen: (row) => row.kind === 'GIVEN',
+        total: (row) => Number(row.amount),
       },
       amount: {
         blankWhen: (row) => row.kind !== 'GIVEN',
@@ -333,6 +339,23 @@ export default function AdvancesPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* Holding has no total: it is a running figure, and its
+                        sum is a balance nobody ever held. What they hold now
+                        is on the header above. */}
+                    <tr className={TOTALS_ROW_CLASS}>
+                      <td colSpan={3}>
+                        Total of {sorted.length}{' '}
+                        {sorted.length === 1 ? 'movement' : 'movements'}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {money(totals.amount ?? 0)}
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {money(totals.cleared ?? 0)}
+                      </td>
+                      <td />
+                      {canManage && <td />}
+                    </tr>
                     {sorted.map((row) => {
                       const taken = row.kind === 'GIVEN';
                       const removed = row.is_active === false;

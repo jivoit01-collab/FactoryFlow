@@ -10,7 +10,11 @@ import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
 import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  TOTALS_ROW_CLASS,
+  useLocalColumns,
+} from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -75,7 +79,7 @@ export default function CashApprovalsPage() {
 
   // The queue arrives whole (capped at 500), so its column filters are built
   // from the rows themselves rather than asked for.
-  const { rows, column, filteredColumns, clearFilters } = useLocalColumns(
+  const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
     all,
     {
       date: { value: (row) => row.entry_date },
@@ -87,6 +91,7 @@ export default function CashApprovalsPage() {
       amount: {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
+        total: (row) => Number(row.amount),
       },
       state: { value: (row) => row.approval_label },
     },
@@ -278,6 +283,14 @@ export default function CashApprovalsPage() {
                 </tr>
               </thead>
               <tbody>
+                <tr className={TOTALS_ROW_CLASS}>
+                  {deciding && <td />}
+                  <td colSpan={5}>
+                    Total of {rows.length} {rows.length === 1 ? 'payment' : 'payments'}
+                  </td>
+                  <td className="text-right tabular-nums">{money(totals.amount ?? 0)}</td>
+                  <td />
+                </tr>
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b align-top hover:bg-muted/40">
                     {deciding && (
