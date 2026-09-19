@@ -48,6 +48,24 @@ export function useLocalColumns<T>(
   rows: T[],
   columns: Record<string, ColumnSpec<T>>,
   initialSort: SortState,
+  {
+    activeColumn,
+  }: {
+    /**
+     * The key of the column whose drop-down is open, when the caller tracks
+     * that.
+     *
+     * Building a column's value list means a pass over every row, so a table
+     * with twenty columns pays twenty passes on every render -- a keystroke
+     * in a search box included. The cash book's screens are small enough not
+     * to notice; the dispatch sheet holds a financial year. Pass this and
+     * only the open column is counted, which is what the server-side version
+     * has always done.
+     *
+     * Left out, every column is counted, as before.
+     */
+    activeColumn?: string | null;
+  } = {},
 ) {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [sort, setSort] = useState<SortState>(initialSort);
@@ -118,7 +136,7 @@ export function useLocalColumns<T>(
     onSort: setSort,
     selected: filters[key] ?? [],
     onSelect: (picked: string[]) => setFilters((f) => ({ ...f, [key]: picked })),
-    values: valuesFor(key),
+    values: activeColumn === undefined || activeColumn === key ? valuesFor(key) : [],
     align,
   });
 

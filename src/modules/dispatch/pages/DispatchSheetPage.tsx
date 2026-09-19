@@ -73,6 +73,10 @@ export default function DispatchSheetPage() {
   const [dateTo, setDateTo] = useState(initial.to);
   const [stream, setStream] = useState<DispatchSheetStream>('OIL');
   const [search, setSearch] = useState('');
+  // Which column's drop-down is open, so only that one's value list is built:
+  // a year's worth of rows counted twenty times over on every render is real
+  // time, and nineteen of those lists are not on screen.
+  const [openColumn, setOpenColumn] = useState<string | null>(null);
   const [allCompanies, setAllCompanies] = useState(false);
 
   const params = useMemo(
@@ -119,7 +123,9 @@ export default function DispatchSheetPage() {
     column: columnProps,
     filteredColumns,
     clearFilters,
-  } = useLocalColumns(streamRows, specs, { key: 'dispatch_date', direction: 'asc' });
+  } = useLocalColumns(streamRows, specs, { key: 'dispatch_date', direction: 'asc' }, {
+    activeColumn: openColumn,
+  });
 
   const { gridProps } = useSpreadsheetKeys({ onCopy: () => toast.success('Copied') });
 
@@ -296,6 +302,7 @@ export default function DispatchSheetPage() {
                     <ColumnFilter
                       key={column.key}
                       {...columnProps(column.key, column.label, column.align ?? 'left')}
+                      onOpen={() => setOpenColumn(column.key)}
                     />
                   ))}
                 </tr>
