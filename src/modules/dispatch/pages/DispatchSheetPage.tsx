@@ -167,7 +167,10 @@ export default function DispatchSheetPage() {
     column: columnProps,
     filteredColumns,
     clearFilters,
-  } = useLocalColumns(searched, specs, { key: 'dispatch_date', direction: 'asc' }, {
+    // Newest day first, so today is the first line on the page. The window
+    // ends at today, so nothing sorts above it; the book reads the other way
+    // round because a book is written downwards and a screen is not.
+  } = useLocalColumns(searched, specs, { key: 'dispatch_date', direction: 'desc' }, {
     activeColumn: openColumn,
   });
 
