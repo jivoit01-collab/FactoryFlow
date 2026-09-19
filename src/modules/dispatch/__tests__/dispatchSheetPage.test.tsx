@@ -33,12 +33,20 @@ function row(overrides: Partial<DispatchSheetRow>): DispatchSheetRow {
     total_freight: null,
     remarks: '',
     eway_bill: '',
+    freight_from_sap: false,
     ...overrides,
   };
 }
 
 const ROWS: DispatchSheetRow[] = [
-  row({ plan_id: 1, party: 'CHIRAG ENTERPRISES MUMBAI', litres: 10913 }),
+  // Deliberately out of date order, and the later day first, so the default
+  // sort has something to prove and the rows below still read 1, 2.
+  row({
+    plan_id: 1,
+    dispatch_date: '2026-04-09',
+    party: 'CHIRAG ENTERPRISES MUMBAI',
+    litres: 10913,
+  }),
   row({
     plan_id: 2,
     vehicle_stage: 'DOCKED',
@@ -236,6 +244,14 @@ describe('the Dispatch Sheet', () => {
     fireEvent.mouseDown(cellAt(1, litres + 1), { shiftKey: true });
 
     expect(screen.getByText('2 rows × 2 columns')).toBeInTheDocument();
+  });
+
+  it('opens with the newest day first, so today is the top line', () => {
+    openSheet();
+
+    const date = columnIndexOf('Dispatch Date') + 1;
+    const dates = bodyRows().map((line) => line.children[date].textContent);
+    expect(dates).toEqual(['2026-04-09', '2026-04-01']);
   });
 
   it('sorts a column when its heading is clicked', () => {

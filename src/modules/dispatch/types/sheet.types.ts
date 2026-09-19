@@ -46,6 +46,8 @@ export interface DispatchSheetRow {
   total_freight: number | null;
   remarks: string;
   eway_bill: string;
+  /** The freight was read off SAP's own carriage document, not recorded here. */
+  freight_from_sap: boolean;
 }
 
 export interface DispatchSheetMeta {
