@@ -163,6 +163,16 @@ export function useUpdateCashEntry() {
   );
 }
 
+export function useAttachToCashEntry() {
+  return useCashBookMutation((vars: { id: number; files: File[] }) =>
+    cashBookApi.attach(vars.id, vars.files),
+  );
+}
+
+export function useRemoveCashAttachment() {
+  return useCashBookMutation((id: number) => cashBookApi.removeAttachment(id));
+}
+
 export function useCancelCashEntry() {
   return useCashBookMutation((id: number) => cashBookApi.cancel(id));
 }

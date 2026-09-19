@@ -1,15 +1,17 @@
-import { ArrowDownLeft, ArrowUpRight, Loader2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Loader2, Paperclip, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { CashDirection, CashEntry, CashPerson, GLAccount } from '@/modules/accounts/api';
 import {
   useAtmAccounts,
+  useAttachToCashEntry,
   useCashApprovers,
   useCashBookOptions,
   useCashPeople,
   useGLAccounts,
   useRecordCashEntry,
+  useRemoveCashAttachment,
   useUpdateCashEntry,
 } from '@/modules/accounts/api';
 import { AddPersonDialog } from '@/modules/accounts/components/AddPersonDialog';
@@ -83,6 +85,12 @@ export function CashEntryDialog({
   // A receipt says which card it came off; a payment says whose advance it
   // clears. Never both -- the server refuses the crossover.
   const [atmAccount, setAtmAccount] = useState(entry?.atm_account ? String(entry.atm_account) : '');
+  // Files picked before the entry exists. A new entry has no id to hang them
+  // on, so they wait here and go up the moment it has one.
+  const [waiting, setWaiting] = useState<File[]>([]);
+  const attach = useAttachToCashEntry();
+  const removeAttachment = useRemoveCashAttachment();
+
   const [approverId, setApproverId] = useState<number | null>(entry?.approver ?? null);
   const [approverName, setApproverName] = useState(entry?.approver_name ?? '');
   const [holderId, setHolderId] = useState<number | null>(entry?.advance_holder ?? null);
@@ -153,16 +161,35 @@ export function CashEntryDialog({
     };
 
     try {
+      let entryId = entry?.id ?? null;
       if (isCorrection) {
         await update.mutateAsync({ id: entry.id, payload });
         toast.success('Entry corrected');
       } else {
-        await record.mutateAsync(payload);
+        const saved = await record.mutateAsync(payload);
+        entryId = saved.id;
         toast.success(
           direction === 'IN'
             ? 'Cash receipt recorded'
             : 'Payment recorded and waiting for approval',
         );
+      }
+
+      // The bills go up once the line exists. A failure here is reported on
+      // its own: the entry is saved either way, and saying otherwise would
+      // send somebody looking for a payment that is already in the book.
+      if (entryId != null && waiting.length > 0) {
+        try {
+          const result = await attach.mutateAsync({ id: entryId, files: waiting });
+          if (result.refused.length > 0) {
+            toast.error(
+              `${result.refused.length} of ${waiting.length} could not be attached: ` +
+                result.refused.map((row) => row.filename).join(', '),
+            );
+          }
+        } catch (err) {
+          toast.error(getErrorMessage(err, 'The entry is saved, but the bill did not attach.'));
+        }
       }
       onOpenChange(false);
     } catch (err) {
@@ -402,6 +429,60 @@ export function CashEntryDialog({
               onChange={(e) => setItem(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">What was actually bought — optional.</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="cash-bill">Bill</Label>
+            <Input
+              id="cash-bill"
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              className="cursor-pointer file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm"
+              onChange={(e) => setWaiting(Array.from(e.target.files ?? []))}
+            />
+            {(waiting.length > 0 || (entry?.attachments?.length ?? 0) > 0) && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {entry?.attachments?.map((file) => (
+                  <span
+                    key={file.id}
+                    className="inline-flex items-center gap-1 rounded border bg-muted/40 px-2 py-0.5 text-xs"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    <a
+                      href={file.url ?? '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="max-w-[180px] truncate hover:underline"
+                    >
+                      {file.original_filename}
+                    </a>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${file.original_filename}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={removeAttachment.isPending}
+                      onClick={() => removeAttachment.mutate(file.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                {waiting.map((file) => (
+                  <span
+                    key={file.name}
+                    className="inline-flex items-center gap-1 rounded border border-dashed px-2 py-0.5 text-xs text-muted-foreground"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                    <span className="max-w-[180px] truncate">{file.name}</span>
+                    <span>· on save</span>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              A photograph or PDF of the voucher — optional, and more than one is fine.
+            </p>
           </div>
 
           <div className="space-y-1">

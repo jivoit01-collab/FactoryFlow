@@ -143,6 +143,21 @@ export interface CashBranch {
  * sheet works too. It is therefore meaningful under any filter, and must never
  * be recomputed in the browser from the rows on screen.
  */
+export interface CashAttachment {
+  id: number;
+  original_filename: string;
+  size_bytes: number;
+  url: string | null;
+  uploaded_at: string;
+  uploaded_by_name: string | null;
+}
+
+/** What came of an upload: some files can land while others are refused. */
+export interface AttachResult {
+  attached: CashAttachment[];
+  refused: { filename: string; reason: unknown }[];
+}
+
 export interface CashEntry {
   id: number;
   entry_date: string;
@@ -172,6 +187,7 @@ export interface CashEntry {
   /** Who it was sent to. Null on a receipt, and on the imported history. */
   approver: number | null;
   approver_name: string | null;
+  attachments: CashAttachment[];
   approval_note: string;
   /** True while the entry sits with an approver, or has been approved. */
   is_locked: boolean;
@@ -628,6 +644,27 @@ export const cashBookApi = {
   },
 
   /** Cancels rather than deletes: a cash book that can lose a line is not one. */
+  /**
+   * Put one or more bills against a line.
+   *
+   * Several at once, because a bill is often more than one sheet. The server
+   * judges each on its own, so the result can carry both what landed and what
+   * was refused.
+   */
+  async attach(entryId: number, files: File[]): Promise<AttachResult> {
+    const form = new FormData();
+    for (const file of files) form.append('files', file);
+    const { data } = await apiClient.post<AttachResult>(
+      API_ENDPOINTS.CASH_BOOK.ENTRY_ATTACHMENTS(entryId),
+      form,
+    );
+    return data;
+  },
+
+  async removeAttachment(attachmentId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ATTACHMENT_DETAIL(attachmentId));
+  },
+
   async cancel(entryId: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ENTRY_DETAIL(entryId));
   },

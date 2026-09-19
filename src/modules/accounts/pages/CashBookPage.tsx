@@ -4,6 +4,7 @@ import {
   Ban,
   Loader2,
   Package,
+  Paperclip,
   Pencil,
   Wallet,
 } from 'lucide-react';
@@ -36,13 +37,7 @@ import {
   TOTALS_ROW_CLASS,
   useSpreadsheetKeys,
 } from '@/shared/components/sheetGrid';
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  Checkbox,
-} from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Checkbox } from '@/shared/components/ui';
 import { formatNumber, getErrorMessage } from '@/shared/utils';
 
 import { CashEntryDialog } from './CashEntryDialog';
@@ -226,12 +221,8 @@ export default function CashBookPage() {
     (entry) => entry.is_active && entry.approval_status === 'PENDING',
   ).length;
   const bundledHere = rows.filter((entry) => entry.bunch).length;
-  const pickedTotal = [...picked.values()].reduce(
-    (sum, entry) => sum + Number(entry.amount),
-    0,
-  );
-  const allPagePicked =
-    bundleable.length > 0 && bundleable.every((entry) => picked.has(entry.id));
+  const pickedTotal = [...picked.values()].reduce((sum, entry) => sum + Number(entry.amount), 0);
+  const allPagePicked = bundleable.length > 0 && bundleable.every((entry) => picked.has(entry.id));
 
   function togglePick(entry: CashEntry) {
     setPicked((current) => {
@@ -368,18 +359,14 @@ export default function CashBookPage() {
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Wallet className="h-4 w-4" /> Cash in hand
             </p>
-            <p className="mt-1 text-xl font-bold tabular-nums">
-              {money(recon.cash_in_hand)}
-            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums">{money(recon.cash_in_hand)}</p>
             <p className="text-xs text-muted-foreground">The notes in the box</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">Advance given</p>
-            <p className="mt-1 text-xl font-bold tabular-nums">
-              {money(recon.advance_given)}
-            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums">{money(recon.advance_given)}</p>
             <p className="text-xs text-muted-foreground">Out with people</p>
           </CardContent>
         </Card>
@@ -436,19 +423,17 @@ export default function CashBookPage() {
         )}
       </div>
 
-
       {/* A greyed-out tick column explains nothing by itself. When none of
           the rows on screen can go into a batch, say which of the two reasons
           it is, rather than leaving the custodian clicking a checkbox that
           will not move. */}
       {canManage && rows.length > 0 && bundleable.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          Nothing on this page can be bundled — a voucher has to be approved first,
-          and not already be in a batch.
+          Nothing on this page can be bundled — a voucher has to be approved first, and not already
+          be in a batch.
           {pendingHere > 0 &&
             ` ${pendingHere} here ${pendingHere === 1 ? 'is' : 'are'} still waiting on an approver.`}
-          {bundledHere > 0 &&
-            ` ${bundledHere} ${bundledHere === 1 ? 'is' : 'are'} already in one.`}
+          {bundledHere > 0 && ` ${bundledHere} ${bundledHere === 1 ? 'is' : 'are'} already in one.`}
         </p>
       )}
 
@@ -476,9 +461,9 @@ export default function CashBookPage() {
 
       {!balanceReadsAsRunning && (
         <p className="text-xs text-muted-foreground">
-          Sorted by {sort.key}. Each row still shows the balance the box held at that
-          entry, but the Balance column no longer reads down as a running total — sort by
-          date or recording order to get that back.
+          Sorted by {sort.key}. Each row still shows the balance the box held at that entry, but the
+          Balance column no longer reads down as a running total — sort by date or recording order
+          to get that back.
         </p>
       )}
 
@@ -548,8 +533,7 @@ export default function CashBookPage() {
                 <tr className={TOTALS_ROW_CLASS}>
                   {canManage && <td />}
                   <td colSpan={8}>
-                    Total of {data?.count ?? 0}{' '}
-                    {(data?.count ?? 0) === 1 ? 'entry' : 'entries'}
+                    Total of {data?.count ?? 0} {(data?.count ?? 0) === 1 ? 'entry' : 'entries'}
                     {filteredColumns.length > 0 ? ' matching the filters' : ''}
                   </td>
                   <td className="text-right tabular-nums">{money(totals.cash_out)}</td>
@@ -614,7 +598,30 @@ export default function CashBookPage() {
                         )}
                       </td>
                       <td className="px-3 py-2">{row.item || '—'}</td>
-                      <td className="max-w-[340px] px-3 py-2">{row.detail}</td>
+                      <td className="max-w-[340px] px-3 py-2">
+                        {row.detail}
+                        {row.attachments?.length > 0 && (
+                          // The bill, where the line it belongs to is read.
+                          // A register that hides its proof behind a dialog
+                          // is one nobody checks.
+                          <span className="ml-2 inline-flex items-center gap-1 align-middle text-xs text-muted-foreground">
+                            <Paperclip className="h-3 w-3" />
+                            {row.attachments.length > 1 && row.attachments.length}
+                            {row.attachments.map((file, index) => (
+                              <a
+                                key={file.id}
+                                href={file.url ?? '#'}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="hover:underline"
+                                title={file.original_filename}
+                              >
+                                {index === 0 ? 'bill' : `·${index + 1}`}
+                              </a>
+                            ))}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {row.direction === 'OUT' ? money(row.amount) : ''}
                       </td>

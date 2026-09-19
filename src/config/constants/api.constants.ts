@@ -1798,6 +1798,11 @@ export const API_ENDPOINTS = {
     BRANCH_DETAIL: (branchId: number) => `/cash-book/branches/${branchId}/`,
     ENTRIES: '/cash-book/entries/',
     ENTRY_DETAIL: (entryId: number) => `/cash-book/entries/${entryId}/`,
+    // The bill behind a line: photographs and PDFs of the voucher.
+    ENTRY_ATTACHMENTS: (entryId: number) =>
+      `/cash-book/entries/${entryId}/attachments/`,
+    ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/cash-book/attachments/${attachmentId}/`,
     // What one column of the register holds, for its filter drop-down.
     ENTRY_COLUMNS: '/cash-book/entries/columns/',
     // Approval belongs to the entry, and a payment joins the queue as soon
