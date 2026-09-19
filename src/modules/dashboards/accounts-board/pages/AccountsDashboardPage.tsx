@@ -558,19 +558,25 @@ export default function AccountsDashboardPage() {
                   label="Imprest issued"
                   value={rupees(headline.imprest_issued)}
                   hint={`${headline.imprest_count} top-ups`}
-                  // Says "onto the card" rather than leaving it to be assumed:
-                  // this is NOT the cash that reached the drawer, and the two
-                  // figures differ because a card is loaded first and drawn off
-                  // later. The box figure is on its own line beneath.
-                  note={`Loaded onto the card, ${periodLabel} · ₹${money(
-                    headline.into_box,
-                  )} reached the box`}
+                  // The card balance rather than a restatement of the period:
+                  // "on minus off" is the subtraction this pair invites, and it
+                  // is wrong — the real figure carries the card's opening and
+                  // every earlier month. Showing it here means nobody needs to
+                  // do the sum.
+                  note={`Onto the card, ${periodLabel} · ₹${money(
+                    data?.imprest?.card_balance,
+                  )} still on it`}
                 />
                 <StatCard
                   label="Cash issued"
                   value={rupees(headline.cash_issued)}
-                  hint={`${headline.cash_issued_count} debits`}
-                  note={`Out of the box, ${periodLabel}`}
+                  hint={`${headline.cash_issued_count} withdrawals`}
+                  // Drawn off the card is the other end of the float above.
+                  // What was SPENT is a third figure again, so it is stated
+                  // here rather than left to be confused with either.
+                  note={`Drawn off the card, ${periodLabel} · ₹${money(
+                    headline.paid_out,
+                  )} spent out of the box`}
                 />
                 <StatCard
                   label="Cash pending from HO"

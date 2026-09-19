@@ -38,8 +38,10 @@ function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse
       imprest_count: 12,
       into_box: 993209,
       into_box_count: 31,
-      cash_issued: 921662,
-      cash_issued_count: 466,
+      cash_issued: 977060,
+      cash_issued_count: 30,
+      paid_out: 924943,
+      paid_out_count: 473,
       pending_ho: 0,
       pending_ho_count: 0,
       cash_in_hand: 50414,
@@ -75,6 +77,7 @@ function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse
         },
       ],
       truncated: false,
+      card_balance: 207478,
       cards: [
         {
           id: 6,
@@ -197,8 +200,8 @@ describe('the four headline figures', () => {
      */
     show(board());
 
-    expect(screen.getByText(/Loaded onto the card, the whole book/i)).toBeInTheDocument();
-    expect(screen.getByText(/Out of the box, the whole book/i)).toBeInTheDocument();
+    expect(screen.getByText(/Onto the card, the whole book/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drawn off the card, the whole book/i)).toBeInTheDocument();
     expect(screen.getByText(/not the period/i)).toBeInTheDocument();
   });
 
@@ -212,7 +215,7 @@ describe('the four headline figures', () => {
       }),
     );
 
-    expect(screen.getByText(/Loaded onto the card, September 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/Onto the card, September 2026/i)).toBeInTheDocument();
     // The balance still refuses the period.
     expect(screen.getByText(/not the period/i)).toBeInTheDocument();
   });
@@ -241,9 +244,16 @@ describe('the imprest figure', () => {
     expect(screen.queryByText('₹21,58,209')).not.toBeInTheDocument();
   });
 
-  it('states the box figure beside it rather than leaving it assumed', () => {
+  it('shows what is still on the card, rather than inviting the subtraction', () => {
+    /**
+     * "On minus off" is the sum these two cards invite and it is wrong — the
+     * real balance carries the card's opening figure and every earlier month.
+     * 11,65,000 − 9,77,060 would read 1,87,940; the truth is 2,07,478.
+     */
     show(board());
-    expect(screen.getByText(/reached the box/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/₹2,07,478 still on it/i)).toBeInTheDocument();
+    expect(screen.queryByText(/₹1,87,940/)).not.toBeInTheDocument();
   });
 
   it('counts top-ups, not receipts', () => {
@@ -258,6 +268,25 @@ describe('the imprest figure', () => {
     expect(rows.length).toBe(2);
     expect(screen.getByText('₹1,50,000')).toBeInTheDocument();
     expect(screen.getByText('₹1,00,000')).toBeInTheDocument();
+  });
+});
+
+describe('the cash issued figure', () => {
+  it('is what came off the card, counted in withdrawals', () => {
+    show(board());
+
+    expect(screen.getAllByText('₹9,77,060').length).toBeGreaterThan(0);
+    expect(screen.getByText('30 withdrawals')).toBeInTheDocument();
+  });
+
+  it('states what was actually spent, which is a third figure again', () => {
+    /**
+     * Onto the card, off the card, and out of the box are three populations.
+     * Spending has no card of its own precisely so it cannot be mistaken for
+     * either of the other two — but it still has to be visible.
+     */
+    show(board());
+    expect(screen.getByText(/₹9,24,943 spent out of the box/i)).toBeInTheDocument();
   });
 });
 

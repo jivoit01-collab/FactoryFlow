@@ -36,14 +36,25 @@ export interface AccountsHeadline {
   /** Top-ups, not receipts. */
   imprest_count: number;
   /**
-   * Cash that reached the drawer, inside the period. A DIFFERENT population
-   * from `imprest_issued` — never add the two.
+   * Every rupee that reached the drawer however it got there: the withdrawals
+   * above PLUS cash handed straight in. Not equal to `cash_issued` — the live
+   * register carries 16,149 of hand-ins — so it is reported, not assumed.
    */
   into_box: number;
   into_box_count: number;
-  /** Everything paid out of it, inside the period, agreed or not. */
+  /**
+   * Drawn OFF the card at a machine, inside the period. The other end of the
+   * same float as `imprest_issued`, so those two ARE comparable.
+   */
   cash_issued: number;
+  /** Withdrawals, not vouchers. */
   cash_issued_count: number;
+  /**
+   * What was actually spent out of the box — a third population again, and the
+   * one the breakdown totals. Stated as a companion line, not as its own card.
+   */
+  paid_out: number;
+  paid_out_count: number;
   /** Vouchers not yet gone to head office. Never period-filtered. */
   pending_ho: number;
   pending_ho_count: number;
@@ -100,6 +111,11 @@ export interface AccountsImprest {
   rows: AccountsLoad[];
   truncated: boolean;
   cards: AccountsCard[];
+  /**
+   * What is left ON the card now. A BALANCE, so like cash in hand it ignores
+   * the period — and it is NOT this period's top-ups less its withdrawals.
+   */
+  card_balance: number;
   /** A different population: cash that actually reached the box. */
   into_box: {
     total: number;
