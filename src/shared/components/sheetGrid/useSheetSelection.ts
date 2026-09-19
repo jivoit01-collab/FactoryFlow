@@ -67,6 +67,23 @@ function span(a: number, b: number): [number, number] {
   return a <= b ? [a, b] : [b, a];
 }
 
+/**
+ * Which edge of a block a shift-click holds on to.
+ *
+ * Shift-click GROWS the block to take in what was clicked: click below it and
+ * the top stays put, click above it and the bottom does. Click inside and it
+ * shrinks from the far side.
+ *
+ * A spreadsheet does this from a hidden anchor -- the cell you first clicked --
+ * which is the same thing until you extend twice. Pick row 5, shift-click row
+ * 3 (block is 3 to 5), then shift-click row 8: an anchor says 5 to 8, because
+ * the anchor is still at 5. What anyone watching expects is 3 to 8, and that
+ * is what holding the far edge gives.
+ */
+function farEdge(at: number, lo: number, hi: number): number {
+  return at < lo ? hi : lo;
+}
+
 export function useSheetSelection<T>({
   rows,
   columnKeys,
@@ -114,15 +131,20 @@ export function useSheetSelection<T>({
   /** Mouse down on a cell: a new selection, or shift to extend the one held. */
   const startCell = useCallback(
     (row: number, column: number, extend = false) => {
-      if (extend && anchor) {
-        setRange(to(row, column, anchor));
+      if (extend && range) {
+        setRange(
+          to(row, column, {
+            row: farEdge(row, range.top, range.bottom),
+            column: farEdge(column, range.left, range.right),
+          }),
+        );
       } else {
         setAnchor({ row, column });
         setRange({ top: row, left: column, bottom: row, right: column });
       }
       setDragging(true);
     },
-    [anchor, to],
+    [range, to],
   );
 
   /** Dragged onto a cell: the block from where the drag began to here. */
@@ -145,22 +167,22 @@ export function useSheetSelection<T>({
 
   const pickRow = useCallback(
     (row: number, extend = false) => {
-      const from = extend && anchor ? anchor.row : row;
+      const from = extend && range ? farEdge(row, range.top, range.bottom) : row;
       const [top, bottom] = span(from, row);
       setRange({ top, bottom, left: 0, right: Math.max(0, lastColumn) });
-      if (!extend) setAnchor({ row, column: 0 });
+      setAnchor({ row: extend ? from : row, column: 0 });
     },
-    [anchor, lastColumn],
+    [range, lastColumn],
   );
 
   const pickColumn = useCallback(
     (column: number, extend = false) => {
-      const from = extend && anchor ? anchor.column : column;
+      const from = extend && range ? farEdge(column, range.left, range.right) : column;
       const [left, right] = span(from, column);
       setRange({ left, right, top: 0, bottom: Math.max(0, lastRow) });
-      if (!extend) setAnchor({ row: 0, column });
+      setAnchor({ row: 0, column: extend ? from : column });
     },
-    [anchor, lastRow],
+    [range, lastRow],
   );
 
   const pickAll = useCallback(() => {
