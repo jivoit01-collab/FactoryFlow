@@ -1,2 +1,2 @@
 export * from './HrBand';
-export * from './HrRank';
+export * from './HrCards';

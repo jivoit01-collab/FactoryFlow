@@ -46,6 +46,20 @@ export const HR_BOARD_STALE_AFTER_MS = HR_BOARD_REFRESH_MS * 3;
 export const HR_BOARD_TREND_COLUMNS = 14;
 
 /**
+ * Cards a ranked tile shows before it folds the rest into one line.
+ *
+ * Set by the GRID, not by the data: two columns of cards at a size a figure can
+ * be read at from four metres gives three rows in the space a tile has under
+ * its headline. A seventh card does not overflow the tile — the card grid is
+ * clipped by its own tile — it silently shrinks all six others to fit, which is
+ * the worse failure because nothing about it looks wrong.
+ *
+ * Rows past the fold are never dropped. They join the tail line, so the cards
+ * plus the tail still add up to the figure above them.
+ */
+export const HR_CARD_LIMIT = 6;
+
+/**
  * Rights that open the board.
  *
  * It mints none of its own, matching the API: the board is two existing

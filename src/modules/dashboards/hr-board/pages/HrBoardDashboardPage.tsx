@@ -9,7 +9,7 @@ import { useFullscreen } from '../../dispatch/hooks';
 import { OpsBars, OpsGroup, OpsMeter, OpsTopbar } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useHrBoard } from '../api';
-import { HrBand, HrCappedRank, HrRank } from '../components';
+import { HrBand, HrCappedCards, HrCards } from '../components';
 import { HR_BOARD_TREND_COLUMNS } from '../constants';
 import type { HrBoardResponse, HrHeadcount, HrLabour } from '../types';
 
@@ -150,7 +150,10 @@ function RollsBand({ data }: { data: HrBoardResponse | undefined }) {
               {/* One row per status, so "249 in service" can always be taken
                   apart into what those people actually are. A single ACTIVE
                   status renders one row, which is honest rather than empty. */}
-              <HrRank rows={headcount.statuses.map((s) => ({ label: s.label, count: s.count }))} />
+              <HrCards
+                columns={1}
+                rows={headcount.statuses.map((s) => ({ label: s.label, count: s.count }))}
+              />
               {unassigned > 0 && (
                 <p className="hr-caveat">
                   {whole(unassigned)} have no department on their record and are grouped as
@@ -168,7 +171,7 @@ function RollsBand({ data }: { data: HrBoardResponse | undefined }) {
         value={whole(headcount?.segments?.length)}
         unit="segments"
         loading={loading}
-        viz={headcount ? <HrRank rows={headcount.segments} /> : null}
+        viz={headcount ? <HrCards rows={headcount.segments} /> : null}
       />
 
       <OpsGroup
@@ -181,7 +184,7 @@ function RollsBand({ data }: { data: HrBoardResponse | undefined }) {
         value={whole(headcount?.departments?.rows?.[0]?.count)}
         unit="in the largest"
         loading={loading}
-        viz={headcount ? <HrCappedRank data={headcount.departments} /> : null}
+        viz={headcount ? <HrCappedCards data={headcount.departments} /> : null}
       />
     </HrBand>
   );
@@ -266,7 +269,7 @@ function GateBand({ data, company }: { data: HrBoardResponse | undefined; compan
         value={whole(labour?.contractors?.rows?.[0]?.count)}
         unit="from the largest"
         loading={loading}
-        viz={labour ? <HrCappedRank data={labour.contractors} /> : null}
+        viz={labour ? <HrCappedCards data={labour.contractors} /> : null}
       />
 
       <OpsGroup
@@ -275,7 +278,7 @@ function GateBand({ data, company }: { data: HrBoardResponse | undefined; compan
         value={whole(labour?.today_allocated)}
         unit="placed"
         loading={loading}
-        viz={labour ? <HrCappedRank data={labour.departments} /> : null}
+        viz={labour ? <HrCappedCards data={labour.departments} /> : null}
       />
 
       <OpsGroup

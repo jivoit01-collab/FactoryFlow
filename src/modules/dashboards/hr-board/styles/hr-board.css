@@ -7,10 +7,66 @@
    tint inside them are that system untouched, so this screen scales,
    themes and reads exactly like its neighbours in the carousel.
 
-   What is here is the two places an HR board genuinely differs:
-   it has no workforce strip (it IS the workforce), and it lists
-   departments where the other boards list warehouses.
+   What is here is the three places an HR board genuinely differs: it is
+   two bands where its neighbours are three or four, it has no workforce
+   strip (it IS the workforce), and where the other boards break a figure
+   down by warehouse it breaks one down by department — which is a group
+   of names, and names go on cards rather than into a table.
    ══════════════════════════════════════════════════════════════ */
+
+/*
+ * TWO BANDS, AND THE BOARD HAS TO BE TOLD.
+ *
+ * `ops-stack` is `repeat(3, minmax(0, 1fr))`, because the logistics board it
+ * was written for has three. This board has two, so the third track was being
+ * reserved and left empty: a third of a wall screen of nothing under the last
+ * band, and both bands squeezed into the two thirds above it for no reason.
+ * The symptom reads as "the tiles are cramped"; the cause is a row nobody is
+ * standing in.
+ */
+.hr-board .ops-stack {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * The scoped root unit, raised for two bands.
+ *
+ * Every board in this family re-derives `--u` from how many bands it stacks,
+ * because the unit is what divides the screen: four bands on the plant board
+ * gives 1.2vh, three on the admin board 1.34vh. Two gives more room per band
+ * than either, so the type and every length built on it can grow to match —
+ * left at the inherited coefficient the board keeps the size it would have had
+ * at three bands and simply renders small in a large space.
+ *
+ * `cqw` rather than `vw` for the horizontal term, and `container-type` to give
+ * it something to measure: inside the app shell the board is narrower than the
+ * viewport by the width of the nav rail, and `vw` does not know that.
+ */
+.hr-board.ops-board {
+  container-type: inline-size;
+  --u: clamp(6px, min(0.833cqw, 1.9vh), 34px);
+}
+
+/*
+ * Out of the shell the board IS the viewport, so the container query and the
+ * `vh` term finally measure the same box, and the horizontal term goes back to
+ * `vw` because there is no longer a nav rail to subtract.
+ *
+ * One pseudo-class per rule, never the two spellings in one list: a browser
+ * that does not recognise one name throws the whole list away, and these are
+ * the rules that must not be dropped. See `ops-board.css`.
+ */
+.hr-board.ops-board:fullscreen {
+  --u: clamp(6px, min(0.833vw, 1.9vh), 34px);
+}
+.hr-board.ops-board:-webkit-full-screen {
+  --u: clamp(6px, min(0.833vw, 1.9vh), 34px);
+}
+
+/* The same wall, reached through the carousel — see `ops-board.css`. */
+.ops-wall .hr-board.ops-board {
+  --u: clamp(6px, min(0.833vw, 1.9vh), 34px);
+}
 
 /*
  * Two columns, not three: the rail and the tiles.
@@ -28,73 +84,156 @@
   grid-template-columns: calc(2.5 * var(--u)) minmax(0, 1fr);
 }
 
-/*
- * A ranked list of names against their counts — departments, contractors.
+/* ───────────────────────── the card grid ─────────────────────────
  *
- * The board's other tiles answer "how much"; these two answer "which ones, in
- * order", and a bar chart of 8 departments at wall distance is 8 unreadable
- * labels. A list gives each row its name at full size and carries the magnitude
- * in a bar BEHIND the text, so the shape is still visible in peripheral vision
- * without a single label being shrunk to fit.
+ * Departments, contractors, plants, statuses — every tile that answers
+ * "which ones, and how big" rather than "how much".
+ *
+ * These were rows: a name on the left, a number on the right, repeated down
+ * the tile. That is a table, and a table is the one shape a wall board cannot
+ * use — every line weighs the same, so there is no scan order at four metres,
+ * and the number arrives last on a line after a word the reader did not need.
+ *
+ * As cards the figure is the size of the tile's own headline and the name is a
+ * caption over it, so the eye lands on numbers and reaches for a name only once
+ * one of them is worth asking about.
  */
-.hr-board .hr-rank {
+.hr-board .hr-cards {
   display: flex;
   flex-direction: column;
-  gap: calc(0.28 * var(--u));
+  gap: calc(0.3 * var(--u));
   min-height: 0;
+  /* The tile is the boundary. A group too many shrinks the cards it shares the
+     grid with rather than reaching the band below — and is clipped here if the
+     fold in `HR_CARD_LIMIT` ever fails to hold it. */
   overflow: hidden;
 }
 
-.hr-board .hr-rank > li {
+.hr-board .hr-cards__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--hr-cols, 2), minmax(0, 1fr));
+  /*
+   * A CEILING on the row, and a zero floor under it.
+   *
+   * The floor is the same rule the band stack keeps: a plain `1fr` refuses to
+   * go below its own content, so one card wanting a few pixels more than its
+   * share grows the whole grid instead of being clipped by it.
+   *
+   * The ceiling is what a card grid needs and a list did not. `1fr` would also
+   * let two cards divide the whole tile between them, and a card stretched to
+   * five times the height of its own figure reads as an empty box with a number
+   * lost in the middle. Capped, a tile with one group renders one card the size
+   * of a card, and the space it does not need stays space.
+   */
+  grid-auto-rows: minmax(0, calc(4.4 * var(--u)));
+  align-content: center;
+  gap: calc(0.34 * var(--u));
+  min-height: 0;
+}
+
+.hr-board .hr-cards__grid > li {
   position: relative;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: calc(0.5 * var(--u));
-  padding: calc(0.2 * var(--u)) calc(0.42 * var(--u));
-  border-radius: calc(0.3 * var(--u));
-  /* The magnitude, as a tint of the band's own hue. Rule 2 of the colour
-     system: composition is tints of the SAME domain hue, never a new one. */
-  background:
-    linear-gradient(90deg, var(--tint1) 0 var(--hr-share, 0%), transparent var(--hr-share, 0%));
-  line-height: 1.15;
+  display: grid;
+  /* Caption, figure, bar. The figure's row takes the slack, so cards in a grid
+     of unequal rows still share a baseline. */
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: calc(0.12 * var(--u));
+  min-width: 0;
+  min-height: 0;
+  /* A long name is ellipsed by its own rule, but a single unbroken word has no
+     break to ellipse at and would paint straight through the card's edge. */
+  overflow: hidden;
+  padding: calc(0.38 * var(--u)) calc(0.6 * var(--u)) calc(0.4 * var(--u));
+  border-radius: calc(0.45 * var(--u));
+  /*
+   * Translucent white rather than flat white.
+   *
+   * The tile it sits on is a gradient that runs white at the top and deepens to
+   * the band's palest step at the foot — and the card grid lives in the lower
+   * half of that. A flat white card would be invisible against the top of the
+   * wash and stark against the bottom; a translucent one keeps the same
+   * relationship to whatever it is over.
+   */
+  background: rgba(255, 255, 255, 0.72);
+  /* A hairline in the band's own hue, so a card reads as part of its band
+     rather than as a generic panel. */
+  box-shadow: inset 0 0 0 1px var(--tint1);
 }
 
 /* The name. Ellipsed rather than wrapped: a department that takes two lines
-   pushes the row below it off the tile, and the tile is a fixed height. */
-.hr-board .hr-rank em {
+   pushes its own figure out of the card, and the card is a fixed height. */
+.hr-board .hr-cards__grid em {
   font-style: normal;
-  font-size: calc(1.02 * var(--u));
+  /* Grid items floor at their own content width unless told otherwise, and a
+     column that refuses to be narrower than its longest word is a column that
+     pushes the card wider than its track. */
+  min-width: 0;
+  font-size: calc(0.86 * var(--u));
   font-weight: 500;
+  line-height: 1.15;
   color: var(--ink-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.hr-board .hr-rank b {
-  flex: 0 0 auto;
-  font-size: calc(1.12 * var(--u));
+.hr-board .hr-cards__grid b {
+  align-self: center;
+  font-size: calc(1.9 * var(--u));
   font-weight: 700;
-  color: var(--ink-1);
+  line-height: 1;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 /*
- * The tail row: everything below the cut, summed.
+ * The magnitude, along the card's foot.
  *
- * Greyed, because rule 4 of the colour system reserves grey for "the part that
- * isn't there" — and this row is precisely the part the tile is not showing.
- * It is present rather than dropped so the rows still add up to the headline.
+ * The band's mid hue at full strength on a track of its own palest tint — one
+ * hue, two weights, which is the composition rule the rest of the board keeps.
+ * This is the only surface on the card no text sits on, which is what lets the
+ * ranking stay visible in peripheral vision without a label being shrunk.
  */
-.hr-board .hr-rank > li.hr-rest {
-  background: none;
+.hr-board .hr-cards__grid i {
+  display: block;
+  height: calc(0.24 * var(--u));
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--d2) 0 var(--hr-share, 0%),
+    var(--tint2) var(--hr-share, 0%)
+  );
 }
 
-.hr-board .hr-rank > li.hr-rest em,
-.hr-board .hr-rank > li.hr-rest b {
+/*
+ * The tail: everything below the fold, summed.
+ *
+ * Greyed, because the colour system reserves grey for "the part that isn't
+ * there" — and this line is precisely the part the tile is not showing. A line
+ * rather than a card, because it names no group: giving it a card's surface
+ * would offer the eye a group to read that does not exist.
+ */
+.hr-board .hr-cards__rest {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--u));
+  flex: 0 0 auto;
+  padding: 0 calc(0.55 * var(--u));
   color: var(--ink-3);
+}
+
+.hr-board .hr-cards__rest em {
+  font-style: normal;
+  font-size: calc(0.86 * var(--u));
   font-weight: 500;
+}
+
+.hr-board .hr-cards__rest b {
+  font-size: calc(0.98 * var(--u));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /*
@@ -106,6 +245,7 @@
  * exactly that.
  */
 .hr-board .hr-caveat {
+  flex: 0 0 auto;
   margin-top: calc(0.3 * var(--u));
   font-size: calc(0.86 * var(--u));
   line-height: 1.25;
