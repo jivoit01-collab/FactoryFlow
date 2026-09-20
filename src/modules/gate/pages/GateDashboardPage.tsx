@@ -110,12 +110,22 @@ interface EntryTypeStats {
   isLoading?: boolean;
 }
 
+/*
+ * Counts, not statuses, carry no colour of their own: `total`, `open` and
+ * `info` now follow the theme so they sit with whichever company is active
+ * instead of pinning slate/blue/violet onto an amber or green page.
+ *
+ * `completed`, `cancelled` and `warning` DO mean something, so they keep a
+ * status colour — green/red/amber is what an operator reads at a glance.
+ * `cancelled` routes through --destructive so it tracks the theme's own red
+ * rather than a second, slightly different one.
+ */
 const STAT_TONE_CLASSES: Record<StatTone, string> = {
-  total: 'bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground',
-  open: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  completed: 'bg-green-50 text-green-700 dark:bg-green-500/15 dark:text-green-300',
-  cancelled: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
-  info: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  total: 'bg-muted text-muted-foreground',
+  open: 'bg-primary/10 text-primary dark:bg-primary/15',
+  completed: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  cancelled: 'bg-destructive/10 text-destructive dark:bg-destructive/15',
+  info: 'bg-accent text-accent-foreground',
   warning: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
 };
 

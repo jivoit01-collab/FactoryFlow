@@ -4,25 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /*
+     * Light theme. Colour values only — every token name, unit and consumer is
+     * unchanged, so no component markup moves.
+     *
+     * The stock shadcn set was slate with a near-black primary (222 47% 11%),
+     * which made every solid button read as "default" rather than as Jivo. The
+     * brand hue is petrol teal (#006E7F): --primary carries it, the page canvas
+     * steps off pure white into a pale tint of the same hue, and --card stays
+     * #FFF so cards lift off the page without needing a heavier border.
+     *
+     * Checked on --card: body 16.6:1, muted text 5.6:1, primary 5.9:1 both as
+     * text and as a button fill.
+     */
+    --background: 189.2 44.8% 94.3%;
+    --foreground: 192.6 82.6% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 192.6 82.6% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --popover-foreground: 192.6 82.6% 9%;
+    --primary: 188 100% 24.9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 188.6 35.6% 88.4%;
+    --secondary-foreground: 190.3 76.2% 16.5%;
+    --muted: 188 34.9% 91.6%;
+    --muted-foreground: 191.7 18.6% 38%;
+    /*
+     * --accent is the hover/selected FILL (rows, menu items), not a brand
+     * highlight — so it stays a quiet tint of the brand hue. Making it a
+     * saturated mint here would repaint every hovered table row.
+     */
+    --accent: 175.2 38.5% 87.3%;
+    --accent-foreground: 190.3 76.2% 16.5%;
+    /*
+     * text-destructive is used ~670x as text and only ~6x as a fill, so this is
+     * stepped for the text case: 4.9:1 on --card, where the old 0 84.2% 60.2%
+     * managed only 3.8:1. White on the fill clears the same 4.9:1.
+     */
+    --destructive: 1.6 59.4% 50.8%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 188.6 25.3% 83.7%;
+    --input: 188.6 25.3% 83.7%;
+    --ring: 188 100% 24.9%;
     --radius: 0.5rem;
     color-scheme: light;
 
@@ -73,37 +96,48 @@
    * Light mode is deliberately untouched — every value below is dark-only.
    */
   .dark {
-    --background: 222 18% 11%;
-    --foreground: 213 22% 89%;
-    --card: 222 16% 15%;
-    --card-foreground: 213 22% 89%;
-    --popover: 222 15% 18%;
-    --popover-foreground: 213 22% 89%;
-    /* Was 98% — a solid button in that near-white was a light source on a black
-     * page. Stepped down; still 11.9:1 against its own foreground. */
-    --primary: 213 25% 85%;
-    --primary-foreground: 222 24% 12%;
-    --secondary: 220 14% 22%;
-    --secondary-foreground: 213 22% 89%;
-    --muted: 220 14% 22%;
-    --muted-foreground: 217 14% 65%;
+    /*
+     * Dark theme, re-tinted to the same petrol hue. The elevation ladder below
+     * is unchanged in structure — only its hue moved from slate to teal, so
+     * page, card and popover stay separable without a border:
+     *
+     *   background #111D20  page canvas, sidebar, header  (recedes)
+     *   card       #1B292D  cards, tables, panels
+     *   popover    #233337  dialogs, sheets, menus        (floats)
+     */
+    --background: 192 30.6% 9.6%;
+    --foreground: 192 26.3% 88.8%;
+    --card: 193.3 25% 14.1%;
+    --card-foreground: 192 26.3% 88.8%;
+    --popover: 192 22.2% 17.6%;
+    --popover-foreground: 192 26.3% 88.8%;
+    /* The light-mode primary is far too dark to sit on this canvas, so dark
+     * mode takes the brand hue from the other end of the ramp. 8.9:1 against
+     * its own foreground, 8.1:1 as text on --card. */
+    --primary: 177.2 58.6% 56.5%;
+    --primary-foreground: 171.7 70.7% 8%;
+    --secondary: 192 20.8% 18.8%;
+    --secondary-foreground: 192 26.3% 88.8%;
+    --muted: 192 20.8% 18.8%;
+    --muted-foreground: 192.4 15.5% 63.3%;
     /* Hover/selected fill, one rung above card so it reads on cards and rows. */
-    --accent: 220 14% 26%;
-    --accent-foreground: 213 25% 93%;
+    --accent: 191.5 22.4% 22.7%;
+    --accent-foreground: 188.6 31.8% 91.4%;
     /*
      * --destructive is used ~670x as *text* (text-destructive) and only ~6x as a
      * fill. The old dark maroon (#7F1D1D) was built for the fill case and left
      * error text at 2.0:1 on the page — effectively unreadable. It is now a
      * light red that clears AA as text (4.8:1), and --destructive-foreground
      * flips dark so the handful of bg-destructive buttons and badges stay
-     * legible (4.9:1) instead of white-on-pink.
+     * legible (5.7:1) instead of white-on-pink.
      */
-    --destructive: 0 72% 62%;
-    --destructive-foreground: 0 35% 12%;
-    --border: 220 13% 25%;
-    --input: 220 13% 28%;
-    /* Was a near-white halo; softened to sit with the new surfaces. */
-    --ring: 213 20% 60%;
+    --destructive: 1.3 81.6% 65.9%;
+    --destructive-foreground: 2.1 50.9% 11.2%;
+    --border: 192.5 21.8% 21.6%;
+    --input: 193.3 20.9% 25.3%;
+    /* The focus halo follows the brand rather than sitting neutral, so a
+     * focused control is unmistakable against these low-chroma surfaces. */
+    --ring: 177.2 58.6% 56.5%;
     color-scheme: dark;
 
     /* Stepped for the dark surface and validated there. Re-checked against the
@@ -118,6 +152,147 @@
     --emp-series-1: #3987e5;
     --emp-series-2: #d95926;
     --emp-series-3: #199e70;
+  }
+
+  /* =========================================================================
+   * Company themes.
+   *
+   * `data-company` is written to <html> by CompanyThemeSync from the active
+   * company, so the whole app — not just the header chip — carries the unit's
+   * colour. Each palette is the shipped theme's own lightness/saturation
+   * structure with the hue rotated to the company's, which is why they all
+   * hold their contrast; every pair below was checked.
+   *
+   * Hues match the header chips the app already used: amber for Oil, emerald
+   * for Mart, blue for Beverages.
+   *
+   * Cascade: the light blocks are `:root[data-company]` (0,2,0) and so outrank
+   * plain `.dark` (0,1,0). That is safe ONLY because each dark block is
+   * `:root.dark[data-company]` (0,3,0) and redefines every token the light
+   * block sets. If you add a token to a light block, add it to the dark one.
+   *
+   * No company selected (login, company picker) falls through to the default
+   * teal above.
+   * ====================================================================== */
+
+  /* ---- Jivo Oil — amber ------------------------------------------------ */
+  :root[data-company='JIVO_OIL'] {
+    --background: 38 44.8% 94.3%;
+    --foreground: 38 82.6% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 38 82.6% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 38 82.6% 9%;
+    --primary: 38 100% 24.9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 35.6% 88.4%;
+    --secondary-foreground: 38 76.2% 16.5%;
+    --muted: 38 34.9% 91.6%;
+    --muted-foreground: 38 18.6% 38%;
+    --accent: 38 38.5% 87.3%;
+    --accent-foreground: 38 76.2% 16.5%;
+    --border: 38 25.3% 83.7%;
+    --input: 38 25.3% 83.7%;
+    --ring: 38 100% 24.9%;
+  }
+  :root.dark[data-company='JIVO_OIL'] {
+    --background: 38 30.6% 9.6%;
+    --foreground: 38 26.3% 88.8%;
+    --card: 38 25% 14.1%;
+    --card-foreground: 38 26.3% 88.8%;
+    --popover: 38 22.2% 17.6%;
+    --popover-foreground: 38 26.3% 88.8%;
+    --primary: 38 70% 62%;
+    --primary-foreground: 38 70.7% 8%;
+    --secondary: 38 20.8% 18.8%;
+    --secondary-foreground: 38 26.3% 88.8%;
+    --muted: 38 20.8% 18.8%;
+    --muted-foreground: 38 15.5% 63.3%;
+    --accent: 38 22.4% 22.7%;
+    --accent-foreground: 38 31.8% 91.4%;
+    --border: 38 21.8% 21.6%;
+    --input: 38 20.9% 25.3%;
+    --ring: 38 70% 62%;
+  }
+
+  /* ---- Jivo Mart — emerald --------------------------------------------- */
+  :root[data-company='JIVO_MART'] {
+    --background: 152 44.8% 94.3%;
+    --foreground: 152 82.6% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 152 82.6% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 152 82.6% 9%;
+    --primary: 152 100% 24.9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 152 35.6% 88.4%;
+    --secondary-foreground: 152 76.2% 16.5%;
+    --muted: 152 34.9% 91.6%;
+    --muted-foreground: 152 18.6% 38%;
+    --accent: 152 38.5% 87.3%;
+    --accent-foreground: 152 76.2% 16.5%;
+    --border: 152 25.3% 83.7%;
+    --input: 152 25.3% 83.7%;
+    --ring: 152 100% 24.9%;
+  }
+  :root.dark[data-company='JIVO_MART'] {
+    --background: 152 30.6% 9.6%;
+    --foreground: 152 26.3% 88.8%;
+    --card: 152 25% 14.1%;
+    --card-foreground: 152 26.3% 88.8%;
+    --popover: 152 22.2% 17.6%;
+    --popover-foreground: 152 26.3% 88.8%;
+    --primary: 152 52% 55%;
+    --primary-foreground: 152 70.7% 8%;
+    --secondary: 152 20.8% 18.8%;
+    --secondary-foreground: 152 26.3% 88.8%;
+    --muted: 152 20.8% 18.8%;
+    --muted-foreground: 152 15.5% 63.3%;
+    --accent: 152 22.4% 22.7%;
+    --accent-foreground: 152 31.8% 91.4%;
+    --border: 152 21.8% 21.6%;
+    --input: 152 20.9% 25.3%;
+    --ring: 152 52% 55%;
+  }
+
+  /* ---- Jivo Beverages — blue ------------------------------------------- */
+  :root[data-company='JIVO_BEVERAGES'] {
+    --background: 216 44.8% 94.3%;
+    --foreground: 216 82.6% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 82.6% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 82.6% 9%;
+    --primary: 216 100% 24.9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 216 35.6% 88.4%;
+    --secondary-foreground: 216 76.2% 16.5%;
+    --muted: 216 34.9% 91.6%;
+    --muted-foreground: 216 18.6% 38%;
+    --accent: 216 38.5% 87.3%;
+    --accent-foreground: 216 76.2% 16.5%;
+    --border: 216 25.3% 83.7%;
+    --input: 216 25.3% 83.7%;
+    --ring: 216 100% 24.9%;
+  }
+  :root.dark[data-company='JIVO_BEVERAGES'] {
+    --background: 216 30.6% 9.6%;
+    --foreground: 216 26.3% 88.8%;
+    --card: 216 25% 14.1%;
+    --card-foreground: 216 26.3% 88.8%;
+    --popover: 216 22.2% 17.6%;
+    --popover-foreground: 216 26.3% 88.8%;
+    --primary: 216 70% 62%;
+    --primary-foreground: 216 70.7% 8%;
+    --secondary: 216 20.8% 18.8%;
+    --secondary-foreground: 216 26.3% 88.8%;
+    --muted: 216 20.8% 18.8%;
+    --muted-foreground: 216 15.5% 63.3%;
+    --accent: 216 22.4% 22.7%;
+    --accent-foreground: 216 31.8% 91.4%;
+    --border: 216 21.8% 21.6%;
+    --input: 216 20.9% 25.3%;
+    --ring: 216 70% 62%;
   }
 }
 
@@ -162,6 +337,272 @@
   input[type='number']::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+  }
+}
+
+/* ===========================================================================
+ * Hover & motion.
+ *
+ * All of it lives here rather than in pages: `ff-card` (on the Card primitive)
+ * and plain element selectors are the only hooks, so no page layout moves and
+ * nothing needs editing module by module.
+ *
+ * Everything is suppressed under prefers-reduced-motion at the foot of this
+ * block — vestibular disorders are not a preference to style around.
+ * ======================================================================== */
+
+@layer base {
+  /*
+   * Default row hover for the ~40 hand-rolled tables that don't declare one.
+   * It sits in @layer base, so any table that already sets its own hover as a
+   * Tailwind utility still wins — this only fills the gap.
+   */
+  tbody tr {
+    transition: background-color 0.12s ease-out;
+  }
+  tbody tr:hover {
+    background-color: hsl(var(--accent) / 0.45);
+  }
+
+  /* One transition for every card; the lift itself is opt-in below. */
+  .ff-card {
+    transition:
+      box-shadow 0.25s ease-out,
+      transform 0.25s ease-out,
+      border-color 0.25s ease-out;
+  }
+}
+
+@layer components {
+  /*
+   * Cards lift only when they are genuinely clickable. A static panel that
+   * moved under the pointer would read as a fault, so this deliberately does
+   * NOT apply to every card — it keys off the wrappers and the cursor the
+   * page already uses to say "this is pressable".
+   */
+  a:hover > .ff-card,
+  button:hover > .ff-card,
+  .ff-card[role='button']:hover,
+  .ff-card.cursor-pointer:hover,
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -6px hsl(var(--foreground) / 0.16);
+  }
+
+  a:active > .ff-card,
+  button:active > .ff-card,
+  .ff-card[role='button']:active,
+  .ff-card.cursor-pointer:active,
+  .card-hover:active {
+    transform: translateY(0);
+    transition-duration: 0.06s;
+  }
+
+  /* Opt-in: a one-shot sheen across a tile on hover. */
+  .shimmer-hover {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.06), transparent);
+  }
+  .shimmer-hover:hover::after {
+    animation: ff-shimmer 0.8s ease-out;
+  }
+
+  /*
+   * Route content fades up on navigation. 8 px and 260 ms — enough to say "this
+   * is a new page", short enough that it never delays a keyboard user.
+   */
+  .page-enter {
+    animation: ff-fade-slide-up 0.26s cubic-bezier(0, 0, 0.2, 1) both;
+  }
+
+  /* Opt-in: stagger the first six children of a tile row as they arrive. */
+  .stagger-in > * {
+    animation: ff-fade-slide-up 0.4s cubic-bezier(0, 0, 0.2, 1) backwards;
+  }
+  .stagger-in > *:nth-child(1) {
+    animation-delay: 0.04s;
+  }
+  .stagger-in > *:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+  .stagger-in > *:nth-child(3) {
+    animation-delay: 0.12s;
+  }
+  .stagger-in > *:nth-child(4) {
+    animation-delay: 0.16s;
+  }
+  .stagger-in > *:nth-child(5) {
+    animation-delay: 0.2s;
+  }
+  .stagger-in > *:nth-child(6) {
+    animation-delay: 0.24s;
+  }
+
+  /* Opt-in: marks a row that is still live/open, for the wall boards. */
+  .row-live {
+    animation: ff-row-blink 2.6s ease-in-out infinite;
+  }
+
+  /*
+   * Draining timer bar under a toast. `animation-duration` is set inline from
+   * the toast's own duration so the bar and the dismissal always agree —
+   * a bar that empties early (or late) is worse than no bar.
+   *
+   * scaleX from a left origin rather than animating `width`: transform is
+   * composited, so the bar cannot cause layout work every frame while the
+   * operator is mid-task.
+   */
+  .ff-toast-timer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    transform-origin: left;
+    background: hsl(var(--primary));
+    animation: ff-toast-drain linear forwards;
+  }
+}
+
+@keyframes ff-toast-drain {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* ── success checkmark draw-on ──────────────────────────────────
+ * Circle springs in, then the stroke draws, then the message follows. The
+ * order is the point: three things arriving at once reads as a flicker, the
+ * same three in sequence reads as "done".
+ *
+ * Reserve it for a real completion — work that actually reached the server.
+ * Played on a local validation pass it teaches people to distrust it.
+ */
+@keyframes ff-success-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ff-success-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.ff-success-disc {
+  /* Slight overshoot on the way out of the spring, so it lands rather than
+     merely stopping. */
+  animation: ff-success-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+.ff-success-draw {
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  /* Starts as the disc finishes: 320ms spring, then 400ms draw. */
+  animation: ff-success-draw 400ms 320ms ease-out forwards;
+}
+
+.ff-success-message {
+  animation: ff-fade-slide-up 300ms 620ms cubic-bezier(0, 0, 0.2, 1) backwards;
+}
+
+@keyframes ff-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ff-fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ff-row-blink {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: hsl(var(--primary) / 0.12);
+  }
+}
+
+/*
+ * Honour the OS setting. Transitions collapse to near-zero rather than 0 so
+ * state changes still commit cleanly, and the looping or travelling animations
+ * stop outright.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  a:hover > .ff-card,
+  button:hover > .ff-card,
+  .ff-card[role='button']:hover,
+  .ff-card.cursor-pointer:hover,
+  .card-hover:hover {
+    transform: none;
+  }
+
+  .shimmer-hover:hover::after {
+    animation: none;
+  }
+
+  /*
+   * The toast timer is the one animation here that carries information rather
+   * than decoration, so the blanket 0.01ms above would not just still it — it
+   * would empty the bar instantly and say the toast was about to go when it
+   * was not. Hold it full instead; the toast still dismisses on its own.
+   */
+  .ff-toast-timer {
+    animation: none;
+    transform: scaleX(1);
+  }
+
+  /*
+   * The checkmark states a result, so it must still be THERE — the blanket
+   * rule above would leave the stroke undrawn at dashoffset 80, i.e. an empty
+   * circle on a screen that says the work succeeded. Land it finished instead.
+   */
+  .ff-success-disc,
+  .ff-success-message {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .ff-success-draw {
+    animation: none;
+    stroke-dashoffset: 0;
   }
 }
 

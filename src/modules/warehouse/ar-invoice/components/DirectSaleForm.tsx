@@ -6,6 +6,7 @@ import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
 import { confirmSapPost, SearchableSelect } from '@/shared/components';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@/shared/components/ui';
 import { formatCurrency, getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { arInvoiceApi } from '../api/ar-invoice.api';
 import { useCreateArInvoice, useWarehouseItems } from '../api/ar-invoice.queries';
@@ -149,7 +150,7 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
           `Cash sale sent to SAP — awaiting approval (draft ${posting.sap_draft_entry}).`,
         );
       } else if (posting.status === 'POSTED') {
-        toast.success(`Cash sale posted to SAP as ${posting.sap_doc_num}.`);
+        toastSuccessMark('Cash sale posted to SAP', { description: `SAP Doc ${posting.sap_doc_num}` });
       } else {
         toast.warning(`Invoice saved with status ${posting.status_display}.`);
       }

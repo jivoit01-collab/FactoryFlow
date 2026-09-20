@@ -41,6 +41,7 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
+import { toastPending } from '@/shared/utils/toasts';
 
 import {
   formatDateTime,
@@ -77,6 +78,8 @@ export default function SalesDispatchReprintPage() {
   const [reason, setReason] = useState('');
   const [printerName, setPrinterName] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  // Id of the "preparing" toast so the print effect can dismiss it.
+  const printToastRef = useRef<string | number | null>(null);
   const [latestReprintLog, setLatestReprintLog] = useState<SalesDispatchGatepassPrintLog | null>(
     null,
   );
@@ -129,6 +132,14 @@ export default function SalesDispatchReprintPage() {
 
     setPendingFrontendPrint(false);
     window.setTimeout(() => {
+      // Dismissed immediately BEFORE opening the dialog, not after: the print
+      // dialog blocks the main thread, so dismissing afterwards would leave the
+      // "preparing" toast sitting behind it for as long as the dialog is open.
+      // The wait it describes is over the moment the dialog appears.
+      if (printToastRef.current !== null) {
+        toast.dismiss(printToastRef.current);
+        printToastRef.current = null;
+      }
       printFrontendGatepass();
     }, 0);
   }, [entryToPrint, pendingFrontendPrint, printFrontendGatepass]);
@@ -143,6 +154,14 @@ export default function SalesDispatchReprintPage() {
       setErrorMessage('Please enter a reprint reason');
       return;
     }
+
+    // Raised before the work starts so the bar covers the whole gap the user
+    // sees: log the reprint, refetch, re-render, open the dialog. Dismissed in
+    // the print effect, or in the catch below if it never gets that far.
+    printToastRef.current = toastPending('Preparing gate pass…', {
+      description: 'The print dialog opens as soon as it is ready.',
+      estimatedMs: 4000,
+    });
 
     try {
       setErrorMessage('');
@@ -160,8 +179,11 @@ export default function SalesDispatchReprintPage() {
       await refetch();
       await refetchPrintHistory();
       setPendingFrontendPrint(true);
-      toast.success('Reprint logged. Opening print dialog...');
     } catch (reprintError) {
+      if (printToastRef.current !== null) {
+        toast.dismiss(printToastRef.current);
+        printToastRef.current = null;
+      }
       setErrorMessage(getErrorMessage(reprintError, 'Failed to log gatepass reprint'));
     }
   };
@@ -349,6 +371,8 @@ function SalesDispatchReprintSearchPage() {
   const [entryToPrint, setEntryToPrint] = useState<SalesDispatchGateOut | null>(null);
   const sapPrintRef = useRef<HTMLDivElement>(null);
   const [pendingFrontendPrint, setPendingFrontendPrint] = useState(false);
+  // Id of the "preparing" toast so the print effect can dismiss it.
+  const printToastRef = useRef<string | number | null>(null);
 
   const trimmedSearch = searchTerm.trim();
   const shouldSearch = trimmedSearch.length >= 2;
@@ -422,6 +446,13 @@ function SalesDispatchReprintSearchPage() {
 
     setPendingFrontendPrint(false);
     window.setTimeout(() => {
+      // Dismissed BEFORE the dialog opens — it blocks the main thread, so
+      // dismissing after would strand the toast behind it. The toast has no
+      // timeout of its own, so this is the only thing that clears it.
+      if (printToastRef.current !== null) {
+        toast.dismiss(printToastRef.current);
+        printToastRef.current = null;
+      }
       printFrontendGatepass();
     }, 0);
   }, [pendingFrontendPrint, printEntry, printFrontendGatepass]);
@@ -432,6 +463,14 @@ function SalesDispatchReprintSearchPage() {
       setErrorMessage('Please enter a reprint reason');
       return;
     }
+
+    // Raised before the work starts so the bar covers the whole gap the user
+    // sees: log the reprint, refetch, re-render, open the dialog. Dismissed in
+    // the print effect, or in the catch below if it never gets that far.
+    printToastRef.current = toastPending('Preparing gate pass…', {
+      description: 'The print dialog opens as soon as it is ready.',
+      estimatedMs: 4000,
+    });
 
     try {
       setErrorMessage('');
@@ -449,8 +488,11 @@ function SalesDispatchReprintSearchPage() {
       await refetchSelectedEntry();
       await refetchPrintHistory();
       setPendingFrontendPrint(true);
-      toast.success('Reprint logged. Opening print dialog...');
     } catch (reprintError) {
+      if (printToastRef.current !== null) {
+        toast.dismiss(printToastRef.current);
+        printToastRef.current = null;
+      }
       setErrorMessage(getErrorMessage(reprintError, 'Failed to log gatepass reprint'));
     }
   };

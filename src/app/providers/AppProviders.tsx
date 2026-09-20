@@ -9,6 +9,7 @@ import { store } from '@/core/store';
 import { ConfirmDialogHost } from '@/shared/components';
 import { SettingsProvider, ThemeProvider, useTheme } from '@/shared/contexts';
 
+import { CompanyThemeSync } from './CompanyThemeSync';
 import { NotificationProvider } from './NotificationProvider';
 
 function ThemedToaster() {
@@ -28,6 +29,9 @@ export function AppProviders({ children }: AppProvidersProps) {
           <ThemeProvider>
             <SettingsProvider>
               <NotificationProvider>
+                {/* Mirrors the active company onto <html> so the company
+                    palettes in index.css take effect app-wide. */}
+                <CompanyThemeSync />
                 {children}
                 <NotificationPermissionPrompt />
                 <ThemedToaster />

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/core/auth';
 import { getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { PLAN_STALE_TIME, REQUIREMENT_STALE_TIME } from '../constants';
 import type {
@@ -300,7 +301,11 @@ export function usePostPurchaseOrder() {
       if (result.meta.simulated) {
         toast.warning('Marked posted in simulate mode — nothing was sent to SAP.');
       } else {
-        toast.success(`Created in SAP as ${result.data.sap_doc_num ?? 'a new document'}.`);
+        toastSuccessMark('Created in SAP', {
+          description: result.data.sap_doc_num
+            ? `SAP Doc ${result.data.sap_doc_num}`
+            : 'A new document',
+        });
       }
     },
     onError: (error) => toast.error(getErrorMessage(error, 'SAP rejected the order.')),

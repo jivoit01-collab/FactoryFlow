@@ -45,6 +45,7 @@ import {
   Label,
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
+import { toastWithTimer } from '@/shared/utils/toasts';
 
 import { ArrivalCombinedGatepassPanel } from './ArrivalCombinedGatepassPanel';
 import { ReviewModeBanner } from './ReviewModeBanner';
@@ -269,7 +270,18 @@ export default function SalesDispatchGatepassPage() {
     try {
       await commitPrint.mutateAsync(entry.id);
       await refetch();
-      toast.success('Gatepass print committed');
+      // Timer toast rather than a plain one: this is the confirmation the gate
+      // desk reads back a moment later, and the draining bar says how long it
+      // has left instead of it simply vanishing.
+      toastWithTimer(
+        entry.vehicle_no
+          ? `Gate pass printed for ${entry.vehicle_no}`
+          : 'Gate pass print committed',
+        {
+          description: entry.gatepass_no ? `Gate pass ${entry.gatepass_no}` : undefined,
+          duration: 6000,
+        },
+      );
     } catch (commitError) {
       setError(getErrorMessage(commitError, 'Failed to commit gatepass print'));
     }

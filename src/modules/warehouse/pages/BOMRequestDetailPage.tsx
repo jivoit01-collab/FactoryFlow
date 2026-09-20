@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import {
   useApproveBOMRequest,
@@ -315,7 +316,7 @@ export default function BOMRequestDetailPage() {
     if (!detail) return;
     try {
       await issueMut.mutateAsync({ requestId: detail.id });
-      toast.success('Materials issued to SAP');
+      toastSuccessMark('Materials issued', { description: 'Issued to SAP against this request' });
       setIssueOpen(false);
     } catch {
       // Error handled by interceptor

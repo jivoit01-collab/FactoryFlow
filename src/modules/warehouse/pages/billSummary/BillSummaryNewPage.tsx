@@ -7,6 +7,7 @@ import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { type BillLookup, useBillLookup, useGenerateBillSummary } from '../../api';
 
@@ -122,7 +123,9 @@ export default function BillSummaryNewPage() {
         driver_mobile: form.driver_mobile,
         remarks: form.remarks,
       });
-      toast.success(`${summary.entry_no} generated for bill ${summary.sap_invoice_doc_num}`);
+      toastSuccessMark(`${summary.entry_no} generated`, {
+        description: `Against SAP bill ${summary.sap_invoice_doc_num}`,
+      });
       navigate(`/warehouse/bill-summaries/${summary.id}`);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Could not generate the bill summary.'));

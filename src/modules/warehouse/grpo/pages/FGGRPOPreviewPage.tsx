@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
 import { confirmSapPost } from '@/shared/components';
 import { Button, Card, Input } from '@/shared/components/ui';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { useFGGRPOPreview, usePostFGGRPO } from '../api/fgGrpo.queries';
 import { DEFAULT_BRANCH_ID } from '../constants/grpo.constants';
@@ -154,7 +154,7 @@ export default function FGGRPOPreviewPage() {
         attachments,
       });
       setResult(response);
-      toast.success(`GRPO posted — SAP Doc ${response.sap_doc_num}`);
+      toastSuccessMark('GRPO posted', { description: `SAP Doc ${response.sap_doc_num}` });
     } catch (err) {
       const apiError = err as ApiError;
       setError(apiError.message || 'Failed to post GRPO to SAP.');

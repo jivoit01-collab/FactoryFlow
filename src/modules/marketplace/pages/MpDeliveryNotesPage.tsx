@@ -44,6 +44,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import {
@@ -527,7 +528,10 @@ export default function MpDeliveryNotesPage() {
     reconcile.mutate(undefined, {
       onSuccess: (r) => {
         if (r.finalized.length) {
-          toast.success(`${r.finalized.length} delivery note(s) approved & posted.`);
+          toastSuccessMark(
+            `${r.finalized.length} delivery note${r.finalized.length === 1 ? '' : 's'} posted`,
+            { description: 'Approved and posted to SAP' },
+          );
         } else if (r.rejected.length) {
           toast.warning(`${r.rejected.length} approval(s) were rejected — cut them again.`);
         } else {

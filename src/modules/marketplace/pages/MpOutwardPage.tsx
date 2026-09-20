@@ -32,6 +32,7 @@ import {
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
+import { confirmDialog, confirmSapPost, promptDialog } from '@/shared/components';
 import {
   Badge,
   Button,
@@ -41,8 +42,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/shared/components/ui';
-import { confirmDialog, confirmSapPost, promptDialog } from '@/shared/components';
 import { getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { marketplaceApi } from '../api/marketplace.api';
 import {
@@ -924,7 +925,9 @@ function ConfirmButton({ dispatchId, orderId, partialOf = null }: {
               } else if (r.sap_post_status === 'PENDING' || !r.sap_delivery_note_num) {
                 toast.success(`Dispatched · ${orderId} — cut its delivery note in SAP Delivery Notes.`);
               } else {
-                toast.success(`Dispatched · ${orderId} · DN ${r.sap_delivery_note_num || '—'}`);
+                toastSuccessMark(`Dispatched · ${orderId}`, {
+                  description: `Delivery note ${r.sap_delivery_note_num}`,
+                });
               }
               if (partialOf) {
                 toast.info(

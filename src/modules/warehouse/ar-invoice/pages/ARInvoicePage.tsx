@@ -22,6 +22,7 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 import { buildTsv, copyToClipboard, formatCurrency, getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import {
   AR_INVOICE_QUERY_KEYS,
@@ -128,7 +129,7 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
             'It will appear on the Invoice Approval page.',
         );
       } else if (posting.status === 'POSTED') {
-        toast.success(`Invoice posted to SAP as ${posting.sap_doc_num}.`);
+        toastSuccessMark('Invoice posted to SAP', { description: `SAP Doc ${posting.sap_doc_num}` });
       } else {
         toast.warning(`Invoice saved with status ${posting.status_display}.`);
       }

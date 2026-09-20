@@ -23,6 +23,7 @@ import {
   Textarea,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
+import { toastSuccessMark } from '@/shared/utils/toasts';
 
 export interface ArtworkFormDialogProps {
   open: boolean;
@@ -162,11 +163,11 @@ export function ArtworkFormDialog({
             ...(cdrFile ? { cdr_file: cdrFile } : {}),
           },
         });
-        toast.success(
-          documentNumber.trim()
-            ? `${record.item_code} revised to ${documentNumber.trim()}`
-            : `${record.item_code} revised`,
-        );
+        toastSuccessMark(`${record.item_code} revised`, {
+          description: documentNumber.trim()
+            ? `Now ${documentNumber.trim()} rev ${Number(revisionNumber) || 0}`
+            : `Revision ${Number(revisionNumber) || 0} filed`,
+        });
       } else {
         await capture.mutateAsync({
           item_code: itemCode,
@@ -178,8 +179,12 @@ export function ArtworkFormDialog({
           pdf_file: pdfFile as File,
           cdr_file: cdrFile as File,
         });
-        toast.success(`Artwork filed for ${itemCode}`);
+        toastSuccessMark('Artwork filed', {
+          description: `${itemCode} · both files uploaded`,
+        });
       }
+      // Closed at once: the mark is in the corner, so the dialog is not
+      // holding anything the user still needs to see.
       onOpenChange(false);
     } catch (err) {
       toast.error(getErrorMessage(err, 'The artwork could not be saved.'));

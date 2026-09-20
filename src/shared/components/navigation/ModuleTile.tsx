@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-import { type AccentKey, ACCENTS } from '@/shared/components/dashboard/accents';
+import type { AccentKey } from '@/shared/components/dashboard/accents';
 import { cn } from '@/shared/utils';
 
 /**
@@ -41,6 +41,19 @@ export function ModuleTileGroupLabel({ label, count }: { label: string; count?: 
 export interface ModuleTileProps {
   title: string;
   icon: ReactNode;
+  /**
+   * @deprecated Kept so the eleven hub pages that pass it need no edit, but it
+   * no longer sets a colour.
+   *
+   * Tiles used to take one of twelve accent hues, which put a rainbow of
+   * saturated chips on every hub page — and once the app took a company colour
+   * those hues fought it. A navigation tile's identity is its label and its
+   * icon; the chip colour carried no information, so it now follows the theme
+   * and every tile on a page matches.
+   *
+   * Accents are still meaningful where colour IS the information — the charts
+   * and KPI panels that read `ACCENTS[...].hex` are untouched.
+   */
   accent?: AccentKey;
   /** Route to open. Renders a link; omit and pass `onClick` for anything else. */
   to?: string;
@@ -53,28 +66,18 @@ export interface ModuleTileProps {
 const TILE_CLASSES =
   'flex min-h-[112px] flex-col items-start gap-[18px] rounded-xl border bg-card p-[18px] text-left shadow-sm transition-[transform,box-shadow,border-color] duration-150 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
-export function ModuleTile({
-  title,
-  icon,
-  accent = 'slate',
-  to,
-  onClick,
-  footer,
-  className,
-}: ModuleTileProps) {
-  const tone = ACCENTS[accent];
-
+export function ModuleTile({ title, icon, to, onClick, footer, className }: ModuleTileProps) {
   const body = (
     <>
-      <span className={cn('grid h-10 w-10 place-items-center rounded-[11px]', tone.iconBg)}>
-        <span className={tone.icon}>{icon}</span>
+      <span className="grid h-10 w-10 place-items-center rounded-[11px] bg-primary/10 dark:bg-primary/15">
+        <span className="text-primary">{icon}</span>
       </span>
       <span className="text-[15px] font-semibold leading-snug">{title}</span>
       {footer}
     </>
   );
 
-  const classes = cn(TILE_CLASSES, tone.glow, tone.borderHover, className);
+  const classes = cn(TILE_CLASSES, 'hover:border-primary/40', className);
 
   if (to) {
     return (

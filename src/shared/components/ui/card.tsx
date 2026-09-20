@@ -6,7 +6,10 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}
+      // `ff-card` is a styling hook only — it adds no visual of its own. It
+      // lets index.css give every card one transition, and lift only the ones
+      // that are actually clickable, without touching a single page.
+      className={cn('ff-card rounded-lg border bg-card text-card-foreground shadow-sm', className)}
       {...props}
     />
   ),
