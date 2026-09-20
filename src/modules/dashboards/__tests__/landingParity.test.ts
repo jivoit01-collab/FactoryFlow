@@ -69,7 +69,10 @@ const navPaths = new Set(
  *
  * Shrink this list; never grow it.
  */
-const KNOWN_MENU_WITHOUT_CARD: readonly string[] = ['/dashboards/production-lines'];
+// Line Performance was the sole entry here; it now has a landing card, so the
+// list is empty. Per the check below, a fixed entry must be dropped rather
+// than left to rot.
+const KNOWN_MENU_WITHOUT_CARD: readonly string[] = [];
 
 const KNOWN_CARD_WITHOUT_MENU: readonly string[] = [
   '/dashboards/production-movement',

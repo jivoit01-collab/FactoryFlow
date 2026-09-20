@@ -1,4 +1,5 @@
 import {
+  Activity,
   ArrowLeftRight,
   Boxes,
   ClipboardCheck,
@@ -129,6 +130,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
     title: 'Production',
     icon: <Factory className="h-5 w-5" />,
     route: '/dashboards/production',
+    accent: 'emerald',
+    permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+  },
+  {
+    // The same day's runs cut per line rather than per plant, so it shares the
+    // production board's permission rather than having one of its own.
+    title: 'Line Performance',
+    icon: <Activity className="h-5 w-5" />,
+    route: '/dashboards/production-lines',
     accent: 'emerald',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
   },
