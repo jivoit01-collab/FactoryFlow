@@ -1,4 +1,5 @@
-import { Bug, Menu, Monitor, Moon, Sun } from 'lucide-react';
+import { Bug, Menu, Monitor, Moon, MoreVertical, Sun } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { type Theme, THEME_OPTIONS } from '@/config/constants/app.constants';
@@ -9,6 +10,7 @@ import { useAuth } from '@/core/auth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { NotificationBell } from '@/core/notifications';
 import { UniversalSearchButton } from '@/modules/universal-search';
+import { HeaderGreeting } from '@/shared/components/HeaderGreeting';
 import {
   Button,
   DropdownMenu,
@@ -66,6 +68,35 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
 
   const accent = currentCompany ? COMPANY_ACCENTS[currentCompany.company_code] : undefined;
 
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * Close on an outside click or Escape. `mousedown` rather than `click` so a
+   * press that starts outside dismisses the panel before the target handles
+   * it. The ref wraps the button too, so pressing it toggles rather than
+   * closing-then-reopening.
+   */
+  useEffect(() => {
+    if (!overflowOpen) return;
+
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!overflowRef.current?.contains(event.target as Node)) setOverflowOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOverflowOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [overflowOpen]);
+
   const getThemeIcon = () => {
     if (theme === THEME_OPTIONS.SYSTEM) {
       return <Monitor className="h-5 w-5" />;
@@ -88,7 +119,7 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         {currentCompany && (
           <button
             onClick={() => navigate(ROUTES.COMPANY_SELECTION.path)}
-            className={`text-sm font-semibold truncate max-w-48 cursor-pointer rounded-full px-3 py-1 transition-colors ${
+            className={`text-sm font-semibold truncate max-w-48 shrink-0 cursor-pointer rounded-full px-3 py-1 transition-colors ${
               accent?.chip ?? 'hover:underline'
             }`}
           >
@@ -97,7 +128,21 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Centred on the header itself, not placed between the two groups —
+          see HeaderGreeting for why. */}
+      <HeaderGreeting />
+
+      {/*
+        Desktop: the icons sit out in the open. Below `md` there is not room
+        for five of them beside the company chip, so they move behind a single
+        overflow button.
+
+        The panel is deliberately plain state rather than a DropdownMenu: each
+        of these controls owns its own Popover/Dialog, and nesting those inside
+        a Radix menu fights its focus trap. A plain container lets every child
+        keep the exact behaviour it has on desktop.
+      */}
+      <div className="hidden items-center gap-2 md:flex">
         {/* One number, looked up in every company's SAP and in this app at
             once. Ctrl+K opens it from any screen. */}
         <UniversalSearchButton />
@@ -159,7 +204,50 @@ export function Header({ onMenuClick, sidebarWidth }: HeaderProps) {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
 
+      {/* Mobile: the same controls, behind one button. */}
+      <div className="relative md:hidden" ref={overflowRef}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="More actions"
+          aria-expanded={overflowOpen}
+          aria-haspopup="true"
+          onClick={() => setOverflowOpen((wasOpen) => !wasOpen)}
+        >
+          <MoreVertical className="h-5 w-5" />
+        </Button>
+
+        {overflowOpen && (
+          <div className="absolute right-0 top-12 z-40 flex flex-col items-center gap-1 rounded-md border bg-popover p-1 shadow-md">
+            <UniversalSearchButton />
+            {canReportIssue && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Report an issue with this page"
+                onClick={() =>
+                  navigate(`/issues/new?from=${encodeURIComponent(location.pathname)}`)
+                }
+              >
+                <Bug className="h-5 w-5" />
+              </Button>
+            )}
+            <SupportMenu />
+            <NotificationBell />
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Switch theme"
+              onClick={() =>
+                setTheme(resolvedTheme === 'light' ? THEME_OPTIONS.DARK : THEME_OPTIONS.LIGHT)
+              }
+            >
+              {getThemeIcon()}
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   );

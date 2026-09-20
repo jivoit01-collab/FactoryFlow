@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import { SIDEBAR_CONFIG } from '@/config/constants';
 import { AiAssistantWidget } from '@/modules/ai/components';
@@ -13,6 +13,7 @@ import { HeaderHelpTour } from './components/HeaderHelpTour';
 import { PageWidthContext } from './pageWidth';
 
 export function MainLayout() {
+  const { pathname } = useLocation();
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false);
@@ -57,7 +58,16 @@ export function MainLayout() {
           <PageWidthContext.Provider value={setFullWidth}>
             {/* Centred and capped for ordinary pages; edge to edge for a board
                 that asked, which on a wide screen is a whole column of tiles. */}
-            <div className={cn(fullWidth ? 'w-full px-4 py-4' : 'container mx-auto p-6')}>
+            {/* key={pathname} remounts this wrapper on navigation, which is what
+                replays .page-enter — without it the animation would only ever
+                run once, on the first render of the session. */}
+            <div
+              key={pathname}
+              className={cn(
+                'page-enter',
+                fullWidth ? 'w-full px-4 py-4' : 'container mx-auto p-6',
+              )}
+            >
               <Breadcrumbs />
               <Outlet />
             </div>
