@@ -52,6 +52,7 @@ import type {
   CreditNoteApprovalLine,
   CreditNoteApprovalStatus,
 } from '../types';
+import { CreditNotePrintButton } from './CreditNotePrintButton';
 
 function apiError(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
@@ -387,6 +388,21 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
     );
   }
 
+  /**
+   * Printable only once SAP holds the document itself, and only for the ones
+   * this sheet is: a customer's credit note with item lines.
+   *
+   * A pending row has nothing to print — its draft has no number, no tax and no
+   * date. An A/P credit note is a vendor document and is not in ORIN at all. A
+   * service credit note credits a G/L account, so the item grid it would print
+   * on would be empty. The server refuses all three; the button is hidden for
+   * them so nobody presses it to find that out.
+   */
+  const printableEntry =
+    row.posted_doc_entry !== null && row.family === 'AR' && row.line_type === 'I'
+      ? row.posted_doc_entry
+      : null;
+
   return (
     <div className="space-y-3 border-l-2 border-primary/30 bg-muted/30 px-4 py-3">
       {row.lines.length === 0 ? (
@@ -395,6 +411,10 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
         <ItemLineTable row={row} />
       ) : (
         <ServiceLineTable row={row} />
+      )}
+
+      {printableEntry !== null && (
+        <CreditNotePrintButton docEntry={printableEntry} docNum={row.posted_doc_num} />
       )}
 
       {/*

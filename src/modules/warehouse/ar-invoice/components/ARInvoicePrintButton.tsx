@@ -11,6 +11,7 @@ import type { ARInvoicePosting, ARInvoicePrintPayload, SapCashSaleInvoice } from
 import {
   AR_INVOICE_PRINT_STYLE,
   ARInvoiceTaxInvoicePrint,
+  type ARPrintVariant,
 } from './ARInvoiceTaxInvoicePrint';
 
 /**
@@ -21,11 +22,12 @@ import {
  * side — a picking sheet is raised against an invoice, and the floor wants the
  * customer's bill off the same screen.
  *
- * The two differ only in how the bill is fetched — by this app's record for the
- * invoices we raised, by SAP's DocEntry for the ones the counter raised in SAP
- * — so the caller owns the query and this owns everything after it. `requested`
- * is what separates "the bill arrived because somebody asked for it" from a
- * copy that merely happens to be in hand.
+ * The callers differ only in how the document is fetched — by this app's record
+ * for the invoices we raised, by SAP's DocEntry for the ones the counter raised
+ * in SAP or for a credit note off the approval queue — so the caller owns the
+ * query and this owns everything after it. `requested` is what separates "the
+ * bill arrived because somebody asked for it" from a copy that merely happens to
+ * be in hand.
  */
 export function BillPrintButton({
   bill,
@@ -39,6 +41,7 @@ export function BillPrintButton({
   label = 'Print bill',
   className,
   size,
+  variant = 'invoice',
 }: {
   bill: ARInvoicePrintPayload | undefined;
   isFetching: boolean;
@@ -51,6 +54,8 @@ export function BillPrintButton({
   label?: string;
   className?: string;
   size?: 'sm' | 'default';
+  /** Which document the sheet is printing; see ARInvoiceTaxInvoicePrint. */
+  variant?: ARPrintVariant;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -97,7 +102,7 @@ export function BillPrintButton({
           `hidden` would keep the browser from laying it out at all. */}
       {bill ? (
         <div style={{ position: 'fixed', left: '-10000px', top: 0 }} aria-hidden>
-          <ARInvoiceTaxInvoicePrint ref={printRef} invoice={bill} />
+          <ARInvoiceTaxInvoicePrint ref={printRef} invoice={bill} variant={variant} />
         </div>
       ) : null}
     </>

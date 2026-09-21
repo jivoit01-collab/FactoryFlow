@@ -13,6 +13,8 @@ export const CREDIT_NOTE_APPROVAL_QUERY_KEYS = {
   list: (status: CreditNoteApprovalStatus | 'ALL', family: CreditNoteFamily | 'ALL') =>
     [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'list', status, family] as const,
   pendingCount: () => [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'pending-count'] as const,
+  print: (docEntry: number) =>
+    [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'print', docEntry] as const,
 };
 
 export function useCreditNoteApprovals(
@@ -44,6 +46,25 @@ export function useCreditNotePendingCount() {
     queryFn: () => creditNoteApprovalApi.pendingCount(),
     staleTime: 60 * 1000,
     refetchInterval: onPage ? PENDING_COUNT_POLL_ON_PAGE_MS : PENDING_COUNT_POLL_OFF_PAGE_MS,
+  });
+}
+
+/**
+ * The printed credit note for one posted document, fetched only when asked.
+ *
+ * `null` until somebody presses Print: every sheet is a HANA read, and people
+ * open a row to check what it credits far more often than to print it. Never
+ * cached — the document can be edited in SAP after it is added, and a sheet
+ * printed from a stale copy is the kind of error nobody catches until the
+ * customer holds two different papers.
+ */
+export function useCreditNotePrint(docEntry: number | null) {
+  return useQuery({
+    queryKey: CREDIT_NOTE_APPROVAL_QUERY_KEYS.print(docEntry ?? 0),
+    queryFn: () => creditNoteApprovalApi.getPrint(docEntry as number),
+    enabled: docEntry !== null,
+    gcTime: 0,
+    staleTime: 0,
   });
 }
 

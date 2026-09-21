@@ -2,7 +2,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import type { ARInvoicePrintLine, ARInvoicePrintPayload } from '../../types';
-import { ARInvoiceTaxInvoicePrint } from '../ARInvoiceTaxInvoicePrint';
+import {
+  ARInvoiceTaxInvoicePrint,
+  type ARPrintVariant,
+} from '../ARInvoiceTaxInvoicePrint';
 
 /**
  * The fixture is invoice 626090225 exactly as HANA returns it — the invoice the
@@ -116,13 +119,43 @@ function invoice(over: Partial<ARInvoicePrintPayload> = {}): ARInvoicePrintPaylo
 }
 
 /** Strip the markup so assertions read against the printed words. */
-function text(payload: ARInvoicePrintPayload): string {
-  return renderToStaticMarkup(<ARInvoiceTaxInvoicePrint invoice={payload} />)
+function text(payload: ARInvoicePrintPayload, variant?: ARPrintVariant): string {
+  return renderToStaticMarkup(
+    <ARInvoiceTaxInvoicePrint invoice={payload} variant={variant} />,
+  )
     .replace(/<[^>]+>/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ');
 }
+
+/**
+ * The `top:` of a block inside the Product Category panel, in points.
+ *
+ * Scoped to the panel because the summary beside it prints its own "Total" —
+ * the money one, higher up the page — and that is the row this would otherwise
+ * measure.
+ */
+function categoryRowTop(payload: ARInvoicePrintPayload, label: string): number {
+  const markup = renderToStaticMarkup(<ARInvoiceTaxInvoicePrint invoice={payload} />);
+  const panel = markup.slice(markup.indexOf('Product Category'));
+  const match = panel.match(new RegExp(`top:([\\d.]+)pt[^"]*"[^>]*>${label}</div>`));
+  if (!match) throw new Error(`no positioned block printing "${label}" in the panel`);
+  return Number(match[1]);
+}
+
+/** The height of the box ruled around the Product Category rows. */
+function categoryBoxHeight(payload: ARInvoicePrintPayload): number {
+  const markup = renderToStaticMarkup(<ARInvoiceTaxInvoicePrint invoice={payload} />);
+  const match = markup.match(/top:656.8pt;width:151pt;height:([\d.]+)pt/);
+  if (!match) throw new Error('no Product Category box on the sheet');
+  return Number(match[1]);
+}
+
+const TWO_CATEGORIES = [
+  { category: 'MUSTARD', litres: '1440.0000', gross_weight: '1436.5080' },
+  { category: 'OLIVE', litres: '720.0000', gross_weight: '717.9210' },
+];
 
 describe('ARInvoiceTaxInvoicePrint', () => {
   it('prints the figures SAP printed on the same invoice', () => {
@@ -251,5 +284,45 @@ describe('ARInvoiceTaxInvoicePrint', () => {
     expect(sheet).not.toContain('Batch No');
     expect(sheet).toContain('IRN :');
     expect(sheet).toContain('Ack. No :');
+  });
+
+  it('prints the same sheet as a credit note, changing only what names it', () => {
+    const sheet = text(invoice(), 'credit-note');
+
+    expect(sheet).toContain('CREDIT NOTE');
+    expect(sheet).not.toContain('TAX INVOICE');
+    expect(sheet).toContain('Credit Note No. : 626090225');
+    expect(sheet).toContain('Credit Note Date : 5/9/2026');
+    expect(sheet).toContain('This is a Computer Generated credit note');
+    expect(sheet).not.toContain('Invoice Number');
+    expect(sheet).not.toContain('Invoice Date');
+
+    // Everything else is the bill's, because the customer reads the two side by
+    // side: same letterhead, same grid, same tax block, same terms.
+    expect(sheet).toContain('GSTIN Number : 06AACCJ4223F1Z0');
+    expect(sheet).toContain('FSSAI Lic No. 10015064000541');
+    expect(sheet).toContain('COLD PRESS 1 LTR 20 PCS');
+    expect(sheet).toContain('CGST@2.5.00 %');
+    expect(sheet).toContain('Grand Total [INR] 925.00');
+  });
+
+  it('grows the product category panel rather than printing a variety on its total', () => {
+    /**
+     * SAP measured the panel around one category. A second one used to land on
+     * the Total, with the box's own bottom rule struck through it — and two
+     * varieties on a document is ordinary, not an edge case.
+     */
+    const one = invoice();
+    const two = invoice({ category_summary: TWO_CATEGORIES });
+
+    expect(categoryRowTop(two, 'OLIVE')).toBeGreaterThan(categoryRowTop(two, 'MUSTARD'));
+    expect(categoryRowTop(two, 'Total')).toBeGreaterThan(categoryRowTop(two, 'OLIVE'));
+    expect(categoryBoxHeight(two)).toBeGreaterThan(categoryBoxHeight(one));
+    // The Total still sits inside the box that is ruled around it.
+    expect(categoryRowTop(two, 'Total')).toBeLessThan(656.8 + categoryBoxHeight(two));
+
+    // One category is the sheet SAP measured, and it does not move.
+    expect(categoryRowTop(one, 'Total')).toBe(681.7);
+    expect(categoryBoxHeight(one)).toBe(38.1);
   });
 });

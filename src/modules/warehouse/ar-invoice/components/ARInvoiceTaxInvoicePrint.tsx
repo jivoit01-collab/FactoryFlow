@@ -63,6 +63,12 @@ const COL_WIDTHS = COL_EDGES.slice(1).map((edge, i) => edge - COL_EDGES[i]);
 /** The item grid's own metrics. */
 const GRID_HEADER_H = 39.6;
 const ROW_H = 12;
+/** The Product Category panel, as measured off the printed original. */
+const CATEGORY_FIRST_ROW_Y = 670.3;
+const CATEGORY_ROW_H = 10;
+const CATEGORY_TOTAL_Y = 681.7;
+const CATEGORY_BOX_H = 38.1;
+
 /** Description column width, minus its padding, over the width of a character
  *  at 8.1pt Arial — how a long description is known to wrap onto a second line. */
 const DESC_CHARS_PER_LINE = 28;
@@ -83,7 +89,6 @@ const SLOTS_SUMMARY_PAGE = Math.floor((433.9 - 57.6) / ROW_H); // 31
  * and a Ganaur bill print different addresses.
  */
 const STATIC_LETTERHEAD = {
-  title: 'TAX INVOICE',
   copy: 'Original Copy',
   name: 'Jivo Wellness Pvt Ltd',
   customerContact: 'Customer C.No: +91 98107 38738',
@@ -94,7 +99,6 @@ const STATIC_LETTERHEAD = {
   registeredOffice:
     'Registered Office:  J-3/190, GF Rajouri Garden, New Delhi - 110027, India',
   jurisdiction: 'Subject to DELHI Jurisdiction',
-  computerGenerated: 'This is a Computer Generated invoice, Signature is not required.',
   signatory: 'For Jivo Wellness Pvt. Ltd.',
   terms:
     "Terms and Conditions: 1)All payment shall be made in advance unless otherwise agreed in writing. Late payments shall attract interest at " +
@@ -108,6 +112,35 @@ const STATIC_LETTERHEAD = {
     'unconditional agreement between the Parties.10) W.e.f 22.09.2025, due to amendment in GST rates, our M.R.P. has been revised. Please ' +
     'visit  https://jivo.in/gstrevision/ to know more',
 };
+
+/**
+ * The only four places the sheet names itself.
+ *
+ * An A/R credit note is the same document to SAP — same tables but ORIN/RIN1,
+ * same letterhead, grid, tax block and terms — so it prints on this layout with
+ * these four strings changed and nothing else. That is deliberate: the customer
+ * reads the credit note beside the bill it reverses, and anything else that
+ * differed between them would be something somebody has to reconcile.
+ */
+const DOCUMENT_WORDING = {
+  invoice: {
+    title: 'TAX INVOICE',
+    numberLabel: 'Invoice Number',
+    dateLabel: 'Invoice Date',
+    computerGenerated: 'This is a Computer Generated invoice, Signature is not required.',
+  },
+  'credit-note': {
+    title: 'CREDIT NOTE',
+    numberLabel: 'Credit Note No.',
+    dateLabel: 'Credit Note Date',
+    computerGenerated: 'This is a Computer Generated credit note, Signature is not required.',
+  },
+} as const;
+
+/** Which document this sheet is being used to print. */
+export type ARPrintVariant = keyof typeof DOCUMENT_WORDING;
+
+type DocumentWording = (typeof DOCUMENT_WORDING)[ARPrintVariant];
 
 export const AR_INVOICE_PRINT_STYLE = `
   @page { size: A4 portrait; margin: 0; }
@@ -267,9 +300,10 @@ function paginate(lines: ARInvoicePrintLine[]): ARInvoicePrintLine[][] {
 
 export const ARInvoiceTaxInvoicePrint = forwardRef<
   HTMLDivElement,
-  { invoice: ARInvoicePrintPayload }
->(function ARInvoiceTaxInvoicePrint({ invoice }, ref) {
+  { invoice: ARInvoicePrintPayload; variant?: ARPrintVariant }
+>(function ARInvoiceTaxInvoicePrint({ invoice, variant = 'invoice' }, ref) {
   const pages = paginate(invoice.lines);
+  const wording = DOCUMENT_WORDING[variant];
 
   return (
     <div
@@ -286,7 +320,7 @@ export const ARInvoiceTaxInvoicePrint = forwardRef<
         const isLast = pageIndex === pages.length - 1;
         return (
           <Page key={pageIndex} last={isLast} breakAfter={!isLast}>
-            {isFirst ? <Masthead invoice={invoice} /> : null}
+            {isFirst ? <Masthead invoice={invoice} wording={wording} /> : null}
             <Grid
               lines={pageLines}
               startNumber={
@@ -297,7 +331,12 @@ export const ARInvoiceTaxInvoicePrint = forwardRef<
               closed={isLast}
             />
             {isLast ? <Summary invoice={invoice} /> : null}
-            <Footnotes page={pageIndex + 1} of={pages.length} show={isLast} />
+            <Footnotes
+              page={pageIndex + 1}
+              of={pages.length}
+              show={isLast}
+              wording={wording}
+            />
           </Page>
         );
       })}
@@ -424,7 +463,13 @@ function VRule({ x, y1, y2 }: { x: number; y1: number; y2: number }) {
 // masthead — everything above the item grid, page 1 only
 // ---------------------------------------------------------------------------
 
-function Masthead({ invoice }: { invoice: ARInvoicePrintPayload }) {
+function Masthead({
+  invoice,
+  wording,
+}: {
+  invoice: ARInvoicePrintPayload;
+  wording: DocumentWording;
+}) {
   const { company, bill_to: billTo, ship_to: shipTo } = invoice;
   const TAHOMA = 'Tahoma, Verdana, sans-serif';
 
@@ -446,7 +491,7 @@ function Masthead({ invoice }: { invoice: ARInvoicePrintPayload }) {
 
       {/* ---- letterhead ---- */}
       <At x={46} y={36} size={12.2} bold font="'Comic Sans MS', 'Segoe Print', cursive">
-        {STATIC_LETTERHEAD.title}
+        {wording.title}
       </At>
       <img
         src="/JivoWellnessLogo.png"
@@ -506,13 +551,14 @@ function Masthead({ invoice }: { invoice: ARInvoicePrintPayload }) {
         }}
       />
       <At x={19} y={164.5} size={8.3} bold font={TAHOMA}>
-        Invoice Number : {invoice.doc_num ?? ''}
+        {wording.numberLabel} : {invoice.doc_num ?? ''}
       </At>
       <At x={197.2} y={165.2} size={5.8} bold font={TAHOMA}>
         PO No. : {invoice.customer_ref}
       </At>
       <At x={366} y={164.5} size={8.3} bold font={TAHOMA}>
-        Invoice Date : <span style={{ fontSize: '8.8pt' }}>{sapDate(invoice.doc_date, false)}</span>
+        {wording.dateLabel} :{' '}
+        <span style={{ fontSize: '8.8pt' }}>{sapDate(invoice.doc_date, false)}</span>
       </At>
       <HRule x1={FRAME_L} x2={FRAME_R} y={184.1} />
       <VRule x={196} y1={164.1} y2={250} />
@@ -851,6 +897,18 @@ function GridRow({
 // ---------------------------------------------------------------------------
 
 function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
+  /**
+   * SAP measured the Product Category panel around ONE category, which is what
+   * a single-variety bill has: its rows step by CATEGORY_ROW_H from
+   * CATEGORY_FIRST_ROW_Y and its Total sits one row below the first of them,
+   * inside a box CATEGORY_BOX_H tall. A second variety therefore lands on the
+   * Total and the box's own bottom rule strikes through it — a bill of mustard
+   * and olive prints its litres and its weight illegibly. The panel grows by a
+   * row for each category past the first instead; SAP's Crystal subreport does
+   * the same, and the space below it on the sheet is empty.
+   */
+  const categoryGrowth = Math.max(0, invoice.category_summary.length - 1) * CATEGORY_ROW_H;
+
   const TAHOMA = 'Tahoma, Verdana, sans-serif';
   const t = invoice.totals;
 
@@ -972,7 +1030,7 @@ function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
           left: '18.5pt',
           top: '656.8pt',
           width: '151pt',
-          height: '38.1pt',
+          height: `${CATEGORY_BOX_H + categoryGrowth}pt`,
           border: HAIRLINE,
           boxSizing: 'border-box',
         }}
@@ -988,24 +1046,50 @@ function Summary({ invoice }: { invoice: ARInvoicePrintPayload }) {
       </At>
       {invoice.category_summary.map((row, i) => (
         <div key={row.category || i}>
-          <At x={23} y={670.3 + i * 10} size={7.2}>
+          <At x={23} y={CATEGORY_FIRST_ROW_Y + i * CATEGORY_ROW_H} size={7.2}>
             {row.category}
           </At>
-          <At x={62} y={671.8 + i * 10} w={30} size={7.2} align="right">
+          <At
+            x={62}
+            y={CATEGORY_FIRST_ROW_Y + 1.5 + i * CATEGORY_ROW_H}
+            w={30}
+            size={7.2}
+            align="right"
+          >
             {n4(row.litres)}
           </At>
-          <At x={132} y={671.8 + i * 10} w={34} size={7.2} align="right">
+          <At
+            x={132}
+            y={CATEGORY_FIRST_ROW_Y + 1.5 + i * CATEGORY_ROW_H}
+            w={34}
+            size={7.2}
+            align="right"
+          >
             {n4(row.gross_weight)}
           </At>
         </div>
       ))}
-      <At x={23} y={681.7} size={7.8} bold>
+      <At x={23} y={CATEGORY_TOTAL_Y + categoryGrowth} size={7.8} bold>
         Total
       </At>
-      <At x={70} y={681.7} w={34.5} size={7.8} bold align="right">
+      <At
+        x={70}
+        y={CATEGORY_TOTAL_Y + categoryGrowth}
+        w={34.5}
+        size={7.8}
+        bold
+        align="right"
+      >
         {n2(invoice.totals.litres)}
       </At>
-      <At x={130} y={681.7} w={34.3} size={7.8} bold align="right">
+      <At
+        x={130}
+        y={CATEGORY_TOTAL_Y + categoryGrowth}
+        w={34.3}
+        size={7.8}
+        bold
+        align="right"
+      >
         {n2(invoice.totals.gross_weight)}
       </At>
 
@@ -1091,12 +1175,22 @@ function MoneyRow({
 }
 
 /** The lines below the frame, on the summary page only. */
-function Footnotes({ page, of, show }: { page: number; of: number; show: boolean }) {
+function Footnotes({
+  page,
+  of,
+  show,
+  wording,
+}: {
+  page: number;
+  of: number;
+  show: boolean;
+  wording: DocumentWording;
+}) {
   if (!show) return null;
   return (
     <>
       <At x={FRAME_L} y={800.5} w={FRAME_R - FRAME_L} size={5.4} align="center">
-        {STATIC_LETTERHEAD.computerGenerated}
+        {wording.computerGenerated}
       </At>
       <At x={FRAME_L} y={807.6} w={FRAME_R - FRAME_L} size={5.4} align="center">
         {STATIC_LETTERHEAD.jurisdiction}

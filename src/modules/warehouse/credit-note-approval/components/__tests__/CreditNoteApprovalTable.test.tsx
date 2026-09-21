@@ -133,6 +133,11 @@ const DECIDED: CreditNoteApproval = {
   posted_doc_num: 626092650,
 };
 
+/** What SAP adds to a row once the draft has been added as a real document. */
+function postedAs(docEntry: number, docNum: number) {
+  return { status: 'APPROVED' as const, posted_doc_entry: docEntry, posted_doc_num: docNum };
+}
+
 const MINE: CreditNoteApproval = {
   ...PENDING,
   id: 75601,
@@ -285,5 +290,36 @@ describe('CreditNoteApprovalTable', () => {
     renderTable({ rows: [DECIDED], view: 'APPROVED' });
     expect(screen.getByText('Decided by')).toBeInTheDocument();
     expect(screen.getByText('USER06')).toBeInTheDocument();
+  });
+
+  it('offers the printed sheet once SAP holds the document, not before', () => {
+    const { unmount } = renderTable({ rows: [DECIDED], view: 'APPROVED' });
+    fireEvent.click(screen.getByText('A/R Credit Note'));
+    expect(screen.getByRole('button', { name: /Print PDF/ })).toBeInTheDocument();
+    unmount();
+
+    // Pending: the draft has no number, no tax and no date to print.
+    renderTable({ rows: [PENDING] });
+    fireEvent.click(screen.getByText('A/R Credit Note'));
+    expect(screen.queryByRole('button', { name: /Print PDF/ })).not.toBeInTheDocument();
+  });
+
+  it('does not offer the sales sheet for a vendor or a service credit note', () => {
+    // A/P is a vendor document and is not in ORIN at all.
+    const { unmount } = renderTable({
+      rows: [{ ...VENDOR_SHORT, ...postedAs(41203, 626092651) }],
+      view: 'APPROVED',
+    });
+    fireEvent.click(screen.getByText('A/P Credit Note'));
+    expect(screen.queryByRole('button', { name: /Print PDF/ })).not.toBeInTheDocument();
+    unmount();
+
+    // A service credit note credits a G/L account: the item grid would be empty.
+    renderTable({
+      rows: [{ ...SERVICE, ...postedAs(41204, 626092652) }],
+      view: 'APPROVED',
+    });
+    fireEvent.click(screen.getByText('A/R Credit Note'));
+    expect(screen.queryByRole('button', { name: /Print PDF/ })).not.toBeInTheDocument();
   });
 });

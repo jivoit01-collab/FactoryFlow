@@ -1377,6 +1377,11 @@ export const API_ENDPOINTS = {
     CREDIT_NOTE_APPROVAL_PENDING_COUNT: '/warehouse/credit-note-approvals/pending-count/',
     CREDIT_NOTE_APPROVAL_STATUS: (wddCode: number) =>
       `/warehouse/credit-note-approvals/${wddCode}/status/`,
+    // The POSTED credit note behind a decided row, on SAP's own sheet. Keyed by
+    // the document's DocEntry, not the approval code — a pending row has no
+    // document yet, so there is nothing to print from one.
+    CREDIT_NOTE_PRINT: (docEntry: number) =>
+      `/warehouse/credit-notes/${docEntry}/print/`,
 
     // Approving a transfer REQUEST clears the request; these move the stock
     // against it, in as many parts as it takes.

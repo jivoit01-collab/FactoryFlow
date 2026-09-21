@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+import type { ARInvoicePrintPayload } from '../../ar-invoice/types';
 import type {
   CreditNoteApproval,
   CreditNoteApprovalStatus,
@@ -41,6 +42,19 @@ export const creditNoteApprovalApi = {
       E.CREDIT_NOTE_APPROVAL_STATUS(wddCode),
       payload,
     );
+    return res.data;
+  },
+
+  /**
+   * The printed credit note, as data for the sheet.
+   *
+   * `docEntry` is SAP's id for the POSTED document (`posted_doc_entry` on a
+   * row), not the approval request: a request is a decision waiting to be
+   * taken and has nothing to print. Read fresh from SAP on every press — the
+   * document can still be edited there after it is added.
+   */
+  async getPrint(docEntry: number): Promise<ARInvoicePrintPayload> {
+    const res = await apiClient.get<ARInvoicePrintPayload>(E.CREDIT_NOTE_PRINT(docEntry));
     return res.data;
   },
 
