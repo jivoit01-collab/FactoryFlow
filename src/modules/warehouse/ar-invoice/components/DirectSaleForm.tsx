@@ -48,6 +48,13 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
   const [customerRef, setCustomerRef] = useState('');
   const [docDate, setDocDate] = useState('');
   const [docDueDate, setDocDueDate] = useState('');
+  // A counter sale leaves with the customer, so it is dispatched the day it is
+  // billed. Prefilled with today because that is the answer almost every time,
+  // and because a blank here is what used to leave the printed bill with no
+  // dispatch date until somebody stamped it from the bill-summary screen.
+  const [dispatchDate, setDispatchDate] = useState(() =>
+    new Date().toLocaleDateString('en-CA'),
+  );
   const [comments, setComments] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +120,7 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
     setCustomerRef('');
     setDocDate('');
     setDocDueDate('');
+    setDispatchDate(new Date().toLocaleDateString('en-CA'));
     setComments('');
     setFiles([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -125,9 +133,10 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
     const confirmed = await confirmSapPost({
       title: 'Raise this cash sale in SAP?',
       details: [
-        { label: 'Creates', value: 'A/R invoice' },
+        { label: 'Creates', value: 'A/R invoice + bill summary' },
         { label: 'Customer', value: customerCode },
         { label: 'Lines', value: cart.length },
+        { label: 'Dispatch date', value: dispatchDate || 'today' },
       ],
       confirmLabel: 'Raise the invoice',
     });
@@ -141,6 +150,7 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
           ...(customerRef.trim() ? { customer_ref: customerRef.trim() } : {}),
           ...(docDate ? { doc_date: docDate } : {}),
           ...(docDueDate ? { doc_due_date: docDueDate } : {}),
+          ...(dispatchDate ? { dispatch_date: dispatchDate } : {}),
           ...(comments.trim() ? { comments: comments.trim() } : {}),
         },
         files,
@@ -367,6 +377,19 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
                     value={docDueDate}
                     onChange={(e) => setDocDueDate(e.target.value)}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="direct-dispatch-date">Dispatch date</Label>
+                  <Input
+                    id="direct-dispatch-date"
+                    type="date"
+                    value={dispatchDate}
+                    min={docDate || undefined}
+                    onChange={(e) => setDispatchDate(e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Goes on the printed bill, and raises the bill summary in SAP.
+                  </p>
                 </div>
                 <div className="sm:col-span-2 lg:col-span-3">
                   <Label htmlFor="direct-attachments">Attachments (optional)</Label>

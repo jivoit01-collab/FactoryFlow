@@ -159,6 +159,9 @@ export interface ARInvoicePosting {
   doc_date: string | null;
   doc_due_date: string | null;
   tax_date: string | null;
+  /** Counter sales only — the day the goods leave, which is the day they are
+   * billed. Null on an invoice raised against a Sales Order. */
+  dispatch_date: string | null;
   selected_total: string | null;
   branch_id: number;
   comments: string;
@@ -217,6 +220,9 @@ export interface CreateARInvoiceRequest {
   doc_date?: string;
   doc_due_date?: string;
   tax_date?: string;
+  /** Cash sale only: stamped on the SAP invoice and used for the bill summary
+   * the posting raises. Defaults to the invoice's own date. */
+  dispatch_date?: string;
   comments?: string;
 }
 
