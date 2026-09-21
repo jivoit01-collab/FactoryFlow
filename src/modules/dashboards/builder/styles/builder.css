@@ -1,0 +1,974 @@
+/*
+ * builder.css — the dashboard builder's own chrome.
+ *
+ * WHAT THIS FILE DOES NOT CONTAIN
+ * Any tile styling. A card on a built board is `.ops-grp` from
+ * `ops-board.css`, unchanged, and its hue comes from the `ops-b-*` classes
+ * that the Plant and Logistics boards paint with. Two boards inventing their
+ * own teal would be two teals, and a card that looks subtly different
+ * depending on which board it was dragged onto is worse than one that cannot
+ * be dragged at all.
+ *
+ * So everything here is the frame: the editor's three columns, the grid the
+ * cards snap to, the palette, and the handful of visualisation shapes the
+ * shared stylesheet had no reason to define (a generic table, a matrix, a row
+ * of small figures).
+ *
+ * `cbx-` prefixes everything. `ops-` is the shared vocabulary and must stay
+ * readable as "this came from the wall boards".
+ */
+
+/* ===================================================================
+   The list page
+   =================================================================== */
+
+.cbx-page {
+  padding: 1.5rem;
+  max-width: 88rem;
+  margin: 0 auto;
+}
+
+.cbx-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.cbx-page-head h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.cbx-page-head p {
+  margin-top: 0.35rem;
+  max-width: 56ch;
+  font-size: 0.875rem;
+  color: rgb(100 116 139);
+}
+
+.cbx-page section {
+  margin-top: 2rem;
+}
+
+.cbx-page section h2 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+  margin-bottom: 0.75rem;
+}
+
+.cbx-board-grid-list {
+  display: grid;
+  /* `minmax(0, 1fr)` rather than a bare `1fr`: a long board name must not
+     widen its own column and squeeze its neighbours. The same rule the wall
+     boards' tracks follow, for the same reason. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 0.875rem;
+}
+
+.cbx-board-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.75rem;
+  background: #fff;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cbx-board-tile::before {
+  /* The board's hue as a stripe down its left edge — the list's only use of
+     colour, and it means the same thing it means on the board itself. */
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--d1, rgb(148 163 184));
+}
+
+.cbx-board-tile:hover {
+  border-color: var(--d2, rgb(148 163 184));
+  box-shadow: 0 4px 14px rgb(15 23 42 / 0.07);
+}
+
+.cbx-board-open {
+  flex: 1;
+  text-align: left;
+  padding: 0.9rem 1rem 0.75rem 1.15rem;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.cbx-board-open header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cbx-board-open h3 {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: rgb(15 23 42);
+  /* One line. A board named by somebody in a hurry can be very long, and the
+     tile is a fixed shape in a grid. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbx-board-grid {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(148 163 184);
+  white-space: nowrap;
+}
+
+.cbx-board-open p {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgb(100 116 139);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cbx-board-open footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.85rem;
+  margin-top: 0.7rem;
+  font-size: 0.7rem;
+  color: rgb(100 116 139);
+}
+
+.cbx-board-open footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cbx-board-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem 0.65rem 1.15rem;
+  border-top: 1px solid rgb(241 245 249);
+}
+
+.cbx-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px dashed rgb(203 213 225);
+  border-radius: 0.6rem;
+  font-size: 0.85rem;
+  color: rgb(71 85 105);
+  background: rgb(248 250 252);
+}
+
+/* ===================================================================
+   The editor
+   =================================================================== */
+
+.cbx-builder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.cbx-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid rgb(226 232 240);
+  background: #fff;
+}
+
+.cbx-toolbar-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.cbx-toolbar-title b {
+  font-size: 0.95rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbx-toolbar-title em {
+  font-style: normal;
+  font-size: 0.72rem;
+  color: rgb(180 83 9);
+  white-space: nowrap;
+}
+
+.cbx-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cbx-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.55rem 1rem;
+  font-size: 0.82rem;
+  color: rgb(30 64 175);
+  background: rgb(239 246 255);
+  border-bottom: 1px solid rgb(219 234 254);
+}
+
+.cbx-message-warn {
+  color: rgb(146 64 14);
+  background: rgb(255 251 235);
+  border-bottom-color: rgb(253 230 138);
+}
+
+.cbx-message button {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.cbx-builder-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  /* Palette and side panel are fixed-ish; the stage takes what is left and
+     is the one allowed to shrink. A `minmax(0, 1fr)` middle track, so a wide
+     board scrolls inside the stage rather than pushing the panels off. */
+  grid-template-columns: 17rem minmax(0, 1fr) 18rem;
+  gap: 0;
+}
+
+@media (max-width: 1100px) {
+  .cbx-builder-body {
+    grid-template-columns: 14rem minmax(0, 1fr);
+  }
+  .cbx-side {
+    display: none;
+  }
+}
+
+/* ---- palette ---- */
+
+.cbx-palette {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid rgb(226 232 240);
+  background: rgb(250 250 249);
+}
+
+.cbx-palette-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid rgb(226 232 240);
+  color: rgb(148 163 184);
+}
+
+.cbx-palette-search input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  background: none;
+  border: 0;
+  outline: none;
+  color: rgb(15 23 42);
+}
+
+.cbx-palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.cbx-palette-list h3 {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgb(148 163 184);
+  padding: 0.65rem 0.4rem 0.35rem;
+}
+
+.cbx-palette-empty {
+  padding: 1rem 0.9rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgb(100 116 139);
+}
+
+.cbx-chip {
+  position: relative;
+  padding: 0.55rem 0.65rem 0.5rem 0.75rem;
+  margin-bottom: 0.4rem;
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.55rem;
+  background: #fff;
+  cursor: grab;
+}
+
+.cbx-chip::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem auto 0.45rem 0;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--d2, rgb(148 163 184));
+}
+
+.cbx-chip:active {
+  cursor: grabbing;
+}
+
+.cbx-chip:hover {
+  border-color: var(--d2, rgb(148 163 184));
+}
+
+.cbx-chip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cbx-chip-head b {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: rgb(15 23 42);
+}
+
+.cbx-chip-size {
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(148 163 184);
+  white-space: nowrap;
+}
+
+.cbx-chip p {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: rgb(100 116 139);
+}
+
+.cbx-chip-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.cbx-chip-foot em {
+  font-style: normal;
+  font-size: 0.65rem;
+  color: rgb(148 163 184);
+}
+
+.cbx-chip-sap {
+  color: rgb(180 83 9);
+}
+
+.cbx-chip-foot button {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--d1, rgb(71 85 105));
+}
+
+/* ---- the canvas ---- */
+
+.cbx-stage {
+  min-width: 0;
+  min-height: 0;
+  padding: 1rem;
+  overflow: auto;
+  background:
+    linear-gradient(0deg, rgb(248 250 252), rgb(248 250 252));
+}
+
+.cbx-canvas {
+  position: relative;
+  display: grid;
+  gap: var(--cbx-gap, 0.6rem);
+  /* A canvas that is always the same shape whatever is on it: the author is
+     arranging a screen, and a grid that grew with its contents would not be
+     the screen they are arranging. */
+  height: 100%;
+  min-height: 26rem;
+  padding: var(--cbx-gap, 0.6rem);
+  border-radius: 0.75rem;
+}
+
+.cbx-d-compact {
+  --cbx-gap: 0.35rem;
+}
+.cbx-d-normal {
+  --cbx-gap: 0.6rem;
+}
+.cbx-d-roomy {
+  --cbx-gap: 1rem;
+}
+
+.cbx-s-light {
+  background: #f4f6fa;
+}
+
+.cbx-s-dark {
+  /* The one place a built board departs from the wall boards' light surface.
+     For the screens by the lines, where the room is not bright. */
+  background: #0e1726;
+}
+
+.cbx-s-dark .cbx-slot {
+  border-color: rgb(255 255 255 / 0.12);
+}
+
+.cbx-slot {
+  border: 1px dashed rgb(203 213 225);
+  border-radius: 0.5rem;
+  min-height: 0;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.cbx-slot-ok {
+  border-color: rgb(16 185 129);
+  background: rgb(16 185 129 / 0.1);
+}
+
+.cbx-slot-no {
+  border-color: rgb(244 63 94);
+  background: rgb(244 63 94 / 0.09);
+}
+
+.cbx-placed {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  cursor: grab;
+  border-radius: 0.6rem;
+}
+
+.cbx-placed:active {
+  cursor: grabbing;
+}
+
+.cbx-selected {
+  outline: 2px solid rgb(37 99 235);
+  outline-offset: 2px;
+}
+
+.cbx-ghost {
+  opacity: 0.35;
+}
+
+.cbx-card-tools {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 2;
+}
+
+.cbx-placed:hover .cbx-card-tools,
+.cbx-placed:focus-within .cbx-card-tools {
+  opacity: 1;
+}
+
+.cbx-card-tools button,
+.cbx-drag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.3rem;
+  background: rgb(255 255 255 / 0.92);
+  border: 1px solid rgb(226 232 240);
+  color: rgb(71 85 105);
+}
+
+.cbx-card-tools button:hover {
+  color: rgb(190 18 60);
+  border-color: rgb(253 164 175);
+}
+
+.cbx-canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: rgb(148 163 184);
+  pointer-events: none;
+}
+
+/* ---- side panel ---- */
+
+.cbx-side {
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid rgb(226 232 240);
+  background: rgb(250 250 249);
+  padding: 0.85rem;
+}
+
+.cbx-side-back {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(71 85 105);
+  margin-bottom: 0.65rem;
+}
+
+.cbx-settings,
+.cbx-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cbx-inspector header h3 {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.cbx-inspector header p {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgb(100 116 139);
+}
+
+.cbx-inspector-note {
+  margin-top: 0.4rem !important;
+  padding: 0.45rem 0.55rem;
+  border-left: 2px solid rgb(203 213 225);
+  background: #fff;
+  font-size: 0.72rem !important;
+}
+
+.cbx-inspector-foot {
+  font-size: 0.7rem;
+  color: rgb(148 163 184);
+}
+
+.cbx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cbx-field > span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+}
+
+.cbx-field input[type='text'],
+.cbx-field input:not([type]),
+.cbx-field input[type='number'],
+.cbx-field select,
+.cbx-field textarea {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.4rem;
+  background: #fff;
+  color: rgb(15 23 42);
+}
+
+.cbx-field em {
+  font-style: normal;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: rgb(148 163 184);
+}
+
+.cbx-field-row {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.cbx-field-row button {
+  flex: none;
+  width: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.4rem;
+  background: #fff;
+  color: rgb(100 116 139);
+}
+
+.cbx-field-row button:disabled {
+  opacity: 0.4;
+}
+
+.cbx-field-check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.cbx-field-check > span {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgb(15 23 42);
+}
+
+.cbx-field-check em {
+  flex-basis: 100%;
+  padding-left: 1.3rem;
+}
+
+.cbx-grid-size {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.cbx-stepper > span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(100 116 139);
+  margin-bottom: 0.25rem;
+}
+
+.cbx-stepper > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgb(203 213 225);
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.cbx-stepper button {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(71 85 105);
+}
+
+.cbx-stepper button:disabled {
+  opacity: 0.3;
+}
+
+.cbx-stepper b {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cbx-stepper em {
+  display: block;
+  margin-top: 0.2rem;
+  font-style: normal;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  color: rgb(148 163 184);
+}
+
+.cbx-options {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 0.5rem;
+  padding: 0.6rem;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cbx-options legend {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(148 163 184);
+  padding: 0 0.3rem;
+}
+
+/* ===================================================================
+   The viewer
+   =================================================================== */
+
+.cbx-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--cbx-gap, 0.6rem);
+  gap: var(--cbx-gap, 0.6rem);
+}
+
+/* A wall board does not scroll: it is exactly its viewport, and a card with
+   too much in it is clipped by its own tile rather than pushing the bottom
+   row off the screen. Same contract as `.ops-stack`. */
+.cbx-wall {
+  height: 100%;
+  overflow: hidden;
+}
+
+.cbx-view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 calc(0.4 * var(--u, 13px));
+}
+
+.cbx-view-head h1 {
+  font-size: calc(1.9 * var(--u, 13px));
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.cbx-view-head p {
+  font-size: calc(1.05 * var(--u, 13px));
+  color: var(--ink-2, rgb(100 116 139));
+}
+
+.cbx-s-dark .cbx-view-head h1,
+.cbx-s-dark .cbx-view-head p {
+  color: rgb(226 232 240);
+}
+
+.cbx-view-tools {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.cbx-view-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgb(203 213 225 / 0.6);
+  color: var(--ink-2, rgb(100 116 139));
+}
+
+.cbx-view-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: var(--cbx-gap, 0.6rem);
+  position: relative;
+}
+
+.cbx-view-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0 calc(0.4 * var(--u, 13px));
+  font-size: calc(0.95 * var(--u, 13px));
+  color: var(--ink-3, rgb(148 163 184));
+}
+
+/* A card is `.ops-grp` inside this; the wrapper only carries the hue and the
+   grid position, so it must not add a box of its own. */
+.cbx-cell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+
+.cbx-cell > .ops-grp {
+  height: 100%;
+}
+
+/* ===================================================================
+   The visualisation shapes the shared stylesheet had no reason to define
+   =================================================================== */
+
+.cbx-split {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(1.2 * var(--u, 13px));
+  padding-top: calc(0.3 * var(--u, 13px));
+}
+
+.cbx-split > div {
+  min-width: 0;
+}
+
+.cbx-split b {
+  display: block;
+  font-size: calc(1.7 * var(--u, 13px));
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink, rgb(15 23 42));
+  font-variant-numeric: tabular-nums;
+}
+
+.cbx-split em {
+  display: block;
+  font-style: normal;
+  font-size: calc(0.86 * var(--u, 13px));
+  color: var(--ink-3, rgb(148 163 184));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cbx-table-wrap {
+  min-height: 0;
+  /* Clipped, never scrolled. A card is a headline with its evidence under it;
+     a table long enough to scroll on a wall nobody is standing at is a table
+     nobody will ever see the bottom of, and the card should send fewer rows. */
+  overflow: hidden;
+}
+
+.cbx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(0.88 * var(--u, 13px));
+  font-variant-numeric: tabular-nums;
+}
+
+.cbx-table th {
+  font-size: calc(0.76 * var(--u, 13px));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3, rgb(148 163 184));
+  padding-bottom: calc(0.25 * var(--u, 13px));
+  border-bottom: 1px solid var(--hair, rgb(234 238 243));
+  white-space: nowrap;
+}
+
+.cbx-table td {
+  padding: calc(0.22 * var(--u, 13px)) 0;
+  color: var(--ink-2, rgb(88 102 117));
+  border-bottom: 1px solid var(--tint2, rgb(241 245 249));
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbx-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.cbx-table td:first-child {
+  color: var(--ink, rgb(15 23 42));
+  font-weight: 550;
+}
+
+.cbx-matrix th[scope='row'] {
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: calc(0.86 * var(--u, 13px));
+  color: var(--ink, rgb(15 23 42));
+  border-bottom: 1px solid var(--tint2, rgb(241 245 249));
+  padding: calc(0.22 * var(--u, 13px)) 0;
+}
+
+.cbx-nil {
+  color: var(--ink-3, rgb(148 163 184));
+}
+
+.cbx-caption,
+.cbx-note {
+  margin-top: calc(0.25 * var(--u, 13px));
+  font-size: calc(0.8 * var(--u, 13px));
+  line-height: 1.35;
+  color: var(--ink-3, rgb(148 163 184));
+}
+
+/* Dark surface: the tiles keep their own light card faces (that is the shared
+   tile, and a dark variant of it belongs in ops-board.css if it is ever
+   wanted) — only the page around them changes. */
+.cbx-s-dark .cbx-view-foot {
+  color: rgb(148 163 184);
+}
+
+/* ===================================================================
+   Cards that are furniture rather than figures
+   =================================================================== */
+
+/*
+ * The section label.
+ *
+ * A board composed on a free grid has no bands to hang a coloured rail off,
+ * and inventing a "section" concept — its own model, its own editor, its own
+ * rules about what may sit in one — would double the size of this feature to
+ * reproduce a stripe. So a label is a card, and this is the one rule that
+ * makes it look like the thing it replaces: the domain hue at full strength,
+ * the name in white, and no room left for a figure that was never coming.
+ */
+.cbx-cell[data-card='section_label'] > .ops-grp {
+  background: linear-gradient(160deg, var(--d1), color-mix(in srgb, var(--d1) 76%, #000));
+  border: 0;
+  box-shadow: none;
+  /* Collapse the four-row tile: with no figure and no visualisation, the name
+     is the whole card and should sit in the middle of it rather than at the
+     top of an empty box. */
+  grid-template-rows: 1fr;
+  align-content: center;
+}
+
+.cbx-cell[data-card='section_label'] .ops-nm {
+  font-size: calc(1.5 * var(--u, 13px));
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  /* Wraps, unlike a tile name: this IS the content, so a two-word section
+     heading must not be clipped to fit a row height meant for a label. */
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.cbx-cell[data-card='section_label'] .ops-sub,
+.cbx-cell[data-card='section_label'] .ops-val,
+.cbx-cell[data-card='section_label'] .ops-viz,
+.cbx-cell[data-card='section_label'] .ops-tag {
+  display: none;
+}

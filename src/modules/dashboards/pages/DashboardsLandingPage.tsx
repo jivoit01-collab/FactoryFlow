@@ -12,6 +12,7 @@ import {
   Gauge,
   IndianRupee,
   LayoutDashboard,
+  LayoutGrid,
   MonitorPlay,
   Navigation,
   Package,
@@ -41,6 +42,7 @@ import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/compo
 
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
+import { BOARD_LIST_VIEW_PERMISSIONS } from '../builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
@@ -66,6 +68,18 @@ interface DashboardsModuleCard {
 // entries: a board that is reachable from the menu but missing here reads as
 // one this login cannot open at all. `landingParity.test.ts` enforces it.
 const dashboardsModules: DashboardsModuleCard[] = [
+  {
+    // Boards people compose themselves. Gated WIDER than the editor is: two
+    // different people open this page, somebody who builds boards and
+    // somebody a board was published to, and the second holds no build
+    // right. See BOARD_LIST_VIEW_PERMISSIONS for why it is not simply
+    // ungated -- the same list gates the route and the menu entry.
+    title: 'My Dashboards',
+    icon: <LayoutGrid className="h-5 w-5" />,
+    route: '/dashboards/builder',
+    accent: 'amber',
+    permissions: BOARD_LIST_VIEW_PERMISSIONS,
+  },
   {
     title: 'Board Carousel',
     icon: <GalleryHorizontalEnd className="h-5 w-5" />,

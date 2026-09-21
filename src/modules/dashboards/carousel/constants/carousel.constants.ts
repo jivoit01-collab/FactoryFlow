@@ -18,16 +18,42 @@ import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
  * is the point (a carousel-only login has no route to them) and it is also why
  * the gate has to be restated at this level rather than assumed.
  */
+/** The three-plus hand-built pages the rotation knows how to mount by name. */
+export type FixedSlideKey = 'admin' | 'plant' | 'logistics' | 'accounts';
+
 export interface CarouselSlide {
-  /** Stable key — used for the dot, the storage value and the hotkey order. */
-  key: 'admin' | 'plant' | 'logistics' | 'accounts';
+  /**
+   * Stable key — used for the dot, the storage value and the hotkey order.
+   *
+   * A `FixedSlideKey` for one of the hand-built boards, or `built:<slug>` for
+   * a board somebody composed. Widened from the union so the rotation can
+   * carry both; `builtSlug` is what actually decides which of the two a slide
+   * is, because a key is a label and should not be parsed.
+   */
+  key: string;
   /** What the dot says. Matches the sidebar entry, not the board's own heading,
    *  because the reader picking a slide is reading the menu's vocabulary. */
   label: string;
-  /** Any one of these opens the slide, matching the board's own route. */
+  /**
+   * Any one of these opens the slide, matching the board's own route.
+   *
+   * EMPTY for a built board, and that is not a hole. A built board's slide is
+   * only in the list because the SERVER put it there: the carousel endpoint
+   * checks, per board, that this reader may open it and holds at least one of
+   * its cards' feeds. Re-deriving that here is impossible — which rights a
+   * built board needs depends on what its author dragged onto it this
+   * morning, which is exactly why the check lives on the server.
+   */
   permissions: readonly string[];
   /** Where the board lives on its own, for the "open this one" link. */
   path: string;
+  /**
+   * Set when this slide is a BUILT board rather than a hand-built page.
+   *
+   * The rotation mounts `CustomBoardView` with this slug instead of looking
+   * the key up in its page map. Absent on the fixed slides.
+   */
+  builtSlug?: string;
 }
 
 export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [

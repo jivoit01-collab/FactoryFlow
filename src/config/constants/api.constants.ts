@@ -555,6 +555,29 @@ export const API_ENDPOINTS = {
   ACCOUNTS_BOARD: {
     BOARD: '/dashboards/accounts-board/board/',
   },
+  // The dashboard builder. Boards people compose themselves out of a catalogue
+  // of cards, rather than boards a developer hand-builds.
+  //
+  // `BOARD_DATA` is ONE endpoint for every board there will ever be, and that
+  // is a security property rather than a tidiness one: a board's card is only
+  // allowed to honour a control_boards feed right because the whole board is
+  // composed behind a single server-side read. A per-card endpoint would be
+  // the browser-side fan-out that rule exists to forbid, invented one card at
+  // a time -- so if a future card needs data, it gets a card, not a URL.
+  BOARD_BUILDER: {
+    /** The palette: the cards THIS login may place, already filtered. */
+    CATALOGUE: '/dashboards/builder/catalogue/',
+    /** GET the boards you may open, POST a new one. */
+    BOARDS: '/dashboards/builder/boards/',
+    BOARD: (slug: string) => `/dashboards/builder/boards/${slug}/`,
+    /** The figures. Polled by the viewer; never called by the editor. */
+    BOARD_DATA: (slug: string) => `/dashboards/builder/boards/${slug}/data/`,
+    /** POST to publish, DELETE to take it back. */
+    BOARD_PUBLISH: (slug: string) => `/dashboards/builder/boards/${slug}/publish/`,
+    BOARD_DUPLICATE: (slug: string) => `/dashboards/builder/boards/${slug}/duplicate/`,
+    /** The built wall boards flagged onto the rotation. */
+    CAROUSEL: '/dashboards/builder/carousel/',
+  },
   // Stock Dashboard
   STOCK_DASHBOARD: {
     LIST: '/dashboards/stock/',

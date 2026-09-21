@@ -46,6 +46,21 @@ export const DASHBOARDS_PERMISSIONS = {
    * `admin_board/carousel.py`.
    */
   VIEW_BOARD_CAROUSEL: 'admin_board.can_view_board_carousel',
+  /**
+   * The dashboard builder's own right — who may ARRANGE a board.
+   *
+   * It grants no data whatsoever. The palette an author is offered is filtered
+   * to the cards whose feed rights they already hold, and every figure on
+   * every board they build is still withheld per card, per reader, by
+   * `control_boards.sections`. So this widens what somebody can compose and
+   * never what they can see, which is what makes it safe to hand out freely.
+   *
+   * Note what is NOT here: there is no "view custom boards" right. Opening a
+   * built board is decided per board (its author published it to you) and then
+   * per card (you hold that card's feed), never by a blanket permission — so a
+   * reader needs nothing from this file to open a board shared with them.
+   */
+  BUILD_DASHBOARDS: 'board_builder.can_build_dashboards',
 } as const;
 
 export type DashboardsPermission =

@@ -30,6 +30,31 @@ vi.mock('@/modules/dashboards/accounts-board/pages/AccountsDashboardPage', () =>
   default: () => <div>accounts board</div>,
 }));
 
+/*
+ * Built boards are stubbed the same way and for the same reason.
+ *
+ * `CustomBoardView` is one component for every board anybody composes, so
+ * mounting the real one here would pull in the board-data query and make a
+ * carousel test fail over somebody's card.
+ *
+ * `useCarouselBoards` is stubbed rather than given a QueryClient because
+ * WHICH built boards a login sees is not a frontend decision at all: the
+ * server filters that list per board, checking the reader may open each one
+ * and holds at least one of its cards' feeds. The page's job is to trust it
+ * and rotate what arrives, which is what these tests check.
+ */
+const built = vi.hoisted(() => ({
+  boards: [] as { slug: string; name: string; surface: string }[],
+}));
+
+vi.mock('@/modules/dashboards/builder/api', () => ({
+  useCarouselBoards: () => ({ data: { boards: built.boards } }),
+}));
+
+vi.mock('@/modules/dashboards/builder/components/CustomBoardView', () => ({
+  CustomBoardView: ({ slug }: { slug: string }) => <div>built board {slug}</div>,
+}));
+
 const held = vi.hoisted(() => ({ permissions: [] as string[], fullscreen: false }));
 
 vi.mock('@/core/auth/hooks/usePermission', () => ({
@@ -73,6 +98,7 @@ describe('BoardCarouselPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     held.fullscreen = false;
+    built.boards = [];
   });
 
   afterEach(() => {
@@ -239,5 +265,70 @@ describe('BoardCarouselPage', () => {
     );
     expect(screen.getByRole('tab', { name: /Plant Control/ })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Logistics Control/ })).toBeInTheDocument();
+  });
+
+  /**
+   * Boards somebody composed in the builder, rotating alongside the four
+   * hand-built ones.
+   *
+   * The thing worth pinning is WHERE THE DECISION LIVES. Which built boards a
+   * login sees is settled entirely on the server -- it filters the list per
+   * board, checking the reader may open it and holds at least one of its
+   * cards' feeds -- because the rights a built board needs depend on what its
+   * author dragged onto it that morning and cannot be written down here. So
+   * these tests assert the page trusts the list it is handed, and never that
+   * it second-guesses it.
+   */
+  describe('built boards', () => {
+    it('puts a built board after the hand-built ones', async () => {
+      // Order is the claim, and it is a deliberate one: the four hand-built
+      // boards are the factory's own summary, so somebody glancing at the
+      // wall should meet those before anybody's composed board. Asserted on
+      // the strip rather than by rotating, because how many fixed slides a
+      // given permission set yields is that board's business, not this
+      // test's.
+      built.boards = [{ slug: 'gate-wall', name: 'Gate wall', surface: 'light' }];
+
+      renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+      await screen.findByText('admin board');
+
+      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent);
+      expect(labels.at(-1)).toContain('Gate wall');
+      expect(labels.filter((label) => label?.includes('Gate wall'))).toHaveLength(1);
+    });
+
+    it('mounts the built board when the rotation reaches it', async () => {
+      // No board rights at all, so the only slide is the built one and the
+      // rotation lands on it immediately.
+      built.boards = [{ slug: 'gate-wall', name: 'Gate wall', surface: 'light' }];
+
+      renderCarousel([]);
+
+      expect(await screen.findByText('built board gate-wall')).toBeInTheDocument();
+    });
+
+    it('shows a built board to a login holding no board rights of its own', async () => {
+      // A slide with an EMPTY permission list. It is in the list because the
+      // SERVER put it there, having checked this reader may open that board
+      // and holds at least one of its cards' feeds. Re-deriving that here is
+      // impossible, so the page must not apply a gate of its own — if it
+      // did, every built board would be invisible to everybody.
+      built.boards = [{ slug: 'gate-wall', name: 'Gate wall', surface: 'light' }];
+
+      renderCarousel([]);
+
+      expect(await screen.findByText('built board gate-wall')).toBeInTheDocument();
+      expect(screen.queryByText('No boards to show')).not.toBeInTheDocument();
+    });
+
+    it('rotates only the hand-built boards when the server sends none', async () => {
+      built.boards = [];
+
+      renderCarousel([...ADMIN_BOARD_VIEW_PERMISSIONS]);
+      await screen.findByText('admin board');
+
+      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
+      expect(labels.some((label) => label.includes('Gate wall'))).toBe(false);
+    });
   });
 });

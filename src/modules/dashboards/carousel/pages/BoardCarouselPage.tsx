@@ -6,10 +6,12 @@ import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 
+import { useCarouselBoards } from '../../builder/api';
 import { useFullscreen } from '../../dispatch/hooks';
 import { BoardEmbedProvider } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { CarouselStrip } from '../components';
+import type { CarouselSlide, FixedSlideKey } from '../constants';
 import { CAROUSEL_SLIDES } from '../constants';
 import { useBoardRotation, useIdleChrome, useOverscan } from '../hooks';
 
@@ -28,6 +30,20 @@ const BOARDS = {
   logistics: lazy(() => import('../../logistics-control/pages/LogisticsControlDashboardPage')),
   accounts: lazy(() => import('../../accounts-board/pages/AccountsDashboardPage')),
 } as const;
+
+/**
+ * A board somebody composed, split out like the four above.
+ *
+ * One import for every built board there will ever be, because they are all
+ * the same component with a different slug — which is the whole point of the
+ * builder and the reason the rotation did not need a fifth, sixth and
+ * seventh entry in the map above.
+ */
+const BuiltBoard = lazy(() =>
+  import('../../builder/components/CustomBoardView').then((module) => ({
+    default: module.CustomBoardView,
+  })),
+);
 
 /**
  * The wall rotation: Admin, Plant, Logistics Control and Accounts in turn,
@@ -78,10 +94,35 @@ export default function BoardCarouselPage() {
    * re-applied at this level. A reader holding one board's rights gets a
    * carousel of one, which simply stops rotating.
    */
-  const slides = useMemo(
-    () => CAROUSEL_SLIDES.filter((slide) => hasAnyPermission(slide.permissions)),
-    [hasAnyPermission],
-  );
+  /**
+   * The built wall boards flagged onto the rotation.
+   *
+   * Already filtered per board by the server: it checks that this reader may
+   * open each one AND holds at least one of its cards' feeds, which cannot be
+   * checked here because it depends on what the board's author dragged onto
+   * it. A slide the screen could not read would otherwise rotate into view
+   * and sit there for a minute as a grid of refusals.
+   */
+  const builtBoards = useCarouselBoards();
+
+  const slides = useMemo(() => {
+    const fixed = CAROUSEL_SLIDES.filter((slide) => hasAnyPermission(slide.permissions));
+    const built: CarouselSlide[] = (builtBoards.data?.boards ?? []).map((board) => ({
+      // Namespaced so a board slugged "admin" cannot collide with the fixed
+      // slide of that name — the key is React's remount key and the dot's
+      // identity, and two slides sharing one would reconcile one board's tree
+      // into the other's.
+      key: `built:${board.slug}`,
+      label: board.name,
+      // Empty by design; see CarouselSlide.permissions.
+      permissions: [],
+      path: `/dashboards/board/${board.slug}`,
+      builtSlug: board.slug,
+    }));
+    // After the hand-built boards, always. Those four are the factory's own
+    // summary and somebody glancing at the wall should meet them first.
+    return [...fixed, ...built];
+  }, [hasAnyPermission, builtBoards.data]);
 
   const rotation = useBoardRotation(slides.length);
   const { visible } = useIdleChrome(rotation.paused);
@@ -130,12 +171,25 @@ export default function BoardCarouselPage() {
   }, [next, previous, togglePaused, toggle, goTo]);
 
   const current = slides[rotation.index];
-  const Board = current ? BOARDS[current.key] : null;
+  /*
+   * The hand-built page for this slide, if it is one of those.
+   *
+   * A built board is deliberately NOT folded in here: it is one component
+   * taking a slug, with a different prop signature, and a variable holding
+   * "either of two components with different props" is a variable neither
+   * caller can render without a cast. The two are branched at the mount
+   * instead, off `builtSlug` rather than off the shape of the key string --
+   * a key is a label, and parsing labels is how they stop being safe to
+   * rename.
+   */
+  const FixedBoard = current?.builtSlug
+    ? null
+    : (BOARDS[current?.key as FixedSlideKey] ?? null);
 
   // Somebody who holds none of the three boards' rights. The route lets them in
   // on any one of those rights, so this is only reachable if their permissions
   // changed under them mid-session — say what is wrong rather than a blank wall.
-  if (!current || !Board) {
+  if (!current || (!FixedBoard && !current.builtSlug)) {
     return (
       <div ref={shellRef} className="bcx ops-board">
         <div className="bcx-empty">
@@ -209,7 +263,11 @@ export default function BoardCarouselPage() {
               </div>
             }
           >
-            <Board />
+            {current.builtSlug ? (
+              <BuiltBoard slug={current.builtSlug} embedded />
+            ) : (
+              FixedBoard && <FixedBoard />
+            )}
           </Suspense>
         </BoardEmbedProvider>
       </div>

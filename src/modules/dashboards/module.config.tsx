@@ -13,6 +13,10 @@ import type { ModuleConfig } from '@/core/types';
 
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from './accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from './admin-control/constants';
+import {
+  BOARD_BUILDER_PERMISSIONS,
+  BOARD_LIST_VIEW_PERMISSIONS,
+} from './builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
@@ -86,6 +90,11 @@ const AccountsDashboardPage = lazy(
   () => import('./accounts-board/pages/AccountsDashboardPage'),
 );
 const BoardCarouselPage = lazy(() => import('./carousel/pages/BoardCarouselPage'));
+const MyDashboardsPage = lazy(() => import('./builder/pages/MyDashboardsPage'));
+const DashboardBuilderPage = lazy(
+  () => import('./builder/pages/DashboardBuilderPage'),
+);
+const CustomBoardPage = lazy(() => import('./builder/pages/CustomBoardPage'));
 const PlantBoardConfigPage = lazy(() => import('./plant-board/pages/PlantBoardConfigPage'));
 const LogisticsControlDashboardPage = lazy(
   () => import('./logistics-control/pages/LogisticsControlDashboardPage'),
@@ -176,6 +185,43 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: BOARD_CAROUSEL_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Board Carousel' },
+    },
+    {
+      // The builder's own list. Gated WIDER than the editor, on purpose.
+      //
+      // Two different people arrive here: somebody who builds boards, and
+      // somebody a board was published to. The second holds no build right,
+      // so gating on that alone would hide every board they were deliberately
+      // given. The page hides "New board" instead, off the `can_build` flag
+      // the list endpoint returns, and the server refuses a POST from anybody
+      // who should not be making one.
+      path: '/dashboards/builder',
+      element: <MyDashboardsPage />,
+      layout: 'main',
+      permissions: BOARD_LIST_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'My Dashboards' },
+    },
+    {
+      // The editor. Gated on the build right, which grants no DATA: the
+      // palette is filtered server-side to the cards this author may read,
+      // and every figure on every board they build is still withheld per
+      // card, per reader. See board_builder/permissions.py.
+      path: '/dashboards/builder/:slug',
+      element: <DashboardBuilderPage />,
+      layout: 'main',
+      permissions: BOARD_BUILDER_PERMISSIONS,
+      breadcrumb: { label: 'Edit' },
+    },
+    {
+      // A built board, read. Ungated for the same reason the list is: who may
+      // open one is decided per board (its author published it to you) and
+      // then per card (you hold that card's feed), server-side, on every
+      // request. A permission list here could only ever be wrong -- it cannot
+      // know which board the slug names.
+      path: '/dashboards/board/:slug',
+      element: <CustomBoardPage />,
+      layout: 'main',
+      breadcrumb: { label: 'Board' },
     },
     {
       // The owner's screen: what the plant made and shipped this month, what is
@@ -571,9 +617,31 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // above, so without this spread the entire Dashboards menu -- not just
         // this one board -- stays hidden from the people it was built for.
         ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+        // The builder. Somebody granted only the build right holds nothing
+        // else under any module, so without this the whole Dashboards menu is
+        // hidden from the very people it was granted to. Note this does NOT
+        // cover a colleague who was merely SHARED a board -- they hold nothing
+        // at all, and reach the board by its link or from a menu they can see
+        // for some other reason. A right for "somebody shares boards with me"
+        // would be a right that grants nothing and has to be administered,
+        // which is worse than a link.
+        ...BOARD_LIST_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
+        {
+          // Boards people compose themselves, first: this is the only entry
+          // here that is a place to MAKE something rather than a place to
+          // read one thing.
+          //
+          // Gated on the build right OR any board feed, never left ungated:
+          // the sidebar shows a child with no permissions to everyone,
+          // including the wall screen whose entire promise is one entry and
+          // nothing else.
+          path: '/dashboards/builder',
+          title: 'My Dashboards',
+          permissions: BOARD_LIST_VIEW_PERMISSIONS,
+        },
         {
           // The rotation, above the boards it rotates: a wall screen is set up
           // once and never touched again, so the entry that sets it up comes
