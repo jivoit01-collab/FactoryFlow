@@ -10,6 +10,15 @@ export { maintenanceApi } from './maintenance.api';
 export * from './maintenance.queries';
 export { materialIndentApi } from './materialIndent.api';
 export * from './materialIndent.queries';
+export type {
+  AssignMetersPayload,
+  AssignMetersResult,
+  MeterScopeGaps,
+  MyElectricityMeters,
+  UserElectricityMeter,
+} from './meterManager.api';
+export { meterManagerApi } from './meterManager.api';
+export * from './meterManager.queries';
 export { returnableGatePassApi } from './returnableGatePass.api';
 export * from './returnableGatePass.queries';
 export { safetyFineApi } from './safetyFine.api';

@@ -32,6 +32,7 @@ import {
   useDailyElectricityReadings,
   useDeleteDailyElectricityReading,
   useElectricityMeters,
+  useMeterScope,
   useUpdateDailyElectricityReading,
   useUpdateElectricityMeter,
 } from '../api';
@@ -97,6 +98,13 @@ export default function MaintenanceDailyElectricityPage() {
     canManageAll || hasPermission(MAINTENANCE_PERMISSIONS.DELETE_DAILY_ELECTRICITY);
   const canRowAction = canEditReading || canDeleteReading;
 
+  // A permission says WHICH operations this user may perform; the assignment
+  // says on which meters. Both are enforced server-side — this only keeps the
+  // user out of a form the server would refuse. It fails open on purpose: when
+  // the scope cannot be fetched nothing here is narrowed (see useMeterScope).
+  const meterScope = useMeterScope();
+  const keeps = meterScope.manages;
+
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
   const [meterFilter, setMeterFilter] = useState('');
@@ -129,6 +137,14 @@ export default function MaintenanceDailyElectricityPage() {
   const [meterFormOpen, setMeterFormOpen] = useState(false);
 
   const activeMeters = useMemo(() => meters.filter((m) => m.is_active), [meters]);
+  // The picker offers only the meters he keeps: offering the rest would be an
+  // invitation to fill in a form the server then refuses. Editing is exempt
+  // because that select is disabled and only has to render the meter already on
+  // the reading.
+  const pickableMeters = useMemo(
+    () => activeMeters.filter((m) => keeps(m.id)),
+    [activeMeters, keeps],
+  );
 
   // The main meters are the incoming supply; every other meter measures a
   // slice of that same electricity. So the two are never added together — the
@@ -435,7 +451,7 @@ export default function MaintenanceDailyElectricityPage() {
               </td>
               {canRowAction && (
                 <td className="whitespace-nowrap px-3 py-2 text-right">
-                  {canEditReading && (
+                  {canEditReading && keeps(reading.meter) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -445,7 +461,7 @@ export default function MaintenanceDailyElectricityPage() {
                       <Pencil className="h-4 w-4" />
                     </Button>
                   )}
-                  {canDeleteReading && (
+                  {canDeleteReading && keeps(reading.meter) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -479,13 +495,34 @@ export default function MaintenanceDailyElectricityPage() {
               </Button>
             )}
             {canAddReading && (
-              <Button onClick={openAddReading} disabled={activeMeters.length === 0 && !metersLoading}>
+              <Button
+                onClick={openAddReading}
+                disabled={pickableMeters.length === 0 && !metersLoading}
+                title={
+                  pickableMeters.length === 0 && activeMeters.length > 0
+                    ? 'You are not the manager of any meter — ask an administrator.'
+                    : undefined
+                }
+              >
                 <Plus className="h-4 w-4 mr-1" /> Add Reading
               </Button>
             )}
           </div>
         )}
       </DashboardHeader>
+
+      {/* Only when the scope is KNOWN and genuinely empty. An unreachable
+          endpoint must never produce this message — it would send people to an
+          administrator over a network blip. */}
+      {meterScope.managesNothing && (canManageMeters || canAddReading) && (
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+          <CardContent className="p-4 text-sm text-amber-900 dark:text-amber-200">
+            You are not the manager of any meter, so you cannot change a meter or enter a
+            reading. The register below is still yours to read. An administrator assigns
+            this on Admin → Electricity Meter Managers.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">
@@ -690,7 +727,7 @@ export default function MaintenanceDailyElectricityPage() {
                 disabled={Boolean(editingReading)}
               >
                 <SelectOption value="">Select meter...</SelectOption>
-                {activeMeters.map((meter) => (
+                {(editingReading ? activeMeters : pickableMeters).map((meter) => (
                   <SelectOption key={meter.id} value={String(meter.id)}>
                     {meter.name}
                     {meter.meter_number ? ` (${meter.meter_number})` : ''}
@@ -897,17 +934,34 @@ export default function MaintenanceDailyElectricityPage() {
                         </td>
                         <td className="px-3 py-2 text-right">{meter.rate_per_unit}</td>
                         <td className="whitespace-nowrap px-3 py-2 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Edit meter ${meter.name}`}
-                            onClick={() => openEditMeter(meter)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => toggleMeterActive(meter)}>
-                            {meter.is_active ? 'Deactivate' : 'Activate'}
-                          </Button>
+                          {keeps(meter.id) ? (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Edit meter ${meter.name}`}
+                                onClick={() => openEditMeter(meter)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleMeterActive(meter)}
+                              >
+                                {meter.is_active ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </>
+                          ) : (
+                            // Named rather than blank: an empty cell reads as a
+                            // bug, and the reader needs to know whose meter it is.
+                            <span
+                              className="text-xs text-muted-foreground"
+                              title="Only this meter's manager can change it"
+                            >
+                              Not your meter
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

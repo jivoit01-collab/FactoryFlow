@@ -51,6 +51,16 @@ vi.mock('../api', () => ({
   useCreateDailyElectricityReading: () => ({ mutateAsync: createReading, isPending: false }),
   useUpdateDailyElectricityReading: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteDailyElectricityReading: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  // Unrestricted: this file is not about the meter-scope gate, which has its
+  // own file (dailyElectricityMeterScope.test.tsx).
+  useMeterScope: () => ({
+    scopeKnown: true,
+    unrestricted: true,
+    ids: new Set<number>(),
+    names: [],
+    manages: () => true,
+    managesNothing: false,
+  }),
 }));
 
 vi.mock('@/core/auth/hooks/usePermission', () => ({

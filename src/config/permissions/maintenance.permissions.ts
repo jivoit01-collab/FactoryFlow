@@ -86,6 +86,9 @@ export const MAINTENANCE_PERMISSIONS = {
   ADD_DAILY_ELECTRICITY: 'maintenance.can_add_daily_electricity',
   EDIT_DAILY_ELECTRICITY: 'maintenance.can_edit_daily_electricity',
   DELETE_DAILY_ELECTRICITY: 'maintenance.can_delete_daily_electricity',
+  // Who keeps which meter. Admin-only, and deliberately not one of the
+  // electricity rights above: a keeper must not be able to widen their own scope.
+  MANAGE_USER_ELECTRICITY_METERS: 'maintenance.can_manage_user_electricity_meters',
   VIEW_DAILY_WASTAGE: 'maintenance.can_view_daily_wastage',
   MANAGE_DAILY_WASTAGE: 'maintenance.can_manage_daily_wastage',
 } as const;

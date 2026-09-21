@@ -47,6 +47,16 @@ vi.mock('../api', () => ({
   useCreateDailyElectricityReading: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateDailyElectricityReading: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteDailyElectricityReading: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  // Unrestricted here on purpose: this file is about the permission gates, and
+  // the meter-scope gate that sits behind them has its own file.
+  useMeterScope: () => ({
+    scopeKnown: true,
+    unrestricted: true,
+    ids: new Set<number>(),
+    names: [],
+    manages: () => true,
+    managesNothing: false,
+  }),
 }));
 
 const granted = vi.hoisted(() => ({ current: new Set<string>() }));

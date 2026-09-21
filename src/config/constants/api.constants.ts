@@ -983,6 +983,14 @@ export const API_ENDPOINTS = {
     // Daily registers — factory-wide electricity readings and wastage logs.
     ELECTRICITY_METERS: '/maintenance/electricity-meters/',
     ELECTRICITY_METER_DETAIL: (meterId: number) => `/maintenance/electricity-meters/${meterId}/`,
+    // Electricity meter managers (per-meter scoping). MY_ELECTRICITY_METERS is
+    // not admin-gated and must not be treated as one: the register page calls
+    // it to decide which rows it may act on, and it only answers about the
+    // caller. The other three decide who keeps which meter, so they are.
+    MY_ELECTRICITY_METERS: '/maintenance/my-electricity-meters/',
+    USER_ELECTRICITY_METERS: '/maintenance/user-electricity-meters/',
+    USER_ELECTRICITY_METER_GAPS: '/maintenance/user-electricity-meters/gaps/',
+    USER_ELECTRICITY_METER_DETAIL: (id: number) => `/maintenance/user-electricity-meters/${id}/`,
     DAILY_ELECTRICITY_READINGS: '/maintenance/daily-electricity-readings/',
     DAILY_ELECTRICITY_READING_DETAIL: (readingId: number) =>
       `/maintenance/daily-electricity-readings/${readingId}/`,

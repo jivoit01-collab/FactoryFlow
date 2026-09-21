@@ -32,6 +32,9 @@ const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApp
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
 const WarehouseManagersPage = lazy(() => import('./pages/WarehouseManagersPage'));
+const ElectricityMeterManagersPage = lazy(
+  () => import('./pages/ElectricityMeterManagersPage'),
+);
 const SapReportAccessPage = lazy(() => import('./pages/SapReportAccessPage'));
 const SapIdentitiesPage = lazy(() => import('./pages/SapIdentitiesPage'));
 const CostMasterPage = lazy(() => import('./pages/CostMasterPage'));
@@ -79,6 +82,12 @@ const goodsReturnApprovalPermissions = [GOODS_RETURN_PERMISSIONS.APPROVE] as con
 // is gated on its own admin permission rather than on any movement permission.
 const warehouseManagerPermissions = [WAREHOUSE_PERMISSIONS.MANAGE_USER_WAREHOUSES] as const;
 
+// Same shape and the same reason as warehouse managers: it decides who keeps a
+// meter, not who may see the register, so it gates on its own admin permission.
+const electricityMeterManagerPermissions = [
+  MAINTENANCE_PERMISSIONS.MANAGE_USER_ELECTRICITY_METERS,
+] as const;
+
 // Manage-only, mirroring warehouse managers: VIEW is for costing/report
 // consumers and must not pull the Admin module into their sidebar.
 const costMasterPermissions = [COST_MASTER_PERMISSIONS.MANAGE] as const;
@@ -92,6 +101,7 @@ const sapIdentityPermissions = [SAP_IDENTITY_PERMISSIONS.MANAGE] as const;
 
 const adminPermissions = [
   ...warehouseManagerPermissions,
+  ...electricityMeterManagerPermissions,
   ...sapReportAccessPermissions,
   ...sapIdentityPermissions,
   ...costMasterPermissions,
@@ -171,6 +181,13 @@ export const adminModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Warehouse Managers' },
     },
     {
+      path: '/admin/electricity-meter-managers',
+      element: <ElectricityMeterManagersPage />,
+      layout: 'main',
+      permissions: electricityMeterManagerPermissions,
+      breadcrumb: { label: 'Electricity Meter Managers' },
+    },
+    {
       path: '/admin/sap-report-access',
       element: <SapReportAccessPage />,
       layout: 'main',
@@ -248,6 +265,11 @@ export const adminModuleConfig: ModuleConfig = {
           path: '/admin/warehouse-managers',
           title: 'Warehouse Managers',
           permissions: warehouseManagerPermissions,
+        },
+        {
+          path: '/admin/electricity-meter-managers',
+          title: 'Electricity Meter Managers',
+          permissions: electricityMeterManagerPermissions,
         },
         {
           path: '/admin/sap-report-access',
