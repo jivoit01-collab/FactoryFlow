@@ -43,12 +43,14 @@ const ROWS: DispatchSheetRow[] = [
   // sort has something to prove and the rows below still read 1, 2.
   row({
     plan_id: 1,
+    sap_invoice_doc_entry: 4001,
     dispatch_date: '2026-04-09',
     party: 'CHIRAG ENTERPRISES MUMBAI',
     litres: 10913,
   }),
   row({
     plan_id: 2,
+    sap_invoice_doc_entry: 4002,
     vehicle_stage: 'DOCKED',
     vehicle_stage_label: 'Docked',
     party: 'ARJUN DASS & SONS',
@@ -58,6 +60,7 @@ const ROWS: DispatchSheetRow[] = [
   }),
   row({
     plan_id: 3,
+    sap_invoice_doc_entry: 4003,
     vehicle_stage: 'EMPTY_IN',
     vehicle_stage_label: 'Empty Vehicle In',
     company_code: 'JIVO_BEVERAGES',
@@ -336,6 +339,40 @@ describe('the Dispatch Sheet', () => {
     });
 
     expect(screen.getByText('No line matches that.')).toBeInTheDocument();
+  });
+
+  it('shows a bill that has joined the plans and nothing more', () => {
+    // Chosen for planning and nothing else: no plan record behind it, no
+    // dispatch date, and every cell the plan would fill still blank.
+    ROWS.push(
+      row({
+        plan_id: null,
+        sap_invoice_doc_entry: 4004,
+        booking_status: 'PENDING',
+        vehicle_stage: 'BOOKED',
+        vehicle_stage_label: 'Booked',
+        dispatch_date: null,
+        party: 'NEW PARTY GURUGRAM',
+        invoice_no: '626039001',
+        bilty_no: '',
+        vehicle_no: '',
+        transport_name: '',
+        mobile_no: '',
+      }),
+    );
+    try {
+      openSheet();
+
+      // Last line of the sheet: with no date it sinks below every dated one,
+      // whichever way the register is sorted.
+      const last = bodyRows().length - 1;
+      expect(cellAt(last, columnIndexOf('Party')).textContent).toBe('NEW PARTY GURUGRAM');
+      expect(cellAt(last, columnIndexOf('Dispatch Date')).textContent).toBe('');
+      expect(cellAt(last, columnIndexOf('Bilty No.')).textContent).toBe('');
+      expect(cellAt(last, columnIndexOf('Vehicle No.')).textContent).toBe('');
+    } finally {
+      ROWS.pop();
+    }
   });
 
   it('says which cells are blank because SAP did not answer', () => {

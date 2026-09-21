@@ -59,6 +59,12 @@ function thisMonth() {
  * keep. It is those rows, laid out the way the desk reads them, and it fills
  * itself.
  *
+ * A line opens the day the bill joins the Plan page, not the day its truck
+ * leaves: a bill nobody has planned yet is a row here too, carrying what SAP
+ * knows and blanks everywhere the plan would speak. Having no dispatch date,
+ * those rows sink to the foot of whatever the sheet is sorted by, and the
+ * Dispatch Date filter's `(blank)` gathers them.
+ *
  * It reads like the sheet it replaces, not like a dashboard:
  *
  * * **Every column has a funnel and a sort**, so the header row is the filter
@@ -241,7 +247,7 @@ export default function DispatchSheetPage() {
           stays the height of the title it sits next to. */}
       <DashboardHeader
         title="Dispatch Sheet"
-        description="Every invoice that left the gate, day by day — the register, filled from the plans"
+        description="Every invoice in dispatch, day by day — from the day it joins the plans to the day it leaves the gate"
       >
         <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
           From
@@ -417,7 +423,7 @@ export default function DispatchSheetPage() {
               <tbody>
                 {rows.map((row, index) => (
                   <tr
-                    key={`${row.company_code}-${row.plan_id}`}
+                    key={`${row.company_code}-${row.sap_invoice_doc_entry}`}
                     className={`border-b hover:bg-muted/40 ${stageRowClass(row.vehicle_stage)}`}
                   >
                     {/* The numbers down the left. Clicking one picks the row. */}

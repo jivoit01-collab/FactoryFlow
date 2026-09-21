@@ -1,4 +1,10 @@
-/** The Dispatch Sheet — the outward register, one row per invoice dispatched. */
+/**
+ * The Dispatch Sheet — the outward register, one row per invoice in dispatch.
+ *
+ * A line opens when the bill joins the Plan page, not when its truck leaves,
+ * so a row may be a bill nothing has been typed against yet: no plan record,
+ * no dispatch date, and every cell the plan would fill left blank.
+ */
 
 
 /**
@@ -18,7 +24,8 @@ export type VehicleStage =
   | 'REJECTED';
 
 export interface DispatchSheetRow {
-  plan_id: number;
+  /** Null on a bill that is on the Plan page but has no plan record yet. */
+  plan_id: number | null;
   sap_invoice_doc_entry: number;
   company_code: string;
   company_name: string;
