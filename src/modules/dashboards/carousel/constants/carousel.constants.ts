@@ -1,5 +1,6 @@
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 
+import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../../admin-control/constants';
 import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
@@ -19,7 +20,7 @@ import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
  */
 export interface CarouselSlide {
   /** Stable key — used for the dot, the storage value and the hotkey order. */
-  key: 'admin' | 'plant' | 'logistics';
+  key: 'admin' | 'plant' | 'logistics' | 'accounts';
   /** What the dot says. Matches the sidebar entry, not the board's own heading,
    *  because the reader picking a slide is reading the menu's vocabulary. */
   label: string;
@@ -61,12 +62,31 @@ export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [
     permissions: LOGISTICS_CONTROL_VIEW_PERMISSIONS,
     path: '/dashboards/logistics-control',
   },
+  {
+    // The cash box. Offered to a display login, because this board is the same
+    // shape as Admin and Plant: one composed read, server-side, writing
+    // nothing — so the carousel right buys this screen and no route into the
+    // register behind it. `accounts_board/views.py` states that at the gate.
+    //
+    // A wall screen gets the figures WITHOUT the names. The per-person rows —
+    // who is holding cash, who took a salary advance — are masked for anyone
+    // without `can_view_cash_book`, which a display login has no reason to
+    // hold. A television in a corridor naming them is the outcome that
+    // arrangement exists to prevent.
+    key: 'accounts',
+    label: 'Accounts',
+    permissions: [
+      ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+      DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL,
+    ],
+    path: '/dashboards/accounts-board',
+  },
 ];
 
 /**
  * Who may open the carousel.
  *
- * Its own right FIRST, then the three boards' gates. The right exists so that an
+ * Its own right FIRST, then the boards' gates. The right exists so that an
  * unattended wall screen can hold exactly one permission, open exactly this
  * page and reach nothing else — every other entry in this list also opens the
  * operational report behind it, which is precisely what a display login must
@@ -76,8 +96,9 @@ export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [
  * should not need a new grant to watch them rotate.
  *
  * Holding ANY one of these opens the page, and the viewer then sees whichever
- * slides their rights cover: a display login gets Admin and Plant, a stock-only
- * login gets the same two, and only the boards' own rights bring Logistics.
+ * slides their rights cover: a display login gets Admin, Plant and Accounts, a
+ * stock-only login gets the first two, and only the boards' own rights bring
+ * Logistics.
  */
 export const BOARD_CAROUSEL_VIEW_PERMISSIONS: readonly string[] = [
   ...new Set([
@@ -85,6 +106,7 @@ export const BOARD_CAROUSEL_VIEW_PERMISSIONS: readonly string[] = [
     ...ADMIN_BOARD_VIEW_PERMISSIONS,
     ...PLANT_BOARD_VIEW_PERMISSIONS,
     ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
+    ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
   ]),
 ];
 

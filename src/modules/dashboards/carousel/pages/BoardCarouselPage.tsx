@@ -26,10 +26,12 @@ const BOARDS = {
   admin: lazy(() => import('../../admin-control/pages/AdminControlDashboardPage')),
   plant: lazy(() => import('../../plant-board/pages/PlantBoardDashboardPage')),
   logistics: lazy(() => import('../../logistics-control/pages/LogisticsControlDashboardPage')),
+  accounts: lazy(() => import('../../accounts-board/pages/AccountsDashboardPage')),
 } as const;
 
 /**
- * The wall rotation: Admin, Plant and Logistics Control in turn, unattended.
+ * The wall rotation: Admin, Plant, Logistics Control and Accounts in turn,
+ * unattended.
  *
  * WHY THIS IS A PAGE AND NOT A SETTING ON EACH BOARD
  * The three control boards were each built for somebody standing at them. A

@@ -26,6 +26,9 @@ vi.mock('@/modules/dashboards/plant-board/pages/PlantBoardDashboardPage', () => 
 vi.mock('@/modules/dashboards/logistics-control/pages/LogisticsControlDashboardPage', () => ({
   default: () => <div>logistics board</div>,
 }));
+vi.mock('@/modules/dashboards/accounts-board/pages/AccountsDashboardPage', () => ({
+  default: () => <div>accounts board</div>,
+}));
 
 const held = vi.hoisted(() => ({ permissions: [] as string[], fullscreen: false }));
 
@@ -149,18 +152,28 @@ describe('BoardCarouselPage', () => {
    * operational endpoints — so that slide must not appear, or the wall would
    * show a board of empty cards and 403s.
    */
-  it('rotates Admin and Plant, but not Logistics, for a display login', async () => {
+  it('rotates Admin, Plant and Accounts, but not Logistics, for a display login', async () => {
+    /**
+     * The three boards that compose themselves server-side behind ONE read,
+     * which is what makes honouring the carousel right on each of them narrow.
+     * Logistics fans out to roughly fifteen endpoints from the browser, so it
+     * stays out until it has a composed read of its own — see the slide list.
+     */
     vi.useFakeTimers({ shouldAdvanceTime: true });
     renderCarousel([DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL]);
 
     expect(await screen.findByText('admin board')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Plant Control/ })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Accounts/ })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: /Logistics Control/ })).not.toBeInTheDocument();
 
     await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
     await waitFor(() => expect(screen.getByText('plant board')).toBeInTheDocument());
 
-    // And back round to Admin — a rotation of two, not a dead end.
+    await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
+    await waitFor(() => expect(screen.getByText('accounts board')).toBeInTheDocument());
+
+    // And back round to Admin — a rotation of three, not a dead end.
     await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
     await waitFor(() => expect(screen.getByText('admin board')).toBeInTheDocument());
   });

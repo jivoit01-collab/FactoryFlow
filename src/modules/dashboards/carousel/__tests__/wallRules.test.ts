@@ -42,6 +42,11 @@ const SLIDE_MODULES: Record<(typeof CAROUSEL_SLIDES)[number]['key'], string> = {
   admin: 'admin-control',
   plant: 'plant-board',
   logistics: 'logistics-control',
+  // No `:fullscreen` rules of its own — it is a working page rather than a
+  // wall board, so the pairing checks below skip it. Recorded anyway, because
+  // the completeness assertion is the point: a slide with no entry here is a
+  // slide nothing checks.
+  accounts: 'accounts-board',
 };
 
 /** Every stylesheet belonging to a board in the rotation, with its path. */
