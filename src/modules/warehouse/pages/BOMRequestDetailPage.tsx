@@ -90,6 +90,15 @@ function LineRow({
       </td>
       <td className="py-2 px-2 text-right text-sm">
         {line.required_qty} {line.uom}
+        {/* Why the ask is smaller than the bill: the part already standing at
+            the line was netted off when the request was raised. Without it an
+            approver reads 1,165 against a run that needs 24,000 and has no way
+            to tell the difference between a narrowed request and a wrong one. */}
+        {line.remarks && (
+          <span className="block text-xs font-normal text-muted-foreground">
+            {line.remarks}
+          </span>
+        )}
       </td>
       <td className={`py-2 px-2 text-right text-sm font-medium ${stockColor}`}>
         {stock.toFixed(3)}

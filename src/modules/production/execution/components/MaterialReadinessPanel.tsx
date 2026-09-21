@@ -380,12 +380,17 @@ export function MaterialReadinessPanel({
                                 <ClipboardCheck className="h-3 w-3" />
                                 {qty(check.approval_qty)}
                               </span>
+                              {/* Oil is netted against the line's staging the
+                                  same way caps are, so the note belongs on
+                                  both — and it names the warehouse the bill
+                                  actually consumes from, which is BH-PP for
+                                  every Beverages line. */}
                               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                {check.stock_source === 'REGISTER'
-                                  ? 'RM request'
-                                  : check.qty_at_production_consumption
-                                    ? `PM request · ${qty(check.qty_at_production_consumption)} already at BH-PC`
-                                    : 'PM request'}
+                                {check.stock_source === 'REGISTER' ? 'RM request' : 'PM request'}
+                                {!!check.qty_at_production_consumption &&
+                                  ` · ${qty(check.qty_at_production_consumption)} already at ${
+                                    check.issue_warehouse || 'BH-PC'
+                                  }`}
                               </p>
                             </>
                           ) : (
