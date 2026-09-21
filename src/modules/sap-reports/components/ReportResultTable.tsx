@@ -10,7 +10,9 @@ import type { SapReportCell, SapReportColumn, SapReportReferenceMatch } from '..
 import { useSapReportReferences } from '../api';
 import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
 import { findReferenceColumn } from '../utils/references';
+import { sumNumericColumns } from '../utils/totals';
 import { ReferenceRecordDialog } from './ReferenceRecordDialog';
+import { ReportTotalsBar } from './ReportTotalsBar';
 
 const PAGE_SIZE = 100;
 
@@ -99,6 +101,17 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const visible = sorted.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
+
+  // Totals cover the ticked rows if there are any, and otherwise whatever the
+  // search left — the same "what I am looking at" the copy button works on.
+  const totalledRows = useMemo(
+    () =>
+      (selected.size ? sorted.filter(({ index }) => selected.has(index)) : sorted).map(
+        ({ row }) => row,
+      ),
+    [sorted, selected],
+  );
+  const totals = useMemo(() => sumNumericColumns(columns, totalledRows), [columns, totalledRows]);
 
   const referenceIndex = useMemo(() => findReferenceColumn(columns), [columns]);
 
@@ -195,6 +208,13 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
 
   return (
     <div className="space-y-3">
+      <ReportTotalsBar
+        totals={totals}
+        rowCount={totalledRows.length}
+        totalRowCount={rows.length}
+        isSelection={selected.size > 0}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>

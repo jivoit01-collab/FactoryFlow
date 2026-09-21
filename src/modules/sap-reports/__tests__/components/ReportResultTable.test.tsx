@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -111,5 +111,42 @@ describe('ReportResultTable copying', () => {
     await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
     // Three rows plus the heading line.
     expect(copiedGrid()).toHaveLength(4);
+  });
+});
+
+describe('ReportResultTable totals', () => {
+  /** The value printed under a totals heading. */
+  function totalFor(label: string): string {
+    const heading = screen.getByTitle(label);
+    return heading.nextElementSibling?.textContent ?? '';
+  }
+
+  it('totals the amount columns and leaves the document numbers out', () => {
+    renderTable();
+
+    expect(totalFor('Total')).toBe('1,331.50');
+    // Doc No. is a label, not an amount — 1001 + 1002 + 1003 is nobody's answer.
+    expect(screen.queryByTitle('Doc No.')).toBeNull();
+    expect(screen.getByText('all 3 rows')).toBeInTheDocument();
+  });
+
+  it('follows the search', async () => {
+    renderTable();
+
+    fireEvent.change(screen.getByPlaceholderText(/search these rows/i), {
+      target: { value: 'BHARAT' },
+    });
+
+    await waitFor(() => expect(totalFor('Total')).toBe('90'));
+    expect(screen.getByText(/1 row of 3/)).toBeInTheDocument();
+  });
+
+  it('totals only the ticked rows once any are ticked', () => {
+    renderTable();
+
+    fireEvent.click(screen.getByLabelText('Select row 3'));
+
+    expect(totalFor('Total')).toBe('7');
+    expect(screen.getByText('1 row selected')).toBeInTheDocument();
   });
 });
