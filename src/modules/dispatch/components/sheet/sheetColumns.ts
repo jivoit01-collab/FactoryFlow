@@ -1,4 +1,5 @@
 import type { DispatchSheetRow } from '../../types/sheet.types';
+import { statusLabel } from './vehicleStage';
 
 /**
  * The workbook's columns, in the workbook's order.
@@ -29,6 +30,8 @@ export interface SheetColumn {
   value: (row: DispatchSheetRow) => string;
   /** What it is worth when sorted or totalled; absent for text columns. */
   number?: (row: DispatchSheetRow) => number | null;
+  /** What it sorts by, where the text in the cell would sort wrongly. */
+  sort?: (row: DispatchSheetRow) => string | number | null;
   /** Summed in the totals row at the foot of the sheet. */
   total?: boolean;
   /** On the workbook, but nothing in the app fills it yet. */
@@ -50,6 +53,12 @@ const DISPATCH_DATE: SheetColumn = {
   key: 'dispatch_date',
   label: 'Dispatch Date',
   value: (row) => text(row.dispatch_date),
+  // A line with no date is work still to be placed, not a line missing a
+  // figure, so it sorts as the furthest-off day rather than as a blank. The
+  // sheet opens newest day first, which puts those lines at the top where the
+  // desk will act on them, instead of under a month of finished ones. The
+  // cell itself stays empty, so the funnel still gathers them under (blank).
+  sort: (row) => row.dispatch_date ?? '9999-12-31',
 };
 const INVOICE_DATE: SheetColumn = {
   key: 'invoice_date',
@@ -123,16 +132,21 @@ const REMARKS: SheetColumn = {
   value: (row) => row.remarks,
 };
 /**
- * Where the truck is, not what the booking says.
+ * Where the truck is, not what the booking says — except before there is one.
  *
  * The plan's own booking status only ever reads Pending, Booked or
  * Dispatched; the register wants to know whether the vehicle is at the gate,
  * on the dock or gone, which is the same reading the pipeline board makes.
+ *
+ * The one exception is the line no vehicle has been booked for, which the
+ * stages call `BOOKED` and which `statusLabel` calls what it is. That gives
+ * this column's funnel an entry of its own — In plans, counted — which is how
+ * the desk pulls up everything still to be arranged.
  */
 const STATUS: SheetColumn = {
   key: 'vehicle_stage',
   label: 'Status',
-  value: (row) => row.vehicle_stage_label,
+  value: statusLabel,
 };
 
 /**

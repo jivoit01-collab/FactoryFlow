@@ -170,7 +170,9 @@ export default function DispatchSheetPage() {
     for (const column of columns) {
       out[column.key] = {
         value: (row) => column.value(row),
-        sortValue: column.number ? (row) => column.number?.(row) ?? null : undefined,
+        sortValue:
+          column.sort ??
+          (column.number ? (row) => column.number?.(row) ?? null : undefined),
       };
     }
     return out;

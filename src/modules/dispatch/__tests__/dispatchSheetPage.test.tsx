@@ -341,35 +341,67 @@ describe('the Dispatch Sheet', () => {
     expect(screen.getByText('No line matches that.')).toBeInTheDocument();
   });
 
+  /** A bill in the plans with nothing arranged for it: no plan record, no
+   *  date, and every cell the plan would fill still blank. */
+  const unplanned = () =>
+    row({
+      plan_id: null,
+      sap_invoice_doc_entry: 4004,
+      booking_status: 'PENDING',
+      vehicle_stage: 'BOOKED',
+      vehicle_stage_label: 'Booked',
+      dispatch_date: null,
+      party: 'NEW PARTY GURUGRAM',
+      invoice_no: '626039001',
+      bilty_no: '',
+      vehicle_no: '',
+      transport_name: '',
+      mobile_no: '',
+    });
+
   it('shows a bill that has joined the plans and nothing more', () => {
-    // Chosen for planning and nothing else: no plan record behind it, no
-    // dispatch date, and every cell the plan would fill still blank.
-    ROWS.push(
-      row({
-        plan_id: null,
-        sap_invoice_doc_entry: 4004,
-        booking_status: 'PENDING',
-        vehicle_stage: 'BOOKED',
-        vehicle_stage_label: 'Booked',
-        dispatch_date: null,
-        party: 'NEW PARTY GURUGRAM',
-        invoice_no: '626039001',
-        bilty_no: '',
-        vehicle_no: '',
-        transport_name: '',
-        mobile_no: '',
-      }),
-    );
+    ROWS.push(unplanned());
     try {
       openSheet();
 
-      // Last line of the sheet: with no date it sinks below every dated one,
-      // whichever way the register is sorted.
-      const last = bodyRows().length - 1;
-      expect(cellAt(last, columnIndexOf('Party')).textContent).toBe('NEW PARTY GURUGRAM');
-      expect(cellAt(last, columnIndexOf('Dispatch Date')).textContent).toBe('');
-      expect(cellAt(last, columnIndexOf('Bilty No.')).textContent).toBe('');
-      expect(cellAt(last, columnIndexOf('Vehicle No.')).textContent).toBe('');
+      // Top line: with no date it is work still to be placed, and the sheet
+      // opens newest day first, so it sits above the days already done.
+      expect(cellAt(0, columnIndexOf('Party')).textContent).toBe('NEW PARTY GURUGRAM');
+      expect(cellAt(0, columnIndexOf('Dispatch Date')).textContent).toBe('');
+      expect(cellAt(0, columnIndexOf('Bilty No.')).textContent).toBe('');
+      expect(cellAt(0, columnIndexOf('Vehicle No.')).textContent).toBe('');
+    } finally {
+      ROWS.pop();
+    }
+  });
+
+  it('does not call a line booked when no vehicle has been booked for it', () => {
+    ROWS.push(unplanned());
+    try {
+      openSheet();
+
+      // 'Booked' is the pipeline's word for the stage before the gate, and on
+      // this line it would be untrue -- nothing has been arranged at all.
+      expect(cellAt(0, columnIndexOf('Status')).textContent).toBe('In plans');
+    } finally {
+      ROWS.pop();
+    }
+  });
+
+  it('gathers the lines still to be arranged under their own filter', async () => {
+    ROWS.push(unplanned());
+    try {
+      openSheet();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Filter Status' }));
+      const dropdown = await screen.findByRole('dialog');
+
+      // Offered on its own, so the desk can pull up everything unarranged
+      // without reading down the sheet for it.
+      fireEvent.click(within(dropdown).getByText('In plans'));
+
+      expect(bodyRows()).toHaveLength(1);
+      expect(cellAt(0, columnIndexOf('Party')).textContent).toBe('NEW PARTY GURUGRAM');
     } finally {
       ROWS.pop();
     }

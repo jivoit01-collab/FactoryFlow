@@ -1,4 +1,4 @@
-import type { VehicleStage } from '../../types/sheet.types';
+import type { DispatchSheetRow, VehicleStage } from '../../types/sheet.types';
 
 /**
  * Colouring a line of the register by where its truck has got to.
@@ -68,6 +68,25 @@ export function stageRowClass(stage: VehicleStage): string {
 
 export function stageBadgeClass(stage: VehicleStage): string {
   return BADGE[stageTone(stage)];
+}
+
+/**
+ * What the Status cell says.
+ *
+ * The stage a truck is at begins at `BOOKED`, which is the pipeline's word for
+ * "on the plan, not yet at the gate" — and on a line where no vehicle has been
+ * booked at all it is a lie. Those lines are the ones the desk is looking for:
+ * a bill in the plans with nothing arranged for it yet, or one only just
+ * picked on Bill Selection. So they say so instead.
+ *
+ * Only the first stage is rewritten. Once a truck reaches the gate the booking
+ * has plainly happened, whatever the plan's own status column still reads.
+ */
+export function statusLabel(row: DispatchSheetRow): string {
+  if (row.vehicle_stage === 'BOOKED' && row.booking_status === 'PENDING') {
+    return 'In plans';
+  }
+  return row.vehicle_stage_label;
 }
 
 /** The key under the sheet, so nobody has to guess what a colour means. */
