@@ -190,8 +190,12 @@ describe('CreditNoteApprovalTable', () => {
 
     fireEvent.click(screen.getByText('A/R Credit Note'));
     expect(screen.getByText('JIVO CANOLA OIL 1 LTR')).toBeInTheDocument();
-    // Named in the grid ("vs …") and again in full inside the expander.
-    expect(screen.getAllByText(/A\/R Return 1626096511/).length).toBeGreaterThan(0);
+    // The one thing the panel is for is the lines. Everything the row already
+    // says — the party, what it was raised against — is not repeated under it:
+    // "vs A/R Return 1626096511" is in the grid and stays there alone.
+    expect(screen.getAllByText(/A\/R Return 1626096511/)).toHaveLength(1);
+    expect(screen.getAllByText('ILAHI CO.')).toHaveLength(1);
+    expect(screen.getAllByText('CUSTA000844')).toHaveLength(1);
   });
 
   it('renders a service credit note as an account and an amount, not as goods', () => {

@@ -397,10 +397,14 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
         <ServiceLineTable row={row} />
       )}
 
+      {/*
+        Only what the row itself could not say. The party, its card code and
+        what the credit note was raised against are all in the columns directly
+        above, so restating them here spent the panel on things the reader had
+        just read and buried the lines — the reason they opened the row — in a
+        block of repetition.
+      */}
       <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-        <div>
-          <span className="font-medium">Customer / vendor:</span> {row.party_name} ({row.card_code})
-        </div>
         {row.branch && (
           <div>
             <span className="font-medium">Branch:</span> {row.branch}
@@ -410,7 +414,8 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
           <span className="font-medium">Approval request:</span> {row.id}
           {row.template_name && ` · ${row.template_name}`}
         </div>
-        {row.base_documents.length > 0 && (
+        {/* Only the first fits in the column, so list them all once there are more. */}
+        {row.base_documents.length > 1 && (
           <div>
             <span className="font-medium">Raised against:</span> {row.base_documents.join(', ')}
           </div>
