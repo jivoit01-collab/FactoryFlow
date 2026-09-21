@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -92,8 +92,8 @@ describe('ReportResultTable copying', () => {
   it('copies what the search left, in the order the sort put it', async () => {
     renderTable();
 
-    fireEvent.click(screen.getByRole('button', { name: /doc no\./i }));
-    fireEvent.click(screen.getByRole('button', { name: /doc no\./i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Doc No.' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Doc No.' }));
 
     fireEvent.click(screen.getByRole('button', { name: /copy 3 rows/i }));
 
@@ -159,5 +159,88 @@ describe('ReportResultTable totals', () => {
     fireEvent.click(screen.getByLabelText('Select row 3'));
 
     expect(totalsCells()).toEqual(['', 'Selected total', '', '7']);
+  });
+});
+
+describe('ReportResultTable column filters', () => {
+  /** The rows of the grid itself, by their first real column. */
+  function bodyRows(): string[] {
+    return [...document.querySelectorAll('tbody tr')].map(
+      (row) => row.querySelectorAll('td')[1]?.textContent ?? '',
+    );
+  }
+
+  async function openFilter(label: string): Promise<HTMLElement> {
+    fireEvent.click(screen.getByRole('button', { name: `Filter ${label}` }));
+    return screen.findByRole('dialog');
+  }
+
+  it('gives every column a funnel', () => {
+    renderTable();
+
+    expect(screen.getByRole('button', { name: 'Filter Doc No.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filter Customer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filter Total' })).toBeInTheDocument();
+  });
+
+  it('keeps only the rows a value is ticked for', async () => {
+    renderTable();
+
+    const dropdown = await openFilter('Customer');
+    fireEvent.click(within(dropdown).getByText('BHARAT OIL'));
+
+    expect(bodyRows()).toEqual(['1,002']);
+  });
+
+  it('offers a number the way the cell under it spells it', async () => {
+    renderTable();
+
+    const dropdown = await openFilter('Total');
+    // 1234.5 reads as 1,234.50 in the grid; a filter offering "1234.5" would
+    // look like it belongs to a different table.
+    expect(within(dropdown).getByText('1,234.50')).toBeInTheDocument();
+  });
+
+  it('counts the totals over what the filters left', async () => {
+    renderTable();
+
+    const dropdown = await openFilter('Customer');
+    fireEvent.click(within(dropdown).getByText('BHARAT OIL'));
+
+    const totals = screen.getByRole('row', { name: 'Column totals' });
+    expect([...totals.querySelectorAll('td')].map((cell) => cell.textContent)).toEqual([
+      '',
+      'Filtered total',
+      '',
+      '90',
+    ]);
+  });
+
+  it('drops every column filter at once', async () => {
+    renderTable();
+
+    const dropdown = await openFilter('Customer');
+    fireEvent.click(within(dropdown).getByText('BHARAT OIL'));
+
+    fireEvent.click(screen.getByRole('button', { name: /clear filter/i }));
+
+    expect(bodyRows()).toHaveLength(3);
+  });
+
+  it('sorts up, down, then back to the order SAP sent', () => {
+    renderTable();
+
+    const heading = () => screen.getByRole('button', { name: 'Sort by Total' });
+
+    fireEvent.click(heading());
+    expect(bodyRows()).toEqual(['1,003', '1,002', '1,001']);
+
+    fireEvent.click(heading());
+    expect(bodyRows()).toEqual(['1,001', '1,002', '1,003']);
+
+    // The third click undoes the sort rather than starting the cycle again —
+    // a report's own ORDER BY is an answer in itself.
+    fireEvent.click(heading());
+    expect(bodyRows()).toEqual(['1,001', '1,002', '1,003']);
   });
 });

@@ -1,4 +1,5 @@
 import type { SapReportCell, SapReportColumn } from '../api';
+import { cellNumber } from './cells';
 
 /**
  * Last words that mark a numeric column as a label rather than an amount.
@@ -91,10 +92,8 @@ export function sumNumericColumns(
     let isWhole = true;
 
     for (const row of rows) {
-      const cell = row[index];
-      if (cell === null || cell === undefined || cell === '' || typeof cell === 'boolean') continue;
-      const value = typeof cell === 'number' ? cell : Number(cell);
-      if (!Number.isFinite(value)) continue;
+      const value = cellNumber(row[index]);
+      if (value === null) continue;
       total += value;
       count += 1;
       if (!Number.isInteger(value)) isWhole = false;

@@ -1,13 +1,15 @@
-import { ArrowDown, ArrowUp, Copy, Search } from 'lucide-react';
+import { Copy, Search } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ColumnFilter, type ColumnSpec, useLocalColumns } from '@/shared/components/sheetGrid';
 import { Badge, Button, Checkbox, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
-import { cn, formatNumber } from '@/shared/utils';
+import { cn } from '@/shared/utils';
 
 import type { SapReportCell, SapReportColumn, SapReportReferenceMatch } from '../api';
 import { useSapReportReferences } from '../api';
+import { cellNumber, cellText } from '../utils/cells';
 import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
 import { findReferenceColumn } from '../utils/references';
 import { sumNumericColumns } from '../utils/totals';
@@ -15,6 +17,16 @@ import { ReferenceRecordDialog } from './ReferenceRecordDialog';
 import { ReportTotalsRow } from './ReportTotalsRow';
 
 const PAGE_SIZE = 100;
+
+/**
+ * The sort key standing for "however SAP handed the rows over".
+ *
+ * The kit's sort always points at some column; a report's own ORDER BY is an
+ * answer in itself — a ledger comes back in date order because it was asked
+ * for that way — so this key sorts by the row's place in the result and gives
+ * the third click on a heading somewhere to go back to.
+ */
+const SAP_ORDER = '__sap_order';
 
 interface Props {
   columns: SapReportColumn[];
@@ -50,8 +62,9 @@ function emptySelection(rows: SapReportCell[][]): Selection {
 export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Props) {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounce(searchInput, 250);
-  const [sort, setSort] = useState<{ index: number; direction: 'asc' | 'desc' } | null>(null);
   const [page, setPage] = useState(0);
+  // Which column's filter is open, so only that column's value list is counted.
+  const [openColumn, setOpenColumn] = useState<string | null>(null);
   // The selection is held against the rows it was made on, so a fresh run —
   // which hands down a new array — drops last run's ticks without an effect.
   const [selection, setSelection] = useState<Selection>(() => emptySelection(rows));
@@ -64,13 +77,51 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
 
   const indexed = useMemo<IndexedRow[]>(() => rows.map((row, index) => ({ row, index })), [rows]);
 
-  const filtered = useMemo(() => {
+  const searched = useMemo(() => {
     if (!search.trim()) return indexed;
     const needle = search.trim().toLowerCase();
     return indexed.filter(({ row }) =>
       row.some((cell) => cell !== null && String(cell).toLowerCase().includes(needle)),
     );
   }, [indexed, search]);
+
+  // One spec per column, built from the result itself — a report's columns are
+  // only known once it has run, so they cannot be written out by hand the way
+  // the cash book's and the dispatch sheet's are.
+  const specs = useMemo(() => {
+    const out: Record<string, ColumnSpec<IndexedRow>> = {
+      [SAP_ORDER]: {
+        value: ({ index }) => String(index),
+        sortValue: ({ index }) => index,
+      },
+    };
+    columns.forEach((column, index) => {
+      out[column.key] = {
+        value: ({ row }) => cellText(row[index], column),
+        // Sorted as a number, not as the text of one: "1,234.50" beside "90"
+        // sorts the way a dictionary would, which is not a sort of amounts.
+        sortValue:
+          column.type === 'number' ? ({ row }: IndexedRow) => cellNumber(row[index]) : undefined,
+      };
+    });
+    return out;
+  }, [columns]);
+
+  const {
+    rows: sorted,
+    column: columnProps,
+    filteredColumns,
+    clearFilters,
+    sort,
+    setSort,
+  } = useLocalColumns(
+    searched,
+    specs,
+    { key: SAP_ORDER, direction: 'asc' },
+    {
+      activeColumn: openColumn,
+    },
+  );
 
   const docNumIndex = useMemo(
     () => columns.findIndex((column) => column.key.toLowerCase() === 'docnum'),
@@ -80,22 +131,12 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const uniqueDocNums = useMemo(() => {
     if (docNumIndex === -1) return null;
     const values = new Set<string>();
-    for (const { row } of filtered) {
+    for (const { row } of sorted) {
       const cell = row[docNumIndex];
       if (cell !== null && cell !== undefined && cell !== '') values.add(String(cell));
     }
     return values.size;
-  }, [filtered, docNumIndex]);
-
-  const sorted = useMemo(() => {
-    if (!sort) return filtered;
-    const isNumeric = columns[sort.index]?.type === 'number';
-    const factor = sort.direction === 'asc' ? 1 : -1;
-    return [...filtered].sort(
-      (left, right) =>
-        factor * compareCells(left.row[sort.index], right.row[sort.index], isNumeric),
-    );
-  }, [filtered, sort, columns]);
+  }, [sorted, docNumIndex]);
 
   // A filter or a new sort can leave the viewer on a page that no longer exists.
   const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -103,7 +144,8 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
   const visible = sorted.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE);
 
   // Totals cover the ticked rows if there are any, and otherwise whatever the
-  // search left — the same "what I am looking at" the copy button works on.
+  // search and the column filters left — the same "what I am looking at" the
+  // copy button works on.
   const totalledRows = useMemo(
     () =>
       (selected.size ? sorted.filter(({ index }) => selected.has(index)) : sorted).map(
@@ -137,12 +179,16 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
 
   const allShownSelected = sorted.length > 0 && sorted.every(({ index }) => selected.has(index));
 
-  function toggleSort(index: number) {
-    setPage(0);
-    setSort((current) => {
-      if (current?.index !== index) return { index, direction: 'asc' };
-      return current.direction === 'asc' ? { index, direction: 'desc' } : null;
-    });
+  /**
+   * Up, down, and back to SAP's own order — the third click on a heading undoes
+   * the sort rather than starting the cycle again.
+   */
+  function handleSort(columnKey: string, next: { key: string; direction: 'asc' | 'desc' }) {
+    if (sort.key === columnKey && sort.direction === 'desc') {
+      setSort({ key: SAP_ORDER, direction: 'asc' });
+      return;
+    }
+    setSort(next);
   }
 
   /** Tick or untick one row — or, on a shift-click, everything back to the last one. */
@@ -217,6 +263,19 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
           </span>
           {uniqueDocNums !== null && <span>· {uniqueDocNums.toLocaleString()} unique DocNums</span>}
           {selected.size > 0 && <span>· {selected.size.toLocaleString()} selected</span>}
+          {filteredColumns.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2"
+              onClick={() => {
+                setPage(0);
+                clearFilters();
+              }}
+            >
+              Clear {filteredColumns.length === 1 ? 'filter' : `${filteredColumns.length} filters`}
+            </Button>
+          )}
           {wasTruncated && (
             <Badge variant="outline" className="border-amber-500 text-amber-600">
               Cut off at {rowLimit.toLocaleString()} rows — narrow the filters
@@ -269,29 +328,31 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
                   aria-label="Select every row shown"
                 />
               </th>
-              {columns.map((column, index) => (
-                <th
-                  key={column.key}
-                  className={cn(
-                    'whitespace-nowrap px-3 py-2 font-medium',
-                    column.type === 'number' ? 'text-right' : 'text-left',
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleSort(index)}
-                    className="inline-flex items-center gap-1 hover:underline"
-                  >
-                    {column.label}
-                    {sort?.index === index &&
-                      (sort.direction === 'asc' ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      ))}
-                  </button>
-                </th>
-              ))}
+              {columns.map((column) => {
+                const props = columnProps(
+                  column.key,
+                  column.label,
+                  column.type === 'number' ? 'right' : 'left',
+                );
+                // Sorting or filtering makes page 7 a different seven hundred
+                // rows, so the reader goes back to the first page rather than
+                // into the middle of a result they have not seen yet.
+                return (
+                  <ColumnFilter
+                    key={column.key}
+                    {...props}
+                    onSort={(next) => {
+                      setPage(0);
+                      handleSort(column.key, next);
+                    }}
+                    onSelect={(picked) => {
+                      setPage(0);
+                      props.onSelect(picked);
+                    }}
+                    onOpen={() => setOpenColumn(column.key)}
+                  />
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -393,26 +454,7 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
 }
 
 function renderCell(cell: SapReportCell | undefined, column: SapReportColumn) {
-  if (cell === null || cell === undefined || cell === '') {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  if (column.type === 'number' && typeof cell === 'number') {
-    // Whole numbers are counts and document numbers; decimals are money or
-    // quantities. Showing "626080206.00" for an invoice number reads as a bug.
-    return Number.isInteger(cell) ? cell.toLocaleString() : formatNumber(cell);
-  }
-  return String(cell);
-}
-
-function compareCells(left: SapReportCell, right: SapReportCell, isNumeric: boolean): number {
-  const leftEmpty = left === null || left === undefined || left === '';
-  const rightEmpty = right === null || right === undefined || right === '';
-  if (leftEmpty && rightEmpty) return 0;
-  if (leftEmpty) return 1;
-  if (rightEmpty) return -1;
-
-  if (isNumeric) {
-    return Number(left) - Number(right);
-  }
-  return String(left).localeCompare(String(right), undefined, { numeric: true });
+  const text = cellText(cell, column);
+  if (!text) return <span className="text-muted-foreground">—</span>;
+  return text;
 }

@@ -1,3 +1,4 @@
+import { TOTALS_ROW_CLASS } from '@/shared/components/sheetGrid';
 import { cn, formatNumber } from '@/shared/utils';
 
 import type { SapReportColumn } from '../api';
@@ -23,7 +24,8 @@ interface Props {
  * its own column, where the eye already is, rather than in a separate panel the
  * reader has to match back to the grid by name.
  *
- * It rides inside the sticky header, so it stays put as the rows scroll under it.
+ * It rides inside the sticky header, so it stays put as the rows scroll under
+ * it, and wears the same face as the cash book's and the dispatch sheet's.
  */
 export function ReportTotalsRow({ columns, totals, rowCount, isSelection, isFiltered }: Props) {
   if (!totals.length) return null;
@@ -37,8 +39,8 @@ export function ReportTotalsRow({ columns, totals, rowCount, isSelection, isFilt
   const rows = `${rowCount.toLocaleString()} ${rowCount === 1 ? 'row' : 'rows'} added up`;
 
   return (
-    <tr className="border-b bg-muted" aria-label="Column totals">
-      <td className="whitespace-nowrap px-3 py-1.5" title={rows}>
+    <tr className={cn(TOTALS_ROW_CLASS, 'bg-muted')} aria-label="Column totals">
+      <td className="whitespace-nowrap" title={rows}>
         {!labelInFirstColumn && <span className={labelClass}>{label}</span>}
       </td>
       {columns.map((column, index) => {
@@ -46,10 +48,7 @@ export function ReportTotalsRow({ columns, totals, rowCount, isSelection, isFilt
         return (
           <td
             key={column.key}
-            className={cn(
-              'whitespace-nowrap px-3 py-1.5',
-              total ? 'text-right font-semibold tabular-nums' : 'text-left',
-            )}
+            className={cn('whitespace-nowrap', total ? 'text-right tabular-nums' : 'text-left')}
             title={total ? rows : undefined}
           >
             {total ? (
