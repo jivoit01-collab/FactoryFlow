@@ -12,7 +12,7 @@ import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
 import { findReferenceColumn } from '../utils/references';
 import { sumNumericColumns } from '../utils/totals';
 import { ReferenceRecordDialog } from './ReferenceRecordDialog';
-import { ReportTotalsBar } from './ReportTotalsBar';
+import { ReportTotalsRow } from './ReportTotalsRow';
 
 const PAGE_SIZE = 100;
 
@@ -208,13 +208,6 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
 
   return (
     <div className="space-y-3">
-      <ReportTotalsBar
-        totals={totals}
-        rowCount={totalledRows.length}
-        totalRowCount={rows.length}
-        isSelection={selected.size > 0}
-      />
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>
@@ -261,6 +254,13 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
       <div className="max-h-[65vh] overflow-auto rounded-md border">
         <table className="w-full text-sm">
           <thead className="sticky top-0 z-10 bg-muted">
+            <ReportTotalsRow
+              columns={columns}
+              totals={totals}
+              rowCount={totalledRows.length}
+              isSelection={selected.size > 0}
+              isFiltered={totalledRows.length < rows.length}
+            />
             <tr>
               <th className="w-9 px-3 py-2">
                 <Checkbox

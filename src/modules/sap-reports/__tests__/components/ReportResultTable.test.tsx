@@ -115,30 +115,42 @@ describe('ReportResultTable copying', () => {
 });
 
 describe('ReportResultTable totals', () => {
-  /** The value printed under a totals heading. */
-  function totalFor(label: string): string {
-    const heading = screen.getByTitle(label);
-    return heading.nextElementSibling?.textContent ?? '';
+  /** The totals row, cell by cell, as it sits over the headings. */
+  function totalsCells(): string[] {
+    const row = screen.getByRole('row', { name: 'Column totals' });
+    return [...row.querySelectorAll('td')].map((cell) => cell.textContent ?? '');
   }
 
-  it('totals the amount columns and leaves the document numbers out', () => {
+  it('puts each total in its own column', () => {
     renderTable();
 
-    expect(totalFor('Total')).toBe('1,331.50');
-    // Doc No. is a label, not an amount — 1001 + 1002 + 1003 is nobody's answer.
-    expect(screen.queryByTitle('Doc No.')).toBeNull();
-    expect(screen.getByText('all 3 rows')).toBeInTheDocument();
+    // The tick column, then Doc No. carrying the label, Customer, and the total.
+    expect(totalsCells()).toEqual(['', 'Total', '', '1,331.50']);
   });
 
-  it('follows the search', async () => {
+  it('sits above the headings, inside the header that stays put', () => {
+    renderTable();
+
+    const row = screen.getByRole('row', { name: 'Column totals' });
+    const head = row.closest('thead');
+    expect(head?.firstElementChild).toBe(row);
+  });
+
+  it('leaves the document numbers out — their sum is nobody’s answer', () => {
+    renderTable();
+
+    // 1001 + 1002 + 1003, which no one asked for.
+    expect(totalsCells()).not.toContain('3,006');
+  });
+
+  it('follows the search, and says so', async () => {
     renderTable();
 
     fireEvent.change(screen.getByPlaceholderText(/search these rows/i), {
       target: { value: 'BHARAT' },
     });
 
-    await waitFor(() => expect(totalFor('Total')).toBe('90'));
-    expect(screen.getByText(/1 row of 3/)).toBeInTheDocument();
+    await waitFor(() => expect(totalsCells()).toEqual(['', 'Filtered total', '', '90']));
   });
 
   it('totals only the ticked rows once any are ticked', () => {
@@ -146,7 +158,6 @@ describe('ReportResultTable totals', () => {
 
     fireEvent.click(screen.getByLabelText('Select row 3'));
 
-    expect(totalFor('Total')).toBe('7');
-    expect(screen.getByText('1 row selected')).toBeInTheDocument();
+    expect(totalsCells()).toEqual(['', 'Selected total', '', '7']);
   });
 });
