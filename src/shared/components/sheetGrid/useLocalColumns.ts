@@ -158,6 +158,17 @@ export function useLocalColumns<T>(
     totals[key] = sum;
   }
 
+  /**
+   * Replace one column's filter from outside its header.
+   *
+   * For a control that stands apart from the table but means the same thing
+   * as ticking a value in it -- the approvals screen's "waiting with" tiles,
+   * which are a filter on the With column wearing a different hat. Going
+   * through the same state is what keeps the header's tick in step with them.
+   */
+  const setFilter = (key: string, picked: string[]) =>
+    setFilters((f) => ({ ...f, [key]: picked }));
+
   /** Everything a `<ColumnFilter>` needs for one column. */
   const column = (key: string, label: string, align: 'left' | 'right' = 'left') => ({
     label,
@@ -165,7 +176,7 @@ export function useLocalColumns<T>(
     sort,
     onSort: setSort,
     selected: filters[key] ?? [],
-    onSelect: (picked: string[]) => setFilters((f) => ({ ...f, [key]: picked })),
+    onSelect: (picked: string[]) => setFilter(key, picked),
     values: activeColumn === undefined || activeColumn === key ? valuesFor(key) : [],
     align,
   });
@@ -174,6 +185,8 @@ export function useLocalColumns<T>(
     rows: sorted,
     totals,
     column,
+    filters,
+    setFilter,
     filteredColumns,
     clearFilters: () => setFilters({}),
     sort,

@@ -10,7 +10,7 @@ import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
 import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, TOTALS_ROW_CLASS, useLocalColumns } from '@/shared/components/sheetGrid';
+import { BLANK, ColumnFilter, TOTALS_ROW_CLASS, useLocalColumns } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
@@ -73,6 +73,9 @@ export default function CashApprovalsPage() {
   const counts = data?.counts;
   // Count and value per state, over the same queue the table is drawn from.
   const summary = data?.summary;
+  // Who the queue is waiting on. Grouped by the server over the whole queue,
+  // not the 500 rows it sends, so it stays right as a tab outgrows the page.
+  const waitingWith = useMemo(() => data?.by_approver ?? [], [data]);
   const deciding = state === 'PENDING' && canApprove;
 
   /**
@@ -90,7 +93,7 @@ export default function CashApprovalsPage() {
 
   // The queue arrives whole (capped at 500), so its column filters are built
   // from the rows themselves rather than asked for.
-  const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
+  const { rows, totals, column, filters, setFilter, filteredColumns, clearFilters } = useLocalColumns(
     all,
     {
       date: { value: (row) => formatDay(row.entry_date) },
@@ -287,6 +290,60 @@ export default function CashApprovalsPage() {
           </Card>
         )}
       </div>
+
+      {/* Who the queue is actually waiting on.
+
+          The table mixes every approver's work together, so "why has nothing
+          moved this week" used to mean ticking each name in the With filter
+          in turn and reading the total off the bottom. Here it is at a
+          glance, biggest first, because the reason anybody wants it is to go
+          and chase whoever is holding up the most.
+
+          Only under Awaiting approval: on the other tabs this column says who
+          a payment WAS sent to, and nobody is waiting on them. */}
+      {state === 'PENDING' && waitingWith.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium">Waiting with</p>
+            <p className="text-xs text-muted-foreground">
+              Who each payment is sitting with. Click a name to see only theirs.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {waitingWith.map((who) => {
+                // The With column reads the approver's name, and a payment
+                // addressed to nobody reads blank -- so that is what the
+                // filter for it is ticking.
+                const value = who.approver_name || BLANK;
+                const picked = (filters.with ?? []).includes(value);
+                return (
+                  <button
+                    key={who.approver_id ?? 'unaddressed'}
+                    type="button"
+                    aria-pressed={picked}
+                    // A tile means "show me just theirs", so it replaces the
+                    // filter rather than adding to it, and clicking the one
+                    // already showing puts the whole queue back.
+                    onClick={() => setFilter('with', picked ? [] : [value])}
+                    className={`min-w-[10rem] rounded-md border px-3 py-2 text-left transition hover:border-primary/60 ${
+                      picked ? 'border-primary ring-1 ring-primary' : ''
+                    }`}
+                  >
+                    <span className="block text-xs text-muted-foreground">
+                      {who.approver_name || 'Open to any approver'}
+                    </span>
+                    <span className="block text-lg font-semibold tabular-nums">
+                      {money(who.total)}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {who.count} {who.count === 1 ? 'entry' : 'entries'}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">

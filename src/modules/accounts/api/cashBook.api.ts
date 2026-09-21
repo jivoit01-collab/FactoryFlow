@@ -277,6 +277,23 @@ export interface CashBookSummary {
   unsent_entries: number;
 }
 
+/**
+ * What one approver is holding up.
+ *
+ * Grouped by the server over the whole queue rather than the 500 rows it
+ * sends, so the figures stay right on a tab that has outgrown the page.
+ */
+export interface ApproverLoad {
+  /**
+   * Null on the payments addressed to nobody -- the ones off the sheet, which
+   * sit in every approver's queue rather than one person's.
+   */
+  approver_id: number | null;
+  approver_name: string;
+  count: number;
+  total: string;
+}
+
 export interface ApprovalQueue {
   state: EntryApprovalStatus;
   results: CashEntry[];
@@ -289,6 +306,8 @@ export interface ApprovalQueue {
    * "Awaiting approval (19)" above a table holding eighteen.
    */
   summary: Record<EntryApprovalStatus, { count: number; total: string }>;
+  /** Who the queue is waiting on, worst first. */
+  by_approver: ApproverLoad[];
 }
 
 /** One SAP account, straight out of the chart of accounts. */

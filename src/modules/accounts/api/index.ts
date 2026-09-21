@@ -6,6 +6,7 @@ export {
   type AdvanceStatement,
   type ApprovalQueue,
   type ApproverCandidate,
+  type ApproverLoad,
   type AtmAccount,
   type AtmStatement,
   type AttachResult,
