@@ -60,8 +60,11 @@ describe('APP_DEFAULTS', () => {
     expect(APP_DEFAULTS.theme).toBe('light');
   });
 
-  it('dateFormat is "DD/MM/YYYY"', () => {
-    expect(APP_DEFAULTS.dateFormat).toBe('DD/MM/YYYY');
+  it('dateFormat is "DD-MM-YYYY"', () => {
+    // Dashes, not slashes: a slashed date reads as ambiguous to anybody who
+    // has met an American one. Changing this separator reaches every date on
+    // every screen, so it is pinned here rather than left to a screenshot.
+    expect(APP_DEFAULTS.dateFormat).toBe('DD-MM-YYYY');
   });
 
   it('timeFormat is "HH:mm"', () => {
