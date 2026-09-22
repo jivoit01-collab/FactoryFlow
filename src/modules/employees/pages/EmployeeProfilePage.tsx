@@ -32,7 +32,9 @@ import {
   Pencil,
   Phone,
   ShieldCheck,
+  UserCheck,
   UserCog,
+  UserMinus,
   UserSquare2,
   Wallet,
 } from 'lucide-react';
@@ -74,8 +76,19 @@ type Dialogs =
   | 'designation'
   | 'promote'
   | 'status'
+  | 'deactivate'
+  | 'reactivate'
   | 'salary'
   | null;
+
+/**
+ * Still employed here, in the sense the rest of the app means it.
+ *
+ * Mirrors `employee_hierarchy.constants.IN_SERVICE_STATUSES`. Suspended counts:
+ * a suspension is a state somebody is in while still on the rolls, and the
+ * attendance sync still expects them at the gate.
+ */
+const IN_SERVICE = new Set(['ACTIVE', 'PROBATION', 'ON_LEAVE', 'SUSPENDED']);
 
 export default function EmployeeProfilePage() {
   const { employeeId: employeeIdParam } = useParams<{ employeeId: string }>();
@@ -213,6 +226,26 @@ export default function EmployeeProfilePage() {
                   <ArrowUpRight className="mr-1.5 h-4 w-4" />
                   Promote
                 </Button>
+                {/* One click for the thing people actually come here to do.
+                    It opens the status dialog already on the right answer
+                    rather than replacing it, so a manager still has to say who
+                    inherits their team and why. */}
+                {IN_SERVICE.has(person.employment_status) ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                    onClick={() => setDialog('deactivate')}
+                  >
+                    <UserMinus className="mr-1.5 h-4 w-4" />
+                    Deactivate
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setDialog('reactivate')}>
+                    <UserCheck className="mr-1.5 h-4 w-4" />
+                    Reactivate
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -408,6 +441,25 @@ export default function EmployeeProfilePage() {
           onOpenChange={(open) => setDialog(open ? 'status' : null)}
           employee={person}
           meta={meta.data}
+        />
+      )}
+      {/* Same dialog, opened on the answer the button names. */}
+      {dialog === 'deactivate' && (
+        <ChangeStatusDialog
+          open
+          onOpenChange={(open) => setDialog(open ? 'deactivate' : null)}
+          employee={person}
+          meta={meta.data}
+          initialStatus="INACTIVE"
+        />
+      )}
+      {dialog === 'reactivate' && (
+        <ChangeStatusDialog
+          open
+          onOpenChange={(open) => setDialog(open ? 'reactivate' : null)}
+          employee={person}
+          meta={meta.data}
+          initialStatus="ACTIVE"
         />
       )}
       {dialog === 'salary' && (

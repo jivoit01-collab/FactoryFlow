@@ -23,7 +23,7 @@ import { useMemo, useState } from 'react';
 import { API_CONFIG } from '@/config/constants/api.constants';
 import { ATTENDANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
+import { Badge, Button, Card, CardContent, Input, Label, Switch } from '@/shared/components/ui';
 
 import { useAttendanceRow, useAttendanceSourceStatus, useMuster } from '../api';
 import type { AttendanceStatusValue, MusterRow } from '../api/attendance.api';
@@ -49,10 +49,19 @@ export default function MonthlyRegisterPage() {
   const [month, setMonth] = useState(currentMonth());
   const [search, setSearch] = useState('');
   const [openRowId, setOpenRowId] = useState<number | null>(null);
+  // Off by default, like the daily sheet. Turn it on to settle a leaver's
+  // final month -- the days they worked are still on the register, and this is
+  // the only way back to them from the app.
+  const [includeInactive, setIncludeInactive] = useState(false);
 
   const filters = useMemo(
-    () => ({ month, search: search.trim() || undefined, page_size: 500 }),
-    [month, search],
+    () => ({
+      month,
+      search: search.trim() || undefined,
+      include_inactive: includeInactive,
+      page_size: 500,
+    }),
+    [month, search, includeInactive],
   );
   const muster = useMuster(filters);
   const source = useAttendanceSourceStatus().data;
@@ -101,6 +110,16 @@ export default function MonthlyRegisterPage() {
               onChange={(event) => setSearch(event.target.value)}
               className="w-[220px]"
             />
+          </div>
+          <div className="flex items-center gap-2 pb-2">
+            <Switch
+              id="register-include-inactive"
+              checked={includeInactive}
+              onChange={setIncludeInactive}
+            />
+            <Label htmlFor="register-include-inactive" className="cursor-pointer text-sm">
+              Include past employees
+            </Label>
           </div>
           <Button variant="outline" onClick={() => window.open(exportUrl, '_blank')}>
             <Download className="mr-2 h-4 w-4" />
