@@ -223,6 +223,56 @@
   text-align: right;
 }
 
+/*
+ * A note split into two labelled figures — the imprest card's opening and
+ * its balance now.
+ *
+ * A grid rather than one right-aligned sentence: these are two numbers a
+ * month apart, and run together on one line they read as a sum. The rule
+ * between them is the whole point, so it is a border rather than a
+ * punctuation mark that a wrap could carry onto the next line.
+ *
+ * Each cell keeps its own alignment — left cell left, right cell right — so
+ * both sit flush with the card's edges and neither drifts into the middle
+ * where it would be read as one column of two.
+ */
+.ab-stat-split {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr 1fr;
+  /* The note paragraph already carries the gap under the value. */
+  text-align: left;
+}
+
+.ab-stat-split-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ab-stat-split-cell + .ab-stat-split-cell {
+  border-left: 1px solid var(--ab-line);
+  padding-left: 0.5rem;
+  text-align: right;
+}
+
+.ab-stat-split-label {
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.ab-stat-split-value {
+  color: var(--ab-ink);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 /* Cash in hand, healthy: the one figure the page exists for. */
 .ab-stat-filled {
   background: var(--ab-accent);

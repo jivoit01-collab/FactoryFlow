@@ -182,7 +182,10 @@ function StatCard({
   value: string;
   hint?: string;
   tone?: 'filled' | 'alert';
-  note?: string;
+  // A node, not a string: the imprest card carries two companion lines —
+  // where the card opened and where it stands — and they are two sentences
+  // about two different moments, not one sentence to be joined up.
+  note?: React.ReactNode;
 }) {
   return (
     <Card className={`ab-stat${tone ? ` ab-stat-${tone}` : ''}`}>
@@ -577,20 +580,61 @@ export default function AccountsDashboardPage() {
             if (!headline)
               return <p className="ab-empty">{isLoading ? 'Loading…' : '—'}</p>;
 
+            // What the card had to spend this month: what it opened with,
+            // plus what was loaded onto it. A balance ADDED TO a flow, which
+            // is the one sum this screen otherwise refuses — so the tile
+            // breaks it back out underneath rather than leaving a reader to
+            // guess which of the two the big figure is. Zero when the imprest
+            // band is missing, so the tile falls back to the top-ups alone
+            // rather than to a total with a silent hole in it.
+            const opening = data?.imprest?.opening;
+            const available = headline.imprest_issued + (opening?.amount ?? 0);
+
             return (
               <>
                 <StatCard
                   label="Imprest issued"
-                  value={rupees(headline.imprest_issued)}
+                  value={rupees(available)}
                   hint={`${headline.imprest_count} top-ups`}
-                  // The card balance, not a restatement of the period — the
-                  // selector above already says which month this is. "On minus
-                  // off" is the subtraction this pair invites and it is wrong;
-                  // the real figure carries the card's opening balance and
-                  // every earlier month, so showing it means nobody does the
-                  // sum. "on", not "onto": one is a balance, the other a
-                  // movement, and 2,07,478 never went onto anything.
-                  note={`₹${money(data?.imprest?.card_balance)} on the card`}
+                  /*
+                   * The card's two ends, side by side: where it opened, and
+                   * what is on it now. Two balances a month apart, so they
+                   * read as a pair — and NEITHER is a restatement of the
+                   * period, which the selector above already gives.
+                   *
+                   * "On the card" is a balance carrying every earlier month,
+                   * not this month's on-minus-off. Showing it is what stops
+                   * somebody doing that subtraction themselves and getting a
+                   * plausible wrong answer. "on", not "onto": 2,07,478 never
+                   * went onto anything.
+                   *
+                   * Dropped entirely when the imprest band is missing — a
+                   * "₹0 on the card" under a live total is a fabricated zero,
+                   * and it looks exactly like a real one.
+                   */
+                  note={
+                    data?.imprest && (
+                      <span className="ab-stat-split">
+                        <span className="ab-stat-split-cell">
+                          <span className="ab-stat-split-label">
+                            Opening
+                            {opening?.carried_from
+                              ? ` · ${opening.carried_from}`
+                              : ''}
+                          </span>
+                          <span className="ab-stat-split-value">
+                            {rupees(opening?.amount)}
+                          </span>
+                        </span>
+                        <span className="ab-stat-split-cell">
+                          <span className="ab-stat-split-label">On the card</span>
+                          <span className="ab-stat-split-value">
+                            {rupees(data.imprest.card_balance)}
+                          </span>
+                        </span>
+                      </span>
+                    )
+                  }
                 />
                 <StatCard
                   label="Cash issued"

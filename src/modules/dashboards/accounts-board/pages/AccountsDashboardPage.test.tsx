@@ -67,6 +67,11 @@ function board(over: Partial<AccountsBoardResponse> = {}): AccountsBoardResponse
         },
       ],
       truncated: false,
+      opening: {
+        amount: 19538,
+        as_of: '2026-09-01',
+        carried_from: 'August 2026',
+      },
       card_balance: 207478,
       cards: [
         {
@@ -262,7 +267,8 @@ describe('the imprest figure', () => {
      */
     show(board());
 
-    expect(screen.getByText(/₹2,07,478 on the card/i)).toBeInTheDocument();
+    expect(screen.getByText('On the card')).toBeInTheDocument();
+    expect(screen.getByText('₹2,07,478')).toBeInTheDocument();
     expect(screen.queryByText(/₹1,87,940/)).not.toBeInTheDocument();
   });
 
@@ -279,6 +285,49 @@ describe('the imprest figure', () => {
     expect(rows[0]).toBeVisible();
     expect(screen.getByText('₹1,50,000')).toBeInTheDocument();
     expect(screen.getByText('₹1,00,000')).toBeInTheDocument();
+  });
+
+  it('adds the opening into the tile, and shows the card\u2019s two ends under it', () => {
+    /**
+     * The tile answers "what did the card have to spend": 19,538 carried in
+     * from August plus 11,65,000 loaded. That is a balance added to a flow —
+     * the one sum this screen otherwise refuses — so the opening is named
+     * underneath, beside the balance now, rather than left to be guessed at
+     * or subtracted back out.
+     */
+    show(board());
+
+    expect(screen.getByText('₹11,84,538')).toBeInTheDocument();
+    expect(screen.getByText(/Opening · August 2026/i)).toBeInTheDocument();
+    expect(screen.getByText('₹19,538')).toBeInTheDocument();
+    expect(screen.getByText('On the card')).toBeInTheDocument();
+    expect(screen.getByText('₹2,07,478')).toBeInTheDocument();
+  });
+
+  it('names no month when the whole book is shown', () => {
+    const data = board();
+    data.imprest!.opening = { amount: 19538, as_of: null, carried_from: null };
+    show(data);
+
+    // Exactly "Opening" — the month selector above also says "August 2026",
+    // so the absence is asserted on the label itself rather than on the page.
+    expect(screen.getByText('Opening')).toBeInTheDocument();
+    expect(screen.queryByText(/Opening ·/)).not.toBeInTheDocument();
+  });
+
+  it('falls back to the top-ups alone when the imprest band is missing', () => {
+    /**
+     * A total with a silent hole in it is worse than a smaller true one —
+     * and a "₹0 on the card" underneath would be a fabricated zero that
+     * looks exactly like a real one.
+     */
+    const data = board({ imprest: null });
+    data.meta.degraded = ['imprest'];
+    show(data);
+
+    expect(screen.getByText('₹11,65,000')).toBeInTheDocument();
+    expect(screen.queryByText('₹11,84,538')).not.toBeInTheDocument();
+    expect(screen.queryByText('On the card')).not.toBeInTheDocument();
   });
 });
 

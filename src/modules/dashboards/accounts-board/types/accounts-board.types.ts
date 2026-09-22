@@ -112,6 +112,21 @@ export interface AccountsImprest {
   truncated: boolean;
   cards: AccountsCard[];
   /**
+   * What was on the card when the period began — last month's closing,
+   * carried in. A month's top-ups read as the whole story without it.
+   *
+   * `carried_from` is the month it came from ("August 2026"), and is null for
+   * the whole book, where there is no previous month and the figure is the
+   * cards' own opening balances. Do not label a whole-book opening with a
+   * month name.
+   */
+  opening: {
+    amount: number;
+    /** The first of the period. Null when the whole book is shown. */
+    as_of: string | null;
+    carried_from: string | null;
+  };
+  /**
    * What is left ON the card now. A BALANCE, so like cash in hand it ignores
    * the period — and it is NOT this period's top-ups less its withdrawals.
    */
