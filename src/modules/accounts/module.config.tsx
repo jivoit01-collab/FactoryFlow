@@ -7,10 +7,10 @@
  * tick-and-bundle that batches approved vouchers for head office. **Advances**
  * is cash out with somebody who has not yet said what it went on. **Advance
  * Salary** is the opposite arrangement -- cash given against a wage, which
- * comes back off it once HR agree. **Cash Approvals** is where each payment is
- * agreed to, one by one. **Bunches** records the batches that were downloaded
- * and mailed, and **Branches** configures the short list every payment is
- * filed under -- Oil, Beverage, Water, Common.
+ * comes back off it. **Cash Approvals** is where each payment is agreed to,
+ * one by one. **Bunches** records the batches that were downloaded and mailed,
+ * and **Branches** configures the short list every payment is filed under --
+ * Oil, Beverage, Water, Common.
  *
  * The sidebar hides the whole module from anyone without a `cash_book.*`
  * permission (`modulePrefix`), so the groups the backend ships with are the

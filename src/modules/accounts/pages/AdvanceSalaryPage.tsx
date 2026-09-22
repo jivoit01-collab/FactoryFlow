@@ -1,66 +1,45 @@
-import {
-  AlertTriangle,
-  BadgeIndianRupee,
-  Ban,
-  Check,
-  Clock,
-  Loader2,
-  Undo2,
-  Users,
-  Wallet,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, BadgeIndianRupee, Check, Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
-import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { SalaryAdvance, SalaryAdvanceEmployee, SalaryAdvanceState } from '@/modules/accounts/api';
+import type { SalaryAdvanceEmployee, SalaryAdvanceRow, SalaryAdvanceState } from '@/modules/accounts/api';
 import {
-  useCancelSalaryAdvance,
   useDecideSalaryAdvances,
-  useMarkSalaryAdvanceDeducted,
   useRecordSalaryAdvance,
   useSalaryAdvanceEmployees,
   useSalaryAdvances,
-  useUndoSalaryAdvanceDeduction,
 } from '@/modules/accounts/api';
-import { confirmDialog, promptDialog, SearchableSelect } from '@/shared/components';
+import { confirmDialog, SearchableSelect } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { ColumnFilter, TOTALS_ROW_CLASS, useLocalColumns } from '@/shared/components/sheetGrid';
 import {
   Badge,
   Button,
   Card,
-  CardContent,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
-  Textarea,
+  NativeSelect,
+  SelectOption,
 } from '@/shared/components/ui';
 import { formatDay, formatNumber, getErrorMessage } from '@/shared/utils';
 
-const money = (value: string | number) => formatNumber(Number(value ?? 0));
-const today = () => new Date().toISOString().slice(0, 10);
+const money = (value: string | number) => `₹${formatNumber(Number(value ?? 0))}`;
 
-/**
- * The salary month a wage is docked in, as a month rather than a day.
- *
- * `deduct_from` is the first of the month by construction, so printing it as a
- * date would read "01-10-2026" — a day nobody is paid on, and one that invites
- * the reader to think the deduction happens on the 1st. It is a month.
- */
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+/**
+ * The salary month an advance is docked in, as a month rather than a day.
+ *
+ * `deduct_from` is the first of the month by construction, so printing it as a
+ * date would read "01-10-2026" — a day nobody is paid on, and one that invites
+ * the reader to think the deduction happens on the 1st. It is a month.
+ */
 function formatMonth(value: string | null): string {
   if (!value) return '—';
   const match = /^(\d{4})-(\d{2})/.exec(value);
@@ -68,311 +47,188 @@ function formatMonth(value: string | null): string {
   return `${MONTHS[Number(match[2]) - 1]} ${match[1]}`;
 }
 
-const STATE_LABEL: Record<SalaryAdvanceState, string> = {
-  PENDING: 'With HR',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-};
+/** The month a `YYYY-MM` key names, spelled out. */
+function monthLabel(key: string): string {
+  const [year, month] = key.split('-');
+  return `${MONTHS[Number(month) - 1]} ${year}`;
+}
+
+/**
+ * This month, off the wall clock.
+ *
+ * Built from the local date parts rather than `toISOString().slice(0, 7)`,
+ * which is UTC: for the first five and a half hours of every month in IST that
+ * would name the month before and open the page on the wrong one.
+ */
+function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** The selector's "no month at all" choice. Not a month, so not a date. */
+const ALL_MONTHS = 'all';
+
+/** The month an advance paid in one month comes off: the next one. */
+function nextMonthOf(paidOn: string): string {
+  const match = /^(\d{4})-(\d{2})/.exec(paidOn);
+  if (!match) return '';
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  return month === 12 ? `January ${year + 1}` : `${MONTHS[month]} ${year}`;
+}
 
 const STATE_TONE: Record<SalaryAdvanceState, string> = {
+  NOT_SENT: 'bg-slate-100 dark:bg-slate-500/15 text-slate-700 dark:text-slate-300',
   PENDING: 'bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-amber-400',
   APPROVED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-400',
   REJECTED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-400',
 };
 
-/** The tabs, and what each is for. `null` is everything, cancelled rows aside. */
-const TABS: { key: SalaryAdvanceState | null; label: string }[] = [
-  { key: 'PENDING', label: 'With HR' },
-  { key: 'APPROVED', label: 'Approved' },
-  { key: 'REJECTED', label: 'Rejected' },
-  { key: null, label: 'All' },
-];
-
 /**
- * Advance Salary — cash given against a wage, and what HR decided about it.
+ * Advance Salary — cash handed over against a wage, voucher by voucher.
  *
- * Two departments, two jobs, one screen. Accounts hand the money over and
- * write it down here; HR say whether it comes back off a salary, and later
- * tick it off once it has. Neither can do the other's half: the page shows
- * each reader only the buttons their right actually carries, and the server
- * refuses the rest however the screen behaves.
+ * The same list the accounts board shows in its "Salary advance" panel, given
+ * a page of its own: the board scopes everything to one month and shows only
+ * the most recent few rows, which answers "what went out lately" and not "what
+ * has gone out". This is the whole book, and HR can agree on it.
  *
  * NOT the Advances page, which looks similar and is the opposite arrangement.
  * A float there is the factory's cash in somebody's pocket, settled by
- * spending it and explaining what on. This is money that became theirs when it
- * was handed over, and it is settled out of their pay.
+ * spending it and explaining what on. This money became theirs when it was
+ * handed over, and it comes back out of their pay.
+ *
+ * ONE ROW PER VOUCHER, LABELLED WITH THE REGISTER'S OWN WORDS
+ * -----------------------------------------------------------
+ * Not grouped by person, because the register cannot say who an advance was
+ * for. `advance_holder` means "whose float this payment clears", which is a
+ * different question, and on the live book it answers it wrongly. So "Paid to"
+ * is the voucher's own text — its Item ("Parveen khatun"), or its narrative
+ * when the Item is one of the custodian's generic words. It quotes the
+ * register and claims to identify nobody.
+ *
+ * WHICH IS WHY APPROVING ASKS WHO
+ * --------------------------------
+ * A verdict is about a person's pay, so it cannot be given against a quotation
+ * from a voucher. Most rows here have never been sent to HR and carry no
+ * employee at all; approving one names the person first, and only then agrees
+ * the deduction. Naming and deciding are separate rights, so the button is
+ * offered only to a reader who holds both.
  *
  * Nothing here moves the cash book's balance. The money left the box on the
- * voucher that paid it; counting it again would take it off twice.
+ * voucher that paid it, and counting it again would take it off twice.
  */
 export default function AdvanceSalaryPage() {
-  const { hasPermission } = usePermission();
-  const canRecord = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
-  const canDecide = hasPermission(CASH_BOOK_PERMISSIONS.SALARY_ADVANCE);
-
-  // HR open on their own work; everybody else on the whole list. The queue is
-  // the only thing HR are here for, and landing them on "All" would make them
-  // find it every time.
-  const [tab, setTab] = useState<SalaryAdvanceState | null>(canDecide ? 'PENDING' : null);
-  const [selected, setSelected] = useState<number[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
-
-  const { data, isLoading, isError, error, refetch } = useSalaryAdvances(
-    tab ? { state: tab } : undefined,
-  );
+  const { data, isLoading, isError, error, refetch } = useSalaryAdvances();
   const decide = useDecideSalaryAdvances();
-  const markDeducted = useMarkSalaryAdvanceDeducted();
-  const undoDeduction = useUndoSalaryAdvanceDeduction();
-  const cancel = useCancelSalaryAdvance();
+  const [naming, setNaming] = useState<SalaryAdvanceRow | null>(null);
+  const [month, setMonth] = useState(currentMonthKey);
 
   const all = useMemo(() => data?.results ?? [], [data]);
-  const summary = data?.summary;
 
-  // The list arrives whole, so its column filters are built from the rows
-  // themselves rather than asked for.
-  const { rows, totals, column, filteredColumns, clearFilters } = useLocalColumns(
-    all,
-    {
-      // `sortValue` is the ISO the server sent. The cell reads dd-mm-yyyy,
-      // which sorts and lists by its DAY -- 01-08 before 02-07 before 04-06.
-      paid: { value: (row) => formatDay(row.paid_on), sortValue: (row) => row.paid_on },
-      person: { value: (row) => row.employee_name },
-      code: { value: (row) => row.employee_code },
-      department: { value: (row) => row.department },
-      reason: { value: (row) => row.reason },
-      amount: {
-        value: (row) => money(row.amount),
-        sortValue: (row) => Number(row.amount),
-        total: (row) => Number(row.amount),
-      },
-      state: { value: (row) => STATE_LABEL[row.state] },
-      deduct: {
-        value: (row) => deductionCell(row),
-        sortValue: (row) => row.deduct_from ?? '',
-      },
-    },
-    { key: 'paid', direction: 'desc' },
-  );
-  const filtering = filteredColumns.length > 0;
+  /**
+   * The months the book actually paid an advance in, newest first.
+   *
+   * Offered instead of an open date picker for the reason the accounts board
+   * gives: a selector that can land on a month nobody was paid in shows a
+   * screen of nothing, which reads as a broken page rather than a quiet month.
+   * This month is always offered even when it is empty, because it is where
+   * the page opens and the selector has to be able to say so.
+   */
+  const months = useMemo(() => {
+    const seen = new Set(all.map((row) => row.paid_on.slice(0, 7)));
+    seen.add(currentMonthKey());
+    return [...seen].sort().reverse();
+  }, [all]);
 
-  // Scoped to the rows on screen: a selection surviving a filter change would
-  // let somebody decide advances they can no longer see.
-  const decidable = useMemo(
-    () => (canDecide ? rows.filter((row) => row.state === 'PENDING') : []),
-    [rows, canDecide],
-  );
-  const chosen = useMemo(
-    () => selected.filter((id) => decidable.some((row) => row.id === id)),
-    [selected, decidable],
+  /** The newest month the book really did pay an advance in. */
+  const latestMonth = useMemo(() => {
+    const keys = all.map((row) => row.paid_on.slice(0, 7)).sort();
+    return keys.length > 0 ? keys[keys.length - 1] : null;
+  }, [all]);
+
+  const rows = useMemo(
+    () =>
+      month === ALL_MONTHS
+        ? all
+        : all.filter((row) => row.paid_on.slice(0, 7) === month),
+    [all, month],
   );
 
-  function toggle(id: number) {
-    setSelected((current) =>
-      current.includes(id) ? current.filter((each) => each !== id) : [...current, id],
-    );
-  }
+  // The server's own answer, not a permission string re-derived here. It is
+  // the same check the endpoint will make, so the screen cannot offer a button
+  // the request would refuse.
+  const canDecide = data?.can_decide ?? false;
+  const canRecord = data?.can_record ?? false;
 
-  function toggleAll() {
-    setSelected(chosen.length === decidable.length ? [] : decidable.map((row) => row.id));
-  }
+  // The month on show, not the book: a total that went on counting April while
+  // the table showed September would be read as September's. Summed over the
+  // rows rather than read off `summary`, which bands the book by what HR did
+  // with each advance and knows nothing about months. Safe to sum because the
+  // server sends the whole list in one go — there is no page after this one
+  // whose rows would be missing from it.
+  const total = useMemo(
+    () => rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0),
+    [rows],
+  );
 
-  async function approve(ids: number[]) {
-    const total = all
-      .filter((row) => ids.includes(row.id))
-      .reduce((sum, row) => sum + Number(row.amount), 0);
+  /** An advance HR have already been shown: the verdict is the only step left. */
+  async function approvePending(row: SalaryAdvanceRow) {
+    if (row.id === null) return;
     const ok = await confirmDialog({
-      title:
-        ids.length === 1
-          ? `Approve ${money(total)} for deduction?`
-          : `Approve ${ids.length} advances, ${money(total)} in all?`,
-      description:
-        'The amount is marked to come off the salary month after it was paid. ' +
-        'Tick it off here once the payroll has actually taken it.',
-      confirmLabel: 'Approve for deduction',
+      title: `Approve ${money(row.amount)} for deduction?`,
+      description: `${row.employee_name || row.description} — it comes off the ${nextMonthOf(
+        row.paid_on,
+      )} salary unless HR say otherwise.`,
+      confirmLabel: 'Approve',
     });
     if (!ok) return;
+
     try {
-      await decide.mutateAsync({ advance_ids: ids, approve: true });
-      setSelected([]);
-      toast.success(
-        ids.length === 1 ? 'Approved — it comes off their next salary' : `${ids.length} approved`,
-      );
+      await decide.mutateAsync({ advance_ids: [row.id], approve: true });
+      toast.success('Approved for deduction.');
     } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be approved.'));
+      toast.error(getErrorMessage(err, 'The approval did not go through.'));
     }
   }
-
-  async function reject(ids: number[]) {
-    // The cash is already with them, so a rejection is not "this will not
-    // happen" but "this is not coming back off a wage" -- and accounts have to
-    // be told which, and on what grounds.
-    const note = await promptDialog({
-      title: ids.length === 1 ? 'Reject this advance?' : `Reject ${ids.length} advances?`,
-      description:
-        'The money has already been handed over, so say how it is being recovered instead. ' +
-        'Accounts read this.',
-      label: 'Why',
-      placeholder: 'Recovering it in cash — he is settling it this week',
-      confirmLabel: 'Reject',
-      multiline: true,
-    });
-    if (note === null) return;
-    if (!note.trim()) {
-      toast.error('Say why — accounts have to know how it is being recovered.');
-      return;
-    }
-    try {
-      await decide.mutateAsync({ advance_ids: ids, approve: false, note });
-      setSelected([]);
-      toast.success(ids.length === 1 ? 'Rejected' : `${ids.length} rejected`);
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be rejected.'));
-    }
-  }
-
-  async function deduct(row: SalaryAdvance) {
-    const ok = await confirmDialog({
-      title: `Record ${money(row.amount)} as taken off ${row.employee_name}'s salary?`,
-      description: `Marked against ${formatMonth(row.deduct_from)}. It stops counting as owed.`,
-      confirmLabel: 'It has been deducted',
-    });
-    if (!ok) return;
-    try {
-      await markDeducted.mutateAsync({ id: row.id });
-      toast.success('Recorded as deducted');
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be recorded.'));
-    }
-  }
-
-  async function undo(row: SalaryAdvance) {
-    try {
-      await undoDeduction.mutateAsync(row.id);
-      toast.success('Back on the list to deduct');
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be put back.'));
-    }
-  }
-
-  async function remove(row: SalaryAdvance) {
-    const ok = await confirmDialog({
-      title: `Take ${money(row.amount)} for ${row.employee_name} out of the list?`,
-      description:
-        'Use this when the advance was written down by mistake. The row is kept, struck through, ' +
-        'so what HR were told and then untold can still be looked up.',
-      confirmLabel: 'Take it out',
-      destructive: true,
-    });
-    if (!ok) return;
-    try {
-      await cancel.mutateAsync(row.id);
-      toast.success('Taken out of the list');
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be taken out.'));
-    }
-  }
-
-  const deciding = decide.isPending;
 
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Advance Salary"
-        description="Cash given against a wage, and what HR decided comes back off it"
-      >
-        {canRecord && (
-          <Button onClick={() => setFormOpen(true)}>
-            <BadgeIndianRupee className="mr-2 h-4 w-4" /> Record an advance
-          </Button>
-        )}
-      </DashboardHeader>
+        description="Cash given against a wage, as the register recorded it."
+      />
 
-      {/* Summed over the whole book, not the tab on show: a queue of four
-          must not restate what is outstanding as though the rest were empty.
-          `summary` is undefined until it has been read, and the cards show a
-          dash rather than 0.00 until then -- a confident zero and "not known"
-          look identical and mean opposite things. */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          icon={<Clock className="h-4 w-4" />}
-          title="With HR"
-          amount={summary?.pending.amount}
-          count={summary?.pending.count}
-          note="Waiting on a decision"
-        />
-        <SummaryCard
-          icon={<Wallet className="h-4 w-4" />}
-          title="To deduct"
-          amount={summary?.outstanding.amount}
-          count={summary?.outstanding.count}
-          note="Approved, still to come off a wage"
-          emphasis
-        />
-        <SummaryCard
-          icon={<Check className="h-4 w-4" />}
-          title="Already deducted"
-          amount={summary?.deducted.amount}
-          count={summary?.deducted.count}
-          note="Recovered out of salary"
-        />
-        <SummaryCard
-          icon={<X className="h-4 w-4" />}
-          title="Rejected"
-          amount={summary?.rejected.amount}
-          count={summary?.rejected.count}
-          note="Not coming off a wage"
-        />
-      </div>
-
-      <DeductionSchedule />
-
-      <div className="rounded-md border">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
-          <div className="flex flex-wrap gap-1">
-            {TABS.map((each) => (
-              <Button
-                key={each.label}
-                size="sm"
-                variant={tab === each.key ? 'default' : 'ghost'}
-                onClick={() => {
-                  setTab(each.key);
-                  setSelected([]);
-                }}
-              >
-                {each.label}
-              </Button>
-            ))}
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h3 className="flex items-center gap-2 font-semibold">
+              <BadgeIndianRupee className="h-4 w-4 text-muted-foreground" />
+              Salary advance
+            </h3>
+            <NativeSelect
+              aria-label="Which month's advances to show"
+              className="h-8 w-auto"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            >
+              {months.map((key) => (
+                <SelectOption key={key} value={key}>
+                  {monthLabel(key)}
+                </SelectOption>
+              ))}
+              <SelectOption value={ALL_MONTHS}>All months</SelectOption>
+            </NativeSelect>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {filtering && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
-            {chosen.length > 0 && (
-              <>
-                <span className="text-sm text-muted-foreground">
-                  {chosen.length} selected
-                </span>
-                <Button size="sm" onClick={() => approve(chosen)} disabled={deciding}>
-                  {deciding ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="mr-2 h-4 w-4" />
-                  )}
-                  Approve
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => reject(chosen)}
-                  disabled={deciding}
-                >
-                  <X className="mr-2 h-4 w-4" /> Reject
-                </Button>
-              </>
-            )}
-          </div>
+          {/* A dash until a list has actually arrived. A confident ₹0.00 and
+              "nobody managed to ask" look identical on a card and mean
+              opposite things, and the second dressed as the first is how an
+              advance somebody is owed goes uncollected. */}
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Total{' '}
+            <span className="ml-1 text-sm font-semibold tabular-nums text-foreground">
+              {data ? money(total) : '—'}
+            </span>
+          </p>
         </div>
 
         {isLoading ? (
@@ -381,9 +237,9 @@ export default function AdvanceSalaryPage() {
           </div>
         ) : isError ? (
           /* A failed read is not an empty book, and the two must never look
-             alike: "no advance against salary here yet" is a statement about
-             the factory, and making it when nothing was read is a lie the
-             screen tells about money somebody is owed. */
+             alike: "no salary advance has been paid out" is a statement about
+             the factory, and making it when nothing was read at all is a lie
+             the screen tells about money somebody is owed. */
           <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
             <AlertTriangle className="h-10 w-10 text-amber-600 dark:text-amber-500" />
             <p className="font-medium">The advances could not be loaded.</p>
@@ -395,434 +251,228 @@ export default function AdvanceSalaryPage() {
             </Button>
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <Users className="mb-2 h-10 w-10 text-muted-foreground" />
+          /* "This month had none" and "the book has none" are different facts,
+             and the page opens on a month that may well be quiet — so the
+             empty month says which month, and points at the last one that was
+             not, rather than leaving the reader to hunt for it in the list. */
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
             <p className="text-muted-foreground">
-              {filtering
-                ? 'No advance matches those filters.'
-                : tab === 'PENDING'
-                  ? 'Nothing is waiting on HR.'
-                  : 'No advance against salary here yet.'}
+              {all.length === 0
+                ? 'No salary advance has been paid out of this book.'
+                : `No salary advance was paid out in ${monthLabel(month)}.`}
             </p>
+            {all.length > 0 && latestMonth && latestMonth !== month && (
+              <Button variant="outline" size="sm" onClick={() => setMonth(latestMonth)}>
+                Show {monthLabel(latestMonth)}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left">
-                  {canDecide && (
-                    <th className="px-3 py-2">
-                      {decidable.length > 0 && (
-                        <Checkbox
-                          aria-label="Select every advance waiting on you"
-                          checked={
-                            chosen.length > 0 && chosen.length === decidable.length
-                          }
-                          onCheckedChange={toggleAll}
-                        />
-                      )}
-                    </th>
-                  )}
-                  <ColumnFilter {...column('paid', 'Paid on')} />
-                  <ColumnFilter {...column('person', 'Employee')} />
-                  <ColumnFilter {...column('code', 'Code')} />
-                  <ColumnFilter {...column('department', 'Department')} />
-                  <ColumnFilter {...column('reason', 'What for')} />
-                  <ColumnFilter {...column('amount', 'Amount', 'right')} />
-                  <ColumnFilter {...column('state', 'HR')} />
-                  <ColumnFilter {...column('deduct', 'Deduction')} />
-                  <th className="px-3 py-2" />
+                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="px-4 py-2 font-medium">Paid to</th>
+                  <th className="px-4 py-2 text-right font-medium">Amount</th>
+                  <th className="px-4 py-2 font-medium">Dated</th>
+                  <th className="px-4 py-2 font-medium">HR</th>
+                  {canDecide && <th className="px-4 py-2" />}
                 </tr>
               </thead>
               <tbody>
-                <tr className={TOTALS_ROW_CLASS}>
-                  <td colSpan={canDecide ? 6 : 5}>
-                    Total of {rows.length} {rows.length === 1 ? 'advance' : 'advances'}
-                  </td>
-                  <td className="text-right tabular-nums">{money(totals.amount ?? 0)}</td>
-                  <td />
-                  <td />
-                  <td />
-                </tr>
-                {rows.map((row) => {
-                  const mine = canDecide && row.state === 'PENDING';
-                  const removed = row.is_active === false;
-                  return (
-                    <tr
-                      key={row.id}
-                      className={`border-b hover:bg-muted/40 ${
-                        removed ? 'text-muted-foreground line-through' : ''
-                      }`}
-                    >
-                      {canDecide && (
-                        <td className="px-3 py-2">
-                          {mine && (
-                            <Checkbox
-                              aria-label={`Select ${row.employee_name}'s advance`}
-                              checked={chosen.includes(row.id)}
-                              onCheckedChange={() => toggle(row.id)}
-                            />
+                {rows.map((row) => (
+                  // Keyed on the voucher where there is one, and on the HR
+                  // record otherwise: an advance recorded with no voucher
+                  // behind it has no `cash_entry`, and the two ids are drawn
+                  // from different tables so neither is unique on its own.
+                  <tr
+                    key={
+                      row.cash_entry ? `entry-${row.cash_entry}` : `advance-${row.id}`
+                    }
+                    className="border-b last:border-0 hover:bg-muted/40"
+                  >
+                    <td className="px-4 py-2">
+                      {/* Once HR have named somebody, that name is the answer
+                          to "paid to" and the voucher's wording is the note
+                          underneath it. Before that there is only the note. */}
+                      {row.employee_name ? (
+                        <>
+                          <span>{row.employee_name}</span>
+                          {row.description && (
+                            <span className="block text-xs text-muted-foreground">
+                              {row.description}
+                            </span>
                           )}
-                        </td>
+                        </>
+                      ) : (
+                        row.description || '—'
                       )}
-                      <td className="whitespace-nowrap px-3 py-2">
-                        {formatDay(row.paid_on)}
+                    </td>
+                    <td className="px-4 py-2 text-right tabular-nums">
+                      {money(row.amount)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2">
+                      {formatDay(row.paid_on)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2">
+                      <Badge className={STATE_TONE[row.state]} variant="secondary">
+                        {row.state_label}
+                      </Badge>
+                      {row.state === 'APPROVED' && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          off {formatMonth(row.deduct_from)}
+                        </span>
+                      )}
+                    </td>
+                    {canDecide && (
+                      <td className="whitespace-nowrap px-4 py-2 text-right">
+                        {row.state === 'PENDING' ? (
+                          <Button
+                            size="sm"
+                            disabled={decide.isPending}
+                            onClick={() => void approvePending(row)}
+                          >
+                            <Check className="mr-2 h-4 w-4" /> Approve
+                          </Button>
+                        ) : row.state === 'NOT_SENT' && canRecord ? (
+                          /* Nobody has said who this was for, and the register
+                             cannot. Approving it starts by naming them. */
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setNaming(row)}
+                          >
+                            <Check className="mr-2 h-4 w-4" /> Approve
+                          </Button>
+                        ) : null}
                       </td>
-                      <td className="px-3 py-2 font-medium">{row.employee_name}</td>
-                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                        {row.employee_code}
-                      </td>
-                      <td className="px-3 py-2">{row.department || '—'}</td>
-                      <td className="max-w-[320px] px-3 py-2">{row.reason || '—'}</td>
-                      <td className="px-3 py-2 text-right font-medium tabular-nums">
-                        {money(row.amount)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge variant="outline" className={STATE_TONE[row.state]}>
-                          {STATE_LABEL[row.state]}
-                        </Badge>
-                        {row.decision_note && (
-                          <p className="mt-1 max-w-[260px] text-xs text-muted-foreground no-underline">
-                            {row.decision_note}
-                          </p>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        {deductionCell(row)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <RowActions
-                          row={row}
-                          canDecide={canDecide}
-                          canRecord={canRecord}
-                          busy={deciding || markDeducted.isPending || undoDeduction.isPending}
-                          onApprove={() => approve([row.id])}
-                          onReject={() => reject([row.id])}
-                          onDeduct={() => deduct(row)}
-                          onUndo={() => undo(row)}
-                          onRemove={() => remove(row)}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
+                    )}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
-      {formOpen && <RecordAdvanceDialog open={formOpen} onOpenChange={setFormOpen} />}
+      <ApproveUnsentDialog row={naming} onClose={() => setNaming(null)} />
     </div>
   );
 }
 
 /**
- * What comes off whose wage, and in which month.
+ * Approving a voucher nobody has sent to HR: name the person, then agree it.
  *
- * The table below is one row per advance, which is the right shape for
- * deciding on them and the wrong shape for acting on them: a man who took
- * three advances is three rows, and the payroll needs one figure. This is that
- * figure — per person, per salary month, outstanding only.
- *
- * Read off the approved list rather than the tab on show, so it says the same
- * thing whichever tab somebody is looking at.
+ * Two requests, in that order, because they are two different acts and the
+ * server keeps them apart — recording is book-keeping and deciding is HR's.
+ * If the second fails the first still stands, and the row is then waiting on
+ * HR rather than lost, which is what the message says.
  */
-function DeductionSchedule() {
-  const { data, isLoading } = useSalaryAdvances({ state: 'APPROVED' });
-
-  const groups = useMemo(() => {
-    const owed = (data?.results ?? []).filter((row) => row.is_outstanding);
-    const byPerson = new Map<
-      string,
-      { name: string; code: string; month: string | null; amount: number; count: number }
-    >();
-    for (const row of owed) {
-      // Keyed on the pair, not the person: two advances docked from different
-      // months are two different deductions, and adding them would tell the
-      // payroll to take both at once.
-      const key = `${row.employee}|${row.deduct_from ?? ''}`;
-      const found = byPerson.get(key);
-      if (found) {
-        found.amount += Number(row.amount);
-        found.count += 1;
-      } else {
-        byPerson.set(key, {
-          name: row.employee_name,
-          code: row.employee_code,
-          month: row.deduct_from,
-          amount: Number(row.amount),
-          count: 1,
-        });
-      }
-    }
-    return [...byPerson.values()].sort(
-      (a, b) => (a.month ?? '').localeCompare(b.month ?? '') || b.amount - a.amount,
-    );
-  }, [data]);
-
-  if (isLoading || groups.length === 0) return null;
-
-  return (
-    <div className="rounded-md border">
-      <div className="border-b bg-muted/40 px-3 py-2">
-        <p className="font-medium">To come off a salary</p>
-        <p className="text-xs text-muted-foreground">
-          Approved and not yet deducted, totalled per person and per salary month
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="px-3 py-2 font-medium">Employee</th>
-              <th className="px-3 py-2 font-medium">Code</th>
-              <th className="px-3 py-2 font-medium">Salary month</th>
-              <th className="px-3 py-2 text-right font-medium">Deduct</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((group) => (
-              <tr key={`${group.code}-${group.month}`} className="border-b">
-                <td className="px-3 py-2 font-medium">{group.name}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
-                  {group.code}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2">
-                  {formatMonth(group.month)}
-                </td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums">
-                  {money(group.amount)}
-                  {group.count > 1 && (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      over {group.count} advances
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-/**
- * What the deduction column says, which is three different things.
- *
- * An advance HR have not decided on has no deduction to describe; one they
- * rejected has none by definition; and an approved one is either owed off a
- * month or already taken. Saying "—" for all four states would hide the only
- * question HR came to the page with.
- */
-function deductionCell(row: SalaryAdvance): string {
-  if (row.state === 'REJECTED') return 'Not off salary';
-  if (row.state === 'PENDING') return '—';
-  if (row.deducted_on) return `Deducted ${formatDay(row.deducted_on)}`;
-  return `From ${formatMonth(row.deduct_from)}`;
-}
-
-/**
- * One headline figure.
- *
- * `amount` is undefined until the summary has actually been read, and that is
- * shown as a dash rather than 0.00. The two look identical on a card and mean
- * opposite things — "nothing is owed" against "nobody managed to ask" — and
- * the second dressed as the first is how an advance goes uncollected.
- */
-function SummaryCard({
-  icon,
-  title,
-  amount,
-  count,
-  note,
-  emphasis = false,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  amount?: string;
-  count?: number;
-  note: string;
-  emphasis?: boolean;
-}) {
-  const known = amount != null;
-  return (
-    <Card className={emphasis ? 'border-primary/40' : undefined}>
-      <CardContent className="p-4">
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          {icon} {title}
-        </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums">
-          {known ? money(amount) : '—'}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {known ? `${count ?? 0} ${count === 1 ? 'advance' : 'advances'} · ${note}` : 'Not read'}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * The buttons one row offers, which depend on who is reading it.
- *
- * HR decide and tick off; accounts correct their own mistakes. Neither is
- * shown the other's, and the server refuses either way round.
- */
-function RowActions({
+function ApproveUnsentDialog({
   row,
-  canDecide,
-  canRecord,
-  busy,
-  onApprove,
-  onReject,
-  onDeduct,
-  onUndo,
-  onRemove,
+  onClose,
 }: {
-  row: SalaryAdvance;
-  canDecide: boolean;
-  canRecord: boolean;
-  busy: boolean;
-  onApprove: () => void;
-  onReject: () => void;
-  onDeduct: () => void;
-  onUndo: () => void;
-  onRemove: () => void;
+  row: SalaryAdvanceRow | null;
+  onClose: () => void;
 }) {
-  if (row.is_active === false) {
-    return <span className="text-xs text-muted-foreground no-underline">Taken out</span>;
-  }
-
-  if (row.state === 'PENDING') {
-    return (
-      <div className="flex flex-wrap gap-1">
-        {canDecide && (
-          <>
-            <Button size="sm" variant="ghost" onClick={onApprove} disabled={busy}>
-              <Check className="mr-1 h-4 w-4" /> Approve
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onReject} disabled={busy}>
-              <X className="mr-1 h-4 w-4" /> Reject
-            </Button>
-          </>
-        )}
-        {canRecord && (
-          <Button size="sm" variant="ghost" onClick={onRemove} disabled={busy}>
-            <Ban className="mr-1 h-4 w-4" /> Take out
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  if (row.state === 'APPROVED' && canDecide) {
-    return row.deducted_on ? (
-      <Button size="sm" variant="ghost" onClick={onUndo} disabled={busy}>
-        <Undo2 className="mr-1 h-4 w-4" /> Not deducted after all
-      </Button>
-    ) : (
-      <Button size="sm" variant="ghost" onClick={onDeduct} disabled={busy}>
-        <Wallet className="mr-1 h-4 w-4" /> Mark deducted
-      </Button>
-    );
-  }
-
-  return <span className="text-xs text-muted-foreground">—</span>;
-}
-
-/**
- * Recording what accounts handed over.
- *
- * It reaches HR as soon as it is saved, which is the whole purpose of the row,
- * so the dialog says so rather than offering a draft.
- */
-function RecordAdvanceDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const record = useRecordSalaryAdvance();
-  const [employeeId, setEmployeeId] = useState<number | null>(null);
-  const [employeeName, setEmployeeName] = useState('');
-  const [paidOn, setPaidOn] = useState(today());
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
   const [search, setSearch] = useState('');
+  const [employee, setEmployee] = useState<SalaryAdvanceEmployee | null>(null);
+  const record = useRecordSalaryAdvance();
+  const decide = useDecideSalaryAdvances();
 
-  const { data: people = [], isLoading, isError } = useSalaryAdvanceEmployees(search);
+  const { data: people = [], isLoading, isError } = useSalaryAdvanceEmployees(
+    search,
+    row !== null,
+  );
+
+  const busy = record.isPending || decide.isPending;
+
+  function close() {
+    setSearch('');
+    setEmployee(null);
+    onClose();
+  }
 
   async function submit() {
-    if (employeeId == null) {
-      toast.error('Pick whose wage this comes off.');
-      return;
-    }
-    if (!amount || Number(amount) <= 0) {
-      toast.error('Enter an amount above zero.');
-      return;
-    }
+    if (!row || !employee) return;
+
+    let advanceId: number;
     try {
-      await record.mutateAsync({
-        employee: employeeId,
-        paid_on: paidOn,
-        amount: String(amount),
-        reason: reason.trim(),
+      const advance = await record.mutateAsync({
+        employee: employee.id,
+        paid_on: row.paid_on,
+        amount: row.amount,
+        // The voucher's own words, kept as what the advance was for. It is
+        // what the custodian wrote, and HR reading the row later have no
+        // other account of it.
+        reason: row.description,
+        cash_entry: row.cash_entry,
       });
-      toast.success(`${money(amount)} recorded for ${employeeName} — HR have it now`);
-      onOpenChange(false);
+      advanceId = advance.id;
     } catch (err) {
-      toast.error(getErrorMessage(err, 'That could not be recorded.'));
+      toast.error(getErrorMessage(err, 'The advance could not be recorded.'));
+      return;
+    }
+
+    try {
+      await decide.mutateAsync({ advance_ids: [advanceId], approve: true });
+      toast.success(`Approved — it comes off ${employee.full_name}'s next salary.`);
+      close();
+    } catch (err) {
+      toast.error(
+        getErrorMessage(
+          err,
+          `Recorded against ${employee.full_name}, but the approval did not go through. It is now waiting on HR.`,
+        ),
+      );
+      close();
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+    <Dialog open={row !== null} onOpenChange={(open) => !open && close()}>
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Record an advance against salary</DialogTitle>
+          <DialogTitle>Approve this advance for deduction</DialogTitle>
           <DialogDescription>
-            Cash handed over against somebody’s wages. The cash book balance does not move
-            here — the money left the box on its own voucher. This goes to HR straight
-            away, and comes off a salary once they approve it.
+            The voucher does not say whose wage this comes off. Name the person
+            and it is approved in their name, off the{' '}
+            {row ? nextMonthOf(row.paid_on) : ''} salary.
           </DialogDescription>
         </DialogHeader>
 
         {/* A plain box, not DialogBody: DialogBody's overflow would trap the
             person picker's list, which is an absolutely positioned div rather
-            than a portal. This dialog is short enough not to need a scroller. */}
-        <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="salary-advance-date">Paid on</Label>
-              <Input
-                id="salary-advance-date"
-                type="date"
-                value={paidOn}
-                onChange={(e) => setPaidOn(e.target.value)}
-              />
+            than a portal. This dialog is short enough not to need a scroller.
+
+            `min-w-0` is load-bearing. DialogContent is a grid, and a grid item
+            is min-width:auto — so anything in here that refuses to wrap sets a
+            floor under the dialog's width and drags it past its own max-width,
+            taking the picker and its dropdown with it. */}
+        <div className="min-w-0 space-y-4">
+          {row && (
+            <div className="min-w-0 rounded-md border bg-muted/40 px-3 py-2">
+              {/* Wrapped, never truncated. It is a whole sentence the custodian
+                  wrote -- "Cash paid Advance to Sharukh khan for personal use
+                  (deduct of june and july month) salary" -- and it is the only
+                  account of what the cash was for, so an ellipsis two thirds of
+                  the way through hides the part that says when it comes back. */}
+              <p className="whitespace-pre-line break-words text-sm font-medium">
+                {row.description || '—'}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                <span className="tabular-nums">{money(row.amount)}</span> · paid{' '}
+                {formatDay(row.paid_on)}
+                {row.voucher_number !== null && ` · voucher ${row.voucher_number}`}
+              </p>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="salary-advance-amount">Amount</Label>
-              <Input
-                id="salary-advance-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-          </div>
+          )}
 
           <SearchableSelect<SalaryAdvanceEmployee>
             inputId="salary-advance-employee"
-            label="Employee"
+            label="Whose wage does it come off"
             required
-            value={employeeName}
+            value={employee?.full_name ?? ''}
             items={people}
             isLoading={isLoading}
             isError={isError}
@@ -839,47 +489,26 @@ function RecordAdvanceDialog({
               </div>
             )}
             onSearchChange={setSearch}
-            onItemSelect={(person) => {
-              setEmployeeId(person.id);
-              setEmployeeName(person.full_name);
-            }}
-            onClear={() => {
-              setEmployeeId(null);
-              setEmployeeName('');
-            }}
+            onItemSelect={setEmployee}
+            onClear={() => setEmployee(null)}
             loadingText="Loading the payroll…"
             emptyText="Type to search"
             notFoundText="Nobody on the payroll matches that"
             errorText="The payroll could not be loaded."
           />
-
-          <div className="space-y-1">
-            <Label htmlFor="salary-advance-reason">What for</Label>
-            <Textarea
-              id="salary-advance-reason"
-              rows={2}
-              placeholder="Advance for his daughter’s school fees"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </div>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={record.isPending}
-          >
+          <Button variant="outline" onClick={close} disabled={busy}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={record.isPending}>
-            {record.isPending ? (
+          <Button onClick={() => void submit()} disabled={busy || !employee}>
+            {busy ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <BadgeIndianRupee className="mr-2 h-4 w-4" />
+              <Check className="mr-2 h-4 w-4" />
             )}
-            Record and send to HR
+            Approve
           </Button>
         </DialogFooter>
       </DialogContent>

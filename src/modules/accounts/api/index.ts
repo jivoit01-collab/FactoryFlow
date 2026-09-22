@@ -81,18 +81,15 @@ export {
   type SalaryAdvanceEmployee,
   type SalaryAdvanceList,
   type SalaryAdvanceListParams,
+  type SalaryAdvanceRow,
   salaryAdvancesApi,
   type SalaryAdvanceState,
   type SalaryAdvanceSummary,
 } from './salaryAdvances.api';
 export {
   SALARY_ADVANCE_QUERY_KEYS,
-  useCancelSalaryAdvance,
   useDecideSalaryAdvances,
-  useMarkSalaryAdvanceDeducted,
   useRecordSalaryAdvance,
   useSalaryAdvanceEmployees,
   useSalaryAdvances,
-  useUndoSalaryAdvanceDeduction,
-  useUpdateSalaryAdvance,
 } from './salaryAdvances.queries';

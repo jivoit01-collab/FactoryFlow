@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/core/auth';
+
 import {
   type DecideSalaryAdvancePayload,
   type RecordSalaryAdvancePayload,
@@ -7,32 +9,42 @@ import {
   salaryAdvancesApi,
 } from './salaryAdvances.api';
 
+/**
+ * Keyed on the company, like the rest of the cash book: each has its own box,
+ * its own register and its own advances, and the company switcher must not
+ * leave one company's list on screen under another's name.
+ */
 export const SALARY_ADVANCE_QUERY_KEYS = {
   all: ['salary-advances'] as const,
-  list: (params?: SalaryAdvanceListParams) =>
-    [...SALARY_ADVANCE_QUERY_KEYS.all, 'list', params ?? {}] as const,
-  employees: (search: string) =>
-    [...SALARY_ADVANCE_QUERY_KEYS.all, 'employees', search] as const,
+  list: (companyId: number | string | undefined, params?: SalaryAdvanceListParams) =>
+    [...SALARY_ADVANCE_QUERY_KEYS.all, 'list', companyId, params ?? {}] as const,
+  employees: (companyId: number | string | undefined, search: string) =>
+    [...SALARY_ADVANCE_QUERY_KEYS.all, 'employees', companyId, search] as const,
 };
 
 export function useSalaryAdvances(params?: SalaryAdvanceListParams) {
+  const { currentCompany } = useAuth();
+
   return useQuery({
-    queryKey: SALARY_ADVANCE_QUERY_KEYS.list(params),
+    queryKey: SALARY_ADVANCE_QUERY_KEYS.list(currentCompany?.company_id, params),
     queryFn: () => salaryAdvancesApi.list(params),
   });
 }
 
 /**
- * The payroll, for the picker.
+ * The payroll, for the picker that names who an advance was for.
  *
  * Searched on the server because a factory's roll is thousands of names, and
- * long-lived because it changes when somebody is hired, not while a form is
+ * long-lived because it changes when somebody is hired, not while a dialog is
  * open.
  */
-export function useSalaryAdvanceEmployees(search = '') {
+export function useSalaryAdvanceEmployees(search = '', enabled = true) {
+  const { currentCompany } = useAuth();
+
   return useQuery({
-    queryKey: SALARY_ADVANCE_QUERY_KEYS.employees(search),
+    queryKey: SALARY_ADVANCE_QUERY_KEYS.employees(currentCompany?.company_id, search),
     queryFn: () => salaryAdvancesApi.employees(search),
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -40,9 +52,9 @@ export function useSalaryAdvanceEmployees(search = '') {
 /**
  * Every write invalidates the whole list.
  *
- * The screen's figures are summed over the book rather than the rows on show,
- * so a verdict on one advance moves the headline totals above every tab —
- * there is no smaller correct invalidation.
+ * A verdict changes the row's state and the totals above it together, and the
+ * summary is counted over the whole book rather than the rows on show — so
+ * there is no smaller invalidation that leaves the screen telling the truth.
  */
 function useSalaryAdvanceMutation<TVars, TData>(
   mutationFn: (vars: TVars) => Promise<TData>,
@@ -62,30 +74,9 @@ export function useRecordSalaryAdvance() {
   );
 }
 
-export function useUpdateSalaryAdvance() {
-  return useSalaryAdvanceMutation(
-    (vars: { id: number; payload: Partial<RecordSalaryAdvancePayload> }) =>
-      salaryAdvancesApi.update(vars.id, vars.payload),
-  );
-}
-
-export function useCancelSalaryAdvance() {
-  return useSalaryAdvanceMutation((id: number) => salaryAdvancesApi.cancel(id));
-}
-
 /** HR's verdict. Several at once, each carrying its own. */
 export function useDecideSalaryAdvances() {
   return useSalaryAdvanceMutation((payload: DecideSalaryAdvancePayload) =>
     salaryAdvancesApi.decide(payload),
   );
-}
-
-export function useMarkSalaryAdvanceDeducted() {
-  return useSalaryAdvanceMutation((vars: { id: number; deductedOn?: string }) =>
-    salaryAdvancesApi.markDeducted(vars.id, vars.deductedOn),
-  );
-}
-
-export function useUndoSalaryAdvanceDeduction() {
-  return useSalaryAdvanceMutation((id: number) => salaryAdvancesApi.undoDeduction(id));
 }
