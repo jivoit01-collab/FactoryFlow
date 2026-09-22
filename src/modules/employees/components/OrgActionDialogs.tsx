@@ -528,8 +528,19 @@ const LOSES_TEAM = new Set([
   'RETIRED',
 ]);
 
-export function ChangeStatusDialog({ open, onOpenChange, employee, meta, onDone }: BaseProps) {
-  const [status, setStatus] = useState<string>(employee.employment_status);
+export function ChangeStatusDialog({
+  open,
+  onOpenChange,
+  employee,
+  meta,
+  onDone,
+  initialStatus,
+}: BaseProps & { initialStatus?: string }) {
+  // Seeded once. Deactivate opens on INACTIVE and Reactivate on ACTIVE, but the
+  // dropdown is still there -- the shortcut chooses the usual answer, it does
+  // not take the decision away, and everything below (the exit date, the
+  // reassignment a manager needs, the reason) is the same code either way.
+  const [status, setStatus] = useState<string>(initialStatus ?? employee.employment_status);
   const [exitDate, setExitDate] = useState(() => employee.exit_date ?? today());
   const [reassignTo, setReassignTo] = useState('');
   const [reason, setReason] = useState('');
