@@ -231,6 +231,15 @@ function createApiClient(): AxiosInstance {
   // Request interceptor - add auth token and proactively refresh if needed
   client.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
+      // A file upload must not inherit the JSON default above. Axios turns a
+      // FormData body into JSON when the request says application/json, so the
+      // files never leave the browser and the server answers "Unsupported
+      // media type". Clearing it here lets the browser set multipart with its
+      // own boundary, whatever the caller remembered to pass.
+      if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+        config.headers.setContentType(null);
+      }
+
       // Skip token for login and refresh endpoints (they don't need/use access token)
       const skipToken = shouldSkipToken(config.url);
 

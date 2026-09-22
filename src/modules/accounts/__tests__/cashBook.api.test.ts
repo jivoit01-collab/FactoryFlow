@@ -205,4 +205,18 @@ describe('cashBookApi', () => {
     await cashBookApi.removeFromBunch(41);
     expect(del.mock.calls[0][0]).toBe('/cash-book/entries/41/bunch/');
   });
+
+  it('sends the bills as multipart, not as the JSON default', async () => {
+    // With the client's application/json default left in place, axios turns
+    // the FormData into JSON, the files never go up, and the server answers
+    // 'Unsupported media type "application/json" in request'.
+    const bill = new File(['a bill'], 'bill.pdf', { type: 'application/pdf' });
+    await cashBookApi.attach(19, [bill]);
+
+    expect(post.mock.calls[0][0]).toBe('/cash-book/entries/19/attachments/');
+    expect(post.mock.calls[0][1]).toBeInstanceOf(FormData);
+    expect((post.mock.calls[0][2] as { headers: Record<string, string> }).headers).toEqual({
+      'Content-Type': 'multipart/form-data',
+    });
+  });
 });

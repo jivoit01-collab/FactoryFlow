@@ -689,6 +689,12 @@ export const cashBookApi = {
     const { data } = await apiClient.post<AttachResult>(
       API_ENDPOINTS.CASH_BOOK.ENTRY_ATTACHMENTS(entryId),
       form,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // The caller says what went wrong and what is still saved; the global
+        // toast would only repeat the server's wording on top of it.
+        suppressErrorToast: true,
+      },
     );
     return data;
   },
