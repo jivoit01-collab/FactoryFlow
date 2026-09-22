@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   BadgeIndianRupee,
   Ban,
   Check,
@@ -116,7 +117,9 @@ export default function AdvanceSalaryPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [formOpen, setFormOpen] = useState(false);
 
-  const { data, isLoading } = useSalaryAdvances(tab ? { state: tab } : undefined);
+  const { data, isLoading, isError, error, refetch } = useSalaryAdvances(
+    tab ? { state: tab } : undefined,
+  );
   const decide = useDecideSalaryAdvances();
   const markDeducted = useMarkSalaryAdvanceDeducted();
   const undoDeduction = useUndoSalaryAdvanceDeduction();
@@ -285,7 +288,10 @@ export default function AdvanceSalaryPage() {
       </DashboardHeader>
 
       {/* Summed over the whole book, not the tab on show: a queue of four
-          must not restate what is outstanding as though the rest were empty. */}
+          must not restate what is outstanding as though the rest were empty.
+          `summary` is undefined until it has been read, and the cards show a
+          dash rather than 0.00 until then -- a confident zero and "not known"
+          look identical and mean opposite things. */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
           icon={<Clock className="h-4 w-4" />}
@@ -372,6 +378,21 @@ export default function AdvanceSalaryPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
+          </div>
+        ) : isError ? (
+          /* A failed read is not an empty book, and the two must never look
+             alike: "no advance against salary here yet" is a statement about
+             the factory, and making it when nothing was read is a lie the
+             screen tells about money somebody is owed. */
+          <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+            <AlertTriangle className="h-10 w-10 text-amber-600 dark:text-amber-500" />
+            <p className="font-medium">The advances could not be loaded.</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              {getErrorMessage(error, 'The server did not answer.')}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              Try again
+            </Button>
           </div>
         ) : rows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
@@ -602,6 +623,14 @@ function deductionCell(row: SalaryAdvance): string {
   return `From ${formatMonth(row.deduct_from)}`;
 }
 
+/**
+ * One headline figure.
+ *
+ * `amount` is undefined until the summary has actually been read, and that is
+ * shown as a dash rather than 0.00. The two look identical on a card and mean
+ * opposite things — "nothing is owed" against "nobody managed to ask" — and
+ * the second dressed as the first is how an advance goes uncollected.
+ */
 function SummaryCard({
   icon,
   title,
@@ -617,15 +646,18 @@ function SummaryCard({
   note: string;
   emphasis?: boolean;
 }) {
+  const known = amount != null;
   return (
     <Card className={emphasis ? 'border-primary/40' : undefined}>
       <CardContent className="p-4">
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           {icon} {title}
         </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums">{money(amount ?? 0)}</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums">
+          {known ? money(amount) : '—'}
+        </p>
         <p className="text-xs text-muted-foreground">
-          {count ?? 0} {count === 1 ? 'advance' : 'advances'} · {note}
+          {known ? `${count ?? 0} ${count === 1 ? 'advance' : 'advances'} · ${note}` : 'Not read'}
         </p>
       </CardContent>
     </Card>
