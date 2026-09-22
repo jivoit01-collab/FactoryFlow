@@ -52,7 +52,7 @@ export function EmployeeTable({
     // The table scrolls inside its own box; nine columns must never put the
     // whole page into a horizontal scroll.
     <div className={cn('overflow-x-auto', className)}>
-      <table className="w-full min-w-[900px] border-collapse text-sm">
+      <table className="w-full min-w-[1000px] border-collapse text-sm">
         <thead>
           <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <th scope="col" className="px-3 py-2 font-medium">
@@ -63,6 +63,9 @@ export function EmployeeTable({
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
               Department
+            </th>
+            <th scope="col" className="px-3 py-2 font-medium">
+              Branch
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
               Reports to
@@ -134,6 +137,9 @@ export function EmployeeTable({
                 </td>
                 <td className="max-w-[150px] truncate px-3 py-2">
                   {employee.department_name || '—'}
+                </td>
+                <td className="max-w-[130px] truncate px-3 py-2">
+                  {employee.branch_name || '—'}
                 </td>
                 <td className="max-w-[160px] px-3 py-2">
                   {employee.manager_name ? (
@@ -258,6 +264,10 @@ export function EmployeeCardGrid({
               <div className="min-w-0">
                 <dt className="text-muted-foreground">Department</dt>
                 <dd className="truncate font-medium">{employee.department_name || '—'}</dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-muted-foreground">Branch</dt>
+                <dd className="truncate font-medium">{employee.branch_name || '—'}</dd>
               </div>
               <div className="min-w-0">
                 <dt className="text-muted-foreground">Reports to</dt>
