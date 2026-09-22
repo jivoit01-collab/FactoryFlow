@@ -78,6 +78,24 @@
  * allowed to overlap: a long tile name sliding under the badge is how "Total
  * production" becomes "Total produc…" on exactly the screens nobody is standing
  * at to notice.
+ *
+ * HOW TALL THE BADGE MAY BE, MEASURED
+ * It is positioned from the tile's top and so overlaps whatever the tile puts
+ * there. Rows 1 and 2 are the name and subtitle — 2.35u + 1.55u — and with the
+ * card's 0.85u top padding an ordinary tile's visualisation starts at 8.5u,
+ * under the value row. But a `tallViz` tile hands rows 3 to 5 to its
+ * visualisation, which then starts at 4.75u. The badge is
+ *
+ *     0.78u padding + 0.86u label + 0.2u + 1.66u figure          = 3.5u
+ *     ... + 0.12u + one 0.84u note line                          = 4.62u
+ *     ... + a note that wraps to two lines                       = 5.3u
+ *
+ * so on a tall-viz tile ONLY THE TWO-LINE FORM FITS — and the label is
+ * `nowrap`, so a phrase wider than the 9.4u cap overhangs rather than wraps.
+ * Both were hit on the cost donut on 2026-09-21: a three-line badge covered its
+ * first legend row, and "LABOUR TODAY" needed a cap this one does not have. No
+ * tile wears a badge over a tall visualisation today, which is the conclusion
+ * those two measurements came to — this is here so it is not rediscovered.
  */
 .admin-board .adm-corner {
   position: absolute;
@@ -137,6 +155,7 @@
   padding-right: calc(9.8 * var(--u));
 }
 
+
 /* ───────── an unmeasurable track ───────── */
 
 /*
@@ -189,6 +208,52 @@
   stroke: #e6ebf2;
 }
 
+/* ───────── pairing an arc with its row ─────────
+ *
+ * Hovering either half of the donut — an arc, or its line in the legend —
+ * brings that line forward and pushes the others back. Four hues a reader has
+ * to match against four labels is the one weakness of a legend beside a ring,
+ * and this closes it without a tooltip.
+ *
+ * WHAT IT MAY AND MAY NOT DO. Emphasis only: everything is already on the
+ * tile, direct-labelled, and the hole keeps the total whatever the pointer is
+ * doing. A wall screen has no pointer, so anything only reachable by hovering
+ * would be unreachable there — see `AdminDonut` for the whole of that
+ * argument.
+ *
+ * The un-hovered arcs FADE rather than desaturate or grey: fading keeps each
+ * one's hue, so a reader who is tracking the teal can still see where it went.
+ * 0.28 is low enough to be unambiguous and high enough that the ring is still
+ * a ring rather than one arc floating on a track.
+ *
+ * `prefers-reduced-motion` is already honoured: ops-board.css drops every
+ * transition inside `.ops-board`. The states still apply, instantly — a
+ * preference against motion is not a preference against feedback.
+ */
+.admin-board .adm-donut .adm-arc {
+  transition:
+    stroke-width 0.12s ease,
+    opacity 0.12s ease;
+}
+.admin-board .adm-donut[data-hover='1'] .adm-arc {
+  opacity: 0.28;
+}
+/*
+ * 19, not 20. The arc thickens about r=54, so half the extra width goes
+ * outward: at 20 the outer edge lands on 64.0, which is the viewBox's own
+ * edge, and the ring would clip against it. 19 stops at 63.5.
+ *
+ * The parent attribute is repeated in the selector to OUT-SPECIFY the dimming
+ * rule above rather than merely follow it. Written as
+ * `.adm-donut .adm-arc[data-on='1']` the two tie at (0,4,0) and the winner is
+ * whichever is written second — a rule that quietly inverts the day somebody
+ * reorders this file.
+ */
+.admin-board .adm-donut[data-hover='1'] .adm-arc[data-on='1'] {
+  opacity: 1;
+  stroke-width: 19;
+}
+
 .admin-board .adm-hole {
   position: absolute;
   inset: 0;
@@ -219,6 +284,29 @@
   align-content: center;
   min-width: 0;
 }
+/*
+ * The legend's half of the pairing.
+ *
+ * The whole row moves as one — swatch, label, money, share and the unit line
+ * under them — because the row IS the line. Dimming only the label would leave
+ * a figure at full strength beside a faded name, which reads as two facts of
+ * different importance rather than one line stepping back.
+ *
+ * The hovered row is not brightened past normal, only left there. Nothing on
+ * this tile should be louder than its own headline.
+ */
+.admin-board .adm-legend .adm-lrow {
+  transition: opacity 0.12s ease;
+}
+.admin-board .adm-legend[data-hover='1'] .adm-lrow {
+  opacity: 0.45;
+}
+/* Out-specifies the dimming above rather than relying on source order — see
+   the note on the hovered arc for why that matters. */
+.admin-board .adm-legend[data-hover='1'] .adm-lrow[data-on='1'] {
+  opacity: 1;
+}
+
 .admin-board .adm-lrow {
   display: grid;
   grid-template-columns: calc(0.6 * var(--u)) minmax(0, 1fr) auto auto;
@@ -279,25 +367,113 @@
 }
 
 /*
- * The unit line under a cost line's money.
+ * The unit line under a cost line's money, and today's money at its right.
  *
  * Column 2 to the end, so it sits under the label and the money columns above
- * it stay aligned. Muted and a size down: it is evidence for the figure above,
- * never a second figure competing with it.
+ * it stay aligned. Muted and a size down: both halves are context for the
+ * month's figure above, never second figures competing with it.
+ *
+ * A flex row rather than two more grid columns: the unit text is the part that
+ * has to give way when the tile narrows, and today's figure is the part that
+ * must not. So the text ellipsizes and the figure is `flex: none`, pushed to
+ * the right edge by `margin-left: auto` — which also keeps it there on a line
+ * that has no unit text at all.
  */
 .admin-board .adm-ldet {
   grid-column: 2 / -1;
   margin-top: calc(-0.16 * var(--u));
+  display: flex;
+  align-items: baseline;
+  gap: calc(0.5 * var(--u));
+  min-width: 0;
   font-size: calc(0.8 * var(--u));
   font-weight: 600;
   color: var(--ink-3);
+}
+.admin-board .adm-ldet u {
+  /* `min-width: 0` is what makes the ellipsis reachable. A flex item will not
+     shrink below its content's minimum without it, so on a narrow tile this
+     text would hold its full width and push today's figure out of the card
+     instead of clipping itself — the wrong half giving way. */
+  min-width: 0;
+  text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/*
+ * Today, a step darker than the evidence beside it.
+ *
+ * It is a figure, not a count, and it sits directly under the month's money —
+ * the pair is the comparison the row exists to make, so it reads at the weight
+ * of a number rather than of a footnote. Still below the month's own weight:
+ * the headline question on this tile is the month.
+ */
+.admin-board .adm-ldet b {
+  margin-left: auto;
+  flex: none;
+  font-weight: 700;
+  color: var(--ink-2);
   white-space: nowrap;
 }
 
 .admin-board .adm-foot {
   margin-top: calc(0.4 * var(--u));
+}
+
+/* ───────── the hint on a tile that opens ───────── */
+
+/*
+ * Said in words, not only in a cursor.
+ *
+ * The drillable affordance itself is `OpsGroup`'s (`data-drill`) and is styled
+ * by ops-board.css: a pointer, a lift on hover, a focus ring. None of those
+ * exist on a board nobody is hovering — this is a wall screen — so a tile that
+ * opens says so in the band's own hue, and says what is behind it, because
+ * "open the detail" is worth a click only if the reader knows there is some.
+ *
+ * Lives here rather than in tank-farm.css, where it started: the oil tile and
+ * the cost tile both use it now, and a shared class defined inside one
+ * feature's stylesheet is a rule that disappears the day that feature does.
+ */
+.admin-board .adm-open-hint {
+  margin-top: calc(0.3 * var(--u));
+  font-size: calc(0.82 * var(--u));
+  font-weight: 700;
+  color: var(--d1);
+}
+
+/* ───────── the cost drill panel ───────── */
+
+/*
+ * SCOPED TO `.ops-drill`, NOT `.admin-board`.
+ *
+ * Every other rule in this file hangs off `.admin-board`, which is the board's
+ * own root. The drill panel does not live there: `OpsDrill` portals it to the
+ * document body (or to the fullscreen element) and gives it `ops-board
+ * ops-drill ops-b-<domain>`. A `.admin-board`-prefixed rule would simply never
+ * match it — the trap worth naming, because the selector looks right.
+ */
+
+/*
+ * A cost line's name in the drill table, carrying the donut's own hue.
+ *
+ * So a reader who clicked the tile after looking at an arc lands on the row
+ * that arc belongs to. The hue comes inline from `ADMIN_COST_COLOURS`, the same
+ * map the donut reads, rather than being restated here — one list of four hues,
+ * validated in one place. Colour is never the only encoding: the line's name
+ * sits directly beside it.
+ */
+.ops-drill .adm-dline {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.5 * var(--du));
+}
+.ops-drill .adm-dline i {
+  width: calc(0.55 * var(--du));
+  height: calc(0.55 * var(--du));
+  border-radius: calc(0.16 * var(--du));
+  flex: none;
 }
 
 /* ───────── the action centre ───────── */

@@ -244,6 +244,29 @@ export interface AdminOilStorage {
   rows: { label: string; tons: number }[];
 }
 
+/**
+ * One row behind a cost line — a department, a meter, a payroll line, a spare.
+ *
+ * EVERY LINE'S ROWS SUM TO THAT LINE. The server guarantees it, including for
+ * today, because a breakdown whose parts do not add up is the drill panel
+ * disagreeing with the tile that opened it.
+ */
+export interface AdminCostRow {
+  label: string;
+  /** The row in its own unit — "1,128 man-days", "172,810 units at ₹7.00/unit". */
+  detail: string | null;
+  /** Month to date, in rupees. */
+  amount: number;
+  /**
+   * Today, in rupees — or null where this row's source cannot say.
+   *
+   * Null on maintenance, whose line items carry no date of their own, and it
+   * must render as a rule rather than a zero: "nothing spent on this spare
+   * today" and "this payload cannot tell you" are different answers.
+   */
+  today: number | null;
+}
+
 export interface AdminCostSlice {
   key: string;
   label: string;
@@ -270,6 +293,35 @@ export interface AdminCostSlice {
   /** The same figure as a number, for anything that needs to compare it. */
   detail_value: number | null;
   /**
+   * What this line cost TODAY, on the same basis as `amount`.
+   *
+   * Never derived from `amount`: labour and electricity are this tile's own
+   * subsets — five named departments, Jivo Oil's meters — and the wall board's
+   * own "today" key holds the selected range, which for this board is the whole
+   * month. Both figures come off one pass server-side so the day and the month
+   * on a line can be compared without either being re-derived here.
+   */
+  today: number;
+  /**
+   * What today's figure is made of, in the line's own unit — "412 on the floors
+   * today", "13,204 units today", or why it is nil: a meter nobody has read
+   * today is not a day the plant drew no power.
+   */
+  today_detail: string | null;
+  /**
+   * The count behind today's money, in this line's own unit, and the one word
+   * that says what it counts — 55 `in`, 13,204 `units`.
+   *
+   * Both null where the line counts nothing: the salary accrual is a fraction
+   * of a monthly bill, not a tally of anything, so there is nothing to show
+   * beside its figure. Split from `today_detail` because a badge has room for
+   * a figure and a unit, not for the sentence.
+   */
+  today_detail_value: number | null;
+  today_detail_unit: string | null;
+  /** What the line is made of, one level down. Empty where nothing is behind it. */
+  rows: AdminCostRow[];
+  /**
    * Why this line differs from the same line on another board.
    *
    * Set on labour, which this tile prices over five named departments —
@@ -289,6 +341,16 @@ export interface AdminCostSlice {
 export interface AdminCost {
   currency: string;
   total: number;
+  /** The four lines' `today` added up — what the factory has spent today. */
+  today_total: number;
+  /**
+   * What a day has averaged over the month so far.
+   *
+   * Elapsed days, not producing days: salary accrues on a Sunday and so does a
+   * spare consumed on one. Here so the day above has something to be read
+   * against — a bare rupee figure for today answers nothing on its own.
+   */
+  avg_per_day: number | null;
   slices: AdminCostSlice[];
   warnings: string[];
   /**

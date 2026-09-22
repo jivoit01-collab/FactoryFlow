@@ -1,6 +1,8 @@
+import { useState } from 'react';
+
 import { ADMIN_COST_COLOURS } from '../constants';
 import type { AdminCostSlice } from '../types';
-import { money, pctRough } from '../utils';
+import { money, num, pctRough, whole } from '../utils';
 
 /** Geometry. The radius and stroke are in the SVG's own 128-unit box. */
 const RADIUS = 54;
@@ -22,15 +24,63 @@ export interface AdminDonutProps {
   /** The window, printed in the hole under the total. */
   period: string;
   /**
-   * A caveat printed under the legend.
+   * One line under the legend, for what belongs to the whole donut rather than
+   * to any single line of it.
    *
-   * The electricity line reads Jivo Oil's meters only, but it counts the mains
-   * as well as the sub-meters that measure the same supply, and a meter shared
-   * with Beverages counts in full — so it knowingly runs well above the metered
-   * bill. That is a deliberate, recorded decision rather than a fault — but a
-   * reader comparing this donut with an electricity bill has to be told.
+   * Today it carries the month's average per day — the only thing on the tile
+   * that gives the per-line "today" figures a scale. It lives under the legend
+   * rather than in a corner badge because a badge over a tall visualisation
+   * does not fit: see the height budget on `.adm-corner` in
+   * `styles/admin-board.css`, which is the measurement that settled it.
    */
-  note?: string;
+  foot?: string;
+  /**
+   * That the tile opens, and what is behind it.
+   *
+   * In words rather than only in a cursor: this board hangs on a wall where
+   * nobody is hovering anything, so `data-drill`'s pointer and hover lift are
+   * invisible until someone already suspects the tile is clickable.
+   */
+  openHint?: string;
+}
+
+/**
+ * What this line cost today, as the legend prints it — or nothing.
+ *
+ * Three cases, and the middle one is why this is a function rather than a
+ * template string:
+ *
+ *  - Money today: the figure, which is the whole point.
+ *  - Nil today on a line that HAS a month behind it: the server's own reason,
+ *    because "nothing today" is a claim about the factory and the truth is
+ *    usually a claim about the register. Electricity at ₹0 means nobody has
+ *    entered today's meter reading — the plant did not stop drawing power —
+ *    and a tile that printed "nothing today" there would be stating something
+ *    false in order to fill a line.
+ *  - Nil today on a line that is nil all month: nothing. Its share column
+ *    already says "no rate" or "nil", and a second nil under it adds nothing.
+ */
+function todayLabel(slice: AdminCostSlice): string | null {
+  const today = num(slice.today);
+  if (today === null) return null;
+  if (today > 0) return `${money(today)}${todayCount(slice)} today`;
+  if (slice.amount <= 0) return null;
+  return slice.today_detail ?? 'nothing today';
+}
+
+/**
+ * The count beside today's money — " · 55 in", " · 13,204 units" — or nothing.
+ *
+ * The unit word comes from the payload rather than from the slice's key: what
+ * a line counts is the line's own business, and a unit guessed here would be a
+ * second place that meaning is decided. Empty on a line that counts nothing,
+ * which is why this returns a fragment to concatenate rather than a value the
+ * caller has to test.
+ */
+function todayCount(slice: AdminCostSlice): string {
+  const count = num(slice.today_detail_value);
+  if (count === null || count <= 0 || !slice.today_detail_unit) return '';
+  return ` · ${whole(count)} ${slice.today_detail_unit}`;
 }
 
 /**
@@ -54,7 +104,24 @@ export interface AdminDonutProps {
  * makes the validated palette's tightest pair legal: two hues a tritan reader
  * separates weakly are still told apart by the words beside them.
  */
-export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
+export function AdminDonut({ slices, total, period, foot, openHint }: AdminDonutProps) {
+  /*
+   * Which line the pointer is over — an arc or its legend row, either way.
+   *
+   * EMPHASIS ONLY. Nothing appears on hover that is not already on the tile:
+   * every slice is direct-labelled in the legend with its own figure and share,
+   * and the hole keeps the total and the window whatever the pointer is doing.
+   * That is deliberate on two counts. A figure only reachable by hovering is
+   * unreachable on the wall screen this board also runs on, where there is no
+   * pointer at all; and a hole that swapped the month's total for whichever
+   * slice the mouse grazed would make the tile's headline flicker.
+   *
+   * So this pairs an arc with its row and gets out of the way. Hover is the
+   * one thing it may safely do, because it is the one thing that carries no
+   * information.
+   */
+  const [hovered, setHovered] = useState<string | null>(null);
+
   const drawn = slices.filter((slice) => slice.amount > 0);
 
   // Offsets accumulate around the ring in the same fixed order as the legend,
@@ -81,7 +148,7 @@ export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
 
   return (
     <div className="adm-donut-wrap">
-      <div className="adm-donut">
+      <div className="adm-donut" data-hover={hovered ? '1' : undefined}>
         <svg viewBox="0 0 128 128" role="img" aria-label={`Factory cost ${period}: ${description}.`}>
           {/* The track carries the whole, so a donut of one small slice still
               reads as a small share of something rather than as a full ring. */}
@@ -89,13 +156,23 @@ export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
           {arcs.map((arc) => (
             <circle
               key={arc.key}
+              className="adm-arc"
+              data-on={hovered === arc.key ? '1' : undefined}
               cx="64"
               cy="64"
               r={RADIUS}
               stroke={arc.colour}
+              /* The hovered arc thickens ABOUT ITS OWN CENTRE LINE, which is
+                 why the width is the only thing that moves. `strokeDasharray`
+                 is a length along the r=54 path and never recomputed, so the
+                 arc's angular extent — the share it is claiming — is identical
+                 hovered or not. An effect that grew the radius, or nudged the
+                 slice outward, would change what the picture asserts. */
               strokeWidth="17"
               strokeDasharray={arc.dash}
               strokeDashoffset={arc.offset}
+              onMouseEnter={() => setHovered(arc.key)}
+              onMouseLeave={() => setHovered(null)}
             />
           ))}
         </svg>
@@ -105,18 +182,38 @@ export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
         </div>
       </div>
 
-      <div className="adm-legend">
+      <div className="adm-legend" data-hover={hovered ? '1' : undefined}>
         {slices.map((slice) => {
           const nil = slice.amount <= 0;
+          const today = todayLabel(slice);
+          // Whether `today` is a figure or the reason there isn't one, which
+          // decides where the line's unit count goes.
+          const spentToday = (num(slice.today) ?? 0) > 0;
           return (
             <div
               key={slice.key}
               className={nil ? 'adm-lrow adm-zero' : 'adm-lrow'}
+              data-on={hovered === slice.key ? '1' : undefined}
+              /* A NIL LINE DOES NOT RESPOND. It has no arc, so pairing it with
+                 one would point at nothing while dimming the three that are
+                 really there — the same rule that keeps it off the ring in the
+                 first place. Its row still reads normally; it simply is not a
+                 handle. */
+              onMouseEnter={nil ? undefined : () => setHovered(slice.key)}
+              onMouseLeave={nil ? undefined : () => setHovered(null)}
               style={{ '--lc': ADMIN_COST_COLOURS[slice.key] } as React.CSSProperties}
               // The reason a line is nil, or the reason it differs from the
               // same line elsewhere, belongs where the line is rather than in a
               // footnote — this is the tooltip for anyone who walks up to it.
-              title={[slice.warning, slice.basis].filter(Boolean).join(' ') || undefined}
+              // Today's unit count rides along where the row is printing
+              // today's MONEY: "13,204 units today" is what makes that money
+              // checkable by eye. Where today is nil the row is already
+              // printing that same sentence, so it is not repeated here.
+              title={
+                [spentToday ? slice.today_detail : null, slice.warning, slice.basis]
+                  .filter(Boolean)
+                  .join(' · ') || undefined
+              }
             >
               <i className="adm-sw" />
               <em>{slice.label}</em>
@@ -128,21 +225,37 @@ export function AdminDonut({ slices, total, period, note }: AdminDonutProps) {
                     : 'nil'
                   : pctRough(slice.share_pct)}
               </span>
-              {/* The count behind the money, under it rather than beside it:
-                  a rupee figure is not checkable by eye, and "629 across 4 of
-                  5 departments"
-                  is the thing a reader can argue with. Spans the row so the
-                  four money columns stay aligned. */}
-              {slice.detail && <small className="adm-ldet">{slice.detail}</small>}
+              {/* The count behind the money, and today's money, under the
+                  row rather than beside it: a rupee figure is not checkable by
+                  eye, and "629 across 4 of 5 departments" is the thing a reader
+                  can argue with. Spans the row so the four money columns above
+                  stay aligned, with today's figure right-aligned under the
+                  month's — which is the comparison it is there to invite.
+
+                  TODAY IS PRINTED ONLY WHERE IT MEANS SOMETHING. A nil line
+                  already says "no rate" or "nil" in its share column, and "₹0
+                  today" underneath would spend a line repeating it. A line with
+                  a month behind it and nothing today is the opposite — worth
+                  saying out loud, because on electricity it usually means
+                  today's meter reading has not been entered rather than that
+                  the plant drew no power. */}
+              {(slice.detail || today) && (
+                <small className="adm-ldet">
+                  {slice.detail && <u>{slice.detail}</u>}
+                  {today && <b>{today}</b>}
+                </small>
+              )}
             </div>
           );
         })}
 
-        {note && (
+        {foot && (
           <div className="ops-mkey adm-foot">
-            <span className="ops-k-mute">{note}</span>
+            <span className="ops-k-mute">{foot}</span>
           </div>
         )}
+
+        {openHint && <p className="adm-open-hint">{openHint}</p>}
       </div>
     </div>
   );

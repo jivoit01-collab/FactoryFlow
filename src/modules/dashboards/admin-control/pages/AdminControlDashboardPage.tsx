@@ -8,7 +8,14 @@ import { useFullscreen } from '../../dispatch/hooks';
 import { OpsGroup, OpsMeter, OpsPair, OpsTopbar } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useAdminBoard } from '../api';
-import { AdminActions, AdminBand, AdminCorner, AdminDonut, AdminTankFarm } from '../components';
+import {
+  AdminActions,
+  AdminBand,
+  AdminCorner,
+  AdminCostDrill,
+  AdminDonut,
+  AdminTankFarm,
+} from '../components';
 import { ADMIN_BOARD_STALE_AFTER_MS } from '../constants';
 import type {
   AdminDispatch,
@@ -20,6 +27,7 @@ import type {
 import {
   barPct,
   fillCondition,
+  money,
   moneyParts,
   NO_VALUE,
   num,
@@ -55,10 +63,11 @@ export default function AdminControlDashboardPage() {
 
   const { isFullscreen, toggle } = useFullscreen(shellRef);
 
-  // Which tile has been opened out. Only the oil tile has a view behind it
-  // today; kept as a nullable name rather than a boolean so the next one does
-  // not need this rewritten.
-  const [openTile, setOpenTile] = useState<'oil' | null>(null);
+  // Which tile has been opened out, by name rather than a boolean — which is
+  // what let the cost tile join the oil tile here without a rewrite. Each opens
+  // its own view: the oil tile a tank farm, the cost tile the rows behind the
+  // four cost lines.
+  const [openTile, setOpenTile] = useState<'oil' | 'cost' | null>(null);
   // Releases the shell's max-width and padding while the board is mounted. Every
   // length here is a multiple of a unit read off this element's own width, so
   // without it the board is laid out for a column several hundred pixels
@@ -111,6 +120,13 @@ export default function AdminControlDashboardPage() {
   const loading = !data;
 
   const criticals = (data?.alerts ?? []).filter((alert) => alert.severity === 'critical').length;
+
+  // "1–21 Sept". Computed once: the donut prints it in its hole and the drill
+  // panel repeats it in its subtitle, and the two must be the same window.
+  const periodLabel = meta ? shortWindow(meta.period.from, meta.period.to) : '';
+  // How much there is to open. Zero means the drill would be four empty lines,
+  // so the tile neither offers nor opens.
+  const costRows = (cost?.slices ?? []).reduce((total, slice) => total + slice.rows.length, 0);
 
   return (
     <div ref={shellRef} className="admin-board ops-board">
@@ -188,6 +204,19 @@ export default function AdminControlDashboardPage() {
             columns="minmax(0, 1.05fr) minmax(0, 1.55fr)"
           >
             <OpsGroup
+              // NO CORNER BADGE ON THIS TILE, unlike the other five. It carried
+              // today's labour and was taken off on 2026-09-21: the same figure
+              // is on the Labour legend line, where it sits beside the month it
+              // should be compared with instead of floating over the tile's
+              // top-right corner. So no `adm-has-corner` either — the name row
+              // gets its full width back.
+              //
+              // Every figure on this tile is a roll-up of something countable —
+              // departments, meters, payroll lines — and "which ones" is the
+              // question that follows all of them. `OpsGroup` turns a tile with
+              // this into a keyboard-reachable button and marks it drillable, so
+              // the affordance is the one the oil tile already taught.
+              onOpen={cost && costRows > 0 ? () => setOpenTile('cost') : undefined}
               name="Factory cost"
               tag={
                 cost
@@ -213,7 +242,26 @@ export default function AdminControlDashboardPage() {
                   <AdminDonut
                     slices={cost.slices}
                     total={cost.total}
-                    period={meta ? shortWindow(meta.period.from, meta.period.to) : ''}
+                    period={periodLabel}
+                    // What the per-line "today" figures are read against. A
+                    // day's spend answers nothing on its own — ₹35,750 of
+                    // labour is either a quiet day or a heavy one depending
+                    // entirely on this.
+                    foot={
+                      cost.avg_per_day != null
+                        ? `${money(cost.avg_per_day)} a day on average this month`
+                        : undefined
+                    }
+                    // Counted, not asserted. "Open the detail" is worth a click
+                    // only if there is some, and on a month where nothing is
+                    // booked to any line there is none — then the tile stays
+                    // silent and `onOpen` above is what decides whether it
+                    // opens at all.
+                    openHint={
+                      costRows > 0
+                        ? `${costRows} rows behind the four lines — open the detail →`
+                        : undefined
+                    }
                   />
                 )
               }
@@ -225,6 +273,10 @@ export default function AdminControlDashboardPage() {
 
         {openTile === 'oil' && oil && (
           <AdminTankFarm oil={oil} onClose={() => setOpenTile(null)} />
+        )}
+
+        {openTile === 'cost' && cost && (
+          <AdminCostDrill cost={cost} period={periodLabel} onClose={() => setOpenTile(null)} />
         )}
       </div>
     </div>

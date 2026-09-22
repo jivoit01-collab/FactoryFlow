@@ -380,17 +380,6 @@
   font-weight: 600;
 }
 
-/* ───────── the tile that opens it ─────────
- * The drillable affordance itself is OpsGroup's (`data-drill`), already styled
- * by ops-board.css. Only the hint line is new. */
-
-.admin-board .adm-open-hint {
-  margin-top: calc(0.3 * var(--u));
-  font-size: calc(0.82 * var(--u));
-  font-weight: 700;
-  color: var(--d1);
-}
-
 /* ───────── motion ───────── */
 
 @keyframes tf-in {
