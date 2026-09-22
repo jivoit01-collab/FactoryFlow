@@ -69,10 +69,17 @@ export default function DailyAttendancePage() {
   const [statusFilter, setStatusFilter] = useState<AttendanceStatusValue | ''>('');
   // The heart of this screen: off means "punch machine data only".
   const [showCorrections, setShowCorrections] = useState(false);
+  // Off by default: the sheet answers "who is at work", and somebody
+  // deactivated last month is not an answer to that. Their days are still
+  // there, which is what this brings back.
+  const [includeInactive, setIncludeInactive] = useState(false);
   const [editing, setEditing] = useState<DailyAttendanceRow | null>(null);
   const [historyFor, setHistoryFor] = useState<DailyAttendanceRow | null>(null);
 
-  const filters = useMemo(() => ({ date }), [date]);
+  const filters = useMemo(
+    () => ({ date, include_inactive: includeInactive }),
+    [date, includeInactive],
+  );
   const { data: rows = [], isLoading } = useDailyAttendance(filters);
   const { data: summary } = useAttendanceSummary(filters);
   const { data: source } = useAttendanceSourceStatus();
@@ -197,6 +204,19 @@ export default function DailyAttendancePage() {
                 </SelectOption>
               ))}
             </NativeSelect>
+          </div>
+          <div className="flex items-center gap-2 pb-2">
+            <Switch
+              id="include-inactive"
+              checked={includeInactive}
+              onChange={setIncludeInactive}
+            />
+            <Label htmlFor="include-inactive" className="cursor-pointer text-sm">
+              Include past employees
+              <span className="ml-1 text-xs text-muted-foreground">
+                (people who have left)
+              </span>
+            </Label>
           </div>
           <div className="flex items-center gap-2 pb-2">
             <Switch

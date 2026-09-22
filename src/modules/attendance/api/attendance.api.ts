@@ -141,6 +141,13 @@ export interface DailyFilters {
   /** Filters the machine's own reading: "who did the machine miss?" */
   machine_status?: AttendanceStatusValue;
   is_overridden?: boolean;
+  /**
+   * Show people who have left. Off by default — the sheet is read to find out
+   * who is at work, and somebody deactivated last month is not an answer to
+   * that. The days they did work are still there, which is what this brings
+   * back: a leaver's final month is settled out of exactly those rows.
+   */
+  include_inactive?: boolean;
   search?: string;
 }
 
@@ -198,6 +205,8 @@ export interface MusterResponse {
 
 export interface MusterFilters {
   month?: string;
+  /** Same flag the daily sheet takes; see {@link DailyFilters.include_inactive}. */
+  include_inactive?: boolean;
   department?: number;
   sap_segment?: string;
   employee?: number;
@@ -218,6 +227,7 @@ function toParams(filters?: DailyFilters): Record<string, string | number> {
   if (filters.status) params.status = filters.status;
   if (filters.machine_status) params.machine_status = filters.machine_status;
   if (filters.is_overridden !== undefined) params.is_overridden = String(filters.is_overridden);
+  if (filters.include_inactive) params.include_inactive = 'true';
   if (filters.search) params.search = filters.search;
   return params;
 }
