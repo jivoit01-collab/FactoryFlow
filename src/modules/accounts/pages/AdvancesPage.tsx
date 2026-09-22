@@ -127,7 +127,9 @@ export default function AdvancesPage() {
   } = useLocalColumns(
     statement?.movements ?? [],
     {
-      date: { value: (row) => formatDay(row.date) },
+      // `sortValue` is the ISO the server sent. The cell reads dd-mm-yyyy,
+      // which sorts and lists by its DAY -- 01-08 before 02-07 before 04-06.
+      date: { value: (row) => formatDay(row.date), sortValue: (row) => row.date },
       kind: { value: (row) => MOVEMENT_LABEL[row.kind] ?? row.kind },
       detail: { value: (row) => row.detail },
       // One amount, two columns: what they took, and what they cleared.

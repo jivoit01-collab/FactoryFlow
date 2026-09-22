@@ -119,12 +119,29 @@ export function useLocalColumns<T>(
     return String(left).localeCompare(String(right), undefined, { numeric: true }) * factor;
   });
 
-  /** The values one column offers, counted over everything its own filter hides. */
+  /**
+   * The values one column offers, counted over everything its own filter hides.
+   *
+   * Ordered by the column's own `sortValue` where it declares one, and only by
+   * the text where it does not. The text is the wrong order for exactly the
+   * columns the row sorter already had to be told about: a date reads
+   * `17-09-2026` and would list by its day, an amount reads `1,00,000.00` and
+   * would list by its first digit. One declaration, honoured in both places,
+   * so the drop-down can never disagree with the rows behind it.
+   */
   const valuesFor = (key: string): ColumnValue[] => {
+    const columnSpec = columns[key];
     const counts = new Map<string, number>();
+    const order = new Map<string, string | number>();
     for (const row of survivors(key)) {
       const value = read(row, key);
       counts.set(value, (counts.get(value) ?? 0) + 1);
+      // Never for the blank bucket: it is one entry standing for many rows, so
+      // any single row's sort value would be an arbitrary pick among them.
+      if (columnSpec?.sortValue && value !== BLANK && !order.has(value)) {
+        const rank = columnSpec.sortValue(row);
+        if (rank !== null && rank !== undefined && rank !== '') order.set(value, rank);
+      }
     }
     return [...counts.entries()]
       .map(([value, count]) => ({
@@ -132,7 +149,21 @@ export function useLocalColumns<T>(
         label: value === BLANK ? '(blank)' : value,
         count,
       }))
-      .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+      .sort((a, b) => {
+        const left = order.get(a.value);
+        const right = order.get(b.value);
+        // Unranked entries — the blank bucket, and every value of a column
+        // that declares no `sortValue` — fall back to the text, and sink below
+        // anything that is ranked, the same way blanks sink among the rows.
+        if (left === undefined || right === undefined) {
+          if (left === undefined && right === undefined) {
+            return a.label.localeCompare(b.label, undefined, { numeric: true });
+          }
+          return left === undefined ? 1 : -1;
+        }
+        if (typeof left === 'number' && typeof right === 'number') return left - right;
+        return String(left).localeCompare(String(right), undefined, { numeric: true });
+      });
   };
 
   const filteredColumns = Object.entries(filters)

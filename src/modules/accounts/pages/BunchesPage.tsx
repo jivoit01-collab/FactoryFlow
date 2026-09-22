@@ -65,7 +65,12 @@ export default function BunchesPage() {
         value: (bunch) => `Bunch ${bunch.number}`,
         sortValue: (bunch) => bunch.number,
       },
-      created: { value: (bunch) => formatDay(bunch.created_at) },
+      // `sortValue` is the ISO the server sent. The cell reads dd-mm-yyyy,
+      // which sorts and lists by its DAY -- 01-08 before 02-07 before 04-06.
+      created: {
+        value: (bunch) => formatDay(bunch.created_at),
+        sortValue: (bunch) => bunch.created_at,
+      },
       by: { value: (bunch) => bunch.created_by_name },
       vouchers: {
         value: (bunch) => String(bunch.entry_count),
@@ -77,7 +82,10 @@ export default function BunchesPage() {
         sortValue: (bunch) => Number(bunch.total),
         total: (bunch) => Number(bunch.total),
       },
-      sent: { value: (bunch) => (bunch.is_sent ? formatDay(bunch.sent_at) : null) },
+      sent: {
+        value: (bunch) => (bunch.is_sent ? formatDay(bunch.sent_at) : null),
+        sortValue: (bunch) => (bunch.is_sent ? bunch.sent_at : null),
+      },
     },
     { key: 'number', direction: 'desc' },
   );

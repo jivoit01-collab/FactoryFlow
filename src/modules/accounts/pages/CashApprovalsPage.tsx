@@ -96,7 +96,12 @@ export default function CashApprovalsPage() {
   const { rows, totals, column, filters, setFilter, filteredColumns, clearFilters } = useLocalColumns(
     all,
     {
-      date: { value: (row) => formatDay(row.entry_date) },
+      // `sortValue` is the ISO the server sent. The cell reads dd-mm-yyyy,
+      // which sorts and lists by its DAY -- 01-08 before 02-07 before 04-06.
+      date: {
+        value: (row) => formatDay(row.entry_date),
+        sortValue: (row) => row.entry_date,
+      },
       branch: { value: (row) => row.branch_name },
       gl: { value: (row) => row.gl_account_name },
       item: { value: (row) => row.item },
