@@ -212,7 +212,6 @@ describe('CreditNoteApprovalTable', () => {
     expect(screen.getByText('5500004')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Account' })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Warehouse' })).not.toBeInTheDocument();
-    expect(screen.getByText(/no goods move/i)).toBeInTheDocument();
   });
 
   it('warns only when the stock is going OUT and the warehouse cannot cover it', () => {
@@ -244,15 +243,22 @@ describe('CreditNoteApprovalTable', () => {
       .toBeInTheDocument();
   });
 
-  it('spells out that both approvals are needed before anything is created', () => {
+  it('leaves the twin-approval warning on the row, and keeps it out of the panel', () => {
     renderTable({ rows: [TWIN_A] });
+    // Scoped to the row: the queue's banner above the table quotes the same
+    // "approval 1 of 2" mark when it explains what the chip means.
+    const row = screen.getAllByRole('row')[1];
     fireEvent.click(screen.getByText('A/R Credit Note'));
 
-    expect(screen.getByText(/approval 1 of 2 \(template USER26 GRPO\)/)).toBeInTheDocument();
-    expect(screen.getByText(/deciding it does not decide the others/i)).toBeInTheDocument();
-    expect(screen.getByText(/creates nothing until every one of them is approved/i))
-      .toBeInTheDocument();
-    // The request id, which is what a decision actually acts on.
+    // The chip on the row is where a reader is told there are two approvals;
+    // the panel used to say the same thing again in two paragraphs and no
+    // longer does, so the lines are what an opened row leads with.
+    expect(within(row).getByText('approval 1 of 2')).toBeInTheDocument();
+    expect(screen.queryByText(/deciding it does not decide the others/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/creates nothing until every one of them is approved/i),
+    ).not.toBeInTheDocument();
+    // The request id, which is what a decision actually acts on, stays.
     expect(screen.getByText(/69466 · USER26 GRPO/)).toBeInTheDocument();
   });
 

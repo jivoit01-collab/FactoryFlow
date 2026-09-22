@@ -352,33 +352,18 @@ function ServiceLineTable({ row }: { row: CreditNoteApproval }) {
  * comments, and where the document stands now.
  */
 function DetailPanel({ row }: { row: CreditNoteApproval }) {
+  /**
+   * Only what nothing above the panel already says.
+   *
+   * The explainers that used to sit here are gone: what approving would do, and
+   * the twin-approval warning in full. Both were a paragraph restating something
+   * the reader had already been told — approving is what the Approve button
+   * does, and the twin warning is on the row's own "approval 2 of 2" chip, in
+   * that chip's tooltip and in the queue's banner above the table. Four
+   * paragraphs of it under every expanded row buried the lines, which are the
+   * reason the row was opened.
+   */
   const notes: string[] = [];
-  if (row.status === 'PENDING') {
-    notes.push(
-      row.moves_stock
-        ? row.stock_direction === 'OUT'
-          ? 'Approving posts the credit note: the goods leave the warehouse back to the vendor and the vendor is debited.'
-          : 'Approving posts the credit note: the goods come back into the warehouse and the customer is credited.'
-        : 'This is a service credit note — no goods move. Approving credits the amount against the G/L account on each line.',
-    );
-  }
-  if (row.request_count > 1) {
-    // The whole reason twins exist. Said here in full because the row can only
-    // fit "approval 1 of 2", and an approver who reads that as a duplicate
-    // either signs one and assumes it is done, or counts the money twice.
-    notes.push(
-      `This credit note matched ${row.request_count} SAP approval templates, so SAP opened ${row.request_count} separate requests on it and the queue lists it once per request. This row is approval ${row.request_index} of ${row.request_count}${
-        row.template_name ? ` (template ${row.template_name})` : ''
-      }, and deciding it does not decide the others.`,
-    );
-    if (row.open_request_count > 0) {
-      notes.push(
-        `${row.open_request_count} of the ${row.request_count} ${
-          row.open_request_count === 1 ? 'is' : 'are'
-        } still waiting — SAP creates nothing until every one of them is approved. The amount and lines above are the whole document's, shown on each row, not this row's share of it.`,
-      );
-    }
-  }
   if (row.posted_doc_num !== null) {
     notes.push(`SAP posted this as credit note ${row.posted_doc_num}.`);
   }
@@ -467,12 +452,6 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
           {note}
         </p>
       ))}
-      {row.status === 'PENDING' && !row.is_mine && row.approver_code && (
-        <p className="text-xs text-muted-foreground">
-          SAP accepts a decision on this one from {row.approver_code} only
-          {row.credentials_configured ? '' : ', and the app holds no password for them'}.
-        </p>
-      )}
     </div>
   );
 }
