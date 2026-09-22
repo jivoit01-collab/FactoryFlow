@@ -1,4 +1,4 @@
-import { BarChart3, IndianRupee, TriangleAlert, Zap } from 'lucide-react';
+import { BarChart3, IndianRupee, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -40,7 +40,6 @@ import {
   apportionToCompany,
   companyShare,
   dailySeries,
-  reconcileSupply,
   rollupByMeter,
   splitBySupply,
 } from '../utils/electricityAnalytics';
@@ -112,9 +111,14 @@ export default function ElectricityDashboardPage() {
 
   // The picker offers the chosen company's meters only — a shared meter counts
   // for each company it feeds, and an untagged one belongs to none of them, the
-  // same rule the readings query applies on the server.
+  // same rule the readings query applies on the server. Mains are left out
+  // altogether: this board reports the sub-meters, so picking one would open an
+  // empty page.
   const pickableMeters = useMemo(
-    () => (companyFilter ? meters.filter((m) => m.company_codes.includes(companyFilter)) : meters),
+    () =>
+      meters
+        .filter((m) => !m.is_main)
+        .filter((m) => !companyFilter || m.company_codes.includes(companyFilter)),
     [meters, companyFilter],
   );
 
@@ -151,16 +155,6 @@ export default function ElectricityDashboardPage() {
     [attributed, meters, window],
   );
   const subRollups = useMemo(() => rollups.filter((r) => !r.isMain), [rollups]);
-  // Checked against the raw rows, never the apportioned ones: every main on
-  // this campus is shared, so a company view halves the supply while that
-  // company's own sub-meters stay whole, and the check would fire on the split
-  // rather than on a fault. It is a register-wide check, and says so.
-  const campus = useMemo(() => splitBySupply(readings), [readings]);
-  const reconciliation = useMemo(
-    () => reconcileSupply(campus.supplyTotal, campus.subTotal),
-    [campus],
-  );
-
   const colourOf = useMemo(() => {
     const map = new Map<string, string>();
     subRollups.forEach((r, i) => map.set(r.name, SERIES[i % SERIES.length]));
@@ -283,20 +277,6 @@ export default function ElectricityDashboardPage() {
           delayMs={120}
         />
       </div>
-
-      {reconciliation.overDrawn && (
-        <Card className="border-rose-300/70 dark:border-rose-500/40">
-          <CardContent className="flex flex-wrap items-center gap-3 p-4 text-sm">
-            <TriangleAlert className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
-            <span>
-              Across the whole register, the sub-meters add up to{' '}
-              <strong>{units(reconciliation.gap)} units more</strong> than the mains brought in (
-              {reconciliation.gapPct.toFixed(1)}% over). A slice cannot exceed the supply — check
-              the multiplying factors, and the register for a day keyed twice.
-            </span>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-2">
@@ -459,7 +439,7 @@ export default function ElectricityDashboardPage() {
         <CardContent className="p-0">
           {isLoading || metersLoading ? (
             <p className="p-8 text-center text-sm text-muted-foreground">Loading readings…</p>
-          ) : rollups.length === 0 ? (
+          ) : subRollups.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">
               No readings in this range.
             </p>
@@ -481,7 +461,7 @@ export default function ElectricityDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rollups.map((row) => (
+                  {subRollups.map((row) => (
                     <tr key={row.meterId} className="border-b last:border-0">
                       <td className="px-3 py-2">
                         <span className="flex items-center gap-2">
@@ -490,14 +470,6 @@ export default function ElectricityDashboardPage() {
                             style={{ background: colourOf.get(row.name) ?? ACCENTS.slate.hex }}
                           />
                           {row.name}
-                          {row.isMain && (
-                            <span
-                              className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
-                              title="Main meter — incoming supply, read apart from the total"
-                            >
-                              Main
-                            </span>
-                          )}
                           {isShared(row.meterId) && (
                             <span
                               className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
@@ -528,9 +500,7 @@ export default function ElectricityDashboardPage() {
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">{units(row.units)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{money(row.cost)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {row.isMain ? '—' : `${row.share.toFixed(1)}%`}
-                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{row.share.toFixed(1)}%</td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {row.readings} / {row.due}
                       </td>

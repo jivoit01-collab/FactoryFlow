@@ -7,7 +7,6 @@ import {
   apportionToCompany,
   companyShare,
   dailySeries,
-  reconcileSupply,
   rollupByMeter,
   splitBySupply,
   sumReadings,
@@ -145,22 +144,6 @@ describe('dailySeries', () => {
 
     expect(series).toHaveLength(1);
     expect(series[0]).toMatchObject({ date: '2026-09-01', Boiler: 10, Terrace: 25, Others: 5 });
-  });
-});
-
-describe('reconcileSupply', () => {
-  it('calls out sub-meters that add up to more than the supply', () => {
-    const result = reconcileSupply({ units: 100, cost: 700 }, { units: 130, cost: 910 });
-
-    expect(result.overDrawn).toBe(true);
-    expect(result.gap).toBe(30);
-    expect(result.gapPct).toBeCloseTo(30);
-  });
-
-  it('stays quiet when the slices fit inside the supply', () => {
-    expect(reconcileSupply({ units: 100, cost: 700 }, { units: 80, cost: 560 }).overDrawn).toBe(
-      false,
-    );
   });
 });
 

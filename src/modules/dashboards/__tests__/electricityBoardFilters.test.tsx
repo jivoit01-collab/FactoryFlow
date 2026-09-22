@@ -45,8 +45,18 @@ const OIL_METER = {
   companies_display: 'Jivo Oil',
 };
 
-/** The campus incomer, which feeds both plants and so answers to each. */
+/** A sub-meter feeding both plants, so it answers to each company. */
 const SHARED_METER = {
+  ...BEVERAGES_METER,
+  id: 16,
+  name: 'TR 125',
+  location: 'Terrace',
+  company_codes: [COMPANY_CODES.JIVO_OIL, COMPANY_CODES.JIVO_BEVERAGES],
+  companies_display: 'Jivo Oil, Jivo Beverages',
+};
+
+/** The campus incomer. The board reports the slices, not the supply. */
+const MAIN_METER = {
   ...BEVERAGES_METER,
   id: 11,
   name: 'KWH',
@@ -71,7 +81,7 @@ const readingFilters = vi.hoisted(() => ({ current: undefined as unknown }));
 
 vi.mock('@/modules/maintenance/api', () => ({
   useElectricityMeters: () => ({
-    data: [BEVERAGES_METER, OIL_METER, SHARED_METER, UNTAGGED_METER],
+    data: [BEVERAGES_METER, OIL_METER, SHARED_METER, MAIN_METER, UNTAGGED_METER],
     isLoading: false,
   }),
   useDailyElectricityReadings: (filters: unknown) => {
@@ -106,23 +116,32 @@ describe('Electricity board — opening filters', () => {
     expect(readingFilters.current).toMatchObject({ company: COMPANY_CODES.JIVO_BEVERAGES });
   });
 
-  it('offers the Beverages meters, including the shared incomer, and nothing else', () => {
+  it('offers the Beverages sub-meters, shared ones included, and nothing else', () => {
     renderBoard();
 
     const options = meterOptions();
     expect(options).toContain('Boiler');
-    expect(options).toContain('KWH');
+    expect(options).toContain('TR 125');
     expect(options).not.toContain('HP-196');
     expect(options).not.toContain('STP');
   });
 
-  it('offers every meter once the company filter is cleared', () => {
+  it('never offers a main meter — the board reports the slices, not the supply', () => {
+    renderBoard();
+
+    expect(meterOptions()).not.toContain('KWH');
+
+    fireEvent.change(companySelect(), { target: { value: '' } });
+    expect(meterOptions()).not.toContain('KWH');
+  });
+
+  it('offers every other plant’s meters once the company filter is cleared', () => {
     renderBoard();
 
     fireEvent.change(companySelect(), { target: { value: '' } });
 
     expect(meterOptions()).toEqual(
-      expect.arrayContaining(['All meters', 'Boiler', 'HP-196', 'KWH', 'STP']),
+      expect.arrayContaining(['All meters', 'Boiler', 'HP-196', 'TR 125', 'STP']),
     );
     expect(readingFilters.current).toMatchObject({ company: undefined });
   });

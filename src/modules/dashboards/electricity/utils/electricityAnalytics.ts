@@ -213,17 +213,3 @@ export function dailySeries(readings: DailyElectricityReading[], meterNames: str
     return row;
   });
 }
-
-/**
- * The sub-meters measure slices of what the mains brought in, so their total
- * can never exceed the supply. When it does, a factor or a duplicate row is
- * wrong, and the register is over-billing somebody.
- */
-export function reconcileSupply(supply: UnitsAndCost, subs: UnitsAndCost) {
-  const gap = subs.units - supply.units;
-  return {
-    gap,
-    gapPct: supply.units ? (gap / supply.units) * 100 : 0,
-    overDrawn: supply.units > 0 && gap > 0,
-  };
-}
