@@ -247,12 +247,23 @@ export interface AdminOilStorage {
 /**
  * One row behind a cost line — a department, a meter, a payroll line, a spare.
  *
- * EVERY LINE'S ROWS SUM TO THAT LINE. The server guarantees it, including for
- * today, because a breakdown whose parts do not add up is the drill panel
- * disagreeing with the tile that opened it.
+ * THE ROWS SUM TO THEIR LINE WHEREVER `rows_sum_to_line` says so, which is
+ * three lines of the four: the server guarantees it, including for today,
+ * because a breakdown whose parts do not add up is the drill panel disagreeing
+ * with the tile that opened it. Electricity is the exception — see that field.
  */
 export interface AdminCostRow {
   label: string;
+  /**
+   * This is the row the line above was priced from.
+   *
+   * Only on a line whose rows do NOT add up to it: electricity lists every
+   * meter the register was read on, and one of them — the main the supply
+   * comes in on — IS the line, while the rest re-measure slices of that same
+   * supply. Absent everywhere else, where every row is part of the line and
+   * none of them is it.
+   */
+  is_line?: boolean;
   /** The row in its own unit — "1,128 man-days", "172,810 units at ₹7.00/unit". */
   detail: string | null;
   /** Month to date, in rupees. */
@@ -331,6 +342,22 @@ export interface AdminCostSlice {
    * what happened. The `?` is what makes every reader below handle it.
    */
   rows?: AdminCostRow[];
+  /**
+   * Do those rows ADD UP to this line?
+   *
+   * True on labour, salary and maintenance, where the rows are the line split
+   * — the panel adds them and prints the total beside the line's own, so a
+   * server that got the split wrong is visible rather than hidden. False on
+   * electricity, whose rows are the whole Daily Electricity register while the
+   * line is the ONE main meter among them: summing those would print ₹29.70 L
+   * under a ₹12.03 L line. The panel then names the row the line came from
+   * (`AdminCostRow.is_line`) instead of stating a total the tile disagrees
+   * with.
+   *
+   * Optional for the same reason `rows` is: a backend that predates it sends
+   * nothing, and only an explicit `false` turns the sum off.
+   */
+  rows_sum_to_line?: boolean;
   /**
    * Why this line differs from the same line on another board.
    *

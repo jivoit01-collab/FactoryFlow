@@ -167,6 +167,61 @@ describe('AdminCostDrill', () => {
     expect(within(row('Electricity')).getByText('no reading entered today')).toBeInTheDocument();
   });
 
+  /*
+   * THE ONE LINE WHOSE ROWS ARE NOT WHAT IT IS MADE OF. Electricity lists the
+   * whole Daily Electricity register and is priced off the ONE main meter in
+   * it, because the sub-meters re-measure slices of that same supply. A head
+   * that added the rows up would state a rival total for a month the tile has
+   * just priced at a third of it.
+   */
+  it('names the row a line was priced from where the rows do not add up to it', () => {
+    const power = slice({
+      key: 'electricity',
+      label: 'Electricity',
+      bucket: 'ELECTRICITY',
+      amount: 1_203_370,
+      detail: 'KWH · 169,730 units',
+      detail_value: 169_730,
+      today: 0,
+      today_detail: 'no reading entered today',
+      rows: [
+        { label: 'KVAH', detail: '180,840 units at ₹7.00/unit', amount: 1_284_020, today: null },
+        {
+          label: 'KWH',
+          detail: '169,730 units at ₹7.00/unit',
+          amount: 1_203_370,
+          today: null,
+          is_line: true,
+        },
+        {
+          label: 'Production Floor OIL',
+          detail: '21,804 units at ₹7.00/unit',
+          amount: 152_628,
+          today: null,
+        },
+      ],
+      rows_sum_to_line: false,
+      basis: 'The main meter Jivo Oil’s supply comes in on, alone.',
+    });
+    render(<AdminCostDrill cost={cost([power])} period="" onClose={vi.fn()} />);
+    fireEvent.click(row('Electricity'));
+
+    const sub = document.querySelector('.ops-drill__substats') as HTMLElement;
+    expect(sub).toHaveTextContent('3 rows');
+    expect(sub).toHaveTextContent('KWH');
+    expect(sub).toHaveTextContent('₹12.03 L');
+    // NOT the ₹26.40 L these three add up to: KVAH is the grid's own KWH as
+    // apparent energy and the floor is a slice of it, so the sum is the same
+    // electricity counted three times.
+    expect(sub).not.toHaveTextContent('₹26.40 L');
+
+    // And the row it came from says so, because size does not: the biggest
+    // meter in the list is the one that must never be the line.
+    const table = document.querySelector('.ops-drill__subtable') as HTMLElement;
+    expect(within(table).getByText('KWH').closest('tr')).toHaveTextContent('· the line');
+    expect(within(table).getByText('KVAH').closest('tr')).not.toHaveTextContent('the line');
+  });
+
   it('names the lines nobody has sourced', () => {
     const unsourced = slice({
       key: 'salary',

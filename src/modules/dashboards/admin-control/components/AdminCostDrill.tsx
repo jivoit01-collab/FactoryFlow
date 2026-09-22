@@ -30,6 +30,16 @@ function rowToday(value: number | null | undefined): string {
  * on the Factory Expense wall board. That note is the thing a reader who has
  * both screens open needs most, and it belongs where the rows are: it is an
  * explanation of what they are looking at, not an alert.
+ *
+ * TWO KINDS OF ROW LIST, AND THE HEAD SAYS WHICH. On labour, salary and
+ * maintenance the rows ARE the line, split: adding them up and printing the
+ * total beside the line's own is how a panel disagreeing with the tile that
+ * opened it becomes visible instead of hidden. On electricity they are the
+ * REGISTER — every meter that was read, of which the line is the one the
+ * supply comes in on — and the same sum would print ₹29.70 L under a ₹12.03 L
+ * line and call it the same month. `rows_sum_to_line` is the payload saying
+ * which of the two this is; where it is false the head names the row the line
+ * was priced from instead of stating a rival total.
  */
 function CostLineRows({ slice }: { slice: AdminCostSlice }) {
   // `rows` may be absent rather than empty — see `AdminCostSlice.rows`. Both
@@ -37,23 +47,50 @@ function CostLineRows({ slice }: { slice: AdminCostSlice }) {
   const rows = slice.rows ?? [];
   const monthSum = rows.reduce((total, row) => total + row.amount, 0);
   const todaySum = rows.reduce((total, row) => total + (row.today ?? 0), 0);
+  const lineRow = rows.find((row) => row.is_line);
+  const count = (
+    <>
+      <b>{rows.length}</b> {rows.length === 1 ? 'row' : 'rows'}
+    </>
+  );
 
   return (
     <DrillSub
       lede={slice.basis ?? `What makes up ${slice.label.toLowerCase()} this month`}
-      // Recomputed from these rows rather than carried down from the line, so
-      // that anything which made the two disagree is visible instead of hidden.
       stats={
-        <>
-          <b>{rows.length}</b> {rows.length === 1 ? 'row' : 'rows'} ·{' '}
-          <b>{money(monthSum)}</b> this month · <b>{money(todaySum)}</b> today
-        </>
+        // Recomputed from these rows rather than carried down from the line,
+        // so that anything which made the two disagree is visible instead of
+        // hidden — but only where they are the line's own parts. See above.
+        slice.rows_sum_to_line === false ? (
+          <>
+            {count} · the line is {lineRow ? <b>{lineRow.label}</b> : 'one of them'} at{' '}
+            <b>{money(slice.amount)}</b>
+          </>
+        ) : (
+          <>
+            {count} · <b>{money(monthSum)}</b> this month · <b>{money(todaySum)}</b> today
+          </>
+        )
       }
       rows={rows}
       rowKey={(row: AdminCostRow) => row.label}
       empty={slice.warning ?? `Nothing is booked to ${slice.label.toLowerCase()} this month.`}
       columns={[
-        { label: 'What', cell: (row: AdminCostRow) => row.label, width: '34%' },
+        {
+          label: 'What',
+          // The row the line was priced from, named as such. Size does not say
+          // it: the biggest meter here is KVAH, which is the grid's own KWH
+          // counted again as apparent energy and never the line.
+          cell: (row: AdminCostRow) =>
+            row.is_line ? (
+              <>
+                <strong>{row.label}</strong> · the line
+              </>
+            ) : (
+              row.label
+            ),
+          width: '34%',
+        },
         {
           label: 'In its own unit',
           cell: (row: AdminCostRow) => row.detail ?? NO_VALUE,
