@@ -267,4 +267,5 @@ export {
   CASH_BOOK_PERMISSIONS,
   CASH_BOOK_SETTINGS_ACCESS,
   type CashBookPermission,
+  SALARY_ADVANCE_ACCESS,
 } from './cash-book.permissions';

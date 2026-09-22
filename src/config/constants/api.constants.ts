@@ -1835,6 +1835,20 @@ export const API_ENDPOINTS = {
     ADVANCE_DETAIL: (entryId: number) => `/cash-book/advances/${entryId}/`,
     ADVANCE_HOLDERS: '/cash-book/advances/holders/',
     ADVANCE_STATEMENT: (personId: number) => `/cash-book/advances/holders/${personId}/`,
+    // Cash given against a wage, which comes back off it. A different thing
+    // from an advance above: that is the factory's cash in somebody's pocket,
+    // settled by spending it; this became theirs, and HR settle it out of pay.
+    // DECIDE is HR's verdict; DEDUCTED is them ticking it off once it has
+    // actually come off a salary. EMPLOYEES is the picker's own type-ahead --
+    // the register's custodian has no right to read a payroll, so it carries a
+    // name, a code and a department and nothing about what anybody earns.
+    SALARY_ADVANCES: '/cash-book/salary-advances/',
+    SALARY_ADVANCE_DETAIL: (advanceId: number) =>
+      `/cash-book/salary-advances/${advanceId}/`,
+    SALARY_ADVANCES_DECIDE: '/cash-book/salary-advances/decide/',
+    SALARY_ADVANCE_DEDUCTED: (advanceId: number) =>
+      `/cash-book/salary-advances/${advanceId}/deducted/`,
+    SALARY_ADVANCE_EMPLOYEES: '/cash-book/salary-advances/employees/',
     PEOPLE: '/cash-book/people/',
     // Adding a driver or tradesman at the moment cash is handed over.
     PERSON_CREATE: '/cash-book/people/new/',

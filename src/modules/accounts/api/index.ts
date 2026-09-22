@@ -73,3 +73,26 @@ export {
   useUpdateCashBranch,
   useUpdateCashEntry,
 } from './cashBook.queries';
+export {
+  type DecideSalaryAdvancePayload,
+  type RecordSalaryAdvancePayload,
+  type SalaryAdvance,
+  type SalaryAdvanceBand,
+  type SalaryAdvanceEmployee,
+  type SalaryAdvanceList,
+  type SalaryAdvanceListParams,
+  salaryAdvancesApi,
+  type SalaryAdvanceState,
+  type SalaryAdvanceSummary,
+} from './salaryAdvances.api';
+export {
+  SALARY_ADVANCE_QUERY_KEYS,
+  useCancelSalaryAdvance,
+  useDecideSalaryAdvances,
+  useMarkSalaryAdvanceDeducted,
+  useRecordSalaryAdvance,
+  useSalaryAdvanceEmployees,
+  useSalaryAdvances,
+  useUndoSalaryAdvanceDeduction,
+  useUpdateSalaryAdvance,
+} from './salaryAdvances.queries';
