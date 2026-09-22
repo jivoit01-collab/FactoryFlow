@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatchPipelineBoard } from '@/modules/dashboards/dispatch-pipeline/api';
 import type { PipelineStage } from '@/modules/dashboards/dispatch-pipeline/types';
 import { ACCENTS } from '@/shared/components/dashboard';
-import { cn } from '@/shared/utils';
+import { cn, formatDateToISOString } from '@/shared/utils';
 
 import { PIPELINE_NODES } from './dispatchDashboard.constants';
 
@@ -15,8 +15,14 @@ function useWindow() {
     const to = new Date();
     const from = new Date();
     from.setMonth(from.getMonth() - 1);
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
-    return { date_from: iso(from), date_to: iso(to), all_companies: true };
+    // Local, not `toISOString`: read back in UTC, both ends land on yesterday
+    // for the first five and a half hours of every IST day -- which is the
+    // night shift, the people most likely to be looking at this.
+    return {
+      date_from: formatDateToISOString(from),
+      date_to: formatDateToISOString(to),
+      all_companies: true,
+    };
   }, []);
 }
 

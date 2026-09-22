@@ -37,14 +37,22 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/shared/components/ui';
+import { formatDateToISOString } from '@/shared/utils';
 
-/** The first of this month, and today — the block of the book anybody opens. */
+/**
+ * The first of this month, and today — the block of the book anybody opens.
+ *
+ * Both ends are written from the LOCAL calendar. `toISOString` would read them
+ * back in UTC, and the first of the month is built as local midnight: in IST
+ * that instant is 18:30 on the last day of the month before, so the window
+ * opened on 31-08 for the whole of September and quietly carried an extra
+ * day's dispatches into every figure on the sheet.
+ */
 function thisMonth() {
   const today = new Date();
-  const iso = (date: Date) => date.toISOString().slice(0, 10);
   return {
-    from: iso(new Date(today.getFullYear(), today.getMonth(), 1)),
-    to: iso(today),
+    from: formatDateToISOString(new Date(today.getFullYear(), today.getMonth(), 1)),
+    to: formatDateToISOString(today),
   };
 }
 
