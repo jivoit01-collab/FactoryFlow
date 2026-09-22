@@ -7,7 +7,6 @@ import {
   apportionToCompany,
   companyShare,
   dailySeries,
-  findAnomalies,
   reconcileSupply,
   rollupByMeter,
   splitBySupply,
@@ -146,114 +145,6 @@ describe('dailySeries', () => {
 
     expect(series).toHaveLength(1);
     expect(series[0]).toMatchObject({ date: '2026-09-01', Boiler: 10, Terrace: 25, Others: 5 });
-  });
-});
-
-describe('findAnomalies', () => {
-  const boiler = meter({ id: 3, name: 'Boiler', multiplying_factor: '20.0000' });
-
-  it('flags the same dials keyed on two days as a double count', () => {
-    const rows = [
-      reading({
-        meter: 3,
-        date: '2026-09-01',
-        multiplying_factor: '20.0000',
-        opening_reading: '446.00',
-        closing_reading: '449.00',
-        dial_difference: '3.00',
-        units_consumed: '60.00',
-      }),
-      reading({
-        meter: 3,
-        date: '2026-09-02',
-        multiplying_factor: '20.0000',
-        opening_reading: '446.00',
-        closing_reading: '449.00',
-        dial_difference: '3.00',
-        units_consumed: '60.00',
-      }),
-    ];
-
-    const findings = findAnomalies(rows, [boiler], WINDOW);
-
-    expect(findings[0].level).toBe('critical');
-    expect(findings[0].title).toContain('keyed twice');
-    expect(findings[0].detail).toContain('60.00 units are counted a second time');
-  });
-
-  it('flags a dial that moved between two readings, priced at the master factor', () => {
-    const rows = [
-      reading({
-        meter: 3,
-        date: '2026-09-01',
-        multiplying_factor: '20.0000',
-        opening_reading: '100.00',
-        closing_reading: '110.00',
-      }),
-      reading({
-        meter: 3,
-        date: '2026-09-02',
-        multiplying_factor: '20.0000',
-        opening_reading: '115.00',
-        closing_reading: '120.00',
-      }),
-    ];
-
-    const gap = findAnomalies(rows, [boiler], WINDOW).find((f) => f.title.includes('dial moved'));
-
-    expect(gap?.level).toBe('warning');
-    expect(gap?.detail).toContain('100'); // 5 dials × ×20
-  });
-
-  it('flags a factor typed differently from one day to the next', () => {
-    const rows = [
-      reading({ meter: 3, date: '2026-09-01', multiplying_factor: '1.0000' }),
-      reading({
-        meter: 3,
-        date: '2026-09-02',
-        multiplying_factor: '20.0000',
-        opening_reading: '110.00',
-        closing_reading: '120.00',
-      }),
-    ];
-
-    const factor = findAnomalies(rows, [boiler], WINDOW).find((f) => f.title.includes('factor'));
-
-    expect(factor?.level).toBe('critical');
-    expect(factor?.detail).toContain('×1');
-    expect(factor?.detail).toContain('×20');
-  });
-
-  it('reports a rate change as information, not a fault', () => {
-    const rows = [
-      reading({
-        meter: 3,
-        date: '2026-09-01',
-        multiplying_factor: '20.0000',
-        rate_per_unit: '7.0000',
-      }),
-      reading({
-        meter: 3,
-        date: '2026-09-02',
-        multiplying_factor: '20.0000',
-        rate_per_unit: '9.0000',
-        opening_reading: '110.00',
-        closing_reading: '120.00',
-      }),
-    ];
-
-    const rate = findAnomalies(rows, [boiler], WINDOW).find((f) => f.title.includes('rate moved'));
-
-    expect(rate?.level).toBe('info');
-    expect(rate?.title).toContain('₹9');
-  });
-
-  it('counts the days a meter was due but never keyed', () => {
-    const rows = [reading({ meter: 3, date: '2026-09-01', multiplying_factor: '20.0000' })];
-
-    const missing = findAnomalies(rows, [boiler], WINDOW).find((f) => f.title.includes('missing'));
-
-    expect(missing?.title).toContain('missing 3 days');
   });
 });
 

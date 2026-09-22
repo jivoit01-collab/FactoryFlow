@@ -1,12 +1,4 @@
-import {
-  AlertTriangle,
-  BarChart3,
-  IndianRupee,
-  Info,
-  Plug,
-  TriangleAlert,
-  Zap,
-} from 'lucide-react';
+import { AlertTriangle, BarChart3, IndianRupee, Plug, TriangleAlert, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -48,8 +40,6 @@ import {
   apportionToCompany,
   companyShare,
   dailySeries,
-  findAnomalies,
-  type FindingLevel,
   reconcileSupply,
   rollupByMeter,
   splitBySupply,
@@ -90,18 +80,6 @@ function firstOfMonthISO() {
 function dayTick(date: string) {
   return date.slice(8);
 }
-
-const FINDING_STYLE: Record<FindingLevel, { badge: string; icon: typeof AlertTriangle }> = {
-  critical: {
-    badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-    icon: TriangleAlert,
-  },
-  warning: {
-    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-    icon: AlertTriangle,
-  },
-  info: { badge: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300', icon: Info },
-};
 
 /**
  * Reads the daily electricity register back as a board: where the units went,
@@ -173,10 +151,6 @@ export default function ElectricityDashboardPage() {
     [attributed, meters, window],
   );
   const subRollups = useMemo(() => rollups.filter((r) => !r.isMain), [rollups]);
-  const findings = useMemo(
-    () => findAnomalies(readings, meters, window),
-    [readings, meters, window],
-  );
   const reconciliation = useMemo(() => reconcileSupply(split.supplyTotal, split.subTotal), [split]);
 
   const colourOf = useMemo(() => {
@@ -337,7 +311,7 @@ export default function ElectricityDashboardPage() {
             <span>
               The sub-meters add up to <strong>{units(reconciliation.gap)} units more</strong> than
               the mains brought in ({reconciliation.gapPct.toFixed(1)}% over). A slice cannot exceed
-              the supply — check the multiplying factors and the duplicate readings listed below.
+              the supply — check the multiplying factors, and the register for a day keyed twice.
             </span>
           </CardContent>
         </Card>
@@ -496,44 +470,6 @@ export default function ElectricityDashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Data quality</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {findings.length === 0 ? (
-            <p className="py-16 text-center text-sm text-muted-foreground">
-              {isLoading ? 'Checking the readings…' : 'Nothing irregular in this range.'}
-            </p>
-          ) : (
-            <ul className="divide-y">
-              {findings.slice(0, 9).map((finding, i) => {
-                const style = FINDING_STYLE[finding.level];
-                const Icon = style.icon;
-                return (
-                  <li key={`${finding.title}-${i}`} className="flex gap-3 py-2.5">
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${style.badge}`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">{finding.title}</span>
-                      <span className="block text-xs text-muted-foreground">{finding.detail}</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {findings.length > 9 && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              {findings.length - 9} more — narrow the range or pick one meter to see the rest.
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
