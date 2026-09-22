@@ -117,7 +117,11 @@ export default function ElectricityDashboardPage() {
 
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
-  const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>('');
+  // Opens on Beverages: it is the plant this board was asked for, and "all
+  // companies" mixes its meters with Oil's own before anybody has chosen.
+  const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>(
+    COMPANY_CODES.JIVO_BEVERAGES,
+  );
   const [meterFilter, setMeterFilter] = useState('');
 
   const { data: meters = [], isLoading: metersLoading } = useElectricityMeters();
@@ -127,6 +131,24 @@ export default function ElectricityDashboardPage() {
     meter: meterFilter ? Number(meterFilter) : undefined,
     company: companyFilter || undefined,
   });
+
+  // The picker offers the chosen company's meters only — a shared meter counts
+  // for each company it feeds, and an untagged one belongs to none of them, the
+  // same rule the readings query applies on the server.
+  const pickableMeters = useMemo(
+    () => (companyFilter ? meters.filter((m) => m.company_codes.includes(companyFilter)) : meters),
+    [meters, companyFilter],
+  );
+
+  /** Switching company drops a meter that the new one does not feed. */
+  const onSelectCompany = (code: CompanyCode | '') => {
+    setCompanyFilter(code);
+    const stillOffered =
+      !meterFilter ||
+      !code ||
+      meters.some((m) => m.id === Number(meterFilter) && m.company_codes.includes(code));
+    if (!stillOffered) setMeterFilter('');
+  };
 
   const window = useMemo(() => ({ from: dateFrom, to: dateTo }), [dateFrom, dateTo]);
   const split = useMemo(() => splitBySupply(readings), [readings]);
@@ -197,7 +219,7 @@ export default function ElectricityDashboardPage() {
             <NativeSelect
               id="elec-dash-company"
               value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value as CompanyCode | '')}
+              onChange={(e) => onSelectCompany(e.target.value as CompanyCode | '')}
             >
               <SelectOption value="">All companies</SelectOption>
               {COMPANY_CODE_LIST.map((code) => (
@@ -215,7 +237,7 @@ export default function ElectricityDashboardPage() {
               onChange={(e) => setMeterFilter(e.target.value)}
             >
               <SelectOption value="">All meters</SelectOption>
-              {meters.map((meter) => (
+              {pickableMeters.map((meter) => (
                 <SelectOption key={meter.id} value={String(meter.id)}>
                   {meter.name}
                 </SelectOption>
