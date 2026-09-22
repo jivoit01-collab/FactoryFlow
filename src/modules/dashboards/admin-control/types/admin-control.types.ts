@@ -319,8 +319,17 @@ export interface AdminCostSlice {
    */
   today_detail_value: number | null;
   today_detail_unit: string | null;
-  /** What the line is made of, one level down. Empty where nothing is behind it. */
-  rows: AdminCostRow[];
+  /**
+   * What the line is made of, one level down. Empty where nothing is behind it.
+   *
+   * OPTIONAL, and deliberately so. This screen and the server that fills it
+   * deploy on separate pushes, so a board can be served by a backend that
+   * predates the drill and sends four slices with no `rows` key at all. Typed
+   * as present, that possibility is invisible until a tile reads `.length` off
+   * it in production and takes the whole page down with it — which is exactly
+   * what happened. The `?` is what makes every reader below handle it.
+   */
+  rows?: AdminCostRow[];
   /**
    * Why this line differs from the same line on another board.
    *

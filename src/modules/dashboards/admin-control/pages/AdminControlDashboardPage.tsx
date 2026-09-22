@@ -126,7 +126,14 @@ export default function AdminControlDashboardPage() {
   const periodLabel = meta ? shortWindow(meta.period.from, meta.period.to) : '';
   // How much there is to open. Zero means the drill would be four empty lines,
   // so the tile neither offers nor opens.
-  const costRows = (cost?.slices ?? []).reduce((total, slice) => total + slice.rows.length, 0);
+  // A slice with no `rows` at all counts as nothing to open, exactly like a
+  // slice with an empty one: a server that predates the drill and a line with
+  // nothing behind it both mean "there is no detail here", and the tile has one
+  // way of saying that. See `AdminCostSlice.rows`.
+  const costRows = (cost?.slices ?? []).reduce(
+    (total, slice) => total + (slice.rows?.length ?? 0),
+    0,
+  );
 
   return (
     <div ref={shellRef} className="admin-board ops-board">

@@ -32,8 +32,11 @@ function rowToday(value: number | null | undefined): string {
  * explanation of what they are looking at, not an alert.
  */
 function CostLineRows({ slice }: { slice: AdminCostSlice }) {
-  const monthSum = slice.rows.reduce((total, row) => total + row.amount, 0);
-  const todaySum = slice.rows.reduce((total, row) => total + (row.today ?? 0), 0);
+  // `rows` may be absent rather than empty — see `AdminCostSlice.rows`. Both
+  // read as "nothing behind this line", which `empty` below already states.
+  const rows = slice.rows ?? [];
+  const monthSum = rows.reduce((total, row) => total + row.amount, 0);
+  const todaySum = rows.reduce((total, row) => total + (row.today ?? 0), 0);
 
   return (
     <DrillSub
@@ -42,11 +45,11 @@ function CostLineRows({ slice }: { slice: AdminCostSlice }) {
       // that anything which made the two disagree is visible instead of hidden.
       stats={
         <>
-          <b>{slice.rows.length}</b> {slice.rows.length === 1 ? 'row' : 'rows'} ·{' '}
+          <b>{rows.length}</b> {rows.length === 1 ? 'row' : 'rows'} ·{' '}
           <b>{money(monthSum)}</b> this month · <b>{money(todaySum)}</b> today
         </>
       }
-      rows={slice.rows}
+      rows={rows}
       rowKey={(row: AdminCostRow) => row.label}
       empty={slice.warning ?? `Nothing is booked to ${slice.label.toLowerCase()} this month.`}
       columns={[
@@ -123,7 +126,7 @@ export function AdminCostDrill({ cost, period, onClose }: AdminCostDrillProps) {
       rowKey={(slice: AdminCostSlice) => slice.key}
       empty="The expense registers could not be read."
       onRowClick={(slice: AdminCostSlice) => toggle(slice.key)}
-      canOpenRow={(slice: AdminCostSlice) => slice.rows.length > 0}
+      canOpenRow={(slice: AdminCostSlice) => (slice.rows?.length ?? 0) > 0}
       expandedKey={openKey}
       renderExpanded={(slice: AdminCostSlice) => <CostLineRows slice={slice} />}
       columns={[

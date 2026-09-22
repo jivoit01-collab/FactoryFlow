@@ -122,6 +122,21 @@ describe('AdminCostDrill', () => {
   });
 
   /*
+   * The screen and its server deploy on separate pushes, so a board can be
+   * served by a backend that predates the drill and sends no `rows` key at all.
+   * That read the whole page down with a TypeError once; a missing key must now
+   * mean the same as an empty list — there is no detail to open.
+   */
+  it('survives a payload from a server that sends no rows at all', () => {
+    const older = slice({ rows: undefined });
+    render(<AdminCostDrill cost={cost([older])} period="" onClose={vi.fn()} />);
+
+    expect(row('Labour').className).not.toContain('ops-drill__rowopen');
+    fireEvent.click(row('Labour'));
+    expect(document.querySelector('.ops-drill__subrow')).toBeNull();
+  });
+
+  /*
    * "Read, and nothing was spent" and "this payload cannot say" are different
    * answers, and the board renders them differently everywhere else.
    */
