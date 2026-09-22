@@ -2,6 +2,7 @@ import {
   Activity,
   ArrowLeftRight,
   Boxes,
+  Building2,
   ClipboardCheck,
   ClipboardList,
   CupSoda,
@@ -44,6 +45,7 @@ import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
 import { BOARD_LIST_VIEW_PERMISSIONS } from '../builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
+import { CIVIL_BOARD_VIEW_PERMISSIONS } from '../civil-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
@@ -247,6 +249,16 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/accounts-board',
     accent: 'emerald',
     permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+  },
+  {
+    // Every ongoing building job on the campus -- area, sanction against spend,
+    // work certified, programme. No civil feed behind it yet: the board draws a
+    // worked example and says so on its own face.
+    title: 'Civil Control',
+    icon: <Building2 className="h-5 w-5" />,
+    route: '/dashboards/civil-control',
+    accent: 'teal',
+    permissions: CIVIL_BOARD_VIEW_PERMISSIONS,
   },
   {
     title: 'Factory Expense',

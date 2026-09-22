@@ -18,6 +18,7 @@ import {
   BOARD_LIST_VIEW_PERMISSIONS,
 } from './builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
+import { CIVIL_BOARD_VIEW_PERMISSIONS } from './civil-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
@@ -88,6 +89,9 @@ const AdminControlDashboardPage = lazy(
 const HrBoardDashboardPage = lazy(() => import('./hr-board/pages/HrBoardDashboardPage'));
 const AccountsDashboardPage = lazy(
   () => import('./accounts-board/pages/AccountsDashboardPage'),
+);
+const CivilControlDashboardPage = lazy(
+  () => import('./civil-control/pages/CivilControlDashboardPage'),
 );
 const BoardCarouselPage = lazy(() => import('./carousel/pages/BoardCarouselPage'));
 const MyDashboardsPage = lazy(() => import('./builder/pages/MyDashboardsPage'));
@@ -296,6 +300,29 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Accounts' },
+    },
+    {
+      // Every ongoing building job on the campus, one row each: area, what was
+      // sanctioned against what has been spent, work certified, and the
+      // programme. The six columns of the site meeting's own whiteboard, in the
+      // order that meeting already runs.
+      //
+      // THE BOARD HAS NO FEED YET. There is no civil register behind it, so it
+      // draws four worked-example projects and says so in its header, in a chip
+      // and on every row. It was asked for ahead of the data on purpose -- a
+      // column layout is argued about far better against something that looks
+      // like the meeting than against a description of one.
+      //
+      // Gated on the budget-approvals rights rather than a new one, so no
+      // permission row has to be created on the live database before anyone can
+      // open it: capex sanctioned against capex spent is what that screen
+      // already shows. Revisit when the register lands and the board starts
+      // carrying contractors and certified progress -- see the constants file.
+      path: '/dashboards/civil-control',
+      element: <CivilControlDashboardPage />,
+      layout: 'main',
+      permissions: CIVIL_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Civil Control' },
     },
     {
       // Production lines and the finished-goods floor they feed, on one screen:
@@ -626,6 +653,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // would be a right that grants nothing and has to be administered,
         // which is worse than a link.
         ...BOARD_LIST_VIEW_PERMISSIONS,
+        // And Civil Control. Budget approvals is the only right on this list
+        // that nothing else here carries, so without the spread the whole
+        // Dashboards menu stays hidden from exactly the people the civil board
+        // is for -- the ones who sanction what it reports on.
+        ...CIVIL_BOARD_VIEW_PERMISSIONS,
       ],
       hasSubmenu: true,
       children: [
@@ -675,6 +707,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/accounts-board',
           title: 'Accounts',
           permissions: ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+        },
+        {
+          // Beside Accounts rather than among the plant boards: what it reports
+          // is capex, and the people who read it are the ones who sanction it.
+          path: '/dashboards/civil-control',
+          title: 'Civil Control',
+          permissions: CIVIL_BOARD_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/warehouse-control',

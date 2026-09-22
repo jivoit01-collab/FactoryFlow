@@ -1,0 +1,495 @@
+/* ══════════════════════════════════════════════════════════════
+   CIVIL CONTROL BOARD — what this board ADDS
+
+   Everything structural comes from `logistics-control/styles/ops-board.css`,
+   which this file is loaded after and never forks. The four colour rules hold
+   here unchanged:
+
+     1. Domain hue  = the band. One band, and it borrows the WAREHOUSE teal
+                      rather than minting a hue: this board is about buildings
+                      and floor area, and teal is what a reader of the boards in
+                      the same room has already learned means space.
+     2. Composition = tints of that one hue. The progress ring and both meters
+                      are compositions — done against remaining, drawn against
+                      sanctioned, gone against left — so all three are teal on
+                      grey and none of them is ever red.
+     3. Condition   = the tag pill, never the ring and never the bar. Whether a
+                      project has slipped is said in words in a badge, so a
+                      reader who cannot separate two teals still gets the
+                      judgement.
+     4. Grey        = the part that isn't there: remainder, unsanctioned,
+                      unmeasured.
+
+   A FIGURE THAT CANNOT BE COMPUTED RENDERS AS A RULE, NEVER AS ZERO, and a
+   track with no figure behind it is HATCHED rather than empty — `.civ-unknown`.
+   A project nobody has costed and a project costing nothing are different
+   problems and this board must not draw them alike.
+
+   THE SAMPLE MARKING IS PART OF THE DESIGN. `.civ-pill[data-state='sample']`
+   and `.civ-sample` exist because this board has no feed yet and draws four
+   invented projects. They are amber-on-grey rather than decorative: a capex
+   figure a manager cannot tell from a real one is the one failure here that
+   matters. Both disappear on their own the day the register is wired up.
+   ══════════════════════════════════════════════════════════════ */
+
+.civil-board {
+  /*
+   * THE UNIT MEASURES THIS BOARD, NOT THE WINDOW — same reasoning as the admin
+   * board: in the app this is never the whole viewport, so a unit read off `vw`
+   * comes out about a third too large.
+   *
+   * The horizontal term leads here and the vertical one is generous, which is
+   * the opposite of the tile boards. They are height-bound — four fixed rows
+   * per tile and nothing may fall below the fold. This one is WIDTH-bound: six
+   * columns, two of them carrying a figure with a unit beside it, and the first
+   * thing to break is a budget wrapping away from its "Cr". Rows are cheap by
+   * comparison — the sheet scrolls.
+   */
+  container-type: inline-size;
+  --u: clamp(7px, min(0.78cqw, 1.5vh), 22px);
+}
+
+/* Topbar, notice, sheet. The notice is `auto` and the sheet takes the rest, so
+   a two-line warning on a narrow window eats into the table rather than pushing
+   it off the bottom of the board. */
+.civil-board .ops-board__inner {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+/*
+ * One band, and it is as tall as its own rows — up to the height available.
+ *
+ * Every other board here stretches its bands to fill the viewport, which is
+ * right when the contents are a fixed grid of tiles. A register is not: on a
+ * campus with four live projects a full-height card is two thirds empty white,
+ * which reads as a board that failed to load rather than as one with four
+ * projects on it.
+ *
+ * So the row is `auto` and the band is pinned to the top. It grows with the
+ * register and stops at the fold, where `.civ-tablewrap` starts scrolling
+ * instead. `minmax(0, …)` keeps the floor at zero so a long register is clipped
+ * by the stack rather than pushing itself off the bottom of the screen.
+ */
+.civil-board .ops-stack {
+  grid-template-rows: minmax(0, auto);
+  align-content: start;
+}
+.civil-board .civ-band {
+  max-height: 100%;
+}
+
+/* Rail + sheet. No workforce strip on this board — every figure here belongs to
+   a building, not to a shift. */
+.civil-board .civ-band {
+  grid-template-columns: calc(2.5 * var(--u)) minmax(0, 1fr);
+}
+
+/* ───────── the header's state pill ───────── */
+
+/*
+ * SAMPLE or LIVE, in place of the operations pill's LIVE or SYNCING.
+ *
+ * Amber rather than green, and the dot does not beat: the pulse on
+ * `.ops-pill-live` is the board's sign of a feed arriving, and a heartbeat over
+ * data that is not arriving from anywhere would be the animation telling the
+ * opposite story to the word beside it.
+ */
+.civ-pill {
+  display: flex;
+  align-items: center;
+  gap: calc(0.38 * var(--u));
+  padding: calc(0.28 * var(--u)) calc(0.62 * var(--u));
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.32);
+  font-size: calc(0.95 * var(--u));
+  font-weight: 700;
+  color: var(--ok1);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.civ-pill i {
+  width: calc(0.4 * var(--u));
+  height: calc(0.4 * var(--u));
+  border-radius: 50%;
+  background: #10b981;
+}
+.civ-pill[data-state='sample'] {
+  background: rgba(245, 158, 11, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.36);
+  color: #b45309;
+}
+.civ-pill[data-state='sample'] i {
+  background: #f59e0b;
+}
+
+/* ───────── the sample notice ───────── */
+
+/*
+ * Said once in full, above the table.
+ *
+ * A strip rather than a tile: it is about the whole board, and a warning
+ * wearing a card would read as one of the things the board reports.
+ */
+.civ-notice {
+  padding: calc(0.5 * var(--u)) calc(1 * var(--u));
+  border-radius: calc(0.7 * var(--u));
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.28);
+  font-size: calc(1.02 * var(--u));
+  font-weight: 500;
+  color: #92400e;
+  line-height: 1.35;
+}
+.civ-notice b {
+  font-weight: 700;
+  color: #78350f;
+}
+
+/* ───────── the sheet ───────── */
+
+/*
+ * The card the table sits on — the tile's surface without the tile's four
+ * fixed rows, which a table cannot live inside.
+ *
+ * The same wash and the same coloured left edge as `.ops-grp`, so the sheet
+ * reads as a member of its band rather than as a panel that wandered in from
+ * another screen. White through the top two fifths again, and for the same
+ * reason: that is the zone the header row and the first rows of figures land
+ * in, and they need a white ground to be read against from across a room.
+ */
+.civ-sheet {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  border-radius: calc(0.75 * var(--u));
+  background: linear-gradient(180deg, #fff 0%, #fff 40%, var(--d4) 100%);
+  box-shadow:
+    0 calc(0.05 * var(--u)) calc(0.12 * var(--u)) rgba(14, 23, 38, 0.05),
+    0 calc(0.35 * var(--u)) calc(0.9 * var(--u)) calc(-0.45 * var(--u)) rgba(14, 23, 38, 0.14),
+    inset 0 0 0 1px var(--tint1);
+}
+.civ-sheet::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(0.3 * var(--u));
+  background: linear-gradient(180deg, var(--d1) 0%, var(--d2) 55%, var(--d3) 100%);
+  z-index: 1;
+}
+
+/*
+ * The one scroller on the board.
+ *
+ * Every other board here promises one viewport with nothing below the fold,
+ * which it can because its tiles are a fixed shape. A register cannot make that
+ * promise — it has as many rows as the campus has projects — so this scrolls
+ * rather than shrinking its own type until the twelfth project is unreadable.
+ * The header row stays put, which is what makes a scrolled table legible at all.
+ */
+.civ-tablewrap {
+  /* `max-height`, not `height`: the sheet is as tall as its rows until they
+     reach the fold, and only then does this become the scroller. */
+  max-height: 100%;
+  overflow: auto;
+  padding: calc(0.3 * var(--u)) calc(0.9 * var(--u)) calc(0.9 * var(--u))
+    calc(0.9 * var(--u) + 0.3 * var(--u));
+}
+
+/* ───────── the table ───────── */
+
+.civ-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* Fixed, so the columns are the widths below rather than the widths of
+     whichever project happens to have the longest contractor. */
+  table-layout: fixed;
+}
+
+.civ-c-no {
+  width: calc(3.2 * var(--u));
+}
+.civ-c-name {
+  /* The only elastic column: a project's name and the line under it are the
+     one cell that genuinely wants whatever is left over. */
+  width: auto;
+}
+/*
+ * The four figure columns, widened off the screenshot rather than off the
+ * arithmetic.
+ *
+ * They were sized to the longest string each could hold, which is the right
+ * floor and the wrong width: on a wall-width board it left the four of them
+ * huddled against the right-hand edge with a thousand pixels of empty project
+ * column beside them. These give each figure and its meter room to breathe.
+ * Still in `--u`, so they shrink with the board and the name column keeps
+ * whatever is left over.
+ */
+.civ-c-area {
+  width: calc(12 * var(--u));
+}
+.civ-c-money {
+  width: calc(17 * var(--u));
+}
+.civ-c-prog {
+  width: calc(14 * var(--u));
+}
+.civ-c-time {
+  width: calc(19 * var(--u));
+}
+
+.civ-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: calc(0.7 * var(--u)) calc(0.7 * var(--u)) calc(0.5 * var(--u));
+  font-size: calc(0.98 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--d1);
+  /* Opaque, not the card's gradient: a sticky header over scrolling rows shows
+     whatever is behind it, and a translucent one turns the numbers passing
+     under it into the header's own background. */
+  background: #fff;
+  box-shadow: inset 0 calc(-0.12 * var(--u)) 0 var(--tint1);
+}
+
+.civ-table td {
+  padding: calc(0.62 * var(--u)) calc(0.7 * var(--u));
+  vertical-align: top;
+  border-top: 1px solid var(--tint2);
+}
+.civ-table tbody tr:first-child td {
+  border-top: 0;
+}
+
+/*
+ * Every row of a sample register carries the mark, not just the header.
+ *
+ * A screenshot of one row is how a figure from this board reaches somebody who
+ * never saw the notice at the top. The tint is barely there — it must not make
+ * the table look like an alarm — and the word beside the name is what actually
+ * does the work.
+ */
+.civ-table tr[data-sample] {
+  background: rgba(245, 158, 11, 0.045);
+}
+
+.civ-no {
+  font-size: calc(1.15 * var(--u));
+  font-weight: 700;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────── the project cell ───────── */
+
+.civ-name b {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(0.4 * var(--u));
+  font-size: calc(1.3 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.civ-sample {
+  text-decoration: none;
+  font-size: calc(0.82 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.32);
+  padding: 0 calc(0.34 * var(--u));
+  border-radius: calc(0.35 * var(--u));
+}
+.civ-stage {
+  margin-left: calc(0.45 * var(--u));
+  font-size: calc(0.88 * var(--u));
+  /* Baseline-aligned with the name rather than sitting on the line below it —
+     the stage is part of what the project IS, not a fact about it. */
+  vertical-align: calc(0.12 * var(--u));
+}
+.civ-name small {
+  display: block;
+  margin-top: calc(0.2 * var(--u));
+  font-size: calc(0.98 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+/* The row's exception — why a job is stopped, what is waiting on what. Italic
+   and indented behind a rule so it reads as a remark rather than as a field. */
+.civ-note {
+  display: block;
+  margin-top: calc(0.3 * var(--u));
+  padding-left: calc(0.5 * var(--u));
+  border-left: calc(0.16 * var(--u)) solid var(--tint1);
+  font-size: calc(0.95 * var(--u));
+  font-style: italic;
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+
+/* ───────── area, budget and timeline cells ───────── */
+
+.civ-area b,
+.civ-money b,
+.civ-time b {
+  display: block;
+  font-size: calc(1.22 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ink);
+  /* A figure is never broken across lines: "₹3.5 Cr" split after the decimal is
+     two numbers, neither of them true. */
+  white-space: nowrap;
+}
+.civ-area small,
+.civ-money small {
+  display: block;
+  margin-top: calc(0.12 * var(--u));
+  font-size: calc(0.95 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+}
+/* The arrow between the two dates, quieter than the dates it joins. */
+.civ-time b u {
+  text-decoration: none;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.civ-meter {
+  margin-top: calc(0.4 * var(--u));
+  --meter-h: calc(0.85 * var(--u));
+  height: var(--meter-h);
+}
+
+/* The two figures under a meter: what it is, and what share of the track that
+   is. Spread to the ends, so the share column lines up down the table. */
+.civ-mline {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--u));
+  margin-top: calc(0.22 * var(--u));
+  font-size: calc(0.95 * var(--u));
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.civ-mline em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.civ-mline span:last-child {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+/* Past its date. The one place on this board a condition colour touches
+   something that is not a pill, because "3 weeks over" IS the condition — there
+   is no neutral reading of it. */
+.civ-over {
+  color: var(--ba1);
+  font-weight: 700;
+}
+.civ-base {
+  display: block;
+  margin-top: calc(0.25 * var(--u));
+  font-size: calc(0.92 * var(--u));
+  font-style: italic;
+  color: var(--ink-3);
+}
+
+/* A track with no figure behind it — hatched, never empty. */
+.civ-unknown {
+  background: repeating-linear-gradient(
+    135deg,
+    #edf1f6 0 calc(0.4 * var(--u)),
+    #e2e8f0 calc(0.4 * var(--u)) calc(0.8 * var(--u))
+  );
+  box-shadow: inset 0 0 0 1px var(--hair);
+}
+
+/* ───────── the progress cell ───────── */
+
+.civ-prog {
+  text-align: center;
+}
+/*
+ * The verdict goes UNDER the ring, always.
+ *
+ * Both were inline, so they shared a line until the pair grew too wide for the
+ * column — which meant "on programme" sat under its ring and "9 pts behind" sat
+ * beside one, overlapping it. Two rows of the same table then disagreed about
+ * where the progress column's second line lives, and the longer badge is the
+ * one on the row a reader most needs to read. Blocking the ring settles it for
+ * every row at once.
+ */
+.civ-prog .ops-tag {
+  display: inline-block;
+  margin-top: calc(0.35 * var(--u));
+  font-size: calc(0.9 * var(--u));
+}
+
+.civ-ring {
+  position: relative;
+  display: grid;
+  margin: 0 auto;
+  place-items: center;
+  width: calc(4.6 * var(--u));
+  height: calc(4.6 * var(--u));
+}
+.civ-ring svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.civ-ring__track {
+  fill: none;
+  stroke: color-mix(in srgb, var(--d4) 70%, #fff);
+}
+.civ-ring__arc {
+  fill: none;
+  stroke: var(--d1);
+}
+/* Nobody has certified a figure. The track hatches, by the same rule the
+   meters follow — an unmeasured project and an unstarted one are not the same
+   thing. SVG cannot carry the repeating gradient the meters use, so this is
+   the dashed equivalent of it. */
+.civ-ring[data-nil] .civ-ring__track {
+  stroke: #dbe2ea;
+  stroke-dasharray: calc(0.35 * var(--u)) calc(0.35 * var(--u));
+}
+.civ-ring b {
+  position: absolute;
+  font-size: calc(1.15 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.civ-ring[data-nil] b {
+  color: var(--ink-3);
+}
+
+/* ───────── nothing on the board ───────── */
+
+.civ-empty td {
+  padding: calc(2.5 * var(--u)) calc(0.7 * var(--u));
+  text-align: center;
+  font-size: calc(1.05 * var(--u));
+  font-weight: 500;
+  color: var(--ink-2);
+}
