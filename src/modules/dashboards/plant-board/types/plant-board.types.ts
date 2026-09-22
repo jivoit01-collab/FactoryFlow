@@ -49,6 +49,8 @@ export interface PurchaseWorstRow {
 export interface OpenPoRow {
   item_code: string;
   item_name: string;
+  /** The packaging family off the item master — LABEL, CARTON, TIN, CAPS… */
+  sub_group: string;
   open_po_qty: number;
   /** Open quantity at the item master's last purchase price. */
   open_po_value: number;
@@ -67,6 +69,24 @@ export interface OpenPoRow {
    */
   received_qty: number;
   received_value: number;
+}
+
+/**
+ * The open order book rolled up by packaging family.
+ *
+ * A partition of the tile's own two figures — the counts sum to
+ * `open_po_count`, the money to `open_po_value` — and it covers EVERY item on
+ * order, not the rows listed underneath it. Labels are why it exists: the
+ * cheapest family on the book and the largest by SKU count, so a list ranked
+ * by value leaves a reader unable to tell a family with nothing on order from
+ * one whose orders are simply small.
+ */
+export interface OpenPoFamily {
+  /** The family's name, or `Unclassified` where the master holds none. */
+  sub_group: string;
+  item_count: number;
+  open_po_qty: number;
+  open_po_value: number;
 }
 
 export interface PlantBoardPurchase {
@@ -170,6 +190,8 @@ export interface PlantBoardPurchase {
   worst: PurchaseWorstRow[];
   /** The rows behind `open_po_value`, most still on order first. */
   open_po_rows: OpenPoRow[];
+  /** The same rows by packaging family, so no family can read as absent. */
+  open_po_families: OpenPoFamily[];
 }
 
 export interface NonMovingItem {

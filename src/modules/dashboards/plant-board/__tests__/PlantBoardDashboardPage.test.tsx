@@ -117,6 +117,7 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
         {
           item_code: 'PM0000053',
           item_name: 'HDPE BOTTLE 5 LTR',
+          sub_group: 'HDPE BOTTLES',
           open_po_qty: 10_000,
           open_po_value: 82_70_000,
           po_lines: 3,
@@ -130,6 +131,7 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
         {
           item_code: 'PM0000071',
           item_name: 'SHRINKS 1 LTR 235X310',
+          sub_group: 'SHRINK',
           open_po_qty: 80_00_000,
           open_po_value: 41_70_000,
           po_lines: 1,
@@ -140,6 +142,14 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
           received_qty: 0,
           received_value: 0,
         },
+      ],
+      // Every family on the book, including one that is nowhere near the rows
+      // listed above: nineteen labels are a fifth of the SKUs on order and
+      // less money than a single pallet of bottles.
+      open_po_families: [
+        { sub_group: 'HDPE BOTTLES', item_count: 4, open_po_qty: 10_000, open_po_value: 82_70_000 },
+        { sub_group: 'SHRINK', item_count: 2, open_po_qty: 80_00_000, open_po_value: 41_70_000 },
+        { sub_group: 'LABEL', item_count: 19, open_po_qty: 13_65_510, open_po_value: 4_46_000 },
       ],
       worst: [],
     },
@@ -1664,6 +1674,34 @@ describe('PlantBoardDashboardPage', () => {
       const header = within(panel).getAllByRole('row')[0].textContent ?? '';
       expect(header).not.toContain('BST');
       expect(header).toContain('Destination');
+    });
+
+    it('shows every packaging family on order, however cheap', () => {
+      // The list is ranked by value and this company's biggest open orders are
+      // bottles, tins, cartons and caps every month, so the label family — the
+      // largest by SKU count — never reached the panel at all. A buyer could
+      // not tell it from a family with nothing on order.
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Open POs');
+      expect(panel.textContent).toContain('By packaging family');
+      expect(panel.textContent).toContain('LABEL');
+      expect(panel.textContent).toContain('19 items');
+      // And it is there without being listed as a row: the strip is the whole
+      // population, the table is what fits.
+      const rows = within(panel)
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.textContent ?? '');
+      expect(rows.some((row) => row.includes('LABEL'))).toBe(false);
+    });
+
+    it('names the family on each row, so the strip ties to the table', () => {
+      const { container } = renderBoard(board());
+      const panel = openTile(container, 'Open POs');
+      const header = within(panel).getAllByRole('row')[0].textContent ?? '';
+      expect(header).toContain('Family');
+      const first = within(panel).getAllByRole('row')[1].textContent ?? '';
+      expect(first).toContain('HDPE BOTTLES');
     });
 
     it('says when each order lands, which the money does not', () => {

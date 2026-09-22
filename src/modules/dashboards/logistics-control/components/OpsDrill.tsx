@@ -48,8 +48,15 @@ export interface OpsDrillProps<Row> {
   domain: OpsDomain;
   /** The figures the table adds up to — the tile's own numbers. */
   stats?: { label: string; value: string }[];
-  /** A second cut of the same rows, between the stats and the table. */
-  breakdown?: OpsDrillBreakdown;
+  /**
+   * A second cut of the same rows, between the stats and the table.
+   *
+   * Several are allowed, and they stack in the order given. Two is the
+   * sensible ceiling: a figure has at most a couple of second questions, and
+   * a panel that answers four of them before showing a row has buried the
+   * rows.
+   */
+  breakdown?: OpsDrillBreakdown | OpsDrillBreakdown[];
   columns: OpsDrillColumn<Row>[];
   rows: readonly Row[];
   /** Stable key per row. */
@@ -156,6 +163,9 @@ export function OpsDrill<Row>({
 }: OpsDrillProps<Row>) {
   const closeRef = useRef<HTMLButtonElement>(null);
 
+  // One cut or several, read the same way below.
+  const cuts = breakdown ? (Array.isArray(breakdown) ? breakdown : [breakdown]) : [];
+
 
   // Escape closes, and focus starts on the close button — the panel covers the
   // board, so there has to be a way out that does not need a mouse.
@@ -234,16 +244,16 @@ export function OpsDrill<Row>({
           </div>
         )}
 
-        {breakdown && (
-          <div className="ops-drill__cut">
-            <h3>{breakdown.title}</h3>
-            {breakdown.items.length === 0 ? (
+        {cuts.map((cut) => (
+          <div className="ops-drill__cut" key={cut.title}>
+            <h3>{cut.title}</h3>
+            {cut.items.length === 0 ? (
               <p className="ops-drill__empty">
-                {breakdown.empty ?? 'Nothing to break down.'}
+                {cut.empty ?? 'Nothing to break down.'}
               </p>
             ) : (
               <div className="ops-drill__cutrow">
-                {breakdown.items.map((item) => (
+                {cut.items.map((item) => (
                   <div key={item.key} className="ops-drill__stat">
                     <span className="k">{item.label}</span>
                     <span className="v">{item.value}</span>
@@ -253,7 +263,7 @@ export function OpsDrill<Row>({
               </div>
             )}
           </div>
-        )}
+        ))}
 
         <div className="ops-drill__body">
           {loading ? (

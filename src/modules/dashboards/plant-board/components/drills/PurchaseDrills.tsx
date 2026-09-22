@@ -335,19 +335,24 @@ export function OpenPosDrill({
 }) {
   const { openKey, toggle } = useExpandedRow();
   const open = purchase?.open_po_rows ?? [];
+  const families = purchase?.open_po_families ?? [];
   const worst = purchase?.worst ?? [];
 
   return (
     <OpsDrill<OpenPoRow>
       title="Open POs"
-      // The list is capped like every other on this board, so when it is
-      // shorter than the count beside it the panel says so AND says where the
-      // rest are. A truncated list that does not admit it is a list a buyer
-      // will act on believing it is complete.
+      // This list is NOT cut to the board's twelve rows: ranked by value, the
+      // top twelve are bottles, tins, cartons and caps on every plan, and the
+      // label family — nineteen of the sixty-six items on order in September
+      // 2026 — never appeared at all. The panel scrolls, so it carries the
+      // whole book. The server still guards the payload, so if it ever does
+      // come back short the subtitle says so AND says where the rest are: a
+      // truncated list that does not admit it is one a buyer will act on
+      // believing it is complete.
       subtitle={
         (purchase?.open_po_count ?? 0) > open.length
           ? `Open purchase orders on the plan's packing items, netted off its shortages. The ${open.length} largest are below; all ${purchase?.open_po_count} are on the PM Requirement sheet. ${purchase?.pm_received_basis ?? ''}`
-          : `Open purchase orders on the plan's packing items, netted off its shortages. ${purchase?.pm_received_basis ?? ''}`
+          : `Open purchase orders on the plan's packing items, netted off its shortages. Every item on order is listed, largest first — scroll for the rest. ${purchase?.pm_received_basis ?? ''}`
       }
       domain="purchase"
       onClose={onClose}
@@ -362,29 +367,50 @@ export function OpenPosDrill({
         // rupee, never added together.
         { label: 'Received this month', value: money(purchase?.pm_received_value) },
       ]}
-      breakdown={{
-        // WHEN it lands, which the money does not say. An order already
-        // overdue is a chase; one not due until after the plan closes is
-        // stock the month that ordered it will never use.
-        title: 'When these land, among the rows listed',
-        items: [
-          {
-            key: 'overdue',
-            label: 'Already overdue',
-            value: whole(open.filter((row) => row.po_overdue).length),
-          },
-          {
-            key: 'later',
-            label: 'Due after the plan closes',
-            value: whole(open.filter((row) => row.po_due_after_plan).length),
-          },
-          {
-            key: 'in-plan',
-            label: 'Due inside the plan',
-            value: whole(open.filter((row) => !row.po_overdue && !row.po_due_after_plan).length),
-          },
-        ],
-      }}
+      breakdown={[
+        {
+          // WHICH PART OF THE BOOK, which the ranking buries. The list is
+          // ordered by value and this company's twelve biggest open orders
+          // are bottles, tins, cartons and caps every month, so the label
+          // family — the largest by SKU count and the cheapest by far — read
+          // as nothing on order at all. This strip is the whole population,
+          // so a family can be small here but never missing.
+          title: 'By packaging family, all on order',
+          items: families.map((family) => ({
+            key: family.sub_group,
+            label: family.sub_group,
+            value: money(family.open_po_value),
+            sub: `${whole(family.item_count)} ${family.item_count === 1 ? 'item' : 'items'}`,
+          })),
+          empty: 'Nothing is on order against this plan.',
+        },
+        {
+          // WHEN it lands, which the money does not say. An order already
+          // overdue is a chase; one not due until after the plan closes is
+          // stock the month that ordered it will never use. Counted over the
+          // rows listed, which is now every item on order.
+          title: 'When these land',
+          items: [
+            {
+              key: 'overdue',
+              label: 'Already overdue',
+              value: whole(open.filter((row) => row.po_overdue).length),
+            },
+            {
+              key: 'later',
+              label: 'Due after the plan closes',
+              value: whole(open.filter((row) => row.po_due_after_plan).length),
+            },
+            {
+              key: 'in-plan',
+              label: 'Due inside the plan',
+              value: whole(
+                open.filter((row) => !row.po_overdue && !row.po_due_after_plan).length,
+              ),
+            },
+          ],
+        },
+      ]}
       rows={open}
       rowKey={(row) => row.item_code}
       empty="Nothing is on order against this plan."
@@ -399,6 +425,9 @@ export function OpenPosDrill({
       columns={[
         { label: 'Item', cell: (row) => row.item_name },
         { label: 'Code', cell: (row) => row.item_code, dim: true },
+        // Named on the row as well as in the strip: sixty-six rows deep, the
+        // family a row belongs to is not readable off its name alone.
+        { label: 'Family', cell: (row) => row.sub_group || '—', dim: true },
         { label: 'On hand', cell: (row) => whole(row.on_hand_qty), numeric: true, dim: true },
         { label: 'Open PO', cell: (row) => whole(row.open_po_qty), numeric: true },
         { label: 'Value', cell: (row) => money(row.open_po_value), numeric: true },
