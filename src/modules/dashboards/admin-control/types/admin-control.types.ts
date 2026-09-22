@@ -283,11 +283,12 @@ export interface AdminCostSlice {
   share_pct: number | null;
   /**
    * What the money is made of, in the line's own unit — "629 across 4 of 5
-   * departments over 11 days", "8 Jivo Oil meters · 244,590 units".
+   * departments over 11 days", "KWH · 169,730 units".
    *
    * Rupees alone cannot be sanity-checked by anyone standing in front of the
-   * board; a head count and a meter count can. Null on a line with no unit
-   * worth printing.
+   * board; a head count and a meter's own dial can. Electricity names the
+   * meter it is showing, because the line is that one meter and not a total.
+   * Null on a line with no unit worth printing.
    */
   detail: string | null;
   /** The same figure as a number, for anything that needs to compare it. */
@@ -337,8 +338,8 @@ export interface AdminCostSlice {
    * production(oil), Warehouse Basement, Dock, Scrap, Boiling Floor 1 — while
    * the Factory Expense wall board prices every department AND the gate tally
    * that re-describes those same people; and on electricity, which this tile
-   * prices over Jivo Oil's meters alone while the wall board prices every
-   * meter on the campus.
+   * prices over ONE meter — the main Jivo Oil's supply comes in on — while the
+   * wall board adds up every meter on the campus.
    *
    * On labour the note also says what share of the gate the line covers. It is
    * a subset by design, and a figure that silently omitted half the people who
@@ -363,14 +364,16 @@ export interface AdminCost {
   slices: AdminCostSlice[];
   warnings: string[];
   /**
-   * Why the electricity slice reads high.
+   * Which meter the electricity slice is.
    *
-   * Jivo Oil's meters only — Beverages' boiler, ETP, RO and terrace are not in
-   * it — but it counts the mains as well as the sub-meters that re-measure that
-   * same supply, and a meter shared with Beverages counts in full because the
-   * register holds nothing to split it by. So the figure knowingly runs well
-   * above the metered bill. Deliberate and recorded; the note is how the tile
-   * stays honest about it.
+   * ONE meter: the main Jivo Oil's supply comes in on, and the biggest of them
+   * where the campus ran on more than one supply. The sub-meters re-measure
+   * slices of that same supply, so adding them in — which the Factory Expense
+   * wall does on purpose, and reads ~3x this for it — would price the same
+   * electricity twice over. The main is shared with Beverages and counts in
+   * full: the register holds one reading a day per meter and nothing to split
+   * it by. The note is how the tile says all of that where the two boards
+   * disagree.
    */
   electricity_note: string;
 }
