@@ -1006,6 +1006,9 @@ export const API_ENDPOINTS = {
     // Daily registers — factory-wide electricity readings and wastage logs.
     ELECTRICITY_METERS: '/maintenance/electricity-meters/',
     ELECTRICITY_METER_DETAIL: (meterId: number) => `/maintenance/electricity-meters/${meterId}/`,
+    // Non-company consumers on the factory's supply (Sidle) — offered in the
+    // same picker as the companies, read-only and kept in the Django admin.
+    ELECTRICITY_CONSUMERS: '/maintenance/electricity-consumers/',
     // Electricity meter managers (per-meter scoping). MY_ELECTRICITY_METERS is
     // not admin-gated and must not be treated as one: the register page calls
     // it to decide which rows it may act on, and it only answers about the

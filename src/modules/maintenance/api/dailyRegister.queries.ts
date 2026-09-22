@@ -13,6 +13,7 @@ import { dailyRegisterApi } from './dailyRegister.api';
 export const DAILY_REGISTER_QUERY_KEYS = {
   meters: (filters?: ElectricityMeterFilters) =>
     ['maintenance', 'electricity-meters', filters ?? {}] as const,
+  consumers: () => ['maintenance', 'electricity-consumers'] as const,
   readings: (filters?: DailyElectricityReadingFilters) =>
     ['maintenance', 'daily-electricity-readings', filters ?? {}] as const,
   wastage: (filters?: DailyWastageLogFilters) =>
@@ -34,6 +35,20 @@ export function useElectricityMeters(filters?: ElectricityMeterFilters, enabled 
   return useQuery({
     queryKey: DAILY_REGISTER_QUERY_KEYS.meters(filters),
     queryFn: () => dailyRegisterApi.getMeters(filters),
+    enabled,
+  });
+}
+
+/**
+ * The non-company consumers the attribution picker offers beside the
+ * companies. Rarely changes, so it is cached hard — a new tenant arriving is
+ * an admin's afternoon, not a page's problem.
+ */
+export function useElectricityConsumers(enabled = true) {
+  return useQuery({
+    queryKey: DAILY_REGISTER_QUERY_KEYS.consumers(),
+    queryFn: () => dailyRegisterApi.getConsumers(),
+    staleTime: 30 * 60 * 1000,
     enabled,
   });
 }

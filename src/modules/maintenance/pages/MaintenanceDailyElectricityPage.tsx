@@ -31,6 +31,7 @@ import {
   useCreateElectricityMeter,
   useDailyElectricityReadings,
   useDeleteDailyElectricityReading,
+  useElectricityConsumers,
   useElectricityMeters,
   useMeterScope,
   useUpdateDailyElectricityReading,
@@ -41,6 +42,19 @@ import { SUPPLY_SOURCE_LABELS, SUPPLY_SOURCE_LIST } from '../types';
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Local "HH:MM" — the default for "when was this read?", which is almost
+    always "just now". toISOString would answer in UTC, five and a half hours
+    out. */
+function nowHHMM() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+/** "06:30:00" from the API reads as 06:30 in a time input and a table cell. */
+function trimSeconds(value: string | null) {
+  return value ? value.slice(0, 5) : '';
 }
 
 /** "40.0000" reads as ×40; only show decimals when the MF actually has them. */
@@ -57,6 +71,13 @@ function firstOfMonthISO() {
 const EMPTY_READING_FORM = {
   meter: '',
   date: todayISO(),
+  // When the dial was read. Defaults to now on a new entry, but editable:
+  // the morning round is often typed up at the end of the shift.
+  reading_time: '',
+  // Who this day's units are for. Filled from the meter when one is picked,
+  // then narrowed by hand on a day the line ran for somebody else.
+  company_codes: [] as CompanyCode[],
+  consumer_codes: [] as string[],
   opening_reading: '',
   closing_reading: '',
   rate_per_unit: '',
@@ -75,6 +96,8 @@ const EMPTY_METER_FORM = {
   // Companies the meter feeds — several for a shared meter, one for a meter on
   // its own supply (Jivo Mart), none if it is not attributed yet.
   company_codes: [] as CompanyCode[],
+  // Sidle and anyone else on the supply who is not a Jivo company.
+  consumer_codes: [] as string[],
   // A main meter is a supply the others are drawn from — read beside the
   // register, never added into it. Which supply it measures matters because the
   // plant swaps between them: grid most days, the DG set when the grid is out.
@@ -108,11 +131,15 @@ export default function MaintenanceDailyElectricityPage() {
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
   const [meterFilter, setMeterFilter] = useState('');
-  const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>('');
+  // A company code or a consumer's (SIDLE) — the dropdown offers both.
+  const [companyFilter, setCompanyFilter] = useState('');
 
   // The meter master stays unfiltered so editing a reading always finds its
   // meter; only the readings list narrows by company.
   const { data: meters = [], isLoading: metersLoading } = useElectricityMeters();
+  // The non-company half of the attribution picker (Sidle). Admin-kept, so it
+  // is fetched rather than spelled out here.
+  const { data: consumers = [] } = useElectricityConsumers();
   const { data: readings = [], isLoading } = useDailyElectricityReadings({
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
@@ -227,15 +254,27 @@ export default function MaintenanceDailyElectricityPage() {
 
   const openAddReading = () => {
     setEditingReading(null);
-    setReadingForm({ ...EMPTY_READING_FORM, date: todayISO() });
+    setReadingForm({ ...EMPTY_READING_FORM, date: todayISO(), reading_time: nowHHMM() });
     setDialog('reading');
   };
 
   const openEditReading = (reading: DailyElectricityReading) => {
+    const meter = meters.find((m) => m.id === reading.meter);
+    // A reading entered before the form asked names nobody and is shown under
+    // its meter's companies. Opening it with every box empty would read as
+    // "attributed to no one" and save that, so it opens on what the register
+    // has been showing all along — the meter's list.
+    const inherits =
+      (reading.company_codes?.length ?? 0) === 0 &&
+      (reading.consumer_codes?.length ?? 0) === 0;
+
     setEditingReading(reading);
     setReadingForm({
       meter: String(reading.meter),
       date: reading.date,
+      reading_time: trimSeconds(reading.reading_time),
+      company_codes: inherits ? (meter?.company_codes ?? []) : reading.company_codes,
+      consumer_codes: inherits ? (meter?.consumer_codes ?? []) : reading.consumer_codes,
       opening_reading: reading.opening_reading,
       closing_reading: reading.closing_reading,
       rate_per_unit: reading.rate_per_unit,
@@ -250,10 +289,32 @@ export default function MaintenanceDailyElectricityPage() {
     setReadingForm((prev) => ({
       ...prev,
       meter: meterId,
-      // Prefill for convenience; both stay editable.
+      // Prefill for convenience; all of it stays editable.
       opening_reading: meter?.last_closing_reading ?? prev.opening_reading,
       rate_per_unit: meter?.rate_per_unit ?? prev.rate_per_unit,
       multiplying_factor: meter?.multiplying_factor ?? prev.multiplying_factor,
+      // Who the meter feeds is the day's attribution until somebody says
+      // otherwise — which is what the picker below is for.
+      company_codes: meter?.company_codes ?? [],
+      consumer_codes: meter?.consumer_codes ?? [],
+    }));
+  };
+
+  const toggleReadingCompany = (code: CompanyCode) => {
+    setReadingForm((prev) => ({
+      ...prev,
+      company_codes: prev.company_codes.includes(code)
+        ? prev.company_codes.filter((c) => c !== code)
+        : [...prev.company_codes, code],
+    }));
+  };
+
+  const toggleReadingConsumer = (code: string) => {
+    setReadingForm((prev) => ({
+      ...prev,
+      consumer_codes: prev.consumer_codes.includes(code)
+        ? prev.consumer_codes.filter((c) => c !== code)
+        : [...prev.consumer_codes, code],
     }));
   };
 
@@ -269,6 +330,10 @@ export default function MaintenanceDailyElectricityPage() {
     const payload = {
       meter: Number(readingForm.meter),
       date: readingForm.date,
+      // Left blank the backend stamps the current time rather than storing none.
+      reading_time: readingForm.reading_time === '' ? undefined : readingForm.reading_time,
+      company_codes: readingForm.company_codes,
+      consumer_codes: readingForm.consumer_codes,
       opening_reading: readingForm.opening_reading === '' ? undefined : readingForm.opening_reading,
       closing_reading: readingForm.closing_reading,
       rate_per_unit: readingForm.rate_per_unit === '' ? undefined : readingForm.rate_per_unit,
@@ -326,6 +391,7 @@ export default function MaintenanceDailyElectricityPage() {
       location: meter.location,
       multiplying_factor: meter.multiplying_factor,
       company_codes: meter.company_codes ?? [],
+      consumer_codes: meter.consumer_codes ?? [],
       is_main: meter.is_main,
       supply_source: (meter.supply_source || 'GRID') as SupplySource,
       counts_as_supply: meter.counts_as_supply,
@@ -345,6 +411,7 @@ export default function MaintenanceDailyElectricityPage() {
       multiplying_factor:
         meterForm.multiplying_factor === '' ? undefined : meterForm.multiplying_factor,
       company_codes: meterForm.company_codes,
+      consumer_codes: meterForm.consumer_codes,
       is_main: meterForm.is_main,
       // Only a main meter measures a supply; the backend clears these for a
       // sub-meter either way, and sending them would only muddy the request.
@@ -374,6 +441,15 @@ export default function MaintenanceDailyElectricityPage() {
     }));
   };
 
+  const toggleMeterConsumer = (code: string) => {
+    setMeterForm((prev) => ({
+      ...prev,
+      consumer_codes: prev.consumer_codes.includes(code)
+        ? prev.consumer_codes.filter((c) => c !== code)
+        : [...prev.consumer_codes, code],
+    }));
+  };
+
   const toggleMeterActive = async (meter: ElectricityMeter) => {
     try {
       await updateMeter.mutateAsync({
@@ -394,6 +470,9 @@ export default function MaintenanceDailyElectricityPage() {
         <thead>
           <tr className="border-b bg-muted/50 text-left">
             <th className="px-3 py-2 font-medium">Date</th>
+            {/* When the dial was read, which is not when the row was typed —
+                the tooltip on Entered By says that. */}
+            <th className="px-3 py-2 font-medium">Time</th>
             <th className="px-3 py-2 font-medium">Meter</th>
             <th className="px-3 py-2 font-medium">Company</th>
             <th className="px-3 py-2 font-medium text-right">Opening</th>
@@ -411,6 +490,13 @@ export default function MaintenanceDailyElectricityPage() {
           {rows.map((reading) => (
             <tr key={reading.id} className="border-b border-slate-100 last:border-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
               <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
+              <td className="whitespace-nowrap px-3 py-2">
+                {trimSeconds(reading.reading_time) || (
+                  <span className="text-muted-foreground" title="Read before the register recorded the time">
+                    —
+                  </span>
+                )}
+              </td>
               <td className="px-3 py-2">
                 {reading.meter_name}
                 {reading.meter_is_main && (
@@ -425,8 +511,17 @@ export default function MaintenanceDailyElectricityPage() {
                   </span>
                 )}
               </td>
-              <td className="px-3 py-2">
-                {reading.meter_companies_display || (
+              <td
+                className="px-3 py-2"
+                title={
+                  reading.meter_companies_display
+                    ? `Meter feeds: ${reading.meter_companies_display}`
+                    : undefined
+                }
+              >
+                {/* What the READING says, which is what the day's units were
+                    attributed to — the meter's own list is the tooltip. */}
+                {reading.attribution_display || reading.meter_companies_display || (
                   <span className="text-muted-foreground">—</span>
                 )}
               </td>
@@ -445,7 +540,16 @@ export default function MaintenanceDailyElectricityPage() {
               </td>
               <td className="px-3 py-2 text-right">{reading.rate_per_unit}</td>
               <td className="px-3 py-2 text-right">{reading.total_cost}</td>
-              <td className="px-3 py-2">{reading.created_by_name}</td>
+              <td
+                className="px-3 py-2"
+                title={
+                  reading.created_at
+                    ? `Saved ${new Date(reading.created_at).toLocaleString()}`
+                    : undefined
+                }
+              >
+                {reading.created_by_name}
+              </td>
               <td className="max-w-[240px] truncate px-3 py-2" title={reading.remarks}>
                 {reading.remarks}
               </td>
@@ -565,12 +669,17 @@ export default function MaintenanceDailyElectricityPage() {
             <NativeSelect
               id="elec-company-filter"
               value={companyFilter}
-              onChange={(e) => setCompanyFilter(e.target.value as CompanyCode | '')}
+              onChange={(e) => setCompanyFilter(e.target.value)}
             >
               <SelectOption value="">All companies</SelectOption>
               {COMPANY_CODE_LIST.map((code) => (
                 <SelectOption key={code} value={code}>
                   {COMPANY_LABELS[code]}
+                </SelectOption>
+              ))}
+              {consumers.map((consumer) => (
+                <SelectOption key={consumer.code} value={consumer.code}>
+                  {consumer.name}
                 </SelectOption>
               ))}
             </NativeSelect>
@@ -742,6 +851,46 @@ export default function MaintenanceDailyElectricityPage() {
                 </p>
               )}
             </div>
+            <fieldset>
+              {/* A legend, not a Label: the heading names the group, each
+                  checkbox carries its own label. */}
+              <legend className="text-sm font-medium leading-none">Attributed to</legend>
+              <div className="mt-1 flex flex-wrap items-center gap-4">
+                {COMPANY_CODE_LIST.map((code) => (
+                  <label key={code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`reading-company-${code}`}
+                      checked={readingForm.company_codes.includes(code)}
+                      onCheckedChange={() => toggleReadingCompany(code)}
+                    />
+                    {COMPANY_LABELS[code]}
+                    {selectedMeter?.company_codes?.includes(code) && (
+                      <span className="text-xs text-muted-foreground">(on this meter)</span>
+                    )}
+                  </label>
+                ))}
+                {consumers.map((consumer) => (
+                  <label key={consumer.code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`reading-consumer-${consumer.code}`}
+                      checked={readingForm.consumer_codes.includes(consumer.code)}
+                      onCheckedChange={() => toggleReadingConsumer(consumer.code)}
+                    />
+                    {consumer.name}
+                    {selectedMeter?.consumer_codes?.includes(consumer.code) && (
+                      <span className="text-xs text-muted-foreground">(on this meter)</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {!selectedMeter
+                  ? 'Pick a meter and this fills itself from the companies it feeds.'
+                  : selectedMeter.companies_display
+                    ? `Filled from ${selectedMeter.name} (${selectedMeter.companies_display}). Untick anyone this day's units did not go to — the meter master is left alone.`
+                    : `${selectedMeter.name} is not attributed to anyone yet, so nothing is ticked. Tick whoever used this day's units.`}
+              </p>
+            </fieldset>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="reading-date">Date</Label>
@@ -751,6 +900,19 @@ export default function MaintenanceDailyElectricityPage() {
                   value={readingForm.date}
                   onChange={(e) => setReadingForm((p) => ({ ...p, date: e.target.value }))}
                 />
+              </div>
+              <div>
+                <Label htmlFor="reading-time">Time Read</Label>
+                <Input
+                  id="reading-time"
+                  type="time"
+                  value={readingForm.reading_time}
+                  onChange={(e) => setReadingForm((p) => ({ ...p, reading_time: e.target.value }))}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When the dial was read — change it if you are typing up an
+                  earlier round.
+                </p>
               </div>
               <div>
                 <Label htmlFor="reading-rate">Rate per Unit (₹)</Label>
@@ -1112,11 +1274,22 @@ export default function MaintenanceDailyElectricityPage() {
                     {COMPANY_LABELS[code]}
                   </label>
                 ))}
+                {consumers.map((consumer) => (
+                  <label key={consumer.code} className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      id={`meter-consumer-${consumer.code}`}
+                      checked={meterForm.consumer_codes.includes(consumer.code)}
+                      onCheckedChange={() => toggleMeterConsumer(consumer.code)}
+                    />
+                    {consumer.name}
+                  </label>
+                ))}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Tick every company this meter feeds — a shared meter can serve both Jivo Oil
+                Tick everyone this meter feeds — a shared meter can serve both Jivo Oil
                 and Jivo Beverages. Jivo Mart runs on its own supply, so its meters are tagged
-                Mart alone.
+                Mart alone. Sidle is on the factory&apos;s supply without being one of the
+                companies, so it is ticked here but appears on no company&apos;s board.
               </p>
             </fieldset>
           </DialogBody>

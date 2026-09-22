@@ -58,6 +58,12 @@ vi.mock('../api', () => ({
     data: [SHARED_METER, UNTAGGED_METER],
     isLoading: false,
   }),
+  // Sidle draws off the factory's supply without being a Jivo company, so the
+  // attribution pickers offer it beside the companies.
+  useElectricityConsumers: () => ({
+    data: [{ id: 1, name: 'Sidle', code: 'SIDLE', is_active: true }],
+    isLoading: false,
+  }),
   useDailyElectricityReadings: (filters: unknown) => {
     readingFilters.current = filters;
     return { data: [READING], isLoading: false };

@@ -15,6 +15,26 @@ export const SUPPLY_SOURCE_LABELS: Record<SupplySource, string> = {
 
 export const SUPPLY_SOURCE_LIST: SupplySource[] = ['GRID', 'DG', 'SOLAR'];
 
+/**
+ * Someone on the factory's supply who is not a Jivo company — Sidle. Kept out
+ * of the company master on purpose (a row there would appear in every company
+ * picker in the ERP), so the register carries its own short list and offers
+ * the two together wherever electricity is attributed.
+ */
+export interface ElectricityConsumer {
+  id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+}
+
+/**
+ * A company code or a non-company consumer's code. The register's Company
+ * dropdown offers both in one list — to the person reading it they are all
+ * just "who used it".
+ */
+export type AttributionCode = CompanyCode | string;
+
 export interface ElectricityMeter {
   id: number;
   name: string;
@@ -24,6 +44,10 @@ export interface ElectricityMeter {
   // run off the same campus supply); Mart meters stand alone. Empty = not
   // attributed to any company yet.
   company_codes: CompanyCode[];
+  // Non-company consumers the meter also feeds (Sidle).
+  consumer_codes: string[];
+  // Everyone the meter feeds — companies and consumers in one string, which is
+  // what the register's Company column has always shown.
   companies_display: string;
   // A main meter is an incoming supply every other meter draws from, so the
   // register reports it on its own and leaves it out of the total.
@@ -54,6 +78,7 @@ export interface ElectricityMeterPayload {
   meter_number?: string;
   location?: string;
   company_codes?: CompanyCode[];
+  consumer_codes?: string[];
   is_main?: boolean;
   supply_source?: SupplySource | '';
   counts_as_supply?: boolean;
@@ -67,7 +92,7 @@ export interface ElectricityMeterFilters {
   is_active?: boolean;
   // Keeps only meters tagged with this company (shared meters match each of
   // theirs); untagged meters drop out.
-  company?: CompanyCode | 'ALL';
+  company?: AttributionCode | 'ALL';
   is_main?: boolean;
   supply_source?: SupplySource;
 }
@@ -82,8 +107,19 @@ export interface DailyElectricityReading {
   meter_supply_source: SupplySource | '';
   meter_supply_source_display: string;
   meter_counts_as_supply: boolean;
+  // What the METER is configured with — the default the form offers.
   meter_companies_display: string;
+  // Who THIS day's units belong to. Copied from the meter when the reading is
+  // entered and editable on the form, so a day the line ran for somebody else
+  // is recorded as it happened. Empty on a reading entered before the form
+  // asked, which falls back to its meter — attribution_display already has.
+  company_codes: CompanyCode[];
+  consumer_codes: string[];
+  attribution_display: string;
   date: string;
+  // Clock time the dial was read — not when the row was typed (created_at is
+  // that). Null on readings entered before this was recorded.
+  reading_time: string | null;
   opening_reading: string;
   closing_reading: string;
   // What the dial moved, before the factor; units_consumed is the billed
@@ -103,6 +139,11 @@ export interface DailyElectricityReading {
 export interface DailyElectricityReadingPayload {
   meter: number;
   date: string;
+  // Omit both to carry the meter's own attribution onto the reading.
+  company_codes?: CompanyCode[];
+  consumer_codes?: string[];
+  // "HH:MM" or "HH:MM:SS"; omit and the backend stamps the current time.
+  reading_time?: string;
   // Omit to carry forward the meter's previous closing reading.
   opening_reading?: string;
   closing_reading: string;
@@ -118,7 +159,7 @@ export interface DailyElectricityReadingFilters {
   date_from?: string;
   date_to?: string;
   meter?: number | 'ALL';
-  company?: CompanyCode | 'ALL';
+  company?: AttributionCode | 'ALL';
   // Ask for one side of the main/sub split; omit to get both.
   is_main?: boolean;
   supply_source?: SupplySource;

@@ -52,6 +52,12 @@ const scope = vi.hoisted(() => ({
 
 vi.mock('../api', () => ({
   useElectricityMeters: () => ({ data: [BOILER, TERRACE], isLoading: false }),
+  // Sidle draws off the factory's supply without being a Jivo company, so the
+  // attribution pickers offer it beside the companies.
+  useElectricityConsumers: () => ({
+    data: [{ id: 1, name: 'Sidle', code: 'SIDLE', is_active: true }],
+    isLoading: false,
+  }),
   useDailyElectricityReadings: () => ({
     data: [reading(9, 1, 'Boiler'), reading(10, 2, 'Terrace')],
     isLoading: false,

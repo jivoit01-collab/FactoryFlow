@@ -8,6 +8,7 @@ import type {
   DailyWastageLog,
   DailyWastageLogFilters,
   DailyWastageLogPayload,
+  ElectricityConsumer,
   ElectricityMeter,
   ElectricityMeterFilters,
   ElectricityMeterPayload,
@@ -63,6 +64,14 @@ export const dailyRegisterApi = {
 
   async deleteMeter(meterId: number): Promise<void> {
     await apiClient.delete(EP.ELECTRICITY_METER_DETAIL(meterId));
+  },
+
+  // ---- Non-company consumers (Sidle) ----
+
+  /** Read-only: the list is kept in the Django admin, not in this picker. */
+  async getConsumers(): Promise<ElectricityConsumer[]> {
+    const response = await apiClient.get<ElectricityConsumer[]>(EP.ELECTRICITY_CONSUMERS);
+    return response.data;
   },
 
   // ---- Daily electricity readings ----

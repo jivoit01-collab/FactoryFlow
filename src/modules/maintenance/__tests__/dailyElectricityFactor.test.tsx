@@ -45,6 +45,12 @@ const createMeter = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
 vi.mock('../api', () => ({
   useElectricityMeters: () => ({ data: [METER], isLoading: false }),
+  // Sidle draws off the factory's supply without being a Jivo company, so the
+  // attribution pickers offer it beside the companies.
+  useElectricityConsumers: () => ({
+    data: [{ id: 1, name: 'Sidle', code: 'SIDLE', is_active: true }],
+    isLoading: false,
+  }),
   useDailyElectricityReadings: () => ({ data: [READING], isLoading: false }),
   useCreateElectricityMeter: () => ({ mutateAsync: createMeter, isPending: false }),
   useUpdateElectricityMeter: () => ({ mutateAsync: vi.fn(), isPending: false }),
