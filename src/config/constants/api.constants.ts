@@ -1774,6 +1774,10 @@ export const API_ENDPOINTS = {
 
     DEPARTMENTS: '/employee-hierarchy/departments/',
     DEPARTMENT_DETAIL: (departmentId: number) => `/employee-hierarchy/departments/${departmentId}/`,
+    // The branch master. A label people are filed under — it scopes nothing,
+    // so there is no branch filter on the directory by design.
+    BRANCHES: '/employee-hierarchy/branches/',
+    BRANCH_DETAIL: (branchId: number) => `/employee-hierarchy/branches/${branchId}/`,
     DESIGNATIONS: '/employee-hierarchy/designations/',
     DESIGNATION_DETAIL: (designationId: number) =>
       `/employee-hierarchy/designations/${designationId}/`,

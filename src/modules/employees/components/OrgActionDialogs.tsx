@@ -146,7 +146,7 @@ export function ChangeManagerDialog({ open, onOpenChange, employee, meta, onDone
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Change who {employee.full_name} reports to</DialogTitle>
         </DialogHeader>
@@ -252,7 +252,7 @@ export function TransferDepartmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Move {employee.full_name} to another department</DialogTitle>
         </DialogHeader>
@@ -373,7 +373,7 @@ export function PromoteDialog({ open, onOpenChange, employee, meta, onDone }: Ba
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowUpRight className="h-4 w-4" />
@@ -563,7 +563,7 @@ export function ChangeStatusDialog({ open, onOpenChange, employee, meta, onDone 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Change {employee.full_name}&apos;s employment status</DialogTitle>
         </DialogHeader>
@@ -692,7 +692,7 @@ export function ChangeDesignationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Change {employee.full_name}&apos;s designation</DialogTitle>
         </DialogHeader>
@@ -812,7 +812,7 @@ export function ReviseSalaryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />

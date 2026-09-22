@@ -17,6 +17,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
+  BranchPayload,
   DepartmentChangePayload,
   DepartmentPayload,
   DesignationChangePayload,
@@ -48,6 +49,7 @@ export const EMPLOYEE_KEYS = {
   tree: (params: Record<string, unknown>) => ['employee-hierarchy', 'tree', params] as const,
   departments: () => ['employee-hierarchy', 'departments'] as const,
   designations: () => ['employee-hierarchy', 'designations'] as const,
+  branches: () => ['employee-hierarchy', 'branches'] as const,
   approvals: (page: number) => ['employee-hierarchy', 'salary-approvals', page] as const,
   revisions: (params: Record<string, unknown>) =>
     ['employee-hierarchy', 'salary-revisions', params] as const,
@@ -322,6 +324,47 @@ export function useRetireDesignation() {
   const invalidate = useInvalidateModule();
   return useMutation({
     mutationFn: (designationId: number) => employeesApi.retireDesignation(designationId),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * The branch master.
+ *
+ * The hire form reads branches off `meta` instead, because it needs them in
+ * the same round trip as departments and designations. This hook is for the
+ * master screen, which has to see the retired ones too.
+ */
+export function useBranches() {
+  return useQuery({
+    queryKey: EMPLOYEE_KEYS.branches(),
+    queryFn: () => employeesApi.getBranches(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useSaveBranch() {
+  const invalidate = useInvalidateModule();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id?: number; payload: BranchPayload }) =>
+      id ? employeesApi.updateBranch(id, payload) : employeesApi.createBranch(payload),
+    onSuccess: invalidate,
+  });
+}
+
+/** Promoting one branch demotes the other, so the whole module is refreshed. */
+export function useMakeBranchDefault() {
+  const invalidate = useInvalidateModule();
+  return useMutation({
+    mutationFn: (branchId: number) => employeesApi.makeBranchDefault(branchId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRetireBranch() {
+  const invalidate = useInvalidateModule();
+  return useMutation({
+    mutationFn: (branchId: number) => employeesApi.retireBranch(branchId),
     onSuccess: invalidate,
   });
 }

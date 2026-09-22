@@ -12,6 +12,8 @@ import { apiClient } from '@/core/api';
 
 import type {
   AuditEntry,
+  Branch,
+  BranchPayload,
   Department,
   DepartmentChangePayload,
   DepartmentPayload,
@@ -297,6 +299,37 @@ export const employeesApi = {
 
   async retireDesignation(designationId: number): Promise<Designation> {
     const response = await apiClient.delete<Designation>(EP.DESIGNATION_DETAIL(designationId));
+    return response.data;
+  },
+
+  async getBranches(): Promise<{ results: Branch[]; count: number }> {
+    const response = await apiClient.get(EP.BRANCHES);
+    return response.data;
+  },
+
+  async createBranch(payload: BranchPayload): Promise<Branch> {
+    const response = await apiClient.post<Branch>(EP.BRANCHES, payload);
+    return response.data;
+  },
+
+  async updateBranch(branchId: number, payload: Partial<BranchPayload>): Promise<Branch> {
+    const response = await apiClient.patch<Branch>(EP.BRANCH_DETAIL(branchId), payload);
+    return response.data;
+  },
+
+  /**
+   * Promote a branch to default. The server demotes the incumbent in the same
+   * transaction — there is no "clear the default", because a company needs one.
+   */
+  async makeBranchDefault(branchId: number): Promise<Branch> {
+    const response = await apiClient.patch<Branch>(EP.BRANCH_DETAIL(branchId), {
+      is_default: true,
+    });
+    return response.data;
+  },
+
+  async retireBranch(branchId: number): Promise<Branch> {
+    const response = await apiClient.delete<Branch>(EP.BRANCH_DETAIL(branchId));
     return response.data;
   },
 

@@ -15,6 +15,12 @@
  * either ride along on a details edit is how a directory ends up with a manager
  * change nobody recorded.
  *
+ * **Branch appears on both**, unlike department or designation. It is a plain
+ * label with no consequences — nothing is scoped, filtered or granted by it —
+ * so it belongs with the job title and the location rather than behind an
+ * endpoint that demands a reason. A new hire gets the branch master's default
+ * pre-selected; an edit shows whatever they are already filed under.
+ *
  * **Can hold a team** appears on both, because it is the one thing here that
  * decides whether this person is *offered* elsewhere: every manager picker in
  * the module lists only people the flag is on for, or who already have reports.
@@ -60,6 +66,7 @@ import { getErrorMessage } from '@/shared/utils';
 
 import { useCreateEmployee, useUpdateEmployee } from '../api';
 import type {
+  Branch,
   Department,
   Designation,
   EmployeeBrief,
@@ -80,6 +87,13 @@ interface FormState {
   location: string;
   department: string;
   designation: string;
+  /**
+   * `null` means nobody has touched the field, so the master's default
+   * applies; `''` is somebody actively choosing no branch. Keeping them apart
+   * is what lets the default arrive late — `meta` may still be loading when
+   * this mounts — without an effect writing props back into state.
+   */
+  branch: string | null;
   reporting_manager: string;
   employment_status: string;
   is_manager: boolean;
@@ -108,6 +122,7 @@ function emptyForm(): FormState {
     location: '',
     department: '',
     designation: '',
+    branch: null,
     reporting_manager: '',
     employment_status: 'ACTIVE',
     is_manager: false,
@@ -134,6 +149,9 @@ function formFrom(employee: EmployeeDetail): FormState {
     location: employee.location,
     department: employee.department ? String(employee.department) : '',
     designation: employee.designation ? String(employee.designation) : '',
+    // Always explicit on an edit, so the default never overwrites what they
+    // are already filed under.
+    branch: employee.branch ? String(employee.branch) : '',
     employment_status: employee.employment_status,
     is_manager: employee.is_manager || employee.direct_report_count > 0,
     user: employee.user ? String(employee.user) : '',
@@ -186,6 +204,14 @@ export function EmployeeFormDialog({
   ];
   const departments: Department[] = meta?.departments ?? [];
   const designations: Designation[] = meta?.designations ?? [];
+  // Retired branches are not offered, except the one this employee already
+  // holds — dropping it silently would re-file them on save.
+  const branches: Branch[] = (meta?.branches ?? []).filter(
+    (branch) => branch.status === 'ACTIVE' || branch.id === employee?.branch,
+  );
+  // Untouched falls back to the master's default; on an edit the form is always
+  // explicit, so the fallback only ever applies to a new hire.
+  const branchValue = form.branch ?? String(meta?.default_branch ?? '');
   const managers: EmployeeBrief[] = meta?.managers ?? [];
   const teamSize = employee?.direct_report_count ?? 0;
   const managerFlagLocked = isEdit && teamSize > 0;
@@ -210,6 +236,7 @@ export function EmployeeFormDialog({
       joining_date: form.joining_date,
       job_title: form.job_title.trim(),
       location: form.location.trim(),
+      branch: branchValue ? Number(branchValue) : null,
       is_manager: form.is_manager,
     };
 
@@ -263,7 +290,7 @@ export function EmployeeFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-h-[90vh] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>{isEdit ? `Edit ${employee?.full_name}` : 'Add an employee'}</DialogTitle>
         </DialogHeader>
@@ -330,6 +357,25 @@ export function EmployeeFormDialog({
                 placeholder="Head Office"
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label htmlFor="employee-branch">Branch</Label>
+              <NativeSelect
+                id="employee-branch"
+                className="mt-1"
+                value={branchValue}
+                onChange={(event) => set('branch', event.target.value)}
+              >
+                <SelectOption value="">
+                  {branches.length ? 'No branch' : 'No branches set up yet'}
+                </SelectOption>
+                {branches.map((branch) => (
+                  <SelectOption key={branch.id} value={String(branch.id)}>
+                    {branch.name}
+                    {branch.is_default ? ' (default)' : ''}
+                  </SelectOption>
+                ))}
+              </NativeSelect>
             </div>
             <div>
               <Label htmlFor="employee-dob">Date of birth</Label>

@@ -100,6 +100,8 @@ export interface EmployeeBrief {
 export interface EmployeeListItem extends EmployeeBrief {
   first_name: string;
   last_name: string;
+  branch: number | null;
+  branch_name: string | null;
   joining_date: string;
   reporting_manager: number | null;
   manager_name: string | null;
@@ -139,6 +141,25 @@ export interface Designation {
   updated_at?: string;
 }
 
+/**
+ * A branch, as the branch master holds it.
+ *
+ * A label and nothing else — it scopes nothing, filters nothing and gates
+ * nothing. Exactly one branch per company carries `is_default`, which is what
+ * the hire form pre-selects.
+ */
+export interface Branch {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  status: RecordStatus;
+  is_default: boolean;
+  employee_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface EmployeeDetail extends EmployeeBrief {
   first_name: string;
   last_name: string;
@@ -147,6 +168,8 @@ export interface EmployeeDetail extends EmployeeBrief {
   exit_date: string | null;
   department_detail: Department | null;
   designation_detail: Designation | null;
+  branch: number | null;
+  branch_detail: Branch | null;
   manager: EmployeeBrief | null;
   reporting_manager: number | null;
   hierarchy_path: string;
@@ -161,6 +184,11 @@ export interface EmployeeDetail extends EmployeeBrief {
 export interface EmployeeMeta {
   departments: Department[];
   designations: Designation[];
+  /** The whole master, retired rows included — an edit form still has to be
+   * able to name the branch somebody already holds. */
+  branches: Branch[];
+  /** Pre-selected when hiring. Null only before anybody has set the master up. */
+  default_branch: number | null;
   managers: EmployeeBrief[];
   /**
    * App logins not yet claimed by an employee.
@@ -365,6 +393,8 @@ export interface EmployeePayload {
   employment_status?: EmploymentStatus;
   department?: number | null;
   designation?: number | null;
+  /** Omitted on a hire, the server falls back to the master's default. */
+  branch?: number | null;
   job_title?: string;
   location?: string;
   reporting_manager?: number | null;
@@ -438,6 +468,19 @@ export interface DesignationPayload {
   level: number;
   is_managerial?: boolean;
   status?: RecordStatus;
+}
+
+export interface BranchPayload {
+  code: string;
+  name: string;
+  description?: string;
+  status?: RecordStatus;
+  /**
+   * Sending `true` promotes this branch and demotes whichever held it — the
+   * server does both in one transaction. Sending `false` is refused: a company
+   * needs a default, so the way to move it is to promote another branch.
+   */
+  is_default?: boolean;
 }
 
 // -- reports ----------------------------------------------------------------

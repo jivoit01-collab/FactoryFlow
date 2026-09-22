@@ -1,10 +1,17 @@
 /**
- * The two masters the organisation is built out of: departments and
- * designations.
+ * The three masters the organisation is built out of: departments,
+ * designations and branches.
  *
  * They share a page because they are edited together — somebody setting up the
- * company does both in one sitting — and because each on its own is a thin
+ * company does all three in one sitting — and because each on its own is a thin
  * screen.
+ *
+ * **Branches are the odd one out and stay deliberately dull.** A branch scopes
+ * nothing, filters nothing and grants nothing; it is a label filed against a
+ * person, kept as a master only so the spelling cannot drift. The single rule
+ * it has is that exactly one branch is the default, which is what the hire form
+ * pre-selects — so promoting one is a button rather than a checkbox, because
+ * promoting one demotes another and a checkbox would not say so.
  *
  * **Departments are drawn as the tree they are**, indented with a rail per
  * level, each row carrying its head and two headcounts: the people in that
@@ -26,8 +33,10 @@ import {
   ChevronRight,
   Layers,
   Loader2,
+  MapPin,
   Pencil,
   Plus,
+  Star,
   Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -58,17 +67,21 @@ import {
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import {
+  useBranches,
   useDepartments,
   useDesignations,
   useEmployeeMeta,
+  useMakeBranchDefault,
+  useRetireBranch,
   useRetireDepartment,
   useRetireDesignation,
+  useSaveBranch,
   useSaveDepartment,
   useSaveDesignation,
 } from '../api';
 import { EmployeeAvatar, EmptyState } from '../components/EmployeeBits';
 import { levelAccent } from '../components/theme';
-import type { Department, Designation } from '../types';
+import type { Branch, Department, Designation } from '../types';
 
 /** Departments, nested. Anything whose parent is missing becomes a root. */
 function buildDepartmentTree(departments: Department[]) {
@@ -86,20 +99,34 @@ export default function OrgStructurePage() {
   const meta = useEmployeeMeta();
   const departments = useDepartments();
   const designations = useDesignations();
+  const branches = useBranches();
+  const makeDefault = useMakeBranchDefault();
   const [departmentDraft, setDepartmentDraft] = useState<Partial<Department> | null>(null);
   const [designationDraft, setDesignationDraft] = useState<Partial<Designation> | null>(null);
+  const [branchDraft, setBranchDraft] = useState<Partial<Branch> | null>(null);
 
   const canManage = !!meta.data?.permissions.can_manage_structure;
   const departmentRows = useMemo(() => departments.data?.results ?? [], [departments.data]);
   const byParent = useMemo(() => buildDepartmentTree(departmentRows), [departmentRows]);
 
-  if (departments.isError || designations.isError) {
+  const branchRows = branches.data?.results ?? [];
+
+  function promote(branch: Branch) {
+    makeDefault.mutate(branch.id, {
+      onSuccess: () =>
+        toast.success(`${branch.name} is now the default for new employees.`),
+      onError: (error) => toast.error(getErrorMessage(error, 'The default was not moved.')),
+    });
+  }
+
+  if (departments.isError || designations.isError || branches.isError) {
     return (
       <DashboardError
         message="The organisation structure could not be loaded."
         onRetry={() => {
           void departments.refetch();
           void designations.refetch();
+          void branches.refetch();
         }}
       />
     );
@@ -205,8 +232,8 @@ export default function OrgStructurePage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Organisation structure</h1>
           <p className="text-sm text-muted-foreground">
-            The departments the company is divided into, and the ladder of designations
-            people sit on.
+            The departments the company is divided into, the ladder of designations
+            people sit on, and the branches they are filed under.
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
@@ -227,6 +254,11 @@ export default function OrgStructurePage() {
             <span className="tabular-nums text-muted-foreground">
               {designations.data?.results.length ?? 0}
             </span>
+          </TabsTrigger>
+          <TabsTrigger value="branches" className="gap-1.5">
+            <MapPin className="h-3.5 w-3.5" />
+            Branches
+            <span className="tabular-nums text-muted-foreground">{branchRows.length}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -362,6 +394,118 @@ export default function OrgStructurePage() {
             </div>
           </section>
         </TabsContent>
+        <TabsContent value="branches" className="mt-4">
+          <section className="rounded-xl border bg-card shadow-sm">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
+              <div>
+                <h2 className="text-sm font-semibold">Branches</h2>
+                <p className="text-xs text-muted-foreground">
+                  A label filed against a person — it does not scope, filter or grant
+                  anything. The default is what a new employee gets when nobody picks.
+                </p>
+              </div>
+              {canManage && (
+                <Button size="sm" onClick={() => setBranchDraft({})} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  Add branch
+                </Button>
+              )}
+            </header>
+
+            <div className="divide-y">
+              {branchRows.map((branch) => {
+                const retired = branch.status === 'INACTIVE';
+                return (
+                  <div
+                    key={branch.id}
+                    className={cn(
+                      'flex flex-wrap items-center gap-3 px-4 py-2.5',
+                      retired && 'opacity-60',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                        branch.is_default
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400'
+                          : 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      {branch.is_default ? (
+                        <Star className="h-4 w-4 fill-current" />
+                      ) : (
+                        <MapPin className="h-4 w-4" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">{branch.name}</span>
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          {branch.code}
+                        </span>
+                        {branch.is_default && (
+                          <span className="rounded-full border border-amber-300 px-1.5 py-0.5 text-[10px] text-amber-700 dark:border-amber-500/40 dark:text-amber-400">
+                            Default for new employees
+                          </span>
+                        )}
+                        {retired && (
+                          <span className="rounded-full border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            Deactivated
+                          </span>
+                        )}
+                      </div>
+                      {branch.description && (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {branch.description}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className="flex items-center gap-1.5 px-1.5 py-1 text-xs text-muted-foreground"
+                      title={`${branch.employee_count} employee(s) on this branch`}
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      <span className="font-semibold tabular-nums">
+                        {branch.employee_count}
+                      </span>
+                    </span>
+                    {canManage && !branch.is_default && !retired && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs"
+                        disabled={makeDefault.isPending}
+                        onClick={() => promote(branch)}
+                      >
+                        <Star className="h-3 w-3" />
+                        Make default
+                      </Button>
+                    )}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        aria-label={`Edit ${branch.name}`}
+                        onClick={() => setBranchDraft(branch)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+              {!branches.isLoading && branchRows.length === 0 && (
+                <EmptyState
+                  icon={MapPin}
+                  title="No branches yet"
+                  hint="Add the first one — it becomes the default automatically, so every new employee lands on it."
+                  className="m-4 border-0"
+                />
+              )}
+            </div>
+          </section>
+        </TabsContent>
       </Tabs>
 
       {departmentDraft && (
@@ -376,6 +520,9 @@ export default function OrgStructurePage() {
           draft={designationDraft}
           onClose={() => setDesignationDraft(null)}
         />
+      )}
+      {branchDraft && (
+        <BranchDialog draft={branchDraft} onClose={() => setBranchDraft(null)} />
       )}
     </div>
   );
@@ -448,7 +595,7 @@ function DepartmentDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>{draft.id ? `Edit ${draft.name}` : 'Add a department'}</DialogTitle>
         </DialogHeader>
@@ -612,7 +759,7 @@ function DesignationDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
           <DialogTitle>{draft.id ? `Edit ${draft.name}` : 'Add a designation'}</DialogTitle>
         </DialogHeader>
@@ -692,6 +839,161 @@ function DesignationDialog({
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={submit} disabled={save.isPending} className="gap-1.5">
+              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Adding or editing one branch.
+ *
+ * Two things are deliberately *not* here. There is no "make this the default"
+ * switch — promoting a branch demotes another, which a switch inside a form
+ * would do silently on save; it is a button on the row instead, so the
+ * consequence is visible where the other branches are. And the default branch
+ * offers no Deactivate, because a company with no default leaves the hire form
+ * with nothing to pre-select; the server refuses it too.
+ */
+function BranchDialog({ draft, onClose }: { draft: Partial<Branch>; onClose: () => void }) {
+  const save = useSaveBranch();
+  const retire = useRetireBranch();
+  const [form, setForm] = useState({
+    code: draft.code ?? '',
+    name: draft.name ?? '',
+    description: draft.description ?? '',
+    active: (draft.status ?? 'ACTIVE') === 'ACTIVE',
+  });
+  const isDefault = !!draft.is_default;
+
+  function submit() {
+    if (!form.code.trim() || !form.name.trim()) {
+      toast.error('A code and a name are required.');
+      return;
+    }
+    save.mutate(
+      {
+        id: draft.id,
+        payload: {
+          code: form.code.trim(),
+          name: form.name.trim(),
+          description: form.description.trim(),
+          status: form.active ? 'ACTIVE' : 'INACTIVE',
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success(draft.id ? 'Branch updated.' : 'Branch added.');
+          onClose();
+        },
+        onError: (error) => toast.error(getErrorMessage(error, 'Nothing was saved.')),
+      },
+    );
+  }
+
+  async function runRetire() {
+    if (!draft.id) return;
+    const confirmed = await confirmDialog({
+      title: `Deactivate ${draft.name}?`,
+      description:
+        'It stops being offered for new employees but stays on the record of everybody already filed under it.',
+      confirmLabel: 'Deactivate',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    retire.mutate(draft.id, {
+      onSuccess: () => {
+        toast.success('Branch deactivated.');
+        onClose();
+      },
+      onError: (error) => toast.error(getErrorMessage(error, 'It was not deactivated.')),
+    });
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle>{draft.id ? `Edit ${draft.name}` : 'Add a branch'}</DialogTitle>
+        </DialogHeader>
+        <DialogBody className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-[1fr_2fr]">
+            <div>
+              <Label htmlFor="branch-code">Code</Label>
+              <Input
+                id="branch-code"
+                value={form.code}
+                onChange={(event) => setForm({ ...form, code: event.target.value })}
+                placeholder="OIL"
+                className="mt-1 font-mono"
+              />
+            </div>
+            <div>
+              <Label htmlFor="branch-name">Name</Label>
+              <Input
+                id="branch-name"
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                placeholder="Jivo Oil"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="branch-description">Description</Label>
+            <Textarea
+              id="branch-description"
+              rows={2}
+              value={form.description}
+              onChange={(event) => setForm({ ...form, description: event.target.value })}
+              className="mt-1"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+            <div>
+              <Label htmlFor="branch-active" className="text-sm font-normal">
+                Offered when filing an employee
+              </Label>
+              {isDefault && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  This is the default branch, so it cannot be switched off. Make another
+                  branch the default first.
+                </p>
+              )}
+            </div>
+            <Switch
+              id="branch-active"
+              checked={form.active}
+              onChange={(checked) => setForm({ ...form, active: checked })}
+              disabled={isDefault}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            A branch is a label and nothing more — it does not decide what anybody can
+            see, and nothing is filtered or reported by it.
+          </p>
+        </DialogBody>
+        <DialogFooter className="sm:justify-between">
+          {draft.id && !isDefault ? (
+            <Button
+              variant="outline"
+              onClick={runRetire}
+              disabled={retire.isPending || save.isPending}
+            >
+              Deactivate
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={save.isPending}>
               Cancel
             </Button>
             <Button onClick={submit} disabled={save.isPending} className="gap-1.5">

@@ -670,7 +670,7 @@ export default function LabourPresencePage() {
       </Card>
 
       <Dialog open={!!strengthDraft} onOpenChange={(open) => !open && setStrengthDraft(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               Permanent labour strength{departmentName ? ` · ${departmentName}` : ''}
@@ -728,7 +728,7 @@ export default function LabourPresencePage() {
       </Dialog>
 
       <Dialog open={!!presenceDraft} onOpenChange={(open) => !open && setPresenceDraft(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {presenceDraft
@@ -811,7 +811,7 @@ export default function LabourPresencePage() {
           declared last so its overlay mounts over that dialog, and its own
           content is lifted above that overlay. */}
       <Dialog open={!!auditView} onOpenChange={(open) => !open && setAuditView(null)}>
-        <DialogContent className="z-[60] sm:max-w-md">
+        <DialogContent className="z-[60] sm:max-w-md max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
               {auditView?.kind === 'PRESENCE' ? auditView.title : 'Strength on the rolls'}
