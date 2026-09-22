@@ -1,4 +1,4 @@
-import { AlertTriangle, BarChart3, IndianRupee, Plug, TriangleAlert, Zap } from 'lucide-react';
+import { BarChart3, IndianRupee, TriangleAlert, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -151,7 +151,15 @@ export default function ElectricityDashboardPage() {
     [attributed, meters, window],
   );
   const subRollups = useMemo(() => rollups.filter((r) => !r.isMain), [rollups]);
-  const reconciliation = useMemo(() => reconcileSupply(split.supplyTotal, split.subTotal), [split]);
+  // Checked against the raw rows, never the apportioned ones: every main on
+  // this campus is shared, so a company view halves the supply while that
+  // company's own sub-meters stay whole, and the check would fire on the split
+  // rather than on a fault. It is a register-wide check, and says so.
+  const campus = useMemo(() => splitBySupply(readings), [readings]);
+  const reconciliation = useMemo(
+    () => reconcileSupply(campus.supplyTotal, campus.subTotal),
+    [campus],
+  );
 
   const colourOf = useMemo(() => {
     const map = new Map<string, string>();
@@ -166,7 +174,6 @@ export default function ElectricityDashboardPage() {
   const hasOthers = subRollups.length > topNames.length;
 
   const daysWithReadings = new Set(readings.map((r) => r.date)).size;
-  const expectedReadings = rollups.reduce((total, r) => total + r.due, 0);
 
   return (
     <div className="space-y-6">
@@ -242,7 +249,7 @@ export default function ElectricityDashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiStat
           icon={Zap}
           label="Sub-meter units"
@@ -275,33 +282,6 @@ export default function ElectricityDashboardPage() {
           accent={ACCENTS.violet}
           delayMs={120}
         />
-        <KpiStat
-          icon={Plug}
-          label="Incoming supply"
-          value={split.mains.length ? units(split.supplyTotal.units) : '—'}
-          sub={
-            split.mains.length
-              ? split.supplyGroups
-                  .filter((g) => g.counts)
-                  .map((g) => g.label)
-                  .join(' · ') || 'No counted main'
-              : 'No main meter in range'
-          }
-          accent={ACCENTS.amber}
-          delayMs={180}
-        />
-        <KpiStat
-          icon={AlertTriangle}
-          label="Readings logged"
-          value={`${readings.length} / ${expectedReadings}`}
-          sub={
-            expectedReadings > readings.length
-              ? `${expectedReadings - readings.length} day-meters not keyed`
-              : 'Every due day keyed'
-          }
-          accent={expectedReadings > readings.length ? ACCENTS.orange : ACCENTS.teal}
-          delayMs={240}
-        />
       </div>
 
       {reconciliation.overDrawn && (
@@ -309,9 +289,10 @@ export default function ElectricityDashboardPage() {
           <CardContent className="flex flex-wrap items-center gap-3 p-4 text-sm">
             <TriangleAlert className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
             <span>
-              The sub-meters add up to <strong>{units(reconciliation.gap)} units more</strong> than
-              the mains brought in ({reconciliation.gapPct.toFixed(1)}% over). A slice cannot exceed
-              the supply — check the multiplying factors, and the register for a day keyed twice.
+              Across the whole register, the sub-meters add up to{' '}
+              <strong>{units(reconciliation.gap)} units more</strong> than the mains brought in (
+              {reconciliation.gapPct.toFixed(1)}% over). A slice cannot exceed the supply — check
+              the multiplying factors, and the register for a day keyed twice.
             </span>
           </CardContent>
         </Card>
