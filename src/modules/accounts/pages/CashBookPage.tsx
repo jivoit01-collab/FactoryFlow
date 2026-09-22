@@ -130,7 +130,11 @@ export default function CashBookPage() {
     pageSize,
   };
 
-  const { data, isLoading } = useCashEntries(params);
+  // `isLoading` is now the first read of the book only: the query holds the
+  // page on screen while the next one is fetched, so a filter tick no longer
+  // unmounts the table. `isPlaceholderData` is what says the rows in front of
+  // you are the previous answer, still standing until the new one lands.
+  const { data, isLoading, isFetching, isPlaceholderData } = useCashEntries(params);
   const cancel = useCancelCashEntry();
   const createBunch = useCreateBunch();
 
@@ -510,18 +514,23 @@ export default function CashBookPage() {
         </Card>
       ) : sheetMode ? (
         <>
-          <CashSheetTable
-            rows={rows}
-            column={column}
-            onOpenColumn={setOpenColumn}
-            resetKey={`${page}|${pageSize}|${toSortParam(sort)}|${includeCancelled}|${JSON.stringify(filters)}`}
-          />
+          <div
+            className={`transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}
+            aria-busy={isFetching}
+          >
+            <CashSheetTable
+              rows={rows}
+              column={column}
+              onOpenColumn={setOpenColumn}
+              resetKey={`${page}|${pageSize}|${toSortParam(sort)}|${includeCancelled}|${JSON.stringify(filters)}`}
+            />
+          </div>
           <PaginationControls
             page={data?.page ?? page}
             pageSize={pageSize}
             total={data?.count ?? 0}
             totalPages={data?.total_pages ?? 1}
-            isLoading={isLoading}
+            isLoading={isFetching}
             onPageChange={setPage}
             onPageSizeChange={(next) => {
               setPageSize(next);
@@ -530,7 +539,15 @@ export default function CashBookPage() {
           />
         </>
       ) : (
-        <div className="rounded-md border">
+        // Dimmed, not replaced, while the next page is on its way: the open
+        // filter drop-down lives in this table's header, and swapping the
+        // table for a spinner is what used to close it mid-pick.
+        <div
+          className={`rounded-md border transition-opacity ${
+            isPlaceholderData ? 'opacity-60' : ''
+          }`}
+          aria-busy={isFetching}
+        >
           <div className="overflow-x-auto">
             <table {...gridProps} className={`w-full text-sm ${gridProps.className}`}>
               <thead>
@@ -739,7 +756,7 @@ export default function CashBookPage() {
             pageSize={pageSize}
             total={data?.count ?? 0}
             totalPages={data?.total_pages ?? 1}
-            isLoading={isLoading}
+            isLoading={isFetching}
             onPageChange={setPage}
             onPageSizeChange={(next) => {
               setPageSize(next);

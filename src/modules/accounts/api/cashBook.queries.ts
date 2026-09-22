@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   type AdvanceDirection,
@@ -75,10 +75,21 @@ export function useColumnValues(
   });
 }
 
+/**
+ * The register itself: one page of the book, filtered and sorted server-side.
+ *
+ * `placeholderData` holds the page already on screen while the next one is
+ * fetched. Every filter tick, sort and page change alters the key, and without
+ * it the query drops back to pending -- the table unmounts, and with it the
+ * column filter drop-down the tick was made in. Ticking a second date meant
+ * reopening the drop-down, scrolling back down and finding the place again.
+ * The rows now sit still until their replacements arrive.
+ */
 export function useCashEntries(params?: CashEntryListParams) {
   return useQuery({
     queryKey: CASH_BOOK_QUERY_KEYS.entries(params),
     queryFn: () => cashBookApi.entries(params),
+    placeholderData: keepPreviousData,
   });
 }
 
