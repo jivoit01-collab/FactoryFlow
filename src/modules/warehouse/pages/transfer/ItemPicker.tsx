@@ -9,11 +9,16 @@ import { qty } from './transferFormat';
 /**
  * Picks an item from what the source warehouse actually holds in SAP.
  *
- * Shows **free** (on hand minus committed) rather than on hand, because an open
- * transfer request already commits stock at its source — offering on hand would
- * invite two requests to claim the same drums. Free can be negative where a
- * warehouse is already over-committed, and that is shown plainly rather than
- * clamped, since hiding it is how stock gets promised twice.
+ * Shows on hand — SAP's own Qty in Whse — next to **free to move**, which is on
+ * hand minus what this app's own open requests already hold. Only our own
+ * requests are netted off: SAP's `IsCommited` counts every open document in the
+ * company, including transfer requests keyed by hand years ago and never
+ * closed, and none of it stops a warehouse-to-warehouse move. That figure is
+ * still shown, as context, so nobody has to wonder why SAP's screens differ.
+ *
+ * Free to move can be negative if the app has over-promised, and that is shown
+ * plainly rather than clamped, since hiding it is how stock gets promised
+ * twice.
  *
  * Search is split. `SearchableSelect` debounces `onSearchChange` at only 100ms,
  * which is too eager for a HANA query, so a single character filters the
@@ -64,24 +69,29 @@ export function ItemPicker({
       }}
       onSearchChange={setSearch}
       renderItem={(item) => {
-        const overCommitted = item.available < 0;
+        const overPromised = item.free_to_move < 0;
         return (
           <div className="w-full">
             <div className="flex items-baseline justify-between gap-3">
               <span className="truncate text-sm font-medium">{item.item_code}</span>
               <span
                 className={`shrink-0 text-xs tabular-nums ${
-                  overCommitted ? 'text-red-600' : 'text-muted-foreground'
+                  overPromised ? 'text-red-600' : 'text-muted-foreground'
                 }`}
               >
-                {qty(item.available)} {item.uom} free
+                {qty(item.free_to_move)} {item.uom} free to move
               </span>
             </div>
             <div className="truncate text-xs text-muted-foreground">{item.item_name}</div>
             <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-              {qty(item.on_hand)} on hand
-              {item.committed > 0 && <> · {qty(item.committed)} already promised</>}
-              {overCommitted && <span className="text-red-600"> · over-committed</span>}
+              {qty(item.on_hand)} in whse
+              {item.app_reserved > 0 && (
+                <> · {qty(item.app_reserved)} held by your open requests</>
+              )}
+              {item.committed > 0 && (
+                <> · {qty(item.committed)} committed in SAP</>
+              )}
+              {overPromised && <span className="text-red-600"> · over-promised</span>}
             </div>
           </div>
         );

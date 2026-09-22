@@ -192,16 +192,22 @@ export interface TransferBatchVerification {
 /**
  * One item a warehouse holds, for the request form's picker.
  *
- * `available` is on-hand minus committed and is the number safe to promise —
- * an open request already commits stock at its source. It can be NEGATIVE where
- * a warehouse is already over-committed, so never assume a floor of zero.
+ * `free_to_move` is on hand minus `app_reserved` — what THIS APP's own open
+ * requests already hold — and is the number safe to promise. It can be NEGATIVE
+ * if the app has over-promised, so never assume a floor of zero.
+ *
+ * `committed` is SAP's own `IsCommited`: every open document in the company,
+ * including transfer requests keyed by hand years ago that nobody ever closed.
+ * It is shown as context and never subtracted, because none of it stops a
+ * warehouse-to-warehouse move — SAP posts the transfer regardless.
  */
 export interface WarehouseStockItem {
   item_code: string;
   item_name: string;
   on_hand: number;
   committed: number;
-  available: number;
+  app_reserved: number;
+  free_to_move: number;
   on_order: number;
   uom: string;
   is_batch_managed: boolean;
