@@ -49,6 +49,45 @@ export interface Finding {
   detail: string;
 }
 
+/**
+ * How much of a meter's consumption belongs to one company: an equal split
+ * across the companies it feeds. The campus incomers and a few sub-meters feed
+ * Oil and Beverages both, and nothing in the register says how the load divides
+ * between them, so each carries half. A meter on one company's own supply is
+ * untouched, and so is every figure while no company is selected.
+ */
+export function companyShare(meter: ElectricityMeter | undefined, company: string | ''): number {
+  const codes = meter?.company_codes ?? [];
+  if (!company || codes.length <= 1) return 1;
+  // A meter the filter should not have returned is left whole rather than
+  // silently zeroed — an unexplained gap is worse than an unsplit meter.
+  return codes.some((code) => code === company) ? 1 / codes.length : 1;
+}
+
+/**
+ * Restates the readings as one company's share of them. Only the money and the
+ * units move; the dials do not, because half a dial reading is not a thing and
+ * the data-quality checks read the dials.
+ */
+export function apportionToCompany(
+  readings: DailyElectricityReading[],
+  meters: ElectricityMeter[],
+  company: string | '',
+): DailyElectricityReading[] {
+  if (!company) return readings;
+  const byId = new Map<number, ElectricityMeter>(meters.map((m) => [m.id, m]));
+
+  return readings.map((reading) => {
+    const share = companyShare(byId.get(reading.meter), company);
+    if (share === 1) return reading;
+    return {
+      ...reading,
+      units_consumed: String(num(reading.units_consumed) * share),
+      total_cost: String(num(reading.total_cost) * share),
+    };
+  });
+}
+
 export function sumReadings(rows: DailyElectricityReading[]): UnitsAndCost {
   let units = 0;
   let cost = 0;

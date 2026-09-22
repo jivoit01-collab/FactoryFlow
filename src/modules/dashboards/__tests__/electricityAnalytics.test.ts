@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { COMPANY_CODES } from '@/config/constants';
 import type { DailyElectricityReading, ElectricityMeter } from '@/modules/maintenance/types';
 
 import {
+  apportionToCompany,
+  companyShare,
   dailySeries,
   findAnomalies,
   reconcileSupply,
   rollupByMeter,
   splitBySupply,
+  sumReadings,
 } from '../electricity/utils/electricityAnalytics';
 
 const WINDOW = { from: '2026-09-01', to: '2026-09-04' };
@@ -266,5 +270,86 @@ describe('reconcileSupply', () => {
     expect(reconcileSupply({ units: 100, cost: 700 }, { units: 80, cost: 560 }).overDrawn).toBe(
       false,
     );
+  });
+});
+
+describe('companyShare', () => {
+  const shared = meter({
+    id: 11,
+    name: 'KWH',
+    company_codes: [COMPANY_CODES.JIVO_OIL, COMPANY_CODES.JIVO_BEVERAGES],
+  });
+  const beverages = meter({ id: 8, name: 'Boiler', company_codes: [COMPANY_CODES.JIVO_BEVERAGES] });
+
+  it('halves a meter that feeds both plants', () => {
+    expect(companyShare(shared, COMPANY_CODES.JIVO_BEVERAGES)).toBe(0.5);
+    expect(companyShare(shared, COMPANY_CODES.JIVO_OIL)).toBe(0.5);
+  });
+
+  it('leaves a meter on one plant’s own supply whole', () => {
+    expect(companyShare(beverages, COMPANY_CODES.JIVO_BEVERAGES)).toBe(1);
+  });
+
+  it('leaves every meter whole while no company is chosen', () => {
+    expect(companyShare(shared, '')).toBe(1);
+  });
+});
+
+describe('apportionToCompany', () => {
+  const meters = [
+    meter({
+      id: 11,
+      name: 'KWH',
+      company_codes: [COMPANY_CODES.JIVO_OIL, COMPANY_CODES.JIVO_BEVERAGES],
+    }),
+    meter({ id: 8, name: 'Boiler', company_codes: [COMPANY_CODES.JIVO_BEVERAGES] }),
+  ];
+  const rows = [
+    reading({
+      meter: 11,
+      date: '2026-09-01',
+      meter_name: 'KWH',
+      units_consumed: '1000.00',
+      total_cost: '7000.00',
+      opening_reading: '500.00',
+      closing_reading: '600.00',
+    }),
+    reading({
+      meter: 8,
+      date: '2026-09-01',
+      units_consumed: '400.00',
+      total_cost: '2800.00',
+    }),
+  ];
+
+  it('gives the company half of a meter it shares and all of its own', () => {
+    const [kwh, boiler] = apportionToCompany(rows, meters, COMPANY_CODES.JIVO_BEVERAGES);
+
+    expect(parseFloat(kwh.units_consumed)).toBe(500);
+    expect(parseFloat(kwh.total_cost)).toBe(3500);
+    expect(parseFloat(boiler.units_consumed)).toBe(400);
+    expect(parseFloat(boiler.total_cost)).toBe(2800);
+  });
+
+  it('leaves the dials alone — half a dial reading is not a reading', () => {
+    const [kwh] = apportionToCompany(rows, meters, COMPANY_CODES.JIVO_BEVERAGES);
+
+    expect(kwh.opening_reading).toBe('500.00');
+    expect(kwh.closing_reading).toBe('600.00');
+  });
+
+  it('changes nothing when no company is chosen', () => {
+    expect(apportionToCompany(rows, meters, '')).toBe(rows);
+  });
+
+  it('totals a shared meter once per company, not twice', () => {
+    const forOil = sumReadings(apportionToCompany(rows, meters, COMPANY_CODES.JIVO_OIL));
+    const forBeverages = sumReadings(
+      apportionToCompany(rows, meters, COMPANY_CODES.JIVO_BEVERAGES),
+    );
+
+    // Oil takes half the incomer; Beverages takes the other half plus its own.
+    expect(forOil.units).toBe(900);
+    expect(forBeverages.units).toBe(900);
   });
 });

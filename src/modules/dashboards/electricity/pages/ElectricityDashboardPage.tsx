@@ -10,8 +10,6 @@ import {
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Legend,
@@ -47,6 +45,8 @@ import {
 } from '@/shared/components/ui';
 
 import {
+  apportionToCompany,
+  companyShare,
   dailySeries,
   findAnomalies,
   type FindingLevel,
@@ -151,10 +151,26 @@ export default function ElectricityDashboardPage() {
   };
 
   const window = useMemo(() => ({ from: dateFrom, to: dateTo }), [dateFrom, dateTo]);
-  const split = useMemo(() => splitBySupply(readings), [readings]);
+
+  // Under a company, a meter feeding two plants shows that company's half.
+  // The raw rows stay in hand for the data-quality panel, which reads dials.
+  const attributed = useMemo(
+    () => apportionToCompany(readings, meters, companyFilter),
+    [readings, meters, companyFilter],
+  );
+  const sharedMeters = useMemo(
+    () =>
+      companyFilter
+        ? meters.filter((m) => companyShare(m, companyFilter) < 1).map((m) => m.id)
+        : [],
+    [meters, companyFilter],
+  );
+  const isShared = (meterId: number) => sharedMeters.includes(meterId);
+
+  const split = useMemo(() => splitBySupply(attributed), [attributed]);
   const rollups = useMemo(
-    () => rollupByMeter(readings, meters, window),
-    [readings, meters, window],
+    () => rollupByMeter(attributed, meters, window),
+    [attributed, meters, window],
   );
   const subRollups = useMemo(() => rollups.filter((r) => !r.isMain), [rollups]);
   const findings = useMemo(
@@ -244,9 +260,10 @@ export default function ElectricityDashboardPage() {
               ))}
             </NativeSelect>
           </div>
-          <p className="ml-auto text-xs text-muted-foreground">
-            A shared meter answers to each company it feeds; meters tagged to none drop out of a
-            company filter.
+          <p className="ml-auto max-w-sm text-xs text-muted-foreground">
+            {companyFilter
+              ? 'A meter feeding two plants is counted at half here — nothing in the register says how its load divides, so each company carries an equal share.'
+              : 'Every meter at its full reading. Pick a company to see its share of the ones two plants share.'}
           </p>
         </CardContent>
       </Card>
@@ -256,7 +273,11 @@ export default function ElectricityDashboardPage() {
           icon={Zap}
           label="Sub-meter units"
           value={units(split.subTotal.units)}
-          sub={`${daysWithReadings} day${daysWithReadings === 1 ? '' : 's'} with readings`}
+          sub={
+            sharedMeters.length
+              ? `${daysWithReadings} day${daysWithReadings === 1 ? '' : 's'} · shared meters at 50%`
+              : `${daysWithReadings} day${daysWithReadings === 1 ? '' : 's'} with readings`
+          }
           accent={ACCENTS.blue}
           delayMs={0}
         />
@@ -264,7 +285,11 @@ export default function ElectricityDashboardPage() {
           icon={IndianRupee}
           label="Sub-meter cost"
           value={money(split.subTotal.cost)}
-          sub="Priced as keyed on each row"
+          sub={
+            sharedMeters.length
+              ? 'This company\u2019s share, as keyed'
+              : 'Priced as keyed on each row'
+          }
           accent={ACCENTS.emerald}
           delayMs={60}
         />
@@ -321,7 +346,7 @@ export default function ElectricityDashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Share of units by meter</CardTitle>
+            <CardTitle className="text-base">Units and cost by meter</CardTitle>
           </CardHeader>
           <CardContent>
             {subRollups.length === 0 ? (
@@ -329,34 +354,78 @@ export default function ElectricityDashboardPage() {
                 No sub-meter readings in this range.
               </p>
             ) : (
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={subRollups.map((r) => ({ name: r.name, value: Math.max(0, r.units) }))}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={58}
-                      outerRadius={92}
-                      paddingAngle={2}
-                    >
-                      {subRollups.map((r) => (
-                        <Cell key={r.meterId} fill={colourOf.get(r.name)} stroke="none" />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [`${units(Number(value))} units`, name]}
-                      contentStyle={TOOLTIP_STYLE}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={56}
-                      iconType="circle"
-                      wrapperStyle={{ fontSize: 11 }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={subRollups.map((r) => ({
+                          name: r.name,
+                          value: Math.max(0, r.units),
+                          cost: r.cost,
+                        }))}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={52}
+                        outerRadius={82}
+                        paddingAngle={2}
+                      >
+                        {subRollups.map((r) => (
+                          <Cell key={r.meterId} fill={colourOf.get(r.name)} stroke="none" />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, name, item) => [
+                          `${units(Number(value))} units · ${money(
+                            Number((item?.payload as { cost?: number } | undefined)?.cost ?? 0),
+                          )}`,
+                          name,
+                        ]}
+                        contentStyle={TOOLTIP_STYLE}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* The legend carries the money, so the split and what it cost
+                    are read in one place rather than two cards. */}
+                <ul className="mt-3 space-y-1.5">
+                  {subRollups.map((row) => (
+                    <li key={row.meterId} className="flex items-center gap-2 text-xs">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                        style={{ background: colourOf.get(row.name) }}
+                      />
+                      <span className="min-w-0 flex-1 truncate" title={row.name}>
+                        {row.name}
+                        {isShared(row.meterId) && (
+                          <span className="ml-1 text-muted-foreground">(50%)</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {row.share.toFixed(0)}%
+                      </span>
+                      <span className="w-20 shrink-0 text-right tabular-nums">
+                        {units(row.units)}
+                      </span>
+                      <span className="w-20 shrink-0 text-right font-medium tabular-nums">
+                        {money(row.cost)}
+                      </span>
+                    </li>
+                  ))}
+                  <li className="flex items-center gap-2 border-t pt-2 text-xs font-medium">
+                    <span className="h-2.5 w-2.5 shrink-0" />
+                    <span className="min-w-0 flex-1">Total</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">100%</span>
+                    <span className="w-20 shrink-0 text-right tabular-nums">
+                      {units(split.subTotal.units)}
+                    </span>
+                    <span className="w-20 shrink-0 text-right tabular-nums">
+                      {money(split.subTotal.cost)}
+                    </span>
+                  </li>
+                </ul>
+              </>
             )}
           </CardContent>
         </Card>
@@ -428,98 +497,43 @@ export default function ElectricityDashboardPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Cost by meter</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {subRollups.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">
-                Nothing to price in this range.
-              </p>
-            ) : (
-              <div style={{ height: Math.max(220, subRollups.length * 38 + 40) }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={subRollups.map((r) => ({ name: r.name, cost: Math.round(r.cost) }))}
-                    margin={{ left: 12, right: 16, top: 4, bottom: 4 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-                    <XAxis
-                      type="number"
-                      fontSize={10}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v: number) =>
-                        Math.abs(v) >= 1000 ? `₹${(v / 1000).toFixed(0)}K` : `₹${v}`
-                      }
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={140}
-                      fontSize={10}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value) => [money(Number(value)), 'Cost']}
-                      contentStyle={TOOLTIP_STYLE}
-                    />
-                    <Bar dataKey="cost" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                      {subRollups.map((r) => (
-                        <Cell key={r.meterId} fill={colourOf.get(r.name)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Data quality</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {findings.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">
-                {isLoading ? 'Checking the readings…' : 'Nothing irregular in this range.'}
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {findings.slice(0, 9).map((finding, i) => {
-                  const style = FINDING_STYLE[finding.level];
-                  const Icon = style.icon;
-                  return (
-                    <li key={`${finding.title}-${i}`} className="flex gap-3 py-2.5">
-                      <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${style.badge}`}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium">{finding.title}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {finding.detail}
-                        </span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {findings.length > 9 && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                {findings.length - 9} more — narrow the range or pick one meter to see the rest.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Data quality</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {findings.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              {isLoading ? 'Checking the readings…' : 'Nothing irregular in this range.'}
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {findings.slice(0, 9).map((finding, i) => {
+                const style = FINDING_STYLE[finding.level];
+                const Icon = style.icon;
+                return (
+                  <li key={`${finding.title}-${i}`} className="flex gap-3 py-2.5">
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${style.badge}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{finding.title}</span>
+                      <span className="block text-xs text-muted-foreground">{finding.detail}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {findings.length > 9 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {findings.length - 9} more — narrow the range or pick one meter to see the rest.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -567,6 +581,14 @@ export default function ElectricityDashboardPage() {
                               Main
                             </span>
                           )}
+                          {isShared(row.meterId) && (
+                            <span
+                              className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
+                              title="Feeds two plants — shown at this company's half"
+                            >
+                              50%
+                            </span>
+                          )}
                           {row.negativeDays > 0 && (
                             <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
                               Check
@@ -604,6 +626,8 @@ export default function ElectricityDashboardPage() {
           <p className="px-3 py-3 text-xs text-muted-foreground">
             MF and rate shown are the meter master's. Units and cost are the figures stored on each
             reading, which carry the factor and rate typed that day.
+            {sharedMeters.length > 0 &&
+              ' A meter marked 50% feeds two plants and is shown at this company\u2019s half; the register itself holds the whole figure.'}
           </p>
         </CardContent>
       </Card>
