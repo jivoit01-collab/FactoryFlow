@@ -262,6 +262,12 @@ export default function EmployeeProfilePage() {
               </button>
             )}
           </Field>
+          <Field label="Branch">
+            {/* No Change button: unlike department or designation, a branch has
+                no consequences to record, so it is edited with the rest of the
+                plain details on the Edit dialog. */}
+            {person.branch_detail?.name ?? 'Unassigned'}
+          </Field>
           <Field label="Employment status">
             {person.status_display}
             {canManage && (
