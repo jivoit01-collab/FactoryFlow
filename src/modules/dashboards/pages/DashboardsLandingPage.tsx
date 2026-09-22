@@ -48,6 +48,10 @@ import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { CIVIL_BOARD_VIEW_PERMISSIONS } from '../civil-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from '../company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from '../customer-returns/constants';
+import {
+  ELECTRICITY_BOARD_COMPANIES,
+  ELECTRICITY_BOARD_VIEW_PERMISSIONS,
+} from '../electricity/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from '../gate/constants/gate-dashboard.constants';
 import { HR_BOARD_VIEW_PERMISSIONS } from '../hr-board/constants';
 import {
@@ -64,6 +68,8 @@ interface DashboardsModuleCard {
   route: string;
   accent: AccentKey;
   permissions: readonly string[];
+  /** Company units this board exists for. Omit for a board every unit has. */
+  companies?: readonly string[];
 }
 
 // Kept in the same order as the Dashboards sidebar, and holding the same
@@ -164,6 +170,16 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/blowing',
     accent: 'cyan',
     permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+  },
+  {
+    // The campus supply is Oil and Beverages; Jivo Mart has no meter, so the
+    // tile is withheld there rather than opening on an empty board.
+    title: 'Electricity',
+    icon: <Gauge className="h-5 w-5" />,
+    route: '/dashboards/electricity',
+    accent: 'amber',
+    permissions: ELECTRICITY_BOARD_VIEW_PERMISSIONS,
+    companies: ELECTRICITY_BOARD_COMPANIES,
   },
   {
     title: 'Stock Benchmark',
@@ -318,12 +334,15 @@ export default function DashboardsLandingPage() {
     () =>
       dashboardsModules
         .filter((mod) => hasAnyPermission(mod.permissions))
+        .filter(
+          (mod) => !mod.companies || mod.companies.includes(currentCompany?.company_code ?? ''),
+        )
         .map((mod) =>
           mod.route === '/dashboards/logistics-control' && logisticsScope.key === 'beverages'
             ? { ...mod, icon: <CupSoda className="h-5 w-5" /> }
             : mod,
         ),
-    [hasAnyPermission, logisticsScope.key],
+    [hasAnyPermission, logisticsScope.key, currentCompany?.company_code],
   );
 
   return (

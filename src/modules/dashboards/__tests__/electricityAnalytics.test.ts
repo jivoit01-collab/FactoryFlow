@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DailyElectricityReading, ElectricityMeter } from '../types';
+import type { DailyElectricityReading, ElectricityMeter } from '@/modules/maintenance/types';
+
 import {
   dailySeries,
   findAnomalies,
   reconcileSupply,
   rollupByMeter,
   splitBySupply,
-} from '../utils/electricityAnalytics';
+} from '../electricity/utils/electricityAnalytics';
 
 const WINDOW = { from: '2026-09-01', to: '2026-09-04' };
 

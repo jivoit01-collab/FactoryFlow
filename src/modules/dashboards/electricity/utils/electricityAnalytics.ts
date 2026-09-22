@@ -3,7 +3,7 @@
 // is re-applied, because the row carries the factor and rate that were typed on
 // the day, and those are often not the meter master's current ones.
 
-import type { DailyElectricityReading, ElectricityMeter } from '../types';
+import type { DailyElectricityReading, ElectricityMeter } from '@/modules/maintenance/types';
 
 const num = (value: string | null | undefined) => {
   const parsed = parseFloat(value ?? '0');

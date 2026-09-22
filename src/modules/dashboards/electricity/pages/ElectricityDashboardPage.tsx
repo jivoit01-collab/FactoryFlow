@@ -25,7 +25,14 @@ import {
   YAxis,
 } from 'recharts';
 
-import { COMPANY_CODE_LIST, COMPANY_LABELS, type CompanyCode } from '@/config/constants';
+import {
+  COMPANY_CODE_LIST,
+  COMPANY_CODES,
+  COMPANY_LABELS,
+  type CompanyCode,
+} from '@/config/constants';
+import { useAuth } from '@/core/auth';
+import { useDailyElectricityReadings, useElectricityMeters } from '@/modules/maintenance/api';
 import { ACCENTS, DashboardHeader, KpiStat } from '@/shared/components/dashboard';
 import {
   Button,
@@ -39,7 +46,6 @@ import {
   SelectOption,
 } from '@/shared/components/ui';
 
-import { useDailyElectricityReadings, useElectricityMeters } from '../api';
 import {
   dailySeries,
   findAnomalies,
@@ -103,7 +109,12 @@ const FINDING_STYLE: Record<FindingLevel, { badge: string; icon: typeof AlertTri
  * entered here — the register at /maintenance/daily-electricity stays the only
  * place a reading is keyed.
  */
-export default function MaintenanceElectricityDashboardPage() {
+export default function ElectricityDashboardPage() {
+  // The register itself is a Maintenance page, and Maintenance is rolled out
+  // for Jivo Oil alone — so the link to it is offered only where it opens.
+  const { currentCompany } = useAuth();
+  const canOpenRegister = currentCompany?.company_code === COMPANY_CODES.JIVO_OIL;
+
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
   const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>('');
@@ -151,12 +162,14 @@ export default function MaintenanceElectricityDashboardPage() {
         title="Electricity Dashboard"
         description="Where the plant's units went, what they cost, and what the daily round got wrong."
       >
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link to="/maintenance/daily-electricity">
-            <Zap className="h-4 w-4" />
-            Daily register
-          </Link>
-        </Button>
+        {canOpenRegister && (
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link to="/maintenance/daily-electricity">
+              <Zap className="h-4 w-4" />
+              Daily register
+            </Link>
+          </Button>
+        )}
       </DashboardHeader>
 
       <Card>

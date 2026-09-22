@@ -21,6 +21,10 @@ import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { CIVIL_BOARD_VIEW_PERMISSIONS } from './civil-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
+import {
+  ELECTRICITY_BOARD_COMPANIES,
+  ELECTRICITY_BOARD_VIEW_PERMISSIONS,
+} from './electricity/constants';
 import { GATE_DASHBOARD_VIEW_PERMISSIONS } from './gate/constants/gate-dashboard.constants';
 import { HR_BOARD_VIEW_PERMISSIONS } from './hr-board/constants';
 import {
@@ -39,6 +43,9 @@ const LinePerformanceDashboardPage = lazy(
   () => import('./production/pages/LinePerformanceDashboardPage'),
 );
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
+const ElectricityDashboardPage = lazy(
+  () => import('./electricity/pages/ElectricityDashboardPage'),
+);
 const StockLevelDashboardPage = lazy(() => import('./stock-level/pages/StockLevelDashboardPage'));
 const NonMovingDashboardPage = lazy(() => import('./non-moving/pages/NonMovingDashboardPage'));
 const SalesPlanningRequirementDashboardPage = lazy(
@@ -450,6 +457,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Blowing' },
     },
     {
+      path: '/dashboards/electricity',
+      element: <ElectricityDashboardPage />,
+      layout: 'main',
+      permissions: ELECTRICITY_BOARD_VIEW_PERMISSIONS,
+      companies: ELECTRICITY_BOARD_COMPANIES,
+      breadcrumb: { label: 'Electricity' },
+    },
+    {
       path: '/dashboards/stock-levels',
       element: <StockLevelDashboardPage />,
       layout: 'main',
@@ -596,6 +611,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...GATE_DASHBOARD_VIEW_PERMISSIONS,
         // Blowing dashboard lives here too — let blowing staff reach the menu.
         BLOWING_PERMISSIONS.VIEW_REPORTS,
+        // Same for the Electricity board: a meter keeper may hold nothing but
+        // the daily register's access set.
+        ...ELECTRICITY_BOARD_VIEW_PERMISSIONS,
         // SAP Reports lives here too — a user with only report access still
         // needs the group to appear.
         ...SAP_REPORTS_ACCESS,
@@ -749,6 +767,12 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/blowing',
           title: 'Blowing',
           permissions: [BLOWING_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/dashboards/electricity',
+          title: 'Electricity',
+          permissions: ELECTRICITY_BOARD_VIEW_PERMISSIONS,
+          companies: ELECTRICITY_BOARD_COMPANIES,
         },
         {
           path: '/dashboards/stock-levels',

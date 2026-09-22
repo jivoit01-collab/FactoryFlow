@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Factory,
   FileText,
-  Gauge,
   LayoutDashboard,
   Package,
   PackageOpen,
@@ -51,9 +50,6 @@ const MaintenanceReturnableDetailPage = lazy(
 const MaintenanceReturnableFormPage = lazy(() => import('./pages/MaintenanceReturnableFormPage'));
 const MaintenanceDailyElectricityPage = lazy(
   () => import('./pages/MaintenanceDailyElectricityPage'),
-);
-const MaintenanceElectricityDashboardPage = lazy(
-  () => import('./pages/MaintenanceElectricityDashboardPage'),
 );
 const MaintenanceDailyWastagePage = lazy(() => import('./pages/MaintenanceDailyWastagePage'));
 
@@ -159,15 +155,6 @@ const maintenanceRoutes: ModuleRoute[] = [
     layout: 'main',
     permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
     breadcrumb: { label: 'Daily Electricity' },
-  },
-  {
-    // Reads the same register back as a board. Gated on the register's own
-    // access set: anyone who may see a reading may see its roll-up.
-    path: '/maintenance/electricity-dashboard',
-    element: <MaintenanceElectricityDashboardPage />,
-    layout: 'main',
-    permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
-    breadcrumb: { label: 'Electricity Dashboard' },
   },
   {
     path: '/maintenance/daily-wastage',
@@ -300,12 +287,6 @@ export const maintenanceModuleConfig: ModuleConfig = {
           path: '/maintenance/daily-electricity',
           title: 'Daily Electricity',
           icon: Zap,
-          permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
-        },
-        {
-          path: '/maintenance/electricity-dashboard',
-          title: 'Electricity Dashboard',
-          icon: Gauge,
           permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
         },
         {
