@@ -35,7 +35,13 @@ import {
   useVehicleDocuments,
   useVehicleSummary,
 } from '../api';
-import { DocumentDialog, FuelEntryDialog, ServiceEntryDialog } from '../components';
+import {
+  DocumentDialog,
+  type EntryDetail,
+  EntryDetailDialog,
+  FuelEntryDialog,
+  ServiceEntryDialog,
+} from '../components';
 import { km, money, monthStart, quantity, rupees, shortDate, today } from '../utils/format';
 
 /**
@@ -55,6 +61,7 @@ export default function FleetVehicleDetailPage() {
   const [serviceOpen, setServiceOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<VehicleDocument | undefined>();
+  const [viewing, setViewing] = useState<EntryDetail | null>(null);
 
   const { data: options } = useFleetOptions();
   const { data: summary, isLoading } = useVehicleSummary(vehicleId, { from, to });
@@ -193,7 +200,18 @@ export default function FleetVehicleDetailPage() {
                   <TableEmpty colSpan={8} message="No fillings in this window" icon={Fuel} />
                 ) : (
                   fuelEntries.map((entry) => (
-                    <tr key={entry.id} className={ROW_CLASSES}>
+                    <tr
+                      key={entry.id}
+                      className={`${ROW_CLASSES} cursor-pointer`}
+                      tabIndex={0}
+                      onClick={() => setViewing({ kind: 'fuel', entry })}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewing({ kind: 'fuel', entry });
+                        }
+                      }}
+                    >
                       <Td>{shortDate(entry.entry_date)}</Td>
                       <Td numeric>{km(entry.odometer)}</Td>
                       <Td numeric>{quantity(entry.quantity, entry.unit)}</Td>
@@ -246,7 +264,18 @@ export default function FleetVehicleDetailPage() {
                   <TableEmpty colSpan={7} message="No service in this window" icon={Wrench} />
                 ) : (
                   serviceEntries.map((entry) => (
-                    <tr key={entry.id} className={ROW_CLASSES}>
+                    <tr
+                      key={entry.id}
+                      className={`${ROW_CLASSES} cursor-pointer`}
+                      tabIndex={0}
+                      onClick={() => setViewing({ kind: 'service', entry })}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setViewing({ kind: 'service', entry });
+                        }
+                      }}
+                    >
                       <Td>{shortDate(entry.entry_date)}</Td>
                       <Td>
                         {entry.kind_label}
@@ -390,6 +419,12 @@ export default function FleetVehicleDetailPage() {
           </TableCard>
         </TabsContent>
       </Tabs>
+
+      <EntryDetailDialog
+        open={!!viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+        detail={viewing}
+      />
 
       <FuelEntryDialog
         open={fuelOpen}

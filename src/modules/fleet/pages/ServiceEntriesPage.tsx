@@ -24,7 +24,7 @@ import {
   useFleetVehicles,
   useServiceEntries,
 } from '../api';
-import { ServiceEntryDialog } from '../components';
+import { type EntryDetail, EntryDetailDialog, ServiceEntryDialog } from '../components';
 import { fieldErrors, km, money, monthStart, shortDate, today } from '../utils/format';
 
 function approvalTone(status: ApprovalStatusCode) {
@@ -41,6 +41,7 @@ export default function ServiceEntriesPage() {
   const [approvalStatus, setApprovalStatus] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceEntry | undefined>();
+  const [viewing, setViewing] = useState<ServiceEntry | null>(null);
 
   const { data: options } = useFleetOptions();
   const { data: vehicles = [] } = useFleetVehicles();
@@ -159,7 +160,18 @@ export default function ServiceEntriesPage() {
               />
             ) : (
               entries.map((entry) => (
-                <tr key={entry.id} className={ROW_CLASSES}>
+                <tr
+                  key={entry.id}
+                  className={`${ROW_CLASSES} cursor-pointer`}
+                  tabIndex={0}
+                  onClick={() => setViewing(entry)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setViewing(entry);
+                    }
+                  }}
+                >
                   <Td>{shortDate(entry.entry_date)}</Td>
                   <Td className="font-medium">{entry.vehicle_number}</Td>
                   <Td>
@@ -187,7 +199,7 @@ export default function ServiceEntriesPage() {
                       {entry.approval_status_label}
                     </StatusPill>
                   </Td>
-                  <Td align="right">
+                  <Td align="right" onClick={(event) => event.stopPropagation()}>
                     {options?.can_add_expense && entry.approval_status !== 'APPROVED' && (
                       <div className="flex justify-end gap-1">
                         <Button
@@ -218,6 +230,18 @@ export default function ServiceEntriesPage() {
           </tbody>
         </table>
       </TableCard>
+
+      <EntryDetailDialog
+        open={!!viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+        detail={viewing ? ({ kind: 'service', entry: viewing } as EntryDetail) : null}
+        canEdit={options?.can_add_expense}
+        onEdit={(detail) => {
+          setViewing(null);
+          setEditing(detail.entry as ServiceEntry);
+          setDialogOpen(true);
+        }}
+      />
 
       <ServiceEntryDialog
         open={dialogOpen}

@@ -19,7 +19,7 @@ import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/u
 
 import type { ApprovalStatusCode, FuelEntry } from '../api';
 import { useDeleteFuelEntry, useFleetOptions, useFleetVehicles, useFuelEntries } from '../api';
-import { FuelEntryDialog } from '../components';
+import { type EntryDetail, EntryDetailDialog, FuelEntryDialog } from '../components';
 import { fieldErrors, km, money, monthStart, quantity, rupees, shortDate, today } from '../utils/format';
 
 /** The pill colour for an entry's approval state. */
@@ -43,6 +43,7 @@ export default function FuelEntriesPage() {
   const [approvalStatus, setApprovalStatus] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FuelEntry | undefined>();
+  const [viewing, setViewing] = useState<FuelEntry | null>(null);
 
   const { data: options } = useFleetOptions();
   const { data: vehicles = [] } = useFleetVehicles();
@@ -162,7 +163,18 @@ export default function FuelEntriesPage() {
               />
             ) : (
               entries.map((entry) => (
-                <tr key={entry.id} className={ROW_CLASSES}>
+                <tr
+                  key={entry.id}
+                  className={`${ROW_CLASSES} cursor-pointer`}
+                  tabIndex={0}
+                  onClick={() => setViewing(entry)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setViewing(entry);
+                    }
+                  }}
+                >
                   <Td>{shortDate(entry.entry_date)}</Td>
                   <Td>
                     <span className="font-medium">{entry.vehicle_number}</span>
@@ -195,7 +207,7 @@ export default function FuelEntriesPage() {
                       </p>
                     )}
                   </Td>
-                  <Td align="right">
+                  <Td align="right" onClick={(event) => event.stopPropagation()}>
                     {options?.can_add_expense && entry.approval_status !== 'APPROVED' && (
                       <div className="flex justify-end gap-1">
                         <Button
@@ -226,6 +238,18 @@ export default function FuelEntriesPage() {
           </tbody>
         </table>
       </TableCard>
+
+      <EntryDetailDialog
+        open={!!viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+        detail={viewing ? ({ kind: 'fuel', entry: viewing } as EntryDetail) : null}
+        canEdit={options?.can_add_expense}
+        onEdit={(detail) => {
+          setViewing(null);
+          setEditing(detail.entry as FuelEntry);
+          setDialogOpen(true);
+        }}
+      />
 
       <FuelEntryDialog
         open={dialogOpen}
