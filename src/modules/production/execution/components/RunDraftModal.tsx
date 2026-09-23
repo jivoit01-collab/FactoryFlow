@@ -77,11 +77,16 @@ interface RunDraftModalProps {
   run?: ProductionRun | null;
 }
 
-/** Tomorrow, in the `YYYY-MM-DD` an `<input type="date">` wants. */
-function tomorrowIsoDate() {
-  const day = new Date();
-  day.setDate(day.getDate() + 1);
-  return day.toISOString().split('T')[0];
+/**
+ * Today, in the `YYYY-MM-DD` an `<input type="date">` wants.
+ *
+ * Read in the browser's own timezone — the factory's day, not UTC's — so a
+ * plan opened before dawn does not default to yesterday.
+ */
+function todayIsoDate() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 /**
@@ -229,7 +234,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
   const [typedItemCode, setTypedItemCode] = useState(run?.item_code ?? '');
   const [typedProduct, setTypedProduct] = useState(run?.product ?? '');
   const [requiredQty, setRequiredQty] = useState(run?.required_qty ?? '');
-  const [date, setDate] = useState(run?.date ?? tomorrowIsoDate());
+  const [date, setDate] = useState(run?.date ?? todayIsoDate());
   const [startTime, setStartTime] = useState(formatClock(run?.planned_start_at) ?? '');
   const [labour, setLabour] = useState(run?.labour_count ? String(run.labour_count) : '');
   const [remark, setRemark] = useState(run?.planning_remark ?? '');

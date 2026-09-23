@@ -56,11 +56,16 @@ import { toLocalIso } from '../utils';
 // something about it.
 // ============================================================================
 
-/** Tomorrow, in the `YYYY-MM-DD` an `<input type="date">` wants. */
-function tomorrowIsoDate() {
-  const day = new Date();
-  day.setDate(day.getDate() + 1);
-  return day.toISOString().split('T')[0];
+/**
+ * Today, in the `YYYY-MM-DD` an `<input type="date">` wants.
+ *
+ * Read in the browser's own timezone — the factory's day, not UTC's — so a
+ * plan opened before dawn does not default to yesterday.
+ */
+function todayIsoDate() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function StartRunPage() {
@@ -88,8 +93,8 @@ function StartRunPage() {
   const form = useForm<CreateRunFormData>({
     resolver: zodResolver(createRunSchema),
     defaultValues: {
-      // A plan is for the next day by default — that is what this screen is for.
-      date: tomorrowIsoDate(),
+      // Defaults to today; a plan being made for a later day says so.
+      date: todayIsoDate(),
       product: '',
       item_code: '',
       required_qty: '',
@@ -361,7 +366,7 @@ function StartRunPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Plan Production Run"
-        description="Plan tomorrow's run — check RM/PM availability, clashes with other plans, and the start time"
+        description="Plan a run — check RM/PM availability, clashes with other plans, and the start time"
       />
 
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
