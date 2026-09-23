@@ -1833,6 +1833,49 @@ export const API_ENDPOINTS = {
   // Issue tracker. Issues are addressed by NUMBER (the "#41" people quote),
   // not by primary key -- comments and attachments are the only things keyed
   // by id. The list takes ?q=&state=&sort=&page=&page_size=.
+  // Construction projects — the campus's own building work. A project with a
+  // budget and an expected ending, the daily record of what was done and what
+  // it cost, and the revisions that extend either.
+  CONSTRUCTION: {
+    PROJECTS: '/construction/projects/',
+    PROJECT_DETAIL: (id: number) => `/construction/projects/${id}/`,
+    PROJECT_SUMMARY: (id: number) => `/construction/projects/${id}/summary/`,
+    PROJECT_SUBMIT: (id: number) => `/construction/projects/${id}/submit/`,
+    PROJECT_APPROVE: (id: number) => `/construction/projects/${id}/approve/`,
+    PROJECT_REJECT: (id: number) => `/construction/projects/${id}/reject/`,
+    PROJECT_HOLD: (id: number) => `/construction/projects/${id}/hold/`,
+    PROJECT_RESUME: (id: number) => `/construction/projects/${id}/resume/`,
+    PROJECT_COMPLETE: (id: number) => `/construction/projects/${id}/complete/`,
+    PROJECT_CANCEL: (id: number) => `/construction/projects/${id}/cancel/`,
+    // The sheet the job was costed from: qty x rate per material, and a total.
+    ESTIMATE: (id: number) => `/construction/projects/${id}/estimate/`,
+    // The papers behind the project: quotations, drawings, the sanction letter.
+    ATTACHMENTS: (id: number) => `/construction/projects/${id}/attachments/`,
+    ATTACHMENT_DETAIL: (attachmentId: number) =>
+      `/construction/attachments/${attachmentId}/`,
+    // The daily loop.
+    DAILY_LOGS: (id: number) => `/construction/projects/${id}/daily-logs/`,
+    DAILY_LOG_DETAIL: (logId: number) => `/construction/daily-logs/${logId}/`,
+    DAILY_LOG_PHOTOS: (logId: number) => `/construction/daily-logs/${logId}/photos/`,
+    DAILY_LOG_PHOTO_DETAIL: (logId: number, photoId: number) =>
+      `/construction/daily-logs/${logId}/photos/${photoId}/`,
+    EXPENSES: (id: number) => `/construction/projects/${id}/expenses/`,
+    EXPENSE_DETAIL: (expenseId: number) => `/construction/expenses/${expenseId}/`,
+    // Payments pile into the project's open batch; one decision settles the lot.
+    EXPENSE_BATCHES: (id: number) => `/construction/projects/${id}/expense-batches/`,
+    EXPENSE_BATCH_DECIDE: (batchId: number) =>
+      `/construction/expense-batches/${batchId}/decide/`,
+    DAY: (id: number) => `/construction/projects/${id}/day/`,
+    SPEND_SUMMARY: (id: number) => `/construction/projects/${id}/spend-summary/`,
+    // More money, more time, or both.
+    REVISIONS: (id: number) => `/construction/projects/${id}/revisions/`,
+    REVISION_APPROVE: (revisionId: number) =>
+      `/construction/revisions/${revisionId}/approve/`,
+    REVISION_REJECT: (revisionId: number) => `/construction/revisions/${revisionId}/reject/`,
+    REVISION_WITHDRAW: (revisionId: number) =>
+      `/construction/revisions/${revisionId}/withdraw/`,
+    APPROVALS: '/construction/approvals/',
+  },
   ISSUES: {
     META: '/issues/meta/',
     LIST: '/issues/',

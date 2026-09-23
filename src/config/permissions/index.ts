@@ -49,6 +49,15 @@ export {
   type LeavePermission,
 } from './leave.permissions';
 
+// Construction Projects Module (the campus's own building work)
+export {
+  CONSTRUCTION_ACCESS,
+  CONSTRUCTION_MODULE_PREFIX,
+  CONSTRUCTION_PERMISSIONS,
+  CONSTRUCTION_REVIEWER_ACCESS,
+  type ConstructionPermission,
+} from './construction.permissions';
+
 // Gate Module
 export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
 

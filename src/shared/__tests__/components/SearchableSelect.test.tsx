@@ -165,4 +165,53 @@ describe('SearchableSelect', () => {
     fireEvent.change(input, { target: { value: '' } });
     expect(onClear).toHaveBeenCalled();
   });
+  // ─── Minimum search length ─────────────────────────────────────
+
+  describe('minSearchLength', () => {
+    it('lists everything immediately when it is not set', () => {
+      render(<SearchableSelect {...defaultProps} />);
+      fireEvent.focus(screen.getByRole('textbox'));
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+    });
+
+    it('holds the list back until enough has been typed', () => {
+      render(<SearchableSelect {...defaultProps} minSearchLength={2} />);
+      const input = screen.getByRole('textbox');
+      fireEvent.focus(input);
+      expect(screen.queryByText('Apple')).not.toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'A' } });
+      expect(screen.queryByText('Apple')).not.toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'Ap' } });
+      expect(screen.getByText('Apple')).toBeInTheDocument();
+    });
+
+    it('says to keep typing rather than that nothing was found', () => {
+      // One character is not a failed search, it is an unfinished one, and
+      // "no results" is a wrong answer to a question nobody has asked yet.
+      render(
+        <SearchableSelect
+          {...defaultProps}
+          minSearchLength={2}
+          notFoundText="No fruit by that name"
+          minSearchText="Type two letters"
+        />,
+      );
+      const input = screen.getByRole('textbox');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: 'A' } });
+
+      expect(screen.getByText('Type two letters')).toBeInTheDocument();
+      expect(screen.queryByText('No fruit by that name')).not.toBeInTheDocument();
+    });
+
+    it('does not count whitespace as typing', () => {
+      render(<SearchableSelect {...defaultProps} minSearchLength={2} />);
+      const input = screen.getByRole('textbox');
+      fireEvent.focus(input);
+      fireEvent.change(input, { target: { value: '  ' } });
+      expect(screen.queryByText('Apple')).not.toBeInTheDocument();
+    });
+  });
 });

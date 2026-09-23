@@ -41,6 +41,15 @@ export interface SearchableSelectProps<TItem> {
   renderItem?: (item: TItem, isSelected: boolean) => ReactNode;
   /** Custom filter function. Default: match by getItemLabel */
   filterFn?: (item: TItem, search: string) => boolean;
+  /**
+   * Hold the list back until this many characters have been typed. 0, the
+   * default, lists everything straight away and is what every existing caller
+   * gets. Use it where the list is long enough that the whole of it is noise
+   * rather than a choice.
+   */
+  minSearchLength?: number;
+  /** Shown while fewer than `minSearchLength` characters have been typed. */
+  minSearchText?: string;
   // Popover content (optional render prop — if omitted, no help icon shown)
   renderPopoverContent?: (selectedKey: ItemKey | null) => ReactNode;
   // Text config
@@ -84,6 +93,8 @@ export function SearchableSelect<TItem>({
   getItemLabel,
   renderItem,
   filterFn,
+  minSearchLength = 0,
+  minSearchText,
   renderPopoverContent,
   loadingText,
   emptyText,
@@ -126,7 +137,13 @@ export function SearchableSelect<TItem>({
   );
   const activeFilter = filterFn || defaultFilter;
 
-  const filteredItems = items.filter((item) => activeFilter(item, debouncedSearch));
+  // Below the threshold the list is not empty, it is not asked for yet --
+  // the difference matters because "nobody by that name" is a wrong answer to
+  // a question that has not been finished.
+  const belowMinSearch = debouncedSearch.trim().length < minSearchLength;
+  const filteredItems = belowMinSearch
+    ? []
+    : items.filter((item) => activeFilter(item, debouncedSearch));
 
   // Wrappers to notify parent of state changes
   const updateIsOpen = useCallback(
@@ -354,7 +371,12 @@ export function SearchableSelect<TItem>({
                 )}
                 {filteredItems.length === 0 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">
-                    {searchTerm ? notFoundText : emptyText}
+                    {belowMinSearch
+                      ? (minSearchText ??
+                        `Type at least ${minSearchLength} characters to search`)
+                      : searchTerm
+                        ? notFoundText
+                        : emptyText}
                   </div>
                 ) : (
                   <ul className="py-1">

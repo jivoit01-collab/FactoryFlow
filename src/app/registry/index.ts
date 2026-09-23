@@ -9,6 +9,7 @@ import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { attendanceModuleConfig } from '@/modules/attendance/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
+import { constructionModuleConfig } from '@/modules/construction/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
@@ -59,6 +60,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // materials into purchase orders.
   planningPurchaseModuleConfig,
   maintenanceModuleConfig,
+  // Sits after Maintenance: the campus's own building work, from the budget
+  // and its approval through the daily record of what was done and what it
+  // cost. What Maintenance looks after, this module built.
+  constructionModuleConfig,
   fireModuleConfig,
   // Sits by Maintenance: the treatment plants' own registers.
   etpModuleConfig,
