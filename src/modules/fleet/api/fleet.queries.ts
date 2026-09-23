@@ -180,19 +180,6 @@ export function useDeleteServiceEntry() {
   return useFleetMutation((id: number) => fleetApi.deleteServiceEntry(id));
 }
 
-export function useDecideFuelEntry() {
-  return useFleetMutation(
-    ({
-      id,
-      ...decision
-    }: {
-      id: number;
-      approval_status: 'APPROVED' | 'REJECTED';
-      rejection_reason?: string;
-    }) => fleetApi.decideFuelEntry(id, decision),
-  );
-}
-
 export function useDecideServiceEntry() {
   return useFleetMutation(
     ({

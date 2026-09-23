@@ -130,10 +130,10 @@ export default function FleetVehicleDetailPage() {
           </label>
           <Input id="detail-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
-        {(summary?.pending_fuel || summary?.pending_service) && (
+        {!!summary?.pending_service && (
           <p className="pb-2 text-sm text-muted-foreground">
-            {(summary.pending_fuel ?? 0) + (summary.pending_service ?? 0)} bill(s) still waiting for
-            approval — not in these totals.
+            {summary.pending_service} workshop bill(s) still waiting for approval — not in these
+            totals. Fillings need none, so they are all counted.
           </p>
         )}
       </div>
@@ -192,12 +192,11 @@ export default function FleetVehicleDetailPage() {
                   <Th align="right">Amount</Th>
                   <Th align="right">Run</Th>
                   <Th align="right">Mileage</Th>
-                  <Th>Approval</Th>
                 </tr>
               </thead>
               <tbody>
                 {!fuelEntries.length ? (
-                  <TableEmpty colSpan={8} message="No fillings in this window" icon={Fuel} />
+                  <TableEmpty colSpan={7} message="No fillings in this window" icon={Fuel} />
                 ) : (
                   fuelEntries.map((entry) => (
                     <tr
@@ -222,20 +221,6 @@ export default function FleetVehicleDetailPage() {
                       <Td numeric>{km(entry.distance_km)}</Td>
                       <Td numeric>
                         {entry.mileage ? `${entry.mileage} ${entry.mileage_unit}` : '—'}
-                      </Td>
-                      <Td>
-                        <StatusPill
-                          tone={
-                            entry.approval_status === 'APPROVED'
-                              ? 'done'
-                              : entry.approval_status === 'REJECTED'
-                                ? 'blocked'
-                                : 'warn'
-                          }
-                          dot
-                        >
-                          {entry.approval_status_label}
-                        </StatusPill>
                       </Td>
                     </tr>
                   ))

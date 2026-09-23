@@ -31,9 +31,12 @@ import { VehiclePicker } from './VehiclePicker';
 /**
  * Record one filling.
  *
- * The form asks for five things — vehicle, date, meter, quantity, amount —
- * and hides the other nine behind "More details", because this is the screen
- * somebody fills in standing next to a pump with a paper slip in one hand.
+ * Three boxes get typed into: the meter reading, how much went in, and what
+ * was paid. Everything else is either a tap (which vehicle, and petrol or CNG
+ * on the one kind of vehicle that can be either) or already correct (the date
+ * is today, the tank was filled full). The other nine fields sit behind "More
+ * details", the date among them — this is the screen somebody fills in
+ * standing next to a pump with a paper slip in one hand.
  *
  * Two of its behaviours come from the server rather than from here, and both
  * are questions rather than refusals: a meter reading below the last one wants
@@ -191,7 +194,9 @@ export function FuelEntryDialog({
       // The server asks these two as questions. Turn each into the control
       // that answers it, and let the next save through.
       if (flat.confirm_duplicate) setConfirmDuplicate(true);
-      if (flat.odometer) setShowMore(true);
+      // Both of these are answered by a box inside "More details", so open it
+      // rather than leaving the message pointing at something hidden.
+      if (flat.odometer || flat.entry_date) setShowMore(true);
     }
   };
 
@@ -203,9 +208,7 @@ export function FuelEntryDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit filling' : 'Add fuel'}</DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? 'Change what was entered. It goes back for approval.'
-              : 'Five boxes. The rest is optional.'}
+            {isEdit ? 'Change what was entered.' : 'Meter, quantity, price. That is all.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -253,36 +256,25 @@ export function FuelEntryDialog({
               </FieldRow>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldRow
-                label="Date"
-                htmlFor="entry_date"
-                required
-                error={errors.entry_date?.message || apiErrors.entry_date}
-              >
-                <Input id="entry_date" type="date" max={today()} {...register('entry_date')} />
-              </FieldRow>
-
-              <FieldRow
-                label="Meter reading"
-                htmlFor="odometer"
-                required
-                hint={lastReading != null ? `Last: ${km(lastReading)}` : undefined}
-                error={errors.odometer?.message || apiErrors.odometer}
-              >
-                <Input
-                  id="odometer"
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="km"
-                  {...register('odometer')}
-                />
-              </FieldRow>
-            </div>
+            <FieldRow
+              label="Meter reading"
+              htmlFor="odometer"
+              required
+              hint={lastReading != null ? `Last: ${km(lastReading)}` : undefined}
+              error={errors.odometer?.message || apiErrors.odometer}
+            >
+              <Input
+                id="odometer"
+                type="number"
+                inputMode="numeric"
+                placeholder="km on the meter"
+                {...register('odometer')}
+              />
+            </FieldRow>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldRow
-                label={`Quantity (${unit})`}
+                label={unit === 'Kg' ? 'Kg filled' : 'Litres filled'}
                 htmlFor="quantity"
                 required
                 error={errors.quantity?.message || apiErrors.quantity}
@@ -292,13 +284,13 @@ export function FuelEntryDialog({
                   type="number"
                   step="0.01"
                   inputMode="decimal"
-                  placeholder={unit === 'Kg' ? 'kg filled' : 'litres filled'}
+                  placeholder={unit}
                   {...register('quantity')}
                 />
               </FieldRow>
 
               <FieldRow
-                label="Amount paid"
+                label="Price paid"
                 htmlFor="amount"
                 required
                 hint={derivedRate ? `${rupees(derivedRate)} / ${unit}` : undefined}
@@ -342,6 +334,16 @@ export function FuelEntryDialog({
 
             {showMore && (
               <div className="space-y-4 rounded-lg border p-3">
+                <FieldRow
+                  label="Date"
+                  htmlFor="entry_date"
+                  required
+                  hint="Today unless you change it"
+                  error={errors.entry_date?.message || apiErrors.entry_date}
+                >
+                  <Input id="entry_date" type="date" max={today()} {...register('entry_date')} />
+                </FieldRow>
+
                 {apiErrors.odometer && (
                   <FieldRow
                     label="Why is the meter lower?"

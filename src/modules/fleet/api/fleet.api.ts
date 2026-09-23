@@ -118,11 +118,6 @@ export interface FuelEntry {
   /** Full tank to full tank only. Null on a part fill and on the first fill. */
   mileage: string | null;
   mileage_unit: string;
-  approval_status: ApprovalStatusCode;
-  approval_status_label: string;
-  approved_by_name: string | null;
-  approved_at: string | null;
-  rejection_reason: string;
   entered_by_name: string | null;
   created_at: string;
 }
@@ -184,7 +179,8 @@ export interface FleetSummary {
   month_fuel_quantity: string;
   month_service_cost: string;
   month_total_cost: string;
-  pending_approvals: { fuel: number; service: number; total: number };
+  /** Workshop bills only — a filling is never pending. */
+  pending_approvals: { service: number; total: number };
   expiring_documents: number;
   expired_documents: number;
 }
@@ -200,7 +196,6 @@ export interface VehicleSummary {
   distance_km: number | null;
   cost_per_km: string | null;
   mileage_by_fuel: Record<string, string>;
-  pending_fuel: number;
   pending_service: number;
   monthly: { month: string; fuel: string; service: string; total: string }[];
 }
@@ -388,17 +383,6 @@ export const fleetApi = {
     await apiClient.delete(API_ENDPOINTS.FLEET.FUEL_ENTRY_BY_ID(id));
   },
 
-  async decideFuelEntry(
-    id: number,
-    decision: { approval_status: 'APPROVED' | 'REJECTED'; rejection_reason?: string },
-  ): Promise<FuelEntry> {
-    const response = await apiClient.post<FuelEntry>(
-      API_ENDPOINTS.FLEET.FUEL_ENTRY_APPROVAL(id),
-      decision,
-    );
-    return response.data;
-  },
-
   async serviceEntries(query: EntryListParams = {}): Promise<ServiceEntry[]> {
     const response = await apiClient.get<ServiceEntry[]>(
       `${API_ENDPOINTS.FLEET.SERVICE_ENTRIES}${params(query)}`,
@@ -439,8 +423,9 @@ export const fleetApi = {
     return response.data;
   },
 
-  async pendingApprovals(): Promise<{ fuel: FuelEntry[]; service: ServiceEntry[] }> {
-    const response = await apiClient.get<{ fuel: FuelEntry[]; service: ServiceEntry[] }>(
+  /** Workshop bills waiting to be passed. Fuel has no approval, so none here. */
+  async pendingApprovals(): Promise<{ service: ServiceEntry[] }> {
+    const response = await apiClient.get<{ service: ServiceEntry[] }>(
       API_ENDPOINTS.FLEET.PENDING_APPROVALS,
     );
     return response.data;

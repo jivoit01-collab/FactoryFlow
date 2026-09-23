@@ -1925,7 +1925,6 @@ export const API_ENDPOINTS = {
 
     FUEL_ENTRIES: '/company-vehicles/fuel-entries/',
     FUEL_ENTRY_BY_ID: (id: number) => `/company-vehicles/fuel-entries/${id}/`,
-    FUEL_ENTRY_APPROVAL: (id: number) => `/company-vehicles/fuel-entries/${id}/approval/`,
 
     SERVICE_ENTRIES: '/company-vehicles/service-entries/',
     SERVICE_ENTRY_BY_ID: (id: number) => `/company-vehicles/service-entries/${id}/`,

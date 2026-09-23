@@ -75,12 +75,19 @@ describe('fleetApi', () => {
     });
   });
 
-  it('sends a decision to the entry it belongs to', async () => {
-    await fleetApi.decideFuelEntry(7, { approval_status: 'REJECTED', rejection_reason: 'No bill' });
-    expect(post).toHaveBeenCalledWith('/company-vehicles/fuel-entries/7/approval/', {
+  it('sends a decision to the workshop bill it belongs to', async () => {
+    await fleetApi.decideServiceEntry(7, {
       approval_status: 'REJECTED',
       rejection_reason: 'No bill',
     });
+    expect(post).toHaveBeenCalledWith('/company-vehicles/service-entries/7/approval/', {
+      approval_status: 'REJECTED',
+      rejection_reason: 'No bill',
+    });
+  });
+
+  it('offers no approval endpoint for fuel at all', () => {
+    expect('decideFuelEntry' in fleetApi).toBe(false);
   });
 
   it('fetches a stored bill as a blob, through the permission-checked path', async () => {

@@ -83,9 +83,9 @@ export default function FleetDashboardPage() {
           to="/fleet/service"
         />
         <StatTile
-          label="Waiting for approval"
+          label="Bills to approve"
           value={pending}
-          sub={pending ? 'Not counted as spend yet' : 'Nothing pending'}
+          sub={pending ? 'Workshop bills, not counted yet' : 'Nothing pending'}
           icon={ClipboardCheck}
           accent={pending ? 'amber' : 'emerald'}
           to="/fleet/approvals"
@@ -102,7 +102,7 @@ export default function FleetDashboardPage() {
 
       <PageSection
         title="This month, vehicle by vehicle"
-        description="Approved bills only. Cost per km needs at least two fillings in the month."
+        description="Every filling, plus approved workshop bills. Cost per km needs two fillings in the month."
         icon={IndianRupee}
       >
         <TableCard summary={`${report?.rows.length ?? 0} vehicles`}>
@@ -122,7 +122,7 @@ export default function FleetDashboardPage() {
                 <TableEmpty
                   colSpan={6}
                   message={isLoading ? 'Loading…' : 'Nothing recorded this month'}
-                  hint="Fillings appear here once they are approved."
+                  hint="Record a filling or a workshop bill and it shows here."
                 />
               ) : (
                 report.rows.map((row) => (

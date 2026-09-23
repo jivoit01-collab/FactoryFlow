@@ -55,8 +55,9 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  * Everything recorded against one filling or one workshop bill.
  *
  * The tables show what a row can carry without becoming unreadable; this is
- * where the rest lives — the pump, the bill number, who filled it, who passed
- * it and why it was sent back, and the photo of the slip itself.
+ * where the rest lives — the pump, the bill number, who filled it, and the
+ * photo of the slip itself. A workshop bill also shows who passed it and why
+ * it was sent back; a filling has no approval, so it shows neither.
  */
 export function EntryDetailDialog({
   open,
@@ -68,7 +69,7 @@ export function EntryDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   detail: EntryDetail | null;
-  /** Editing is offered only while the entry is still unapproved. */
+  /** A filling is always editable; a workshop bill only until it is passed. */
   canEdit?: boolean;
   onEdit?: (detail: EntryDetail) => void;
 }) {
@@ -78,7 +79,8 @@ export function EntryDetailDialog({
   const { kind, entry } = detail;
   const isFuel = kind === 'fuel';
   const billPhotoUrl = entry.bill_photo_url;
-  const editable = canEdit && entry.approval_status !== 'APPROVED';
+  const editable =
+    canEdit && (isFuel || (entry as ServiceEntry).approval_status !== 'APPROVED');
 
   const openBill = () =>
     openAttachment.mutate(
@@ -106,17 +108,24 @@ export function EntryDetailDialog({
 
         <DialogBody className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-            <StatusPill tone={approvalTone(entry.approval_status)} dot>
-              {entry.approval_status_label}
-            </StatusPill>
+            {/* Only a workshop bill has an approval to show. */}
+            {isFuel ? (
+              <span className="text-sm text-muted-foreground">
+                {shortDate(entry.entry_date)}
+              </span>
+            ) : (
+              <StatusPill tone={approvalTone((entry as ServiceEntry).approval_status)} dot>
+                {(entry as ServiceEntry).approval_status_label}
+              </StatusPill>
+            )}
             <span className="text-xl font-semibold tabular-nums">
               {money(isFuel ? (entry as FuelEntry).amount : (entry as ServiceEntry).total_amount)}
             </span>
           </div>
 
-          {entry.rejection_reason && (
+          {!isFuel && (entry as ServiceEntry).rejection_reason && (
             <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              Sent back: {entry.rejection_reason}
+              Sent back: {(entry as ServiceEntry).rejection_reason}
             </p>
           )}
 
@@ -183,10 +192,16 @@ export function EntryDetailDialog({
 
           <Section title="Trail">
             <Line label="Entered by" value={entry.entered_by_name} />
-            <Line
-              label={entry.approval_status === 'REJECTED' ? 'Sent back by' : 'Approved by'}
-              value={entry.approved_by_name}
-            />
+            {!isFuel && (
+              <Line
+                label={
+                  (entry as ServiceEntry).approval_status === 'REJECTED'
+                    ? 'Sent back by'
+                    : 'Approved by'
+                }
+                value={(entry as ServiceEntry).approved_by_name}
+              />
+            )}
             <Line label="Remarks" value={entry.remarks} />
             {isFuel && (
               <Line label="Note on the meter" value={(entry as FuelEntry).odometer_note} />

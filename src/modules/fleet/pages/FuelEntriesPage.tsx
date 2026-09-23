@@ -7,7 +7,6 @@ import {
   FilterField,
   PageHeader,
   ROW_CLASSES,
-  StatusPill,
   TABLE_CLASSES,
   TableCard,
   TableEmpty,
@@ -17,17 +16,10 @@ import {
 } from '@/shared/components/page';
 import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
 
-import type { ApprovalStatusCode, FuelEntry } from '../api';
+import type { FuelEntry } from '../api';
 import { useDeleteFuelEntry, useFleetOptions, useFleetVehicles, useFuelEntries } from '../api';
 import { type EntryDetail, EntryDetailDialog, FuelEntryDialog } from '../components';
 import { fieldErrors, km, money, monthStart, quantity, rupees, shortDate, today } from '../utils/format';
-
-/** The pill colour for an entry's approval state. */
-function approvalTone(status: ApprovalStatusCode) {
-  if (status === 'APPROVED') return 'done' as const;
-  if (status === 'REJECTED') return 'blocked' as const;
-  return 'warn' as const;
-}
 
 /**
  * Every filling, filterable.
@@ -40,7 +32,6 @@ export default function FuelEntriesPage() {
   const [vehicle, setVehicle] = useState('');
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
-  const [approvalStatus, setApprovalStatus] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<FuelEntry | undefined>();
   const [viewing, setViewing] = useState<FuelEntry | null>(null);
@@ -51,13 +42,11 @@ export default function FuelEntriesPage() {
     vehicle: vehicle ? Number(vehicle) : undefined,
     from,
     to,
-    approval_status: approvalStatus,
   });
   const deleteEntry = useDeleteFuelEntry();
 
-  const total = entries
-    .filter((entry) => entry.approval_status === 'APPROVED')
-    .reduce((sum, entry) => sum + Number(entry.amount), 0);
+  // Every filling counts: fuel has no approval to wait for.
+  const total = entries.reduce((sum, entry) => sum + Number(entry.amount), 0);
 
   const remove = async (entry: FuelEntry) => {
     if (!window.confirm(`Delete the ${shortDate(entry.entry_date)} filling of ${entry.vehicle_number}?`))
@@ -99,7 +88,6 @@ export default function FuelEntriesPage() {
           setVehicle('');
           setFrom(monthStart());
           setTo(today());
-          setApprovalStatus('');
         }}
       >
         <FilterField label="Vehicle" htmlFor="fuel-vehicle">
@@ -122,20 +110,6 @@ export default function FuelEntriesPage() {
         <FilterField label="To" htmlFor="fuel-to">
           <Input id="fuel-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </FilterField>
-        <FilterField label="Approval" htmlFor="fuel-approval">
-          <NativeSelect
-            id="fuel-approval"
-            value={approvalStatus}
-            onChange={(event) => setApprovalStatus(event.target.value)}
-          >
-            <SelectOption value="">All</SelectOption>
-            {(options?.approval_statuses ?? []).map((choice) => (
-              <SelectOption key={choice.value} value={choice.value}>
-                {choice.label}
-              </SelectOption>
-            ))}
-          </NativeSelect>
-        </FilterField>
       </FilterBar>
 
       <TableCard summary={`${entries.length} filling(s) · ${money(total)} approved`}>
@@ -150,14 +124,13 @@ export default function FuelEntriesPage() {
               <Th align="right">Amount</Th>
               <Th align="right">Run</Th>
               <Th align="right">Mileage</Th>
-              <Th>Approval</Th>
               <Th align="right"> </Th>
             </tr>
           </thead>
           <tbody>
             {!entries.length ? (
               <TableEmpty
-                colSpan={10}
+                colSpan={9}
                 message={isFetching ? 'Loading…' : 'No fillings in this range'}
                 icon={Fuel}
               />
@@ -197,18 +170,8 @@ export default function FuelEntriesPage() {
                   </Td>
                   <Td numeric>{km(entry.distance_km)}</Td>
                   <Td numeric>{entry.mileage ? `${entry.mileage} ${entry.mileage_unit}` : '—'}</Td>
-                  <Td>
-                    <StatusPill tone={approvalTone(entry.approval_status)} dot>
-                      {entry.approval_status_label}
-                    </StatusPill>
-                    {entry.rejection_reason && (
-                      <p className="mt-1 max-w-[220px] text-xs text-muted-foreground">
-                        {entry.rejection_reason}
-                      </p>
-                    )}
-                  </Td>
                   <Td align="right" onClick={(event) => event.stopPropagation()}>
-                    {options?.can_add_expense && entry.approval_status !== 'APPROVED' && (
+                    {options?.can_add_expense && (
                       <div className="flex justify-end gap-1">
                         <Button
                           variant="ghost"
