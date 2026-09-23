@@ -37,6 +37,10 @@ export const FLEET_QUERY_KEYS = {
     [...FLEET_QUERY_KEYS.all, 'fuel', JSON.stringify(query)] as const,
   serviceEntries: (query: EntryListParams) =>
     [...FLEET_QUERY_KEYS.all, 'service', JSON.stringify(query)] as const,
+  runningLog: (query: { vehicle?: number; from?: string; to?: string }) =>
+    [...FLEET_QUERY_KEYS.all, 'running-log', JSON.stringify(query)] as const,
+  dailyReadings: (query: { vehicle?: number; from?: string; to?: string }) =>
+    [...FLEET_QUERY_KEYS.all, 'daily-readings', JSON.stringify(query)] as const,
   pendingApprovals: () => [...FLEET_QUERY_KEYS.all, 'pending-approvals'] as const,
   documents: (query: { vehicle?: number; doc_type?: string }) =>
     [...FLEET_QUERY_KEYS.all, 'documents', JSON.stringify(query)] as const,
@@ -88,6 +92,28 @@ export function useVehicleSummary(id: number | null, range: { from?: string; to?
     queryFn: () => fleetApi.vehicleSummary(id as number, range),
     enabled: id != null,
   });
+}
+
+export function useRunningLog(query: { vehicle?: number; from?: string; to?: string } = {}) {
+  return useQuery({
+    queryKey: FLEET_QUERY_KEYS.runningLog(query),
+    queryFn: () => fleetApi.runningLog(query),
+  });
+}
+
+export function useDailyReadings(query: { vehicle?: number; from?: string; to?: string } = {}) {
+  return useQuery({
+    queryKey: FLEET_QUERY_KEYS.dailyReadings(query),
+    queryFn: () => fleetApi.dailyReadings(query),
+  });
+}
+
+export function useSaveDailyReading() {
+  return useFleetMutation((payload: WritePayload) => fleetApi.saveDailyReading(payload));
+}
+
+export function useDeleteDailyReading() {
+  return useFleetMutation((id: number) => fleetApi.deleteDailyReading(id));
 }
 
 export function useFuelEntries(query: EntryListParams = {}, enabled = true) {

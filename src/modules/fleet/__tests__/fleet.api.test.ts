@@ -97,6 +97,29 @@ describe('fleetApi', () => {
     });
   });
 
+  it('asks for the fleet-wide log when no vehicle is named', async () => {
+    await fleetApi.runningLog({ from: '2026-09-01', to: '2026-09-23' });
+    expect(get).toHaveBeenCalledWith(
+      '/company-vehicles/running-log/?from=2026-09-01&to=2026-09-23',
+    );
+  });
+
+  it('asks for one vehicle`s day-wise log when it is', async () => {
+    await fleetApi.runningLog({ vehicle: 2, from: '2026-09-01', to: '2026-09-23' });
+    expect(get).toHaveBeenCalledWith(
+      '/company-vehicles/running-log/?vehicle=2&from=2026-09-01&to=2026-09-23',
+    );
+  });
+
+  it('posts a reading to the one endpoint that upserts it', async () => {
+    await fleetApi.saveDailyReading({ vehicle: 2, reading_date: '2026-09-23', odometer: 7900 });
+    expect(post).toHaveBeenCalledWith(
+      '/company-vehicles/daily-readings/',
+      { vehicle: 2, reading_date: '2026-09-23', odometer: 7900 },
+      { headers: undefined },
+    );
+  });
+
   it('retires a vehicle rather than removing its history', async () => {
     await fleetApi.retireVehicle(4);
     expect(del).toHaveBeenCalledWith('/company-vehicles/vehicles/4/');

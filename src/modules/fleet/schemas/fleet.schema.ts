@@ -95,3 +95,12 @@ export const vehicleDocumentSchema = z.object({
 });
 
 export type VehicleDocumentFormData = z.infer<typeof vehicleDocumentSchema>;
+
+export const dailyReadingSchema = z.object({
+  vehicle: z.number().positive('Choose the vehicle'),
+  reading_date: requiredText('Date'),
+  odometer: positiveNumber('Meter reading'),
+  remarks: z.string().trim().optional(),
+});
+
+export type DailyReadingFormData = z.infer<typeof dailyReadingSchema>;

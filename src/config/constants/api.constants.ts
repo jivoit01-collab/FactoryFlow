@@ -1970,6 +1970,11 @@ export const API_ENDPOINTS = {
     VEHICLE_BY_ID: (id: number) => `/company-vehicles/vehicles/${id}/`,
     VEHICLE_SUMMARY: (id: number) => `/company-vehicles/vehicles/${id}/summary/`,
 
+    // The day-wise running log, and the readings that make it possible.
+    RUNNING_LOG: '/company-vehicles/running-log/',
+    DAILY_READINGS: '/company-vehicles/daily-readings/',
+    DAILY_READING_BY_ID: (id: number) => `/company-vehicles/daily-readings/${id}/`,
+
     FUEL_ENTRIES: '/company-vehicles/fuel-entries/',
     FUEL_ENTRY_BY_ID: (id: number) => `/company-vehicles/fuel-entries/${id}/`,
 

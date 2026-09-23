@@ -1,4 +1,12 @@
-import { AlertTriangle, ClipboardCheck, Fuel, IndianRupee, Truck, Wrench } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarDays,
+  ClipboardCheck,
+  Fuel,
+  IndianRupee,
+  Truck,
+  Wrench,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -89,6 +97,14 @@ export default function FleetDashboardPage() {
           icon={ClipboardCheck}
           accent={pending ? 'amber' : 'emerald'}
           to="/fleet/approvals"
+        />
+        <StatTile
+          label="Running log"
+          value="Day by day"
+          sub="Who ran how much, and when"
+          icon={CalendarDays}
+          accent="sky"
+          to="/fleet/log"
         />
         <StatTile
           label="Vehicles"
