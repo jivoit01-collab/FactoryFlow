@@ -123,19 +123,20 @@ DRAFT
 
 | Rule | Description |
 |------|-------------|
-| **Sequential approval** | Engineer → AM → Store → HOD |
-| **Cannot skip levels** | AM cannot sign until engineer has signed |
-| **Status transitions** | PENDING → PARTIALLY_APPROVED (after first sign) → FULLY_APPROVED (after HOD signs) |
-| **Each signer recorded** | `*_sign` (name), `*_signed_by` (FK to User), `*_signed_at` (timestamp) |
-| **Permission-gated** | Each approval requires its own permission |
+| **Single-step approval** | One signature approves the log. The per-role endpoints (engineer/am/store/hod) all resolve to the same single step. |
+| **Rejection sends it back** | A reviewer can reject instead of approving. A reason is required — it is what the author has to act on. |
+| **Rejected is editable** | A REJECTED log reopens for its author, who corrects it and resubmits. Editing needs `can_create_waste_log`; approving and rejecting need an approve permission. |
+| **Resubmit clears the block, not the note** | Resubmitting moves REJECTED → PENDING; the rejection sign, timestamp and reason stay on the row as history. |
+| **Rejected cannot be approved directly** | It has to be resubmitted first, so an approval always applies to a row the author stands behind. |
+| **Approved is final** | A FULLY_APPROVED log can no longer be edited, approved again, or rejected. |
+| **Signer recorded** | `*_sign` (name), `*_signed_by` (FK to User), `*_signed_at` (timestamp); rejection uses `rejected_sign`, `rejected_by`, `rejected_at`, `rejection_reason` |
 
 **Approval flow:**
 ```
 PENDING
-  └── Engineer signs → PARTIALLY_APPROVED
-       └── AM signs → PARTIALLY_APPROVED
-            └── Store signs → PARTIALLY_APPROVED
-                 └── HOD signs → FULLY_APPROVED
+  ├── approve → FULLY_APPROVED  (final)
+  └── reject  → REJECTED
+                    └── author edits & resubmits → PENDING
 ```
 
 ---
@@ -191,5 +192,11 @@ PENDING
 - At least one signature (supervisor or incharge) must be provided
 
 ### On WasteLog approval:
-- Previous level must be signed before current level can sign
-- Signing user must have the corresponding permission
+- Signing user must have a waste approval permission
+- The log must not already be approved, and must not be sitting in REJECTED
+- A rejection must carry a reason
+
+### On WasteLog edit (resubmit):
+- The log must not already be approved
+- `wastage_qty`, when sent, must be greater than zero
+- An empty edit is allowed: it is a plain resubmit of a rejection the author disagrees with

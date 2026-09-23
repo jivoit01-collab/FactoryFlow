@@ -30,14 +30,22 @@ import {
   useApproveWaste,
   useCreateWasteLog,
   useMaterials,
+  useRejectWaste,
   useRuns,
   useSearchSAPItems,
+  useUpdateWasteLog,
   useWasteLogs,
 } from '../api';
 import { SignatureBlock } from '../components/SignatureBlock';
 import { WasteApprovalBadge } from '../components/WasteApprovalBadge';
 import { WasteLogTable } from '../components/WasteLogTable';
-import type { CreateWasteItemRequest, MaterialUsage, SAPItem, WasteLog } from '../types';
+import type {
+  CreateWasteItemRequest,
+  MaterialUsage,
+  SAPItem,
+  UpdateWasteLogRequest,
+  WasteLog,
+} from '../types';
 
 type WasteDraftSource = 'bom' | 'manual';
 
@@ -63,6 +71,24 @@ function toBomWasteRow(material: MaterialUsage): WasteDraftRow {
   };
 }
 
+interface WasteEditDraft {
+  material_code: string;
+  material_name: string;
+  wastage_qty: string;
+  uom: string;
+  reason: string;
+}
+
+function toEditDraft(waste: WasteLog): WasteEditDraft {
+  return {
+    material_code: waste.material_code,
+    material_name: waste.material_name,
+    wastage_qty: waste.wastage_qty,
+    uom: waste.uom,
+    reason: waste.reason,
+  };
+}
+
 function getEnteredQty(value: string) {
   const qty = Number(value);
   return Number.isFinite(qty) ? qty : 0;
@@ -76,6 +102,8 @@ function WasteManagementPage() {
   const { data: runs = [] } = useRuns();
   const createWaste = useCreateWasteLog();
   const approveWaste = useApproveWaste();
+  const rejectWaste = useRejectWaste();
+  const updateWaste = useUpdateWasteLog();
 
   const STANDALONE = 'standalone';
 
@@ -93,6 +121,8 @@ function WasteManagementPage() {
   const [showManualPicker, setShowManualPicker] = useState(false);
   const [selectedWaste, setSelectedWaste] = useState<WasteLog | null>(null);
   const [signName, setSignName] = useState('');
+  const [rejectReason, setRejectReason] = useState('');
+  const [editDraft, setEditDraft] = useState<WasteEditDraft | null>(null);
 
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -241,16 +271,71 @@ function WasteManagementPage() {
     }
   };
 
+  const openDetail = (waste: WasteLog) => {
+    setSelectedWaste(waste);
+    setSignName('');
+    setRejectReason('');
+    // A rejected log is back with its author, so open it ready to edit.
+    setEditDraft(waste.wastage_approval_status === 'REJECTED' ? toEditDraft(waste) : null);
+  };
+
+  const closeDetail = () => {
+    setSelectedWaste(null);
+    setSignName('');
+    setRejectReason('');
+    setEditDraft(null);
+  };
+
+  const updateDraft = (field: keyof WasteEditDraft, value: string) => {
+    setEditDraft((draft) => (draft ? { ...draft, [field]: value } : draft));
+  };
+
   const handleApprove = async (wasteId: number) => {
     if (!signName.trim()) { toast.error('Please enter your name'); return; }
     const data = { wasteId, data: { sign: signName } };
     try {
       await approveWaste.mutateAsync(data);
       toast.success('Waste approval recorded');
-      setSelectedWaste(null);
-      setSignName('');
+      closeDetail();
       refetchWaste();
     } catch { toast.error('Approval failed'); }
+  };
+
+  const handleReject = async (wasteId: number) => {
+    if (!signName.trim()) { toast.error('Please enter your name'); return; }
+    if (!rejectReason.trim()) { toast.error('Enter a reason so the author knows what to fix'); return; }
+    try {
+      await rejectWaste.mutateAsync({
+        wasteId,
+        data: { sign: signName.trim(), reason: rejectReason.trim() },
+      });
+      toast.success('Waste log rejected and sent back for editing');
+      closeDetail();
+      refetchWaste();
+    } catch { toast.error('Rejection failed'); }
+  };
+
+  const handleResubmit = async (waste: WasteLog) => {
+    if (!editDraft) return;
+    if (!editDraft.material_name.trim()) { toast.error('Material name is required'); return; }
+    if (getEnteredQty(editDraft.wastage_qty) <= 0) {
+      toast.error('Enter a waste quantity greater than zero');
+      return;
+    }
+
+    // Send only what actually changed — an empty edit is a plain resubmit.
+    const original = toEditDraft(waste);
+    const changed = (Object.keys(original) as (keyof WasteEditDraft)[]).reduce<UpdateWasteLogRequest>(
+      (acc, field) => (editDraft[field] === original[field] ? acc : { ...acc, [field]: editDraft[field] }),
+      {},
+    );
+
+    try {
+      await updateWaste.mutateAsync({ wasteId: waste.id, data: changed });
+      toast.success('Waste log resubmitted for approval');
+      closeDetail();
+      refetchWaste();
+    } catch { toast.error('Resubmit failed'); }
   };
 
   const getApprovalSign = (w: WasteLog) => (
@@ -291,6 +376,7 @@ function WasteManagementPage() {
             <SelectItem value="ALL">All Statuses</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
             <SelectItem value="FULLY_APPROVED">Approved</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
           </SelectContent>
         </Select>
         <DateRangePicker
@@ -328,7 +414,7 @@ function WasteManagementPage() {
       ) : (
         <Card>
           <CardContent className="p-4">
-            <WasteLogTable wasteLogs={filteredWasteLogs} onView={setSelectedWaste} showRunNumber={!runIdFilter} />
+            <WasteLogTable wasteLogs={filteredWasteLogs} onView={openDetail} showRunNumber={!runIdFilter} />
           </CardContent>
         </Card>
       )}
@@ -496,8 +582,8 @@ function WasteManagementPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedWaste} onOpenChange={() => setSelectedWaste(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!selectedWaste} onOpenChange={(open) => { if (!open) closeDetail(); }}>
+        <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Waste Log Detail</DialogTitle></DialogHeader>
           {selectedWaste && (
             <div className="space-y-4">
@@ -515,21 +601,115 @@ function WasteManagementPage() {
               </div>
               <p className="text-sm"><span className="text-muted-foreground">Reason:</span> {selectedWaste.reason}</p>
 
+              {selectedWaste.rejection_reason && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm dark:border-red-500/30 dark:bg-red-500/10">
+                  <p className="font-medium text-red-800 dark:text-red-400">
+                    {selectedWaste.wastage_approval_status === 'REJECTED'
+                      ? 'Rejected'
+                      : 'Earlier rejection'}
+                    {selectedWaste.rejected_sign ? ` by ${selectedWaste.rejected_sign}` : ''}
+                    {selectedWaste.rejected_at
+                      ? ` on ${new Date(selectedWaste.rejected_at).toLocaleString()}`
+                      : ''}
+                  </p>
+                  <p className="mt-1 text-red-700 dark:text-red-300">{selectedWaste.rejection_reason}</p>
+                </div>
+              )}
+
               <div className="grid gap-3">
                 <SignatureBlock label="Approved By" sign={getApprovalSign(selectedWaste)} signedAt={getApprovalAt(selectedWaste)} />
               </div>
 
-              {selectedWaste.wastage_approval_status !== 'FULLY_APPROVED' && (
+              {selectedWaste.wastage_approval_status === 'REJECTED' && editDraft && (
                 <div className="border-t pt-4 space-y-3">
-                  <p className="text-sm font-medium">Approve Waste</p>
-                  <Input placeholder="Your name / designation" value={signName} onChange={(e) => setSignName(e.target.value)} />
+                  <p className="text-sm font-medium">Fix and Resubmit</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="edit-material-code">Item Code</Label>
+                      <Input
+                        id="edit-material-code"
+                        value={editDraft.material_code}
+                        onChange={(e) => updateDraft('material_code', e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-material-name">Item Name</Label>
+                      <Input
+                        id="edit-material-name"
+                        value={editDraft.material_name}
+                        onChange={(e) => updateDraft('material_name', e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-wastage-qty">Waste Qty</Label>
+                      <Input
+                        id="edit-wastage-qty"
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        inputMode="decimal"
+                        value={editDraft.wastage_qty}
+                        onChange={(e) => updateDraft('wastage_qty', e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-uom">Unit</Label>
+                      <Input
+                        id="edit-uom"
+                        value={editDraft.uom}
+                        onChange={(e) => updateDraft('uom', e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-reason">Reason</Label>
+                    <Textarea
+                      id="edit-reason"
+                      value={editDraft.reason}
+                      onChange={(e) => updateDraft('reason', e.target.value)}
+                      placeholder="Reason for waste"
+                      className="mt-1"
+                    />
+                  </div>
                   <Button
-                    onClick={() => handleApprove(selectedWaste.id)}
-                    disabled={approveWaste.isPending}
+                    onClick={() => handleResubmit(selectedWaste)}
+                    disabled={updateWaste.isPending}
                     className="w-full"
                   >
-                    {approveWaste.isPending ? 'Approving...' : 'Sign & Approve'}
+                    {updateWaste.isPending ? 'Resubmitting...' : 'Save & Resubmit for Approval'}
                   </Button>
+                </div>
+              )}
+
+              {selectedWaste.wastage_approval_status !== 'FULLY_APPROVED' &&
+                selectedWaste.wastage_approval_status !== 'REJECTED' && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-sm font-medium">Approve or Reject</p>
+                  <Input placeholder="Your name / designation" value={signName} onChange={(e) => setSignName(e.target.value)} />
+                  <Textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Reason for rejection — required to reject, so the author knows what to fix"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => handleApprove(selectedWaste.id)}
+                      disabled={approveWaste.isPending || rejectWaste.isPending}
+                    >
+                      {approveWaste.isPending ? 'Approving...' : 'Sign & Approve'}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleReject(selectedWaste.id)}
+                      disabled={approveWaste.isPending || rejectWaste.isPending}
+                    >
+                      {rejectWaste.isPending ? 'Rejecting...' : 'Reject'}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

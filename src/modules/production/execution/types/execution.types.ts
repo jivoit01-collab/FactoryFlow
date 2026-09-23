@@ -24,7 +24,11 @@ export type ClearanceResult = 'YES' | 'NO' | 'NA';
 
 export type ClearanceStatus = 'DRAFT' | 'SUBMITTED' | 'ON_HOLD' | 'CLEARED' | 'NOT_CLEARED';
 
-export type WasteApprovalStatus = 'PENDING' | 'PARTIALLY_APPROVED' | 'FULLY_APPROVED';
+export type WasteApprovalStatus =
+  | 'PENDING'
+  | 'PARTIALLY_APPROVED'
+  | 'FULLY_APPROVED'
+  | 'REJECTED';
 
 export type Shift = 'MORNING' | 'AFTERNOON' | 'NIGHT';
 
@@ -499,6 +503,12 @@ export interface WasteLog {
   hod_sign: string;
   hod_signed_by: number | null;
   hod_signed_at: string | null;
+  /** Last rejection. Kept as history after a resubmit, so it can be set on a
+   *  log whose status has already gone back to PENDING. */
+  rejected_sign?: string;
+  rejected_by?: number | null;
+  rejected_at?: string | null;
+  rejection_reason?: string;
   wastage_approval_status: WasteApprovalStatus;
   approved_sign?: string;
   approved_by?: number | null;
@@ -1118,6 +1128,21 @@ export interface CreateWasteLogRequest {
 
 export interface WasteApprovalRequest {
   sign: string;
+}
+
+export interface WasteRejectionRequest {
+  sign: string;
+  reason: string;
+}
+
+/** Edit of a waste log that is not approved yet. An empty body is a plain
+ *  resubmit of a rejected log. */
+export interface UpdateWasteLogRequest {
+  material_code?: string;
+  material_name?: string;
+  wastage_qty?: string;
+  uom?: string;
+  reason?: string;
 }
 
 export interface CreateElectricityRequest {

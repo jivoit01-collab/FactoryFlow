@@ -38,7 +38,9 @@ import type {
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
   UpdateSegmentRequest,
+  UpdateWasteLogRequest,
   WasteApprovalRequest,
+  WasteRejectionRequest,
 } from '../types';
 import { executionApi } from './execution.api';
 
@@ -853,7 +855,7 @@ export function useCreateWasteLog() {
 export function useUpdateWasteLog() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ wasteId, data }: { wasteId: number; data: Partial<CreateWasteLogRequest> }) =>
+    mutationFn: ({ wasteId, data }: { wasteId: number; data: UpdateWasteLogRequest }) =>
       executionApi.updateWasteLog(wasteId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
@@ -878,6 +880,17 @@ export function useApproveWaste() {
   return useMutation({
     mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteApprovalRequest }) =>
       executionApi.approveWaste(wasteId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
+    },
+  });
+}
+
+export function useRejectWaste() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ wasteId, data }: { wasteId: number; data: WasteRejectionRequest }) =>
+      executionApi.rejectWaste(wasteId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'waste'] });
     },

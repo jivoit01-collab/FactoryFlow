@@ -79,9 +79,11 @@ import type {
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
   UpdateSegmentRequest,
+  UpdateWasteLogRequest,
   WasteAnalytics,
   WasteApprovalRequest,
   WasteLog,
+  WasteRejectionRequest,
   WasteTrendReport,
   YieldReport,
 } from '../types';
@@ -611,7 +613,7 @@ export const executionApi = {
     return res.data;
   },
 
-  async updateWasteLog(wasteId: number, data: Partial<CreateWasteLogRequest>): Promise<WasteLog> {
+  async updateWasteLog(wasteId: number, data: UpdateWasteLogRequest): Promise<WasteLog> {
     const res = await apiClient.patch<WasteLog>(EP.WASTE_DETAIL(wasteId), data);
     return res.data;
   },
@@ -622,6 +624,11 @@ export const executionApi = {
 
   async approveWaste(wasteId: number, data: WasteApprovalRequest): Promise<WasteLog> {
     const res = await apiClient.post<WasteLog>(EP.WASTE_APPROVE(wasteId), data);
+    return res.data;
+  },
+
+  async rejectWaste(wasteId: number, data: WasteRejectionRequest): Promise<WasteLog> {
+    const res = await apiClient.post<WasteLog>(EP.WASTE_REJECT(wasteId), data);
     return res.data;
   },
 

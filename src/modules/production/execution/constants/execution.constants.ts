@@ -190,6 +190,7 @@ export const WASTE_APPROVAL_LABELS: Record<WasteApprovalStatus, string> = {
   PENDING: 'Pending',
   PARTIALLY_APPROVED: 'Partially Approved',
   FULLY_APPROVED: 'Approved',
+  REJECTED: 'Rejected',
 };
 
 export const WASTE_APPROVAL_COLORS: Record<WasteApprovalStatus, StatusColorConfig> = {
@@ -211,12 +212,19 @@ export const WASTE_APPROVAL_COLORS: Record<WasteApprovalStatus, StatusColorConfi
     darkBg: 'dark:bg-green-500/15',
     darkText: 'dark:text-green-400',
   },
+  REJECTED: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    darkBg: 'dark:bg-red-500/15',
+    darkText: 'dark:text-red-400',
+  },
 };
 
 export const WASTE_APPROVAL_ICONS: Record<WasteApprovalStatus, LucideIcon> = {
   PENDING: Clock,
   PARTIALLY_APPROVED: AlertTriangle,
   FULLY_APPROVED: CheckCircle2,
+  REJECTED: XCircle,
 };
 
 // ============================================================================
