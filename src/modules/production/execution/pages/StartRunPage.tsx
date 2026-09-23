@@ -138,9 +138,10 @@ function StartRunPage() {
       bomData.components.map((c) => ({
         code: c.ItemCode,
         name: c.ItemName,
-        // `PlannedQty` is SAP's `ITT1."Quantity"` untouched, and on this data
-        // that is the quantity for ONE box — 20 litres of oil and one carton on
-        // a 1 LTR x 20 PCS SKU. So it multiplies straight by the case count.
+        // `PlannedQty` is already per box: the API divides ITT1."Quantity" by
+        // the BOM's base quantity and multiplies by the bottles per case, since
+        // a recipe is authored for a batch and the batch is not always a box.
+        // So it multiplies straight by the case count.
         perCase: c.PlannedQty,
         uom: c.UomCode ?? '',
       })),
@@ -632,6 +633,7 @@ function StartRunPage() {
           }
           bomLoading={loadingBOM}
           hasSku={!!selectedItemCode}
+          componentCount={bomData?.components.length ?? 0}
           requiredQtyEntered={parseFloat(watchedRequiredQty || '0') > 0}
           renderRequiredInput={(index) => (
             <Input

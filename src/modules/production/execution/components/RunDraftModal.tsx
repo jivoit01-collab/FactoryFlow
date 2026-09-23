@@ -284,8 +284,11 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
   const { data: skuItems = [], isLoading: loadingSKU } = useSearchSAPItems(skuSearch, true);
 
   // ------------------------------------------------------- material lines
-  // The BOM is per box on this data, so the requirement is each component
-  // multiplied by the case count. A supervisor who knows the plan really draws
+  // `PlannedQty` arrives per box: the API divides ITT1."Quantity" by the BOM's
+  // base quantity and multiplies by the bottles per case, because a recipe is
+  // authored for a batch and the batch is not always a box. So the requirement
+  // is each component multiplied by the case count, and nothing here has to
+  // know how big a box is. A supervisor who knows the plan really draws
   // something else can type over a line; the override is keyed by component and
   // dropped whenever the SKU or the case count moves, because then every figure
   // on the panel has been recomputed and a leftover edit would be a lie.
@@ -722,6 +725,7 @@ export function RunDraftModal({ open, onOpenChange, run }: RunDraftModalProps) {
                   }
                   bomLoading={loadingBOM}
                   hasSku={!!itemCode}
+                  componentCount={components.length}
                   requiredQtyEntered={qtyValid}
                   renderRequiredInput={(index) => (
                     <Input

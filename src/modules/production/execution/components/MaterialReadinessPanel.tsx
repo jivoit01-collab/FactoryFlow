@@ -28,7 +28,9 @@ export interface ReadinessRow {
   material_code: string;
   material_name: string;
   uom: string;
-  /** BOM quantity for ONE box, as authored in SAP. */
+  /** BOM quantity for ONE box: ITT1."Quantity" over the BOM's base quantity,
+   *  times the bottles per case. Not ITT1."Quantity" raw — a recipe is written
+   *  for a batch, and the batch is only sometimes a box. */
   per_case?: number;
   check?: PlanCheckMaterialRow;
 }
@@ -44,6 +46,10 @@ interface MaterialReadinessPanelProps {
   stockError?: string;
   bomLoading?: boolean;
   hasSku: boolean;
+  /** How many components the BOM has, independent of whether a quantity has
+   *  been typed. `rows` is empty until there is a quantity to scale by, so it
+   *  cannot tell "no BOM" apart from "no quantity yet". */
+  componentCount?: number;
   requiredQtyEntered: boolean;
   /** Renders the editable required-quantity input for row `index`. */
   renderRequiredInput: (index: number) => ReactNode;
@@ -130,6 +136,7 @@ export function MaterialReadinessPanel({
   stockError,
   bomLoading,
   hasSku,
+  componentCount,
   requiredQtyEntered,
   renderRequiredInput,
 }: MaterialReadinessPanelProps) {
@@ -179,7 +186,7 @@ export function MaterialReadinessPanel({
           </p>
         )}
 
-        {hasSku && !requiredQtyEntered && rows.length > 0 && (
+        {hasSku && !requiredQtyEntered && (componentCount ?? rows.length) > 0 && (
           <p className="text-sm text-amber-600">
             Enter the FG quantity above — the requirement, and so the stock check, scales from it.
           </p>
@@ -541,7 +548,7 @@ export function MaterialReadinessPanel({
           </div>
         )}
 
-        {hasSku && rows.length === 0 && !bomLoading && (
+        {hasSku && (componentCount ?? rows.length) === 0 && !bomLoading && (
           <p className="text-sm text-muted-foreground">No BOM components found for this item.</p>
         )}
 
