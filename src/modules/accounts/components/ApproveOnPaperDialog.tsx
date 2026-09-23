@@ -73,7 +73,7 @@ export function ApproveOnPaperDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             Approved on paper: {count} {one ? 'payment' : 'payments'}

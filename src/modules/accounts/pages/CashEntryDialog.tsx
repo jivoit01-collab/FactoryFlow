@@ -229,10 +229,16 @@ export function CashEntryDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Wider than the usual form so the two person pickers sit side by
-          side. The dialog cannot scroll -- see the note on the body
-          below -- so its height is managed by laying fields out, not by
-          letting it overflow. */}
-      <DialogContent className="sm:max-w-[860px]">
+          side, and capped at the viewport so a short screen cannot push the
+          title off the top and the Save button off the bottom -- which is
+          what it did, because the form outgrew the height somebody once
+          judged it would never need.
+
+          The WHOLE dialog scrolls rather than an inner DialogBody: see the
+          note on the body below. One scroller, and the only thing that can
+          clip a picker's list is the dialog's own edge, which the list can
+          be scrolled to. */}
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>
             {isCorrection ? 'Correct entry' : direction === 'IN' ? 'Cash in' : 'Cash out'}
@@ -247,11 +253,17 @@ export function CashEntryDialog({
         </DialogHeader>
 
         {/* A plain box, not DialogBody. DialogBody is the scroll area of a
-            TALL dialog, and its overflow clips the person picker's list --
+            tall dialog, and its overflow clips the person picker's list --
             which is an absolutely positioned div, not a portal, so it is
             trapped inside whatever scrolls. That produced two nested
-            scrollbars and a list cut off after two names. This dialog is
-            short enough not to need an inner scroller at all. */}
+            scrollbars and a list cut off after two names.
+
+            The dialog is no longer short enough to need no scroller at all,
+            so the scrolling was put on DialogContent instead: the list is
+            then bounded by the dialog rather than by a box the height of two
+            fields, and there is still only one scrollbar. Portaling the
+            picker's list would let the header and footer be pinned again,
+            but that is a change to a component half the app renders. */}
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-1">
@@ -278,7 +290,7 @@ export function CashEntryDialog({
                 onChange={(e) => setSerial(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Type a dash (-) if there is no voucher, as with a bank deduction.
+                A dash (-) if there is no voucher.
               </p>
             </div>
 
