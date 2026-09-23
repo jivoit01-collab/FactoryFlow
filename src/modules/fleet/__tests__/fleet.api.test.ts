@@ -83,6 +83,13 @@ describe('fleetApi', () => {
     });
   });
 
+  it('fetches a stored bill as a blob, through the permission-checked path', async () => {
+    await fleetApi.attachment('document', 9);
+    expect(get).toHaveBeenCalledWith('/company-vehicles/attachments/document/9/', {
+      responseType: 'blob',
+    });
+  });
+
   it('retires a vehicle rather than removing its history', async () => {
     await fleetApi.retireVehicle(4);
     expect(del).toHaveBeenCalledWith('/company-vehicles/vehicles/4/');

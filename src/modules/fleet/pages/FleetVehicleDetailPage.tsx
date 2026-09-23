@@ -1,6 +1,7 @@
 import { FileText, Fuel, IndianRupee, Plus, Truck, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   EmptyPanel,
@@ -29,6 +30,7 @@ import type { VehicleDocument } from '../api';
 import {
   useFleetOptions,
   useFuelEntries,
+  useOpenAttachment,
   useServiceEntries,
   useVehicleDocuments,
   useVehicleSummary,
@@ -59,6 +61,7 @@ export default function FleetVehicleDetailPage() {
   const { data: fuelEntries = [] } = useFuelEntries({ vehicle: vehicleId, from, to });
   const { data: serviceEntries = [] } = useServiceEntries({ vehicle: vehicleId, from, to });
   const { data: documents = [] } = useVehicleDocuments({ vehicle: vehicleId });
+  const openAttachment = useOpenAttachment();
 
   const vehicle = summary?.vehicle;
   const mileages = Object.entries(summary?.mileage_by_fuel ?? {});
@@ -350,14 +353,20 @@ export default function FleetVehicleDetailPage() {
                       <Td align="right">
                         <div className="flex justify-end gap-2">
                           {document.file_url && (
-                            <a
-                              href={document.file_url}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              type="button"
                               className="text-sm text-primary hover:underline"
+                              onClick={() =>
+                                openAttachment.mutate(
+                                  { kind: 'document', id: document.id },
+                                  {
+                                    onError: () => toast.error('That file could not be opened.'),
+                                  },
+                                )
+                              }
                             >
                               Open
-                            </a>
+                            </button>
                           )}
                           {options?.can_manage_vehicles && (
                             <button

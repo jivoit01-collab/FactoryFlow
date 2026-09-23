@@ -1931,6 +1931,10 @@ export const API_ENDPOINTS = {
     SERVICE_ENTRY_BY_ID: (id: number) => `/company-vehicles/service-entries/${id}/`,
     SERVICE_ENTRY_APPROVAL: (id: number) => `/company-vehicles/service-entries/${id}/approval/`,
 
+    // Every stored file — bill photos, document scans, vehicle photos — is
+    // fetched through here, because the endpoint is permission checked.
+    ATTACHMENT: (kind: string, id: number) => `/company-vehicles/attachments/${kind}/${id}/`,
+
     DOCUMENTS: '/company-vehicles/documents/',
     DOCUMENTS_EXPIRING: '/company-vehicles/documents/expiring/',
     DOCUMENT_BY_ID: (id: number) => `/company-vehicles/documents/${id}/`,

@@ -283,7 +283,24 @@ function params(query: object) {
   return text ? `?${text}` : '';
 }
 
+/** Which stored file an attachment URL refers to. */
+export type AttachmentKind = 'fuel' | 'service' | 'document' | 'vehicle';
+
 export const fleetApi = {
+  /**
+   * One stored file as a blob.
+   *
+   * Fetched through the API rather than linked to directly: the endpoint is
+   * permission checked, so the request has to carry the auth header, and a
+   * plain `<a href>` would not. The caller revokes the object URL it makes.
+   */
+  async attachment(kind: AttachmentKind, id: number): Promise<Blob> {
+    const { data } = await apiClient.get<Blob>(API_ENDPOINTS.FLEET.ATTACHMENT(kind, id), {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
   async options(): Promise<FleetOptions> {
     const response = await apiClient.get<FleetOptions>(API_ENDPOINTS.FLEET.OPTIONS);
     return response.data;

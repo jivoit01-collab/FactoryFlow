@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  type AttachmentKind,
   type EntryListParams,
   fleetApi,
   type VehicleListParams,
@@ -217,4 +218,23 @@ export function useUpdateDocument() {
 
 export function useDeleteDocument() {
   return useFleetMutation((id: number) => fleetApi.deleteDocument(id));
+}
+
+/**
+ * Open a stored bill or scan in a new tab.
+ *
+ * The file comes back as a blob because the endpoint needs the auth header,
+ * so there is nothing to put in an `href`. The object URL is revoked a minute
+ * later, by which time the tab that was handed it has read it.
+ */
+export function useOpenAttachment() {
+  return useMutation({
+    mutationFn: ({ kind, id }: { kind: AttachmentKind; id: number }) =>
+      fleetApi.attachment(kind, id),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+  });
 }
