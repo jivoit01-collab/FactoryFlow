@@ -84,4 +84,23 @@ describe('shared inspection report print module', () => {
     expect(core).toContain('createPortal');
     expect(core).toContain('InspectionReportPrintView');
   });
+
+  // Regression: printing while the options dialog was still animating out left
+  // it wedged on screen with every button dead, because the print stylesheet
+  // display:none'd it mid-animation and Radix then never finished unmounting it.
+  it('starts printing only once the options dialog has really left the DOM', () => {
+    const dialog = readSource(
+      'src/shared/components/inspection-report-print/PrintOptionsDialog.tsx',
+    );
+
+    expect(dialog).toContain('onClosed');
+    expect(core).toContain('onClosed={handleOptionsClosed}');
+    // Confirming closes the dialog; only handleOptionsClosed may start the print.
+    const confirmBody = core.slice(
+      core.indexOf('const handleConfirm'),
+      core.indexOf('const handleOptionsClosed'),
+    );
+    expect(confirmBody).not.toContain('setIsPrinting(true)');
+    expect(core.slice(core.indexOf('const handleOptionsClosed'))).toContain('setIsPrinting(true)');
+  });
 });

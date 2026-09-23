@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { InspectionReportPrintStyles, InspectionReportPrintView } from './InspectionReportPrint';
@@ -28,20 +28,34 @@ export function useInspectionReportPrintCore() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [sections, setSections] = useState<PrintSections>(ALL_SECTIONS);
   const [isPrinting, setIsPrinting] = useState(false);
+  const printOnceClosed = useRef(false);
 
   const openPrintOptions = useCallback((next: PrintableInspectionReport) => {
     setReport(next);
     setOptionsOpen(true);
   }, []);
 
+  // Confirming only starts the dialog closing; printing waits for
+  // `handleOptionsClosed`. Printing while the dialog is still animating out
+  // wedges it for good: the print stylesheet below puts `display: none` on every
+  // body-level portal, that cancels the running close animation, and Radix —
+  // which unmounts the dialog only once that animation reports back — leaves it
+  // mounted forever, along with the `pointer-events: none` it put on <body>. The
+  // closed dialog then sits on screen with every button dead, because as far as
+  // React is concerned it is already closed.
   const handleConfirm = useCallback((chosen: PrintSections) => {
     setSections(chosen);
+    printOnceClosed.current = true;
     setOptionsOpen(false);
+  }, []);
+
+  const handleOptionsClosed = useCallback(() => {
+    if (!printOnceClosed.current) return;
+    printOnceClosed.current = false;
     setIsPrinting(true);
   }, []);
 
-  // Give the portal a tick to mount (and the options dialog a tick to unmount)
-  // before opening the print dialog.
+  // Give the portal a tick to mount before opening the print dialog.
   useEffect(() => {
     if (!isPrinting) return;
 
@@ -90,6 +104,7 @@ export function useInspectionReportPrintCore() {
       hasQcAttachments={hasQcAttachments}
       showQcAttachments={supportsQcAttachments}
       onConfirm={handleConfirm}
+      onClosed={handleOptionsClosed}
     />
   );
 

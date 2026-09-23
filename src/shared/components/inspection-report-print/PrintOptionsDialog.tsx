@@ -1,5 +1,5 @@
 import { Printer } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Button,
@@ -28,6 +28,23 @@ interface PrintOptionsDialogProps {
   showQcAttachments: boolean;
   /** Called with the chosen sections when the user confirms. */
   onConfirm: (sections: PrintSections) => void;
+  /** Called once the dialog has finished closing and left the DOM. */
+  onClosed?: () => void;
+}
+
+/**
+ * Calls `onClosed` when Radix actually takes the dialog out of the DOM, which is
+ * not when `open` flips to false — the content stays mounted for the length of
+ * its close animation. Anything that has to happen with the dialog really gone
+ * (`window.print()`, notably) waits for this rather than for a guessed delay.
+ */
+function DialogClosedSignal({ onClosed }: { onClosed?: () => void }) {
+  const latest = useRef(onClosed);
+  useEffect(() => {
+    latest.current = onClosed;
+  });
+  useEffect(() => () => latest.current?.(), []);
+  return null;
 }
 
 type SectionRow = {
@@ -50,6 +67,7 @@ export function PrintOptionsDialog({
   hasQcAttachments,
   showQcAttachments,
   onConfirm,
+  onClosed,
 }: PrintOptionsDialogProps) {
   const defaultSections = (): PrintSections => ({
     report: true,
@@ -110,6 +128,7 @@ export function PrintOptionsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
+        <DialogClosedSignal onClosed={onClosed} />
         <DialogHeader>
           <DialogTitle>Print options</DialogTitle>
           <DialogDescription>
