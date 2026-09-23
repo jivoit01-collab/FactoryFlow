@@ -1,8 +1,8 @@
 import {
   AlertTriangle,
-  CalendarDays,
   ClipboardCheck,
   Fuel,
+  Gauge,
   IndianRupee,
   Truck,
   Wrench,
@@ -99,12 +99,12 @@ export default function FleetDashboardPage() {
           to="/fleet/approvals"
         />
         <StatTile
-          label="Running log"
-          value="Day by day"
-          sub="Who ran how much, and when"
-          icon={CalendarDays}
+          label="Daily reading"
+          value="Write it down"
+          sub="What each meter reads today"
+          icon={Gauge}
           accent="sky"
-          to="/fleet/log"
+          to="/fleet/readings"
         />
         <StatTile
           label="Vehicles"

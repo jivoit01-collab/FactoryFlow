@@ -37,8 +37,6 @@ export const FLEET_QUERY_KEYS = {
     [...FLEET_QUERY_KEYS.all, 'fuel', JSON.stringify(query)] as const,
   serviceEntries: (query: EntryListParams) =>
     [...FLEET_QUERY_KEYS.all, 'service', JSON.stringify(query)] as const,
-  runningLog: (query: { vehicle?: number; from?: string; to?: string }) =>
-    [...FLEET_QUERY_KEYS.all, 'running-log', JSON.stringify(query)] as const,
   dailyReadings: (query: { vehicle?: number; from?: string; to?: string }) =>
     [...FLEET_QUERY_KEYS.all, 'daily-readings', JSON.stringify(query)] as const,
   pendingApprovals: () => [...FLEET_QUERY_KEYS.all, 'pending-approvals'] as const,
@@ -91,13 +89,6 @@ export function useVehicleSummary(id: number | null, range: { from?: string; to?
     queryKey: FLEET_QUERY_KEYS.vehicleSummary(id ?? 0, range),
     queryFn: () => fleetApi.vehicleSummary(id as number, range),
     enabled: id != null,
-  });
-}
-
-export function useRunningLog(query: { vehicle?: number; from?: string; to?: string } = {}) {
-  return useQuery({
-    queryKey: FLEET_QUERY_KEYS.runningLog(query),
-    queryFn: () => fleetApi.runningLog(query),
   });
 }
 

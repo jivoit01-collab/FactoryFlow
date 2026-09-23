@@ -165,56 +165,6 @@ export interface DailyReading {
   created_at: string;
 }
 
-/** One day of one vehicle's life. Nulls mean "not known", never zero. */
-export interface RunningLogDay {
-  date: string;
-  /** The day's closing meter, from a reading or from a filling. */
-  odometer: number | null;
-  distance_km: number | null;
-  /**
-   * How many days the distance covers. 1 is "since yesterday"; more means
-   * nobody read the meter in between, so it is a stretch, not a day's running.
-   */
-  covers_days: number | null;
-  fuel_quantity: string | null;
-  fuel_cost: string | null;
-  fuel_fills: number;
-  fuel_unit: string;
-  service_cost: string | null;
-  remarks: string;
-}
-
-export interface RunningLogTotals {
-  distance_km: number;
-  fuel_quantity: string;
-  fuel_cost: string;
-  service_cost: string;
-  total_cost: string;
-  cost_per_km: string | null;
-  days_in_range: number;
-  days_with_reading: number;
-  days_missing: number;
-}
-
-/** One vehicle's whole window, for the fleet-wide view. */
-export interface RunningLogVehicleRow extends RunningLogTotals {
-  vehicle_id: number;
-  vehicle_number: string;
-  nickname: string;
-  category: VehicleCategory;
-  fuel_unit: string;
-  last_odometer: number | null;
-}
-
-export interface RunningLog {
-  from: string;
-  to: string;
-  /** Set when one vehicle was asked for; null for the fleet-wide view. */
-  vehicle: FleetVehicle | null;
-  rows: RunningLogDay[] | RunningLogVehicleRow[];
-  totals?: RunningLogTotals;
-}
-
 export interface VehicleDocument {
   id: number;
   vehicle: number;
@@ -414,20 +364,6 @@ export const fleetApi = {
 
   async retireVehicle(id: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.FLEET.VEHICLE_BY_ID(id));
-  },
-
-  /**
-   * The day-wise log for one vehicle, or one row per vehicle for the fleet.
-   *
-   * Which shape comes back is decided by whether `vehicle` was passed, and the
-   * response says so in its own `vehicle` field rather than leaving the caller
-   * to remember what it asked for.
-   */
-  async runningLog(query: { vehicle?: number; from?: string; to?: string } = {}) {
-    const response = await apiClient.get<RunningLog>(
-      `${API_ENDPOINTS.FLEET.RUNNING_LOG}${params(query)}`,
-    );
-    return response.data;
   },
 
   async dailyReadings(
