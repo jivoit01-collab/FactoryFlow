@@ -299,6 +299,13 @@ export function useDecideEntries() {
   );
 }
 
+/** The custodian recording a signature they already have, with the proof. */
+export function useApproveOnPaper() {
+  return useCashBookMutation((vars: { ids: number[]; proof: File; note?: string }) =>
+    cashBookApi.approveOnPaper(vars.ids, vars.proof, vars.note ?? ''),
+  );
+}
+
 export function useCreateAtmAccount() {
   return useCashBookMutation((payload: { name: string; opening_balance?: string }) =>
     cashBookApi.createAtmAccount(payload),

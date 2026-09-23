@@ -148,6 +148,12 @@ export interface CashAttachment {
   original_filename: string;
   size_bytes: number;
   url: string | null;
+  /**
+   * True when this is the photograph of the signed voucher behind a paper
+   * approval, rather than the bill behind the payment. Two different papers
+   * answering two different questions.
+   */
+  is_approval_proof: boolean;
   uploaded_at: string;
   uploaded_by_name: string | null;
 }
@@ -186,6 +192,12 @@ export interface CashEntry {
   approval_sent_at: string | null;
   approval_decided_at: string | null;
   approval_decided_by_name: string | null;
+  /**
+   * True when this was agreed on a signed voucher rather than on the approvals
+   * screen. APPROVED either way — frozen, and counting as spent — but the two
+   * are not the same evidence, so the register says which it was.
+   */
+  approved_on_paper: boolean;
   /** Who it was sent to. Null on a receipt, and on the imported history. */
   approver: number | null;
   approver_name: string | null;
@@ -699,6 +711,28 @@ export const cashBookApi = {
         // toast would only repeat the server's wording on top of it.
         suppressErrorToast: true,
       },
+    );
+    return data;
+  },
+
+  /**
+   * Record that a stack of vouchers was signed on paper.
+   *
+   * The custodian's route, not the approver's. Multipart, because the
+   * photograph of the signed voucher is the point of the request: it is the
+   * one way to APPROVED that cannot be taken without producing the paper.
+   * One photograph covers every entry named, which is how a signed sheet
+   * actually arrives.
+   */
+  async approveOnPaper(ids: number[], proof: File, note = ''): Promise<CashEntry[]> {
+    const form = new FormData();
+    for (const id of ids) form.append('entry_ids', String(id));
+    form.append('proof', proof);
+    if (note) form.append('note', note);
+    const { data } = await apiClient.post<CashEntry[]>(
+      API_ENDPOINTS.CASH_BOOK.ENTRIES_APPROVE_ON_PAPER,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
   },

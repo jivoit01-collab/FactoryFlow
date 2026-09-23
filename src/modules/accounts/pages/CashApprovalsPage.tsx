@@ -1,4 +1,4 @@
-import { Check, ClipboardList, Loader2, Settings2, X } from 'lucide-react';
+import { Check, ClipboardList, Loader2, Settings2, Stamp, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ import { useAuth } from '@/core/auth/hooks/useAuth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { CashEntry, EntryApprovalStatus } from '@/modules/accounts/api';
 import { useApprovalQueue, useDecideEntries } from '@/modules/accounts/api';
+import { ApproveOnPaperDialog } from '@/modules/accounts/components/ApproveOnPaperDialog';
 import { ApproverSettingsDialog } from '@/modules/accounts/components/ApproverSettingsDialog';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -57,11 +58,15 @@ const STATE_TONE: Record<EntryApprovalStatus, string> = {
 export default function CashApprovalsPage() {
   const { hasPermission } = usePermission();
   const canApprove = hasPermission(CASH_BOOK_PERMISSIONS.APPROVE);
+  // The custodian's right. They are the one who ASKS for the approvals, and
+  // the one who comes back holding the signed vouchers.
+  const canManage = hasPermission(CASH_BOOK_PERMISSIONS.MANAGE);
   // Choosing who agrees to spending is administration, not book-keeping,
   // so it sits behind the same right as the other cash book settings.
   const canManageApprovers = hasPermission(CASH_BOOK_PERMISSIONS.BRANCHES);
   const { user } = useAuth();
   const [approverSettingsOpen, setApproverSettingsOpen] = useState(false);
+  const [paperOpen, setPaperOpen] = useState(false);
 
   const [state, setState] = useState<EntryApprovalStatus>('PENDING');
   const [selected, setSelected] = useState<number[]>([]);
@@ -76,7 +81,10 @@ export default function CashApprovalsPage() {
   // Who the queue is waiting on. Grouped by the server over the whole queue,
   // not the 500 rows it sends, so it stays right as a tab outgrows the page.
   const waitingWith = useMemo(() => data?.by_approver ?? [], [data]);
-  const deciding = state === 'PENDING' && canApprove;
+  // Ticking is open to both, because there are now two things to do with a
+  // ticked payment: an approver decides it, and the custodian records that it
+  // was decided on paper.
+  const selecting = state === 'PENDING' && (canApprove || canManage);
 
   /**
    * Whether this reader may decide a given payment.
@@ -121,16 +129,32 @@ export default function CashApprovalsPage() {
   );
 
   // Scoped to the rows actually on screen: a selection surviving a filter
-  // change would let somebody decide entries they can no longer see.
-  const decidable = useMemo(() => rows.filter(isMine), [rows, isMine]);
+  // change would let somebody act on entries they can no longer see.
+  //
+  // The custodian may tick anything in the queue -- every one of them is a
+  // signature they went and asked for. An approver may tick only what is
+  // addressed to them, which is the rule `_refuse_somebody_elses` enforces on
+  // the server whatever this screen does.
+  const selectable = useMemo(
+    () => (canManage ? rows : rows.filter(isMine)),
+    [rows, isMine, canManage],
+  );
 
   const chosen = useMemo(
-    () => selected.filter((id) => decidable.some((row) => row.id === id)),
-    [selected, decidable],
+    () => selected.filter((id) => selectable.some((row) => row.id === id)),
+    [selected, selectable],
   );
-  const chosenTotal = rows
-    .filter((row) => chosen.includes(row.id))
-    .reduce((sum, row) => sum + Number(row.amount), 0);
+  const chosenRows = useMemo(
+    () => rows.filter((row) => chosen.includes(row.id)),
+    [rows, chosen],
+  );
+  const chosenTotal = chosenRows.reduce((sum, row) => sum + Number(row.amount), 0);
+
+  // What this reader may DECIDE, as against merely tick. Somebody holding both
+  // rights can tick a payment addressed to another approver -- to record its
+  // paper signature -- and the Approve button must not then offer to decide it.
+  const mine = useMemo(() => chosenRows.filter(isMine), [chosenRows, isMine]);
+  const mineTotal = mine.reduce((sum, row) => sum + Number(row.amount), 0);
 
   function toggle(id: number) {
     setSelected((current) =>
@@ -147,26 +171,28 @@ export default function CashApprovalsPage() {
   const filtering = filteredColumns.length > 0;
 
   async function approve() {
-    if (chosen.length === 0) return;
+    if (mine.length === 0) return;
+    const ids = mine.map((row) => row.id);
     const ok = await confirmDialog({
-      title: `Approve ${chosen.length} ${chosen.length === 1 ? 'payment' : 'payments'}?`,
-      description: `${money(chosenTotal)} in total. Your name and the time go against each one, they can no longer be corrected, and they start counting as spent at the top of the register.`,
+      title: `Approve ${ids.length} ${ids.length === 1 ? 'payment' : 'payments'}?`,
+      description: `${money(mineTotal)} in total. Your name and the time go against each one, they can no longer be corrected, and they start counting as spent at the top of the register.`,
       confirmLabel: 'Approve',
     });
     if (!ok) return;
     try {
-      await decide.mutateAsync({ ids: chosen, approve: true });
+      await decide.mutateAsync({ ids, approve: true });
       setSelected([]);
-      toast.success(`${chosen.length} approved`);
+      toast.success(`${ids.length} approved`);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Those could not be approved.'));
     }
   }
 
   async function reject() {
-    if (chosen.length === 0) return;
+    if (mine.length === 0) return;
+    const ids = mine.map((row) => row.id);
     const note = await promptDialog({
-      title: `Send ${chosen.length} ${chosen.length === 1 ? 'payment' : 'payments'} back?`,
+      title: `Send ${ids.length} ${ids.length === 1 ? 'payment' : 'payments'} back?`,
       description:
         'They unfreeze so the custodian can correct them and send them again. The reason goes against every one you have ticked.',
       label: 'What is wrong with them?',
@@ -177,9 +203,9 @@ export default function CashApprovalsPage() {
     });
     if (note === null) return;
     try {
-      await decide.mutateAsync({ ids: chosen, approve: false, note });
+      await decide.mutateAsync({ ids, approve: false, note });
       setSelected([]);
-      toast.success(`${chosen.length} sent back`);
+      toast.success(`${ids.length} sent back`);
     } catch (err) {
       toast.error(getErrorMessage(err, 'Those could not be rejected.'));
     }
@@ -221,19 +247,32 @@ export default function CashApprovalsPage() {
             </Button>
           )}
 
-          {deciding && chosen.length > 0 && (
+          {selecting && chosen.length > 0 && (
             <>
-              <Button onClick={approve} disabled={decide.isPending}>
-                {decide.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="mr-2 h-4 w-4" />
-                )}
-                Approve {chosen.length}
-              </Button>
-              <Button variant="outline" onClick={reject} disabled={decide.isPending}>
-                <X className="mr-2 h-4 w-4" /> Reject
-              </Button>
+              {canApprove && mine.length > 0 && (
+                <>
+                  <Button onClick={approve} disabled={decide.isPending}>
+                    {decide.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="mr-2 h-4 w-4" />
+                    )}
+                    Approve {mine.length}
+                  </Button>
+                  <Button variant="outline" onClick={reject} disabled={decide.isPending}>
+                    <X className="mr-2 h-4 w-4" /> Reject
+                  </Button>
+                </>
+              )}
+              {/* The custodian's: these were signed by hand, and here is the
+                  photograph. Not a decision they are taking -- a decision they
+                  went and got, which the queue had no way to hear about. */}
+              {canManage && (
+                <Button variant="outline" onClick={() => setPaperOpen(true)}>
+                  <Stamp className="mr-2 h-4 w-4" />
+                  Approved physically {chosen.length}
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -373,14 +412,14 @@ export default function CashApprovalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
-                  {deciding && (
+                  {selecting && (
                     <th className="w-10 px-3 py-2">
                       <Checkbox
                         aria-label="Select every entry you can decide"
-                        checked={decidable.length > 0 && chosen.length === decidable.length}
-                        disabled={decidable.length === 0}
+                        checked={selectable.length > 0 && chosen.length === selectable.length}
+                        disabled={selectable.length === 0}
                         onCheckedChange={(checked) =>
-                          setSelected(checked === true ? decidable.map((row) => row.id) : [])
+                          setSelected(checked === true ? selectable.map((row) => row.id) : [])
                         }
                       />
                     </th>
@@ -397,7 +436,7 @@ export default function CashApprovalsPage() {
               </thead>
               <tbody>
                 <tr className={TOTALS_ROW_CLASS}>
-                  {deciding && <td />}
+                  {selecting && <td />}
                   <td colSpan={6}>
                     Total of {rows.length} {rows.length === 1 ? 'payment' : 'payments'}
                   </td>
@@ -406,9 +445,9 @@ export default function CashApprovalsPage() {
                 </tr>
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b align-top hover:bg-muted/40">
-                    {deciding && (
+                    {selecting && (
                       <td className="px-3 py-2">
-                        {isMine(row) ? (
+                        {selectable.some((pick) => pick.id === row.id) ? (
                           <Checkbox
                             aria-label={`Select entry ${row.id}`}
                             checked={chosen.includes(row.id)}
@@ -473,11 +512,18 @@ export default function CashApprovalsPage() {
                         className={`text-[10px] ${STATE_TONE[row.approval_status]}`}
                       >
                         {row.approval_label}
+                        {/* Approved either way, but not on the same evidence:
+                            one was decided here, the other was signed by hand
+                            and photographed. A register that cannot tell them
+                            apart cannot be audited. */}
+                        {row.approved_on_paper && ' · on paper'}
                       </Badge>
                       {row.approval_decided_at && (
                         <p className="mt-1 text-[10px] text-muted-foreground">
                           {formatDateTimeShort(row.approval_decided_at)}
-                          {row.approval_decided_by_name ? ` · ${row.approval_decided_by_name}` : ''}
+                          {row.approval_decided_by_name
+                            ? ` · ${row.approved_on_paper ? 'recorded by ' : ''}${row.approval_decided_by_name}`
+                            : ''}
                         </p>
                       )}
                     </td>
@@ -487,6 +533,16 @@ export default function CashApprovalsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {paperOpen && (
+        <ApproveOnPaperDialog
+          open={paperOpen}
+          onOpenChange={setPaperOpen}
+          entryIds={chosen}
+          total={chosenTotal}
+          onDone={() => setSelected([])}
+        />
       )}
 
       {approverSettingsOpen && (

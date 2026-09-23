@@ -42,6 +42,7 @@ export {
   useAdvanceHolders,
   useAdvanceStatement,
   useApprovalQueue,
+  useApproveOnPaper,
   useApproverCandidates,
   useAtmAccounts,
   useAtmStatement,
