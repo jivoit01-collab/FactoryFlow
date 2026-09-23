@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { OpsDrill } from './OpsDrill';
@@ -26,8 +26,8 @@ const ROWS: Row[] = [
   { key: 'b', name: 'Area Manager', bills: 2 },
 ];
 
-function renderDrill(props: Partial<React.ComponentProps<typeof OpsDrill<Row>>> = {}) {
-  return render(
+function drill(props: Partial<React.ComponentProps<typeof OpsDrill<Row>>> = {}) {
+  return (
     <OpsDrill<Row>
       title="Pending dispatch"
       domain="warehouse"
@@ -39,8 +39,12 @@ function renderDrill(props: Partial<React.ComponentProps<typeof OpsDrill<Row>>> 
       ]}
       onClose={vi.fn()}
       {...props}
-    />,
+    />
   );
+}
+
+function renderDrill(props: Partial<React.ComponentProps<typeof OpsDrill<Row>>> = {}) {
+  return render(drill(props));
 }
 
 describe('OpsDrill row expansion', () => {
@@ -154,6 +158,75 @@ describe('OpsDrill row expansion', () => {
 
     fireEvent.click(within(screen.getByRole('dialog')).getByText('Quiet Day'));
     expect(onRowClick).not.toHaveBeenCalled();
+  });
+
+  /*
+   * The detail used to arrive and leave between two frames: the rows below it
+   * jumped by however tall it happened to be, and the reader had to find their
+   * place again in a list that had just moved under them. These pin the fold
+   * that replaced that — the box the animation runs on, and the fact that a
+   * closed row survives long enough to play it.
+   */
+  it('opens the detail inside a box that can be folded', () => {
+    renderDrill({
+      expandedKey: 'a',
+      onRowClick: vi.fn(),
+      renderExpanded: () => <p>detail</p>,
+    });
+
+    const fold = screen.getByRole('dialog').querySelector('.ops-drill__fold');
+    expect(fold).not.toBeNull();
+    expect(fold?.className).not.toContain('ops-drill__fold--shut');
+    // The clipped child is what makes the `0fr` track mean anything — a fold
+    // of one element animates nothing. See ops-board.css.
+    expect(fold?.firstElementChild?.textContent).toBe('detail');
+  });
+
+  it('holds a closed row on screen while it folds shut, then drops it', () => {
+    vi.useFakeTimers();
+    try {
+      const props = { onRowClick: vi.fn(), renderExpanded: () => <p>detail</p> };
+      const { rerender } = render(drill({ ...props, expandedKey: 'a' }));
+
+      rerender(drill({ ...props, expandedKey: null }));
+
+      // Still there, and now on its way out: unmounted on the spot there is
+      // nothing left for the fold to run on.
+      const fold = screen.getByRole('dialog').querySelector('.ops-drill__fold');
+      expect(fold?.className).toContain('ops-drill__fold--shut');
+      expect(screen.getByText('Canteen Store').closest('tr')?.getAttribute('aria-expanded')).toBe(
+        'false',
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.getByRole('dialog').querySelector('.ops-drill__fold')).toBeNull();
+      expect(screen.getByRole('dialog').textContent).not.toContain('detail');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('holds nothing open on a row reopened while it was still folding', () => {
+    vi.useFakeTimers();
+    try {
+      const props = { onRowClick: vi.fn(), renderExpanded: () => <p>detail</p> };
+      const { rerender } = render(drill({ ...props, expandedKey: 'a' }));
+      rerender(drill({ ...props, expandedKey: null }));
+      rerender(drill({ ...props, expandedKey: 'a' }));
+
+      const fold = screen.getByRole('dialog').querySelector('.ops-drill__fold');
+      expect(fold?.className).not.toContain('ops-drill__fold--shut');
+
+      // The fold that never finished must not take the reopened row with it.
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.getByRole('dialog').textContent).toContain('detail');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('leaves a plain read-only table alone', () => {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AdminCost, AdminCostSlice } from '../types';
@@ -99,12 +99,24 @@ describe('AdminCostDrill', () => {
   });
 
   it('shuts the open line when it is clicked again', () => {
-    render(<AdminCostDrill cost={cost([slice()])} period="" onClose={vi.fn()} />);
+    vi.useFakeTimers();
+    try {
+      render(<AdminCostDrill cost={cost([slice()])} period="" onClose={vi.fn()} />);
 
-    fireEvent.click(row('Labour'));
-    expect(screen.getByText('Scrap')).toBeInTheDocument();
-    fireEvent.click(row('Labour'));
-    expect(screen.queryByText('Scrap')).toBeNull();
+      fireEvent.click(row('Labour'));
+      expect(screen.getByText('Scrap')).toBeInTheDocument();
+
+      fireEvent.click(row('Labour'));
+      // Shut to anything that asks, and folding shut on screen: the rows are
+      // held for the length of the fold and no longer. See `OpsDrill`.
+      expect(row('Labour').getAttribute('aria-expanded')).toBe('false');
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.queryByText('Scrap')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   /*

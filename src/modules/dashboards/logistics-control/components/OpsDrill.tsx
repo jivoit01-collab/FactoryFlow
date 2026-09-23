@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '@/shared/utils';
@@ -38,6 +38,28 @@ export interface OpsDrillBreakdown {
   items: { key: string; label: string; value: string; sub?: string }[];
   /** Said plainly when there is nothing to break down. */
   empty?: string;
+}
+
+/**
+ * How long a row's detail takes to fold shut.
+ *
+ * Must match `ops-drill-fold` in ops-board.css: the row is held mounted for
+ * exactly this long, so a longer keyframe would be cut off mid-fold and a
+ * shorter one would leave the detail sitting there after it had finished.
+ */
+const FOLD_MS = 170;
+
+/**
+ * The hold, or none at all where motion is not wanted.
+ *
+ * A preference against motion is a preference against WAITING for it too: with
+ * the fold suppressed (ops-board.css drops every animation under the query) a
+ * held row is not a closing row, it is 170ms of a click that did nothing.
+ * `matchMedia` is missing under jsdom, where there is no motion to prefer.
+ */
+function foldOutMs(): number {
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  return reduced?.matches ? 0 : FOLD_MS;
 }
 
 export interface OpsDrillProps<Row> {
@@ -166,6 +188,42 @@ export function OpsDrill<Row>({
   // One cut or several, read the same way below.
   const cuts = breakdown ? (Array.isArray(breakdown) ? breakdown : [breakdown]) : [];
 
+  /*
+   * The row on its way out, kept mounted while it folds shut.
+   *
+   * Opening animates on its own — the detail is new to the DOM, so a keyframe
+   * runs on it. Closing has nothing to animate, because React drops the row
+   * the instant `expandedKey` stops naming it: what the reader saw was a
+   * detail that eased open and then disappeared between two frames, which
+   * reads as the panel flinching rather than as the row shutting.
+   *
+   * So the key outlives the close, by the length of the fold and no longer.
+   */
+  const [closingKey, setClosingKey] = useState<string | null>(null);
+  const [lastOpenKey, setLastOpenKey] = useState<string | null>(expandedKey);
+
+  // NOTICED DURING THE RENDER THAT CLOSED IT, not in an effect afterwards. An
+  // effect runs after the browser has painted, so the reader would get one
+  // frame with the row already gone and the fold would then play on a detail
+  // that flashed back into existence to perform it. React re-runs this render
+  // before it paints anything, so the first frame is of a row on its way out.
+  if (lastOpenKey !== expandedKey) {
+    setLastOpenKey(expandedKey);
+    // Null where nothing was open, which is most of the time. And a row
+    // reopened while it was still folding is open again rather than closing,
+    // because what closes is always what `expandedKey` has just stopped
+    // naming — so no row is ever asked to be both at once.
+    setClosingKey(lastOpenKey);
+  }
+
+  // The hold, ended. Cleanup covers the row reopened mid-fold: the key it was
+  // closing under is gone, so the timer that would have dropped it is too.
+  useEffect(() => {
+    if (closingKey === null) return;
+    const timer = window.setTimeout(() => setClosingKey(null), foldOutMs());
+    return () => window.clearTimeout(timer);
+  }, [closingKey]);
+
 
   // Escape closes, and focus starts on the close button — the panel covers the
   // board, so there has to be a way out that does not need a mouse.
@@ -289,6 +347,8 @@ export function OpsDrill<Row>({
                   // `expandedKey` left over from a panel with no
                   // `renderExpanded` must not open a blank row underneath.
                   const isOpen = Boolean(renderExpanded) && expandedKey === key;
+                  // Shut, but still on screen for as long as that takes.
+                  const isShutting = Boolean(renderExpanded) && closingKey === key;
                   // This row in particular, not the table in general: a panel
                   // may hold rows with nothing under them beside rows that
                   // open, and only the ones that open may say so.
@@ -341,12 +401,20 @@ export function OpsDrill<Row>({
                     )}
                   </tr>
 
-                  {isOpen && (
-                    <tr className="ops-drill__subrow">
+                  {(isOpen || isShutting) && (
+                    <tr className="ops-drill__subrow" aria-hidden={isShutting || undefined}>
                       {/* Spans the lot, chevron column included, so the detail
                           is not squeezed into one column's width. */}
                       <td colSpan={columns.length + (onRowClick ? 1 : 0)}>
-                        {renderExpanded?.(row, index)}
+                        {/* The fold. Two elements rather than one because what
+                            is animated is the OUTER box's height and what is
+                            clipped is the inner one — a single box cannot be
+                            both without measuring the content in JS. */}
+                        <div
+                          className={cn('ops-drill__fold', isShutting && 'ops-drill__fold--shut')}
+                        >
+                          <div>{renderExpanded?.(row, index)}</div>
+                        </div>
                       </td>
                     </tr>
                   )}

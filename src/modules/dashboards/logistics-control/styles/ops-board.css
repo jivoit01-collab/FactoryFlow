@@ -1655,6 +1655,11 @@
      "the second column" wraps a description in one table and a tonnage in
      the next. */
   white-space: normal;
+  /* The open row's tint arrives and leaves with the detail underneath it,
+     over the same beat. Snapping on while the rows below ease apart made the
+     two read as separate events. Suppressed with everything else under
+     prefers-reduced-motion. */
+  transition: background-color 0.19s ease;
 }
 
 /* Banded rather than plain, faintly, so the eye can track a row across seven
@@ -1769,6 +1774,67 @@
 .ops-drill tbody tr.ops-drill__subrow:nth-child(even) > td {
   padding: 0;
   background: color-mix(in srgb, var(--d4) 30%, #fff);
+}
+
+/*
+ * The unfold.
+ *
+ * A row's detail used to appear between two frames: the rows below it jumped
+ * down by however tall it happened to be, and the reader had to find their
+ * place again in a list that had just moved under them. Eased open, the rows
+ * below are seen to move and the detail is seen to come from the row that was
+ * clicked, which is the one thing a panel of four cost lines has to say.
+ *
+ * ANIMATED AS A GRID TRACK, NOT AS A HEIGHT. `height: auto` is not a value
+ * anything can animate to, and a `max-height` guess is either short — clipping
+ * a twelve-meter register — or far too tall, which spends most of the duration
+ * animating empty space and lands with a snap. A one-row grid from `0fr` to
+ * `1fr` interpolates against the content's OWN height, whatever it turns out
+ * to be.
+ *
+ * Which is why there are two elements. The outer box is the track; the inner
+ * one is what gets clipped while the track is shorter than it.
+ */
+.ops-drill__fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: ops-drill-unfold 0.19s ease-out;
+}
+
+.ops-drill__fold > * {
+  /* A grid item's automatic minimum size is its content, so without this the
+     item refuses to be squeezed, the `0fr` track has no effect, and the whole
+     detail sits there at full height while `opacity` does the animating
+     alone. */
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Folding shut, under its own name rather than `ops-drill-unfold` reversed.
+ *
+ * Direction is not a restart: the unfold has long since finished by the time a
+ * reader clicks the open row again, and flipping `animation-direction` on a
+ * finished animation lands on the far end of it immediately — the detail would
+ * vanish exactly as it did before any of this. A second keyframe set is a
+ * second animation, and a second animation runs.
+ */
+.ops-drill__fold--shut {
+  animation: ops-drill-fold 0.17s ease-in forwards;
+}
+
+@keyframes ops-drill-unfold {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
+@keyframes ops-drill-fold {
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
 }
 
 .ops-drill__sub {
