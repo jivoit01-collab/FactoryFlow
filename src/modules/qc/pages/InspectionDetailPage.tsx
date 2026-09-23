@@ -245,11 +245,18 @@ export default function InspectionDetailPage() {
   // the backend auto-match from the PO supplier", so we fall back to the
   // material type's default parameters for data entry.
   const activeParameterSetId = formData.parameter_set_id ?? inspection?.parameter_set ?? null;
-  const { data: setParameters = [] } = useQCParametersByParameterSet(activeParameterSetId);
+  const setParametersQuery = useQCParametersByParameterSet(activeParameterSetId);
+  const setParameters = setParametersQuery.data ?? [];
+  // The applied set can stop resolving — a vendor's set gets deleted while this
+  // inspection is still open, and the endpoint then 404s. Rather than show the
+  // inspection with no parameters at all, fall back to the material type's
+  // default list once the set query has settled with nothing.
+  const appliedSetIsUnusable =
+    !activeParameterSetId || (!setParametersQuery.isPending && setParameters.length === 0);
   const { data: materialTypeParameters = [] } = useQCParametersByMaterialType(
-    activeParameterSetId ? null : selectedMaterialTypeId || null,
+    appliedSetIsUnusable ? selectedMaterialTypeId || null : null,
   );
-  const qcParameters = activeParameterSetId ? setParameters : materialTypeParameters;
+  const qcParameters = setParameters.length > 0 ? setParameters : materialTypeParameters;
   const parametersToShow = isEditing ? qcParameters : inspection?.parameter_results || qcParameters;
 
   // Mutations
