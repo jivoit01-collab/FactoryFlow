@@ -1900,6 +1900,9 @@ export const API_ENDPOINTS = {
     // as it is recorded -- so there is nothing to send, only to decide.
     // DECIDE takes ?reject=true to send one back.
     ENTRIES_DECIDE: '/cash-book/entries/decide/',
+    // The custodian's own route: recording a signature they already have,
+    // with the photograph of the signed voucher that proves it. Multipart.
+    ENTRIES_APPROVE_ON_PAPER: '/cash-book/entries/approve-on-paper/',
     APPROVALS: '/cash-book/approvals/',
     // Who a payment may be sent to. Not everyone the permission
     // system would allow -- see cash_book.services.approvers.
