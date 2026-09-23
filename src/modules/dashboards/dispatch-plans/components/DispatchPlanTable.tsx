@@ -16,6 +16,7 @@ import { cn } from '@/shared/utils';
 
 import { DISPATCH_PLAN_PAGE_SIZE_OPTIONS } from '../constants';
 import type { DispatchBill, DispatchBillOrdering, DispatchBillPagination } from '../types';
+import { DispatchPlanInvoiceButton } from './DispatchPlanInvoiceButton';
 import { StatusBadge } from './StatusBadge';
 
 interface DispatchPlanTableProps {
@@ -216,7 +217,7 @@ export function DispatchPlanTable({
   return (
     <TableCard bodyClassName="overflow-visible">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1500px] text-sm">
+        <table className="w-full min-w-[1620px] text-sm">
           <thead className="border-b bg-muted/40">
             <tr>
               {bulkEnabled && (
@@ -388,43 +389,46 @@ export function DispatchPlanTable({
                     {compactText(bill.plan.remarks)}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right align-top">
-                  {canEdit ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="whitespace-nowrap"
-                      // Stop the row's onClick from firing a second time.
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEdit(bill);
-                      }}
-                      aria-label={`Open dispatch plan ${bill.doc_num}`}
-                    >
-                      <SquarePen className="mr-1.5 h-3.5 w-3.5" />
-                      Open
-                    </Button>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">-</span>
-                  )}
-                  {canEdit && onRemove && isRemovable(bill) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="ml-1 whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      disabled={removingDocEntry === bill.doc_entry}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onRemove(bill);
-                      }}
-                      aria-label={`Remove bill ${bill.doc_num} from planning`}
-                    >
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                      {removingDocEntry === bill.doc_entry ? 'Removing…' : 'Remove'}
-                    </Button>
-                  )}
+                <td className="px-4 py-3 align-top">
+                  <div className="flex items-center justify-end gap-1">
+                    {/* The bill itself, for anyone who can see the row — reading
+                        a posted document is not an edit. */}
+                    <DispatchPlanInvoiceButton docEntry={bill.doc_entry} docNum={bill.doc_num} />
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="whitespace-nowrap"
+                        // Stop the row's onClick from firing a second time.
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEdit(bill);
+                        }}
+                        aria-label={`Open dispatch plan ${bill.doc_num}`}
+                      >
+                        <SquarePen className="mr-1.5 h-3.5 w-3.5" />
+                        Open
+                      </Button>
+                    )}
+                    {canEdit && onRemove && isRemovable(bill) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={removingDocEntry === bill.doc_entry}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRemove(bill);
+                        }}
+                        aria-label={`Remove bill ${bill.doc_num} from planning`}
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        {removingDocEntry === bill.doc_entry ? 'Removing…' : 'Remove'}
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

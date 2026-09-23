@@ -1,4 +1,4 @@
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, type LucideIcon, Printer } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
@@ -42,6 +42,8 @@ export function BillPrintButton({
   className,
   size,
   variant = 'invoice',
+  icon: Icon = Printer,
+  ariaLabel,
 }: {
   bill: ARInvoicePrintPayload | undefined;
   isFetching: boolean;
@@ -56,6 +58,12 @@ export function BillPrintButton({
   size?: 'sm' | 'default';
   /** Which document the sheet is printing; see ARInvoiceTaxInvoicePrint. */
   variant?: ARPrintVariant;
+  /** The glyph on the button. A screen whose word for this is "download the
+   *  invoice" rather than "print the bill" passes its own. */
+  icon?: LucideIcon;
+  /** Spelled out where one `label` repeats down a table and the accessible name
+   *  has to say which row it belongs to. */
+  ariaLabel?: string;
 }) {
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -89,11 +97,12 @@ export function BillPrintButton({
         className={className}
         disabled={isFetching}
         onClick={onRequest}
+        aria-label={ariaLabel}
       >
         {isFetching ? (
           <Loader2 className="mr-1 h-4 w-4 animate-spin" />
         ) : (
-          <Printer className="mr-1 h-4 w-4" />
+          <Icon className="mr-1 h-4 w-4" />
         )}
         {label}
       </Button>

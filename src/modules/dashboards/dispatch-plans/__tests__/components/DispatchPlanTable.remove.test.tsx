@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -46,21 +47,25 @@ const removeIn = (docNum: string) =>
 function renderTable(props: Partial<Parameters<typeof DispatchPlanTable>[0]> = {}) {
   const onRemove = vi.fn();
   const onEdit = vi.fn();
+  // Each row's Invoice button holds a (disabled until clicked) query.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <DispatchPlanTable
-      bills={BILLS}
-      isLoading={false}
-      canEdit
-      onEdit={onEdit}
-      onRemove={onRemove}
-      page={1}
-      pageSize={50}
-      onPageChange={vi.fn()}
-      onPageSizeChange={vi.fn()}
-      ordering="default"
-      onOrderingChange={vi.fn()}
-      {...props}
-    />,
+    <QueryClientProvider client={client}>
+      <DispatchPlanTable
+        bills={BILLS}
+        isLoading={false}
+        canEdit
+        onEdit={onEdit}
+        onRemove={onRemove}
+        page={1}
+        pageSize={50}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        ordering="default"
+        onOrderingChange={vi.fn()}
+        {...props}
+      />
+    </QueryClientProvider>,
   );
   return { onRemove, onEdit };
 }
