@@ -55,8 +55,14 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       })
       .map((item) => ({
         ...item,
-        // Filter children based on permissions
+        // Filter children based on company unit and permissions
         children: item.children?.filter((child) => {
+          // A child can be restricted to its own company units even when the
+          // module it hangs under is not — one page for one unit inside a
+          // module every unit uses.
+          if (child.companies && !child.companies.includes(currentCompany?.company_code ?? '')) {
+            return false;
+          }
           // Children without permissions are shown
           if (!child.permissions || child.permissions.length === 0) return true;
           // Check if user has any of the required permissions

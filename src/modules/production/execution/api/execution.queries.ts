@@ -12,6 +12,7 @@ import type {
   CreateChecklistEntryRequest,
   CreateCompressedAirRequest,
   CreateElectricityRequest,
+  CreateFillingCostSheetPayload,
   CreateFinalQCRequest,
   CreateGasRequest,
   CreateInProcessQCRequest,
@@ -29,11 +30,13 @@ import type {
   CreateTemplateRequest,
   CreateWasteLogRequest,
   CreateWaterRequest,
+  FillingCostSheetParams,
   ManagerDecisionRequest,
   PlanCheckRequest,
   ResolveBreakdownRequest,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
+  UpdateFillingCostSheetPayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
@@ -89,6 +92,8 @@ export const EXECUTION_QUERY_KEYS = {
   machineCosts: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'machine-costs', runId] as const,
   overhead: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'overhead', runId] as const,
   // Cost
+  fillingCosts: (params?: FillingCostSheetParams) =>
+    [...EXECUTION_QUERY_KEYS.all, 'filling-costs', params] as const,
   runCost: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'cost', runId] as const,
   costAnalytics: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'cost-analytics', params] as const,
@@ -1518,6 +1523,54 @@ export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
     queryKey: [...EXECUTION_QUERY_KEYS.all, 'auto-fill', lineId, skuCode],
     queryFn: () => executionApi.getAutoFillConfig(lineId!, skuCode),
     enabled: !!lineId,
+  });
+}
+
+// ============================================================================
+// Filling Cost Sheet — the month's filling cost, entered by hand
+// ============================================================================
+
+/**
+ * Every sheet entered so far, newest month first. The page reads them all —
+ * one row a month is a short list — so it can open the month you pick and
+ * start a new month from the heads the last one used.
+ */
+export function useFillingCostSheets(params?: FillingCostSheetParams) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.fillingCosts(params),
+    queryFn: () => executionApi.getFillingCostSheets(params),
+  });
+}
+
+export function useCreateFillingCostSheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateFillingCostSheetPayload) =>
+      executionApi.createFillingCostSheet(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-costs'] });
+    },
+  });
+}
+
+export function useUpdateFillingCostSheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ sheetId, data }: { sheetId: number; data: UpdateFillingCostSheetPayload }) =>
+      executionApi.updateFillingCostSheet(sheetId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-costs'] });
+    },
+  });
+}
+
+export function useDeleteFillingCostSheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sheetId: number) => executionApi.deleteFillingCostSheet(sheetId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-costs'] });
+    },
   });
 }
 

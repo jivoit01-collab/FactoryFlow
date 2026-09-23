@@ -17,6 +17,7 @@ import type {
   CreateChecklistEntryRequest,
   CreateCompressedAirRequest,
   CreateElectricityRequest,
+  CreateFillingCostSheetPayload,
   CreateFinalQCRequest,
   CreateGasRequest,
   CreateInProcessQCRequest,
@@ -36,6 +37,8 @@ import type {
   CreateWaterRequest,
   DowntimeAnalytics,
   DowntimeParetoReport,
+  FillingCostSheet,
+  FillingCostSheetParams,
   FinalQCCheck,
   InProcessQCCheck,
   LineClearance,
@@ -75,6 +78,7 @@ import type {
   SAPProductionOrder,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
+  UpdateFillingCostSheetPayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
   UpdateRunRequest,
@@ -1017,6 +1021,32 @@ export const executionApi = {
       params: { line_id: lineId, sku_code: skuCode || '' },
     });
     return res.data;
+  },
+
+  // =========================================================================
+  // Filling Cost Sheet — the month's filling cost, entered by hand
+  // =========================================================================
+
+  async getFillingCostSheets(params?: FillingCostSheetParams): Promise<FillingCostSheet[]> {
+    const res = await apiClient.get<FillingCostSheet[]>(EP.FILLING_COSTS, { params });
+    return res.data;
+  },
+
+  async createFillingCostSheet(data: CreateFillingCostSheetPayload): Promise<FillingCostSheet> {
+    const res = await apiClient.post<FillingCostSheet>(EP.FILLING_COSTS, data);
+    return res.data;
+  },
+
+  async updateFillingCostSheet(
+    sheetId: number,
+    data: UpdateFillingCostSheetPayload,
+  ): Promise<FillingCostSheet> {
+    const res = await apiClient.patch<FillingCostSheet>(EP.FILLING_COST_DETAIL(sheetId), data);
+    return res.data;
+  },
+
+  async deleteFillingCostSheet(sheetId: number): Promise<void> {
+    await apiClient.delete(EP.FILLING_COST_DETAIL(sheetId));
   },
 
   // Cost rates are managed on the admin Cost Master page (/admin/cost-master).

@@ -135,6 +135,12 @@ export const EXECUTION_PERMISSIONS = {
   // Cost / costing — dedicated permission, granted to no role by default.
   /** View run cost / costing pages */
   VIEW_RUN_COST: 'production_execution.can_view_run_cost',
+
+  // Filling cost sheet — cost figures, so granted to no role by default.
+  /** Read the filling cost sheet */
+  VIEW_FILLING_COST: 'production_execution.can_view_filling_cost',
+  /** Enter / edit the filling cost sheet */
+  MANAGE_FILLING_COST: 'production_execution.can_manage_filling_cost',
 } as const;
 
 export const EXECUTION_MODULE_PREFIX = 'production_execution';

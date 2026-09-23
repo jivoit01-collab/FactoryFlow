@@ -1206,6 +1206,10 @@ export const API_ENDPOINTS = {
     // Cost
     RUN_COST: (runId: number) => `/production-execution/runs/${runId}/cost/`,
     COST_ANALYTICS: '/production-execution/costs/analytics/',
+    // Filling Cost Sheet (manual monthly entry)
+    FILLING_COSTS: '/production-execution/filling-costs/',
+    FILLING_COST_DETAIL: (sheetId: number) =>
+      `/production-execution/filling-costs/${sheetId}/`,
     // QC
     RUN_QC_INPROCESS: (runId: number) => `/production-execution/runs/${runId}/qc/inprocess/`,
     RUN_QC_INPROCESS_DETAIL: (runId: number, checkId: number) =>

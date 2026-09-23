@@ -1551,3 +1551,63 @@ export interface AnalyticsParams {
 export interface CostAnalysisParams extends AnalyticsParams {
   status?: 'ALL' | 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED';
 }
+
+// ============================================================================
+// Filling Cost Sheet — the month's filling cost, entered by hand
+// ============================================================================
+
+export interface FillingCostEntry {
+  id: number;
+  /** The head as the sheet names it, e.g. 'Ground Water Extraction Bill' */
+  head: string;
+  /** The month's amount for this head */
+  amount: string;
+  sort_order: number;
+  /** amount / cases, rounded half-up to paise — the sheet's per-case column */
+  per_case: string;
+}
+
+export interface FillingCostSheet {
+  id: number;
+  /** null = the filling floor as a whole */
+  line: number | null;
+  line_name: string;
+  /** First day of the month the sheet covers */
+  period: string;
+  /** The sheet's 'Per N Cases' divisor */
+  cases: string;
+  notes: string;
+  entries: FillingCostEntry[];
+  total_amount: string;
+  /** The month's total over the cases — not the per-case column added up */
+  total_per_case: string;
+  created_by_name: string;
+  updated_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FillingCostEntryPayload {
+  head: string;
+  amount: string;
+}
+
+export interface CreateFillingCostSheetPayload {
+  /** Omitted or null = the filling floor as a whole */
+  line_id?: number | null;
+  /** Any day in the month; the backend keeps the month */
+  period: string;
+  cases: string;
+  notes?: string;
+  entries: FillingCostEntryPayload[];
+}
+
+/** Sending `entries` replaces the sheet's rows outright. */
+export type UpdateFillingCostSheetPayload = Partial<CreateFillingCostSheetPayload>;
+
+export interface FillingCostSheetParams {
+  /** A line id, or 'none' for the floor-wide sheet */
+  line_id?: number | 'none';
+  /** Any day in the month */
+  period?: string;
+}

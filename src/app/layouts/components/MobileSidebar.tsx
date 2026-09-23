@@ -65,6 +65,9 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
       .map((item) => ({
         ...item,
         children: item.children?.filter((child) => {
+          if (child.companies && !child.companies.includes(currentCompany?.company_code ?? '')) {
+            return false;
+          }
           if (!child.permissions || child.permissions.length === 0) return true;
           return hasAnyPermission([...child.permissions]);
         }),

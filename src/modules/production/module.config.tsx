@@ -1,5 +1,6 @@
 import { Factory } from 'lucide-react';
 
+import { COMPANY_CODES } from '@/config/constants';
 import {
   BLOWING_MODULE_PREFIX,
   BLOWING_PERMISSIONS,
@@ -48,6 +49,7 @@ const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendRepo
 const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
+const FillingCostPage = lazy(() => import('./execution/pages/FillingCostPage'));
 // Cost rates are managed centrally on the admin Cost Master page (/admin/cost-master).
 
 // Lazy load Blowing (preform -> bottle) pages
@@ -57,6 +59,15 @@ const BlowingRunDetailPage = lazy(() => import('./blowing/pages/RunDetailPage'))
 const BlowingMasterDataPage = lazy(() => import('./blowing/pages/MasterDataPage'));
 const BlowingReportsPage = lazy(() => import('./blowing/pages/ReportsPage'));
 const BlowingMakeVsBuyPage = lazy(() => import('./blowing/pages/MakeVsBuyPage'));
+
+/** The filling cost sheet is a Beverages practice; no other unit keeps one. */
+const FILLING_COST_COMPANIES = [COMPANY_CODES.JIVO_BEVERAGES] as const;
+
+const FILLING_COST_PERMISSIONS = [
+  EXECUTION_PERMISSIONS.VIEW_FILLING_COST,
+  EXECUTION_PERMISSIONS.MANAGE_FILLING_COST,
+  EXECUTION_PERMISSIONS.VIEW_RUN_COST,
+] as const;
 
 const PRODUCTION_DASHBOARD_PERMISSIONS = [
   PRODUCTION_PERMISSIONS.VIEW_PLAN,
@@ -263,6 +274,17 @@ export const productionModuleConfig: ModuleConfig = {
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
     {
+      // The month's filling cost, typed in. Cost figures, so it is held behind
+      // its own permission rather than the run-view one — and behind the
+      // company, so a direct URL from another unit lands on /unauthorized
+      // rather than rendering. The API refuses the other units too.
+      path: '/production/execution/filling-cost',
+      element: <FillingCostPage />,
+      layout: 'main',
+      companies: FILLING_COST_COMPANIES,
+      permissions: FILLING_COST_PERMISSIONS,
+    },
+    {
       path: '/production/execution/line-management',
       element: <LineManagementPage />,
       layout: 'main',
@@ -364,6 +386,12 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/dashboards/production-movement',
           title: 'Production Movement',
           permissions: [EXECUTION_PERMISSIONS.VIEW_REPORTS],
+        },
+        {
+          path: '/production/execution/filling-cost',
+          title: 'Filling Cost',
+          companies: FILLING_COST_COMPANIES,
+          permissions: FILLING_COST_PERMISSIONS,
         },
         {
           path: '/production/execution/line-management',

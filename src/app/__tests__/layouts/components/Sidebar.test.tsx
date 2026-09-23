@@ -102,6 +102,15 @@ describe('Sidebar', () => {
     expect(content).toMatch(/hasAnyPermission\(\s*(?:\[\.\.\.)?child\.permissions/);
   });
 
+  it('filters children by company unit', () => {
+    // A submenu item can name its own company units — one page for one unit
+    // inside a module every unit uses. Filtering only the parent listed it
+    // everywhere, and tapping it reached /unauthorized.
+    const content = readSource();
+    expect(content).toContain('child.companies');
+    expect(content).toMatch(/child\.companies\.includes\(currentCompany\?\.company_code/);
+  });
+
   // ─── Sidebar Structure ──────────────────────────────────
 
   it('renders <aside> with fixed positioning', () => {

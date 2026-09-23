@@ -347,3 +347,27 @@ export const STANDARD_CLEARANCE_ITEMS = [
   'Coding machine updated with correct product/batch details',
   'Environmental conditions (temperature/humidity) within limits',
 ] as const;
+
+// ============================================================================
+// Filling Cost Sheet
+// ============================================================================
+
+/**
+ * The heads the filling sheet is normally written against, in the order the
+ * factory writes them. Only a starting point for a blank month — heads are
+ * free text on the page and nothing resolves against these.
+ */
+export const DEFAULT_FILLING_COST_HEADS = [
+  'Salary',
+  'Electricity',
+  'Maintenance',
+  'Batch Coding',
+  'Ground Water Extraction Bill',
+  'Briquette',
+  'Lubrication',
+  'Lab',
+  'Miscellaneous',
+] as const;
+
+/** The case count the sheet is usually spread over, until a month says otherwise. */
+export const DEFAULT_FILLING_COST_CASES = '160000';
