@@ -15,6 +15,7 @@ import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { employeesModuleConfig } from '@/modules/employees/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
+import { fleetModuleConfig } from '@/modules/fleet/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
 import { leaveModuleConfig } from '@/modules/leave/module.config';
@@ -45,6 +46,10 @@ export const moduleRegistry: ModuleConfig[] = [
   gateModuleConfig,
   returnsModuleConfig,
   vehicleManagementModuleConfig,
+  // Sits beside Vehicle Management and is not the same thing: that module is
+  // the gate's register of outside trucks, this one is the company's own
+  // vehicles and what their fuel and service cost.
+  fleetModuleConfig,
   qcModuleConfig,
   // Sits after QC: the artwork on a label is a controlled document, and QA
   // is who holds it. One page, gated on artwork.* alone.

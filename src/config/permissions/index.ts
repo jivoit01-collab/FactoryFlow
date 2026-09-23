@@ -29,6 +29,14 @@ export {
   type AttendancePermission,
 } from './attendance.permissions';
 
+// Company Vehicles (the fleet the company owns — its fuel and service bills)
+export {
+  FLEET_ACCESS,
+  FLEET_MODULE_PREFIX,
+  FLEET_PERMISSIONS,
+  type FleetPermission,
+} from './fleet.permissions';
+
 // Leave Module (apply / approve; routed down the employee_hierarchy tree)
 export {
   LEAVE_ACCESS,

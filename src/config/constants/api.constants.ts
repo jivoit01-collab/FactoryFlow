@@ -1911,6 +1911,30 @@ export const API_ENDPOINTS = {
     BUNCH_SENT: (bunchId: number) => `/cash-book/bunches/${bunchId}/sent/`,
     ENTRY_BUNCH: (entryId: number) => `/cash-book/entries/${entryId}/bunch/`,
   },
+  // The company's OWN vehicles and what they cost to run. Nothing to do with
+  // VEHICLE above, which is the gate's register of outside trucks.
+  FLEET: {
+    OPTIONS: '/company-vehicles/options/',
+    SUMMARY: '/company-vehicles/summary/',
+    COST_REPORT: '/company-vehicles/cost-report/',
+    PENDING_APPROVALS: '/company-vehicles/pending-approvals/',
+
+    VEHICLES: '/company-vehicles/vehicles/',
+    VEHICLE_BY_ID: (id: number) => `/company-vehicles/vehicles/${id}/`,
+    VEHICLE_SUMMARY: (id: number) => `/company-vehicles/vehicles/${id}/summary/`,
+
+    FUEL_ENTRIES: '/company-vehicles/fuel-entries/',
+    FUEL_ENTRY_BY_ID: (id: number) => `/company-vehicles/fuel-entries/${id}/`,
+    FUEL_ENTRY_APPROVAL: (id: number) => `/company-vehicles/fuel-entries/${id}/approval/`,
+
+    SERVICE_ENTRIES: '/company-vehicles/service-entries/',
+    SERVICE_ENTRY_BY_ID: (id: number) => `/company-vehicles/service-entries/${id}/`,
+    SERVICE_ENTRY_APPROVAL: (id: number) => `/company-vehicles/service-entries/${id}/approval/`,
+
+    DOCUMENTS: '/company-vehicles/documents/',
+    DOCUMENTS_EXPIRING: '/company-vehicles/documents/expiring/',
+    DOCUMENT_BY_ID: (id: number) => `/company-vehicles/documents/${id}/`,
+  },
 } as const;
 
 export const HTTP_STATUS = {
