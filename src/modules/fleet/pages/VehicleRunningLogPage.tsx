@@ -1,5 +1,6 @@
 import { CalendarDays, Fuel, Gauge, IndianRupee, Plus, Route, Wrench } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import {
   FilterBar,
@@ -38,8 +39,14 @@ function isWeekend(iso: string) {
  * in and what the day cost.
  *
  * Days nobody wrote down are shown as empty rows rather than skipped, because
- * a log with holes in it should look like one. Clicking an empty day opens the
- * reading box already dated.
+ * a log with holes in it should look like one. Clicking a day opens the reading
+ * box already dated, which is the quickest way to fill a gap just noticed; the
+ * Daily reading page is where somebody sits down and does a round of them.
+ *
+ * Distance comes from the daily readings and from nothing else. The fuel
+ * columns sit beside it as money and litres — the meter written on a pump slip
+ * is a different record kept for a different reason, and mixing the two once
+ * turned a 129 km day into 2,345,571.
  */
 export default function VehicleRunningLogPage() {
   const [vehicle, setVehicle] = useState('');
@@ -76,9 +83,11 @@ export default function VehicleRunningLogPage() {
         backLabel="Company Vehicles"
       >
         {canWrite && (
-          <Button onClick={() => addReading(undefined)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add reading
+          <Button asChild>
+            <Link to="/fleet/readings">
+              <Plus className="mr-2 h-4 w-4" />
+              Add readings
+            </Link>
           </Button>
         )}
       </PageHeader>
@@ -215,7 +224,7 @@ export default function VehicleRunningLogPage() {
             <thead className={THEAD_CLASSES}>
               <tr>
                 <Th>Vehicle</Th>
-                <Th align="right">Meter now</Th>
+                <Th align="right">Last reading</Th>
                 <Th align="right">Ran</Th>
                 <Th align="right">Fuel</Th>
                 <Th align="right">Fuel cost</Th>

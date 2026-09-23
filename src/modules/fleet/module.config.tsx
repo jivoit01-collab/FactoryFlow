@@ -20,6 +20,7 @@ const FleetDashboardPage = lazy(() => import('./pages/FleetDashboardPage'));
 const FleetVehiclesPage = lazy(() => import('./pages/FleetVehiclesPage'));
 const FleetVehicleDetailPage = lazy(() => import('./pages/FleetVehicleDetailPage'));
 const VehicleRunningLogPage = lazy(() => import('./pages/VehicleRunningLogPage'));
+const DailyReadingsPage = lazy(() => import('./pages/DailyReadingsPage'));
 const FuelEntriesPage = lazy(() => import('./pages/FuelEntriesPage'));
 const ServiceEntriesPage = lazy(() => import('./pages/ServiceEntriesPage'));
 const FleetApprovalsPage = lazy(() => import('./pages/FleetApprovalsPage'));
@@ -56,6 +57,13 @@ export const fleetModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Running log' },
     },
     {
+      path: '/fleet/readings',
+      element: <DailyReadingsPage />,
+      layout: 'main',
+      permissions: FLEET_ACCESS,
+      breadcrumb: { label: 'Daily reading' },
+    },
+    {
       path: '/fleet/fuel',
       element: <FuelEntriesPage />,
       layout: 'main',
@@ -90,6 +98,7 @@ export const fleetModuleConfig: ModuleConfig = {
       hasSubmenu: true,
       children: [
         { path: '/fleet/vehicles', title: 'Vehicles', permissions: FLEET_ACCESS },
+        { path: '/fleet/readings', title: 'Daily reading', permissions: FLEET_ACCESS },
         { path: '/fleet/log', title: 'Running log', permissions: FLEET_ACCESS },
         { path: '/fleet/fuel', title: 'Fuel', permissions: FLEET_ACCESS },
         { path: '/fleet/service', title: 'Service & repairs', permissions: FLEET_ACCESS },
