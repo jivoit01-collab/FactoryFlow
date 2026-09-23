@@ -32,6 +32,19 @@ import {
 } from '@/shared/components/ui';
 import { formatNumber, getErrorMessage } from '@/shared/utils';
 
+/**
+ * What goes in the Voucher no. box to say a line has no voucher at all.
+ *
+ * Not everything in the book is a payment somebody wrote a voucher for: a bank
+ * deduction on a withdrawal is charged by the bank, so there is no paper to
+ * number, but it still has to be in the book or the cash in hand is wrong. A
+ * dash is how the paper sheet writes those, so it is what the box takes -- and
+ * it has to stay distinct from a blank box, which asks for the next number.
+ */
+const NO_VOUCHER_MARKS = ['-', '--', '\u2013', '\u2014'];
+
+const isNoVoucher = (text: string) => NO_VOUCHER_MARKS.includes(text.trim());
+
 export interface CashEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,7 +89,13 @@ export function CashEntryDialog({
   const record = useRecordCashEntry();
   const update = useUpdateCashEntry();
 
-  const [serial, setSerial] = useState(String(entry?.serial_number ?? nextSerial ?? ''));
+  // A correction opens on what the entry actually holds: its own number, or a
+  // dash when it never had one. Falling through to nextSerial there would hand
+  // a voucher number to a line that has no voucher the moment it is saved.
+  const [serial, setSerial] = useState(() => {
+    if (entry) return entry.serial_number == null ? '-' : String(entry.serial_number);
+    return String(nextSerial ?? '');
+  });
   const [direction, setDirection] = useState<CashDirection>(entry?.direction ?? presetDirection);
   const [entryDate, setEntryDate] = useState(entry?.entry_date ?? today());
   const [amount, setAmount] = useState(entry?.amount ?? '');
@@ -137,8 +156,10 @@ export function CashEntryDialog({
     if (isPayment && !branch) return 'Say which branch this was spent for.';
     if (isPayment && !glCode) return 'Pick the G/L head this payment belongs to.';
     if (isPayment && !approverId) return 'Say who should approve this payment.';
+    if (serial.trim() && !isNoVoucher(serial) && !/^\d+$/.test(serial.trim()))
+      return 'The voucher no. is a number, or a dash when there is no voucher.';
     return null;
-  }, [entryDate, amount, detail, isPayment, branch, glCode, approverId]);
+  }, [entryDate, amount, detail, isPayment, branch, glCode, approverId, serial]);
 
   async function submit() {
     if (problem) {
@@ -149,8 +170,9 @@ export function CashEntryDialog({
     const payload = {
       entry_date: entryDate,
       // Blank means "whatever comes next" -- the server decides, so two
-      // people filling the form at once cannot both claim one number.
-      serial_number: serial.trim() ? Number(serial) : null,
+      // people filling the form at once cannot both claim one number. A dash
+      // goes up as a dash and is kept as no number at all.
+      serial_number: serial.trim() ? (isNoVoucher(serial) ? serial.trim() : Number(serial)) : null,
       direction,
       amount: String(amount),
       detail: detail.trim(),
@@ -246,14 +268,18 @@ export function CashEntryDialog({
 
             <div className="space-y-1">
               <Label htmlFor="cash-serial">Voucher no.</Label>
+              {/* Text, not number: a number box drops a dash as you type it,
+                  so there would be no way to say a line has no voucher. */}
               <Input
                 id="cash-serial"
-                type="number"
-                min={1}
+                type="text"
                 value={serial}
                 placeholder="Next"
                 onChange={(e) => setSerial(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Type a dash (-) if there is no voucher, as with a bank deduction.
+              </p>
             </div>
 
             <div className="space-y-1">

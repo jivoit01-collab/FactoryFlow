@@ -380,8 +380,12 @@ export interface RecordEntryPayload {
   branch?: number | null;
   atm_account?: number | null;
   advance_holder?: number | null;
-  /** Left out, the next free voucher number is used. */
-  serial_number?: number | null;
+  /**
+   * Left out (or null), the next free voucher number is used. A dash says the
+   * line has no voucher at all -- a bank deduction, say -- and it is then kept
+   * with no number, so the next real voucher still gets the next number.
+   */
+  serial_number?: number | string | null;
   /** Required on a payment, refused on a receipt. */
   approver?: number | null;
   gl_account_code?: string;
