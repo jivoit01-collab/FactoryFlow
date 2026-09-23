@@ -236,6 +236,12 @@ export function useDecideSapTransferApproval() {
       // views and the BST dashboard can both be stale afterwards.
       queryClient.invalidateQueries({ queryKey: TRANSFER_REQUEST_QUERY_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ['warehouse', 'bst'] });
+      // Deciding is exactly what moves a row onto the awaiting tab: an approved
+      // draft becomes one nobody has added, and an approved request becomes one
+      // that still owes stock. Both lists are cached fresh for minutes, so
+      // without this the Add button only shows up after a reload.
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_DRAFT_QUERY_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: SAP_TRANSFER_AWAITING_QUERY_KEYS.all });
     },
   });
 }
