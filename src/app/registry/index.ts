@@ -17,6 +17,7 @@ import { etpModuleConfig } from '@/modules/etp/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
+import { leaveModuleConfig } from '@/modules/leave/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
@@ -69,6 +70,9 @@ export const moduleRegistry: ModuleConfig[] = [
   // rather than looked up. Its permissions are separate from the directory's,
   // so gate supervisors can see who turned up without seeing the org tree.
   attendanceModuleConfig,
+  // Next to Attendance: an approved leave becomes ON_LEAVE on that
+  // same daily sheet, and the two screens are read together.
+  leaveModuleConfig,
   // Organisation: the ownership chart plus the people themselves — the
   // directory, the reporting tree and compensation, each with its own access
   // control.

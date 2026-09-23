@@ -1724,6 +1724,39 @@ export const API_ENDPOINTS = {
   // moving a manager carries their whole team.
   // Attendance — the punch-machine daily sheet, its overrides, and the manual
   // photographed marks kept for when the machine itself is down.
+  /**
+   * Leave — applications, decisions, and the masters behind them.
+   *
+   * Approve and reject are separate PATHS, not a field in the body: a payload
+   * flag deciding between "allow" and "refuse" is one typo away from the wrong
+   * outcome, and the two are separately auditable actions.
+   */
+  LEAVE: {
+    TYPES: '/leave/types/',
+    TYPE_DETAIL: (id: number) => `/leave/types/${id}/`,
+    HOLIDAYS: '/leave/holidays/',
+    HOLIDAY_DETAIL: (id: number) => `/leave/holidays/${id}/`,
+    REQUESTS: '/leave/requests/',
+    REQUEST_DETAIL: (id: number) => `/leave/requests/${id}/`,
+    /** Every decision ever made about that request. Append-only. */
+    HISTORY: (id: number) => `/leave/requests/${id}/history/`,
+    APPROVE: (id: number) => `/leave/requests/${id}/approve/`,
+    REJECT: (id: number) => `/leave/requests/${id}/reject/`,
+    /** The applicant taking it back, before anybody decided. */
+    WITHDRAW: (id: number) => `/leave/requests/${id}/withdraw/`,
+    /** Taking back an approval — also unpicks the attendance projection. */
+    CANCEL: (id: number) => `/leave/requests/${id}/cancel/`,
+    /** The approver's queue: only what they may actually act on. */
+    PENDING: '/leave/pending/',
+    /** COUNT(*) for the sidebar badge — never the whole queue. */
+    PENDING_COUNT: '/leave/pending/count/',
+    CALENDAR: '/leave/calendar/',
+    /** Quota, used, pending and available — computed, never stored. */
+    BALANCE: '/leave/balance/',
+    /** Who the time office may raise an application for. */
+    EMPLOYEES: '/leave/employees/',
+  },
+
   ATTENDANCE: {
     DAILY: '/attendance/daily/',
     DAILY_DETAIL: (id: number) => `/attendance/daily/${id}/`,

@@ -29,6 +29,18 @@ export {
   type AttendancePermission,
 } from './attendance.permissions';
 
+// Leave Module (apply / approve; routed down the employee_hierarchy tree)
+export {
+  LEAVE_ACCESS,
+  LEAVE_APPLY_ACCESS,
+  LEAVE_DECIDE_ACCESS,
+  LEAVE_MANAGE_ACCESS,
+  LEAVE_MODULE_PREFIX,
+  LEAVE_PERMISSIONS,
+  LEAVE_TEAM_ACCESS,
+  type LeavePermission,
+} from './leave.permissions';
+
 // Gate Module
 export { GATE_MODULE_PREFIX, GATE_PERMISSIONS, type GatePermission } from './gate.permissions';
 
