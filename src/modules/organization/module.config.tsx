@@ -1,7 +1,8 @@
 /**
- * Organization module — the department ownership chart and the labour pages.
+ * Organization module — the department ownership chart, the labour pages, and
+ * the Attendance and Leave submodules.
  *
- * Three pages, each gated on its own permissions rather than on a module prefix,
+ * Three pages of its own, each gated on its own permissions rather than on a module prefix,
  * so granting one read right is all it takes to open that one page:
  *
  *   /organization                 — who owns each function and who backs them up
@@ -19,6 +20,11 @@
  * next to the request it answers. Its URL followed it under `/organization/`;
  * the old `/labour` URL still redirects there, so bookmarks keep working.
  *
+ * Attendance and Leave were top-level modules too, and were folded in the same
+ * way: their code lives in `./attendance` and `./leave`, their pages under
+ * `/organization/attendance*` and `/organization/leave*`, and their old
+ * `/attendance*` and `/leave*` URLs redirect. Each keeps its own permissions.
+ *
  * The route lives here; the sidebar entry that reaches it lives in the
  * Organisation module (`employees/module.config.tsx`), which opens on this
  * page. Keeping the two apart is deliberate — the chart is one subject
@@ -30,6 +36,9 @@ import { Navigate } from 'react-router-dom';
 
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
+
+import { attendanceRoutes } from './attendance/module.config';
+import { leaveRoutes } from './leave/module.config';
 
 const DepartmentOwnershipPage = lazy(() => import('./pages/DepartmentOwnershipPage'));
 const RequestLabourPage = lazy(() => import('./pages/RequestLabourPage'));
@@ -78,6 +87,8 @@ export const organizationModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: ALLOCATE_LABOUR_ACCESS,
     },
+    ...attendanceRoutes,
+    ...leaveRoutes,
   ],
   // No sidebar entry of its own: the chart is what the Organisation module
   // opens on, so these pages are reached through that module's own nav item

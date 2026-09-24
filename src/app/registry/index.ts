@@ -6,7 +6,6 @@ import type { ModuleConfig, ModuleNavItem, ModuleRoute } from '@/core/types';
 import { accountsModuleConfig } from '@/modules/accounts/module.config';
 import { adminModuleConfig } from '@/modules/admin/module.config';
 import { artworkModuleConfig } from '@/modules/artwork/module.config';
-import { attendanceModuleConfig } from '@/modules/attendance/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
 import { constructionModuleConfig } from '@/modules/construction/module.config';
@@ -19,7 +18,6 @@ import { fireModuleConfig } from '@/modules/fire/module.config';
 import { fleetModuleConfig } from '@/modules/fleet/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
-import { leaveModuleConfig } from '@/modules/leave/module.config';
 import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
@@ -73,15 +71,12 @@ export const moduleRegistry: ModuleConfig[] = [
   marketplaceModuleConfig,
   sapReportsModuleConfig,
   notificationsModuleConfig,
-  // The department ownership chart. Route only — its sidebar entry is the
-  // Organisation module's, which opens on it.
+  // The department ownership chart, the labour pages, and the Attendance and
+  // Leave submodules. Routes only — their sidebar entries are the Organisation
+  // module's, which opens on the chart. Attendance's permissions are still
+  // separate from the directory's, so gate supervisors can see who turned up
+  // without seeing the org tree.
   organizationModuleConfig,
-  // Attendance and Leave: routes only. Their sidebar entries are listed under
-  // Organisation. Attendance's permissions are still separate from the
-  // directory's, so gate supervisors can see who turned up without seeing the
-  // org tree.
-  attendanceModuleConfig,
-  leaveModuleConfig,
   // Organisation: the ownership chart plus the people themselves — the
   // directory, the reporting tree and compensation, each with its own access
   // control.

@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 // Organisation's sidebar entry carries the pending-leave badge, which reaches
 // `@/core/auth`, whose store builds its reducers from the registry. Importing
 // the config on its own would evaluate that registry half-built.
-vi.mock('@/modules/leave/components/PendingLeaveBadge', () => ({
+vi.mock('@/modules/organization/leave/components/PendingLeaveBadge', () => ({
   PendingLeaveBadge: () => null,
 }));
 

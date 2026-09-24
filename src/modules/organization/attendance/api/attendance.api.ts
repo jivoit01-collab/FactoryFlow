@@ -57,6 +57,8 @@ export interface DailyAttendanceRow {
   employee_code: string;
   employee_name: string;
   department_name: string | null;
+  /** The branch HR files the person under. Null for people nobody has filed yet. */
+  branch_name: string | null;
   employee_detail?: AttendanceEmployee;
 
   // What the machine recorded. Never written through this API.

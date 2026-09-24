@@ -25,16 +25,38 @@ import {
   LEAVE_TEAM_ACCESS,
 } from '@/config/permissions';
 
-import { leaveModuleConfig } from '../module.config';
+import { LEAVE_PATHS, leaveRoutes } from '../module.config';
 
-describe('leave module config', () => {
-  it('registers the four routes', () => {
-    const paths = leaveModuleConfig.routes.map((route) => route.path);
-    expect(paths).toEqual(['/leave', '/leave/approvals', '/leave/calendar', '/leave/settings']);
+const find = (path: string) => leaveRoutes.find((r) => r.path === path);
+
+describe('leave submodule config', () => {
+  it('registers the four pages under Organisation', () => {
+    const paths = leaveRoutes.filter((r) => r.breadcrumb).map((route) => route.path);
+    expect(paths).toEqual([
+      '/organization/leave',
+      '/organization/leave/approvals',
+      '/organization/leave/calendar',
+      '/organization/leave/settings',
+    ]);
+  });
+
+  it('forwards each pre-move URL under the same gate as its page', () => {
+    const pairs = [
+      ['/leave', LEAVE_PATHS.MY_LEAVE],
+      ['/leave/approvals', LEAVE_PATHS.APPROVALS],
+      ['/leave/calendar', LEAVE_PATHS.CALENDAR],
+      ['/leave/settings', LEAVE_PATHS.SETTINGS],
+    ] as const;
+    for (const [legacy, current] of pairs) {
+      const redirect = find(legacy);
+      expect(redirect, legacy).toBeDefined();
+      expect(redirect?.breadcrumb, legacy).toBeUndefined();
+      expect(redirect?.permissions, legacy).toEqual(find(current)?.permissions);
+    }
   });
 
   it('gates settings on the manage grant alone', () => {
-    const route = leaveModuleConfig.routes.find((r) => r.path === '/leave/settings');
+    const route = find(LEAVE_PATHS.SETTINGS);
     expect(route?.permissions).toEqual(LEAVE_MANAGE_ACCESS);
     // Editing a leave type changes what the whole plant may ask for, so it
     // must never fall open to everyone who can apply or decide.
@@ -42,25 +64,19 @@ describe('leave module config', () => {
     expect(route?.permissions).not.toContain(LEAVE_PERMISSIONS.DECIDE);
   });
 
-  it('has no sidebar entry of its own -- it is listed under Organisation', () => {
-    // The badge and the per-child gating are checked where the entries now
-    // live: `employees/__tests__/attendanceLeaveNav.test.ts`.
-    expect(leaveModuleConfig.navigation ?? []).toHaveLength(0);
-  });
-
   it('gates the approvals route on a decide grant, not on module access', () => {
-    const route = leaveModuleConfig.routes.find((r) => r.path === '/leave/approvals');
+    const route = find(LEAVE_PATHS.APPROVALS);
     expect(route?.permissions).toEqual(LEAVE_DECIDE_ACCESS);
     expect(route?.permissions).not.toContain(LEAVE_PERMISSIONS.APPLY);
   });
 
   it('gates the calendar on team access', () => {
-    const route = leaveModuleConfig.routes.find((r) => r.path === '/leave/calendar');
+    const route = find(LEAVE_PATHS.CALENDAR);
     expect(route?.permissions).toEqual(LEAVE_TEAM_ACCESS);
   });
 
   it('lets anyone in the module reach their own leave', () => {
-    const route = leaveModuleConfig.routes.find((r) => r.path === '/leave');
+    const route = find(LEAVE_PATHS.MY_LEAVE);
     expect(route?.permissions).toEqual(LEAVE_ACCESS);
   });
 

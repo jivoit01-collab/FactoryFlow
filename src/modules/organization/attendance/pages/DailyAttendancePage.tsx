@@ -260,6 +260,7 @@ export default function DailyAttendancePage() {
                   <th className="p-3 font-medium">Code</th>
                   <th className="p-3 font-medium">Name</th>
                   <th className="p-3 font-medium">Department</th>
+                  <th className="p-3 font-medium">Branch</th>
                   <th className="p-3 font-medium">In</th>
                   <th className="p-3 font-medium">Out</th>
                   <th className="p-3 font-medium">Hours</th>
@@ -277,14 +278,14 @@ export default function DailyAttendancePage() {
               <tbody>
                 {isLoading && (
                   <tr>
-                    <td colSpan={showCorrections ? 11 : 8} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={showCorrections ? 12 : 9} className="p-6 text-center text-muted-foreground">
                       Loading…
                     </td>
                   </tr>
                 )}
                 {!isLoading && visible.length === 0 && (
                   <tr>
-                    <td colSpan={showCorrections ? 11 : 8} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={showCorrections ? 12 : 9} className="p-6 text-center text-muted-foreground">
                       Nothing for {date}. If this looks wrong, sync the punches for that day.
                     </td>
                   </tr>
@@ -299,6 +300,7 @@ export default function DailyAttendancePage() {
                     <td className="p-3 font-mono text-xs">{row.employee_code}</td>
                     <td className="p-3">{row.employee_name}</td>
                     <td className="p-3 text-muted-foreground">{row.department_name ?? '—'}</td>
+                    <td className="p-3 text-muted-foreground">{row.branch_name ?? '—'}</td>
                     <td className="p-3">{formatTime(row.machine_first_punch)}</td>
                     <td className="p-3">{formatTime(row.machine_last_punch)}</td>
                     <td className="p-3">{formatMinutes(row.machine_worked_minutes)}</td>

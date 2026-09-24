@@ -12,10 +12,11 @@
  * nothing was moved, so a bookmark, a deep link or a printed URL still lands
  * where it did.
  *
- * Attendance and Leave were top-level sidebar modules too, and were folded in
- * the same way: they are about the same people, read day to day. Their routes
- * are still registered by their own modules (`attendance/`, `leave/`) at
- * `/attendance/*` and `/leave/*`; only the sidebar entries moved here.
+ * Attendance and Leave were top-level modules too, and are now submodules of
+ * Organisation (`organization/attendance`, `organization/leave`): they are
+ * about the same people, read day to day. Their pages live under
+ * `/organization/attendance*` and `/organization/leave*`; their sidebar entries
+ * are listed here with the rest of Organisation's.
  *
  * Seven screens, gated on their own `employee_hierarchy.*` permissions rather
  * than on a module prefix, because the permissions here are not a ladder: the
@@ -65,7 +66,9 @@ import {
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
-import { PendingLeaveBadge } from '@/modules/leave/components/PendingLeaveBadge';
+import { ATTENDANCE_PATHS } from '@/modules/organization/attendance/module.config';
+import { PendingLeaveBadge } from '@/modules/organization/leave/components/PendingLeaveBadge';
+import { LEAVE_PATHS } from '@/modules/organization/leave/module.config';
 import { ALLOCATE_LABOUR_ACCESS } from '@/modules/organization/module.config';
 
 const EmployeeDirectoryPage = lazy(() => import('./pages/EmployeeDirectoryPage'));
@@ -190,19 +193,19 @@ export const employeesModuleConfig: ModuleConfig = {
         // ATTENDANCE_ACCESS. The register cannot show anything the daily sheet
         // would have hidden.
         {
-          path: '/attendance',
+          path: ATTENDANCE_PATHS.DAILY,
           title: 'Attendance',
           icon: CalendarCheck,
           permissions: ATTENDANCE_ACCESS,
         },
         {
-          path: '/attendance/register',
+          path: ATTENDANCE_PATHS.REGISTER,
           title: 'Attendance register',
           icon: Table2,
           permissions: ATTENDANCE_ACCESS,
         },
         {
-          path: '/leave',
+          path: LEAVE_PATHS.MY_LEAVE,
           title: 'My leave',
           icon: CalendarCheck2,
           permissions: LEAVE_ACCESS,
@@ -210,20 +213,20 @@ export const employeesModuleConfig: ModuleConfig = {
         {
           // Only for people who can decide something. A supervisor who can see
           // their team but not decide does not get an empty queue to stare at.
-          path: '/leave/approvals',
+          path: LEAVE_PATHS.APPROVALS,
           title: 'Leave approvals',
           icon: Inbox,
           permissions: LEAVE_DECIDE_ACCESS,
           badge: PendingLeaveBadge,
         },
         {
-          path: '/leave/calendar',
+          path: LEAVE_PATHS.CALENDAR,
           title: 'Leave calendar',
           icon: CalendarRange,
           permissions: LEAVE_TEAM_ACCESS,
         },
         {
-          path: '/leave/settings',
+          path: LEAVE_PATHS.SETTINGS,
           title: 'Leave settings',
           icon: Settings,
           permissions: LEAVE_MANAGE_ACCESS,
