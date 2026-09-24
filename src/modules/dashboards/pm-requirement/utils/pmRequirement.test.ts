@@ -10,17 +10,22 @@ import {
 import type { PmReqRow } from '../types';
 import {
   csvFilename,
+  distinctUnits,
   familiesOf,
   filterByFamily,
   filterRows,
+  formatQtyWithUom,
   formatSigned,
+  formatSignedWithUom,
   isAtRisk,
   nextSort,
   overPurchaseKind,
   rowStatus,
   searchRows,
+  sharedUnit,
   sortRows,
   toCsv,
+  unitLabel,
   visibleTotals,
 } from './pmRequirement';
 
@@ -66,6 +71,7 @@ function row(overrides: Partial<PmReqRow> = {}): PmReqRow {
     po_overdue: false,
     drivers: [],
     driver_count: 0,
+    po_details: [],
     ...overrides,
   };
 }
@@ -528,6 +534,61 @@ describe('overPurchaseKind', () => {
     expect(
       overPurchaseKind(row({ over_purchased: true, po_due_after_plan: true, po_overdue: true })),
     ).toBe('forward');
+  });
+});
+
+describe('units', () => {
+  // The board is NOT all pieces, which is the whole reason these exist. Of
+  // Oil's 881 packing-material items 851 are PCS; 13 are kilograms, 9 metres,
+  // 7 "nos" and 1 grams. TAPE LOGO PRINTED is in METRES, is called for by 61
+  // of the SKUs on the September 2026 plan, and has 2,03,902 of it on hand.
+  it('prints SAP codes as the words people say', () => {
+    expect(unitLabel('PCS')).toBe('pcs');
+    expect(unitLabel('KGS')).toBe('kg');
+    expect(unitLabel('MTR')).toBe('m');
+    expect(unitLabel('NOS')).toBe('nos');
+    expect(unitLabel('GMS')).toBe('g');
+  });
+
+  it('prints a unit it has never seen as it stands rather than inventing one', () => {
+    expect(unitLabel('ROLL')).toBe('roll');
+    expect(unitLabel('')).toBe('');
+    expect(unitLabel(null)).toBe('');
+    expect(unitLabel(undefined)).toBe('');
+  });
+
+  it('puts the unit after the figure', () => {
+    expect(formatQtyWithUom(152600, 'PCS')).toBe('1,52,600 pcs');
+    expect(formatQtyWithUom(203902, 'MTR')).toBe('2,03,902 m');
+    expect(formatQtyWithUom(922, 'KGS')).toBe('922 kg');
+  });
+
+  it('keeps the minus sign that says a row is short', () => {
+    expect(formatSignedWithUom(-34100, 'PCS')).toBe('-34,100 pcs');
+  });
+
+  it('prints no unit where SAP holds none, rather than a stray space', () => {
+    expect(formatQtyWithUom(1000, '')).toBe('1,000');
+  });
+
+  it('finds the shared unit only when every row agrees', () => {
+    const tape = row({ item_code: 'PM0000075', uom: 'MTR' });
+    expect(sharedUnit([SMALL_CAPS, GREEN_CAPS])).toBe('pcs');
+    expect(sharedUnit([SMALL_CAPS, tape])).toBeNull();
+    expect(sharedUnit([])).toBeNull();
+  });
+
+  it('names the units it found, commonest first', () => {
+    const tape = row({ item_code: 'PM0000075', uom: 'MTR' });
+    expect(distinctUnits([SMALL_CAPS, GREEN_CAPS, tape])).toEqual(['pcs', 'm']);
+  });
+
+  it('refuses to total a column whose rows are in different units', () => {
+    // The footer's cue. 2,03,902 metres of tape added to a count of caps is
+    // not a rougher truth than the rows above it, it is not a quantity.
+    const tape = row({ item_code: 'PM0000075', uom: 'MTR', on_hand_qty: 203902 });
+    expect(visibleTotals([SMALL_CAPS, tape]).uom).toBeNull();
+    expect(visibleTotals([SMALL_CAPS, GREEN_CAPS]).uom).toBe('pcs');
   });
 });
 

@@ -31,9 +31,15 @@ function Skeleton() {
  * number on a card and the rows behind it can never be a different set.
  *
  * The headline shortage is the one AFTER open orders and it is quoted in
- * rupees as well as pieces. Pieces alone lead with caps and labels every
+ * rupees as well as quantity. Quantity alone leads with caps and labels every
  * month — they are the components used in the millions — while what a buyer
  * has to find money for is a different list.
+ *
+ * Every quantity here is "units" and NOT "pcs", which the tiles used to say.
+ * These are sums across all 197 components, and six of them are measured in
+ * metres or kilograms — tape, tin strip, pouch roll — so the total is a count
+ * of things in mixed units and calling it pieces was wrong. The table below
+ * prints the real unit on each row, where there is one to print.
  */
 export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProps) {
   if (isLoading && !totals) return <Skeleton />;
@@ -48,7 +54,7 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
         accent={ACCENTS.slate}
         label="Components on the plan"
         value={totals.item_count}
-        sub={`${formatQtyCompact(totals.planning_qty)} pcs needed · ${formatQtyCompact(
+        sub={`${formatQtyCompact(totals.planning_qty)} units needed · ${formatQtyCompact(
           totals.issued_pc_qty,
         )} already on the floor`}
         onClick={() => onFilter('all')}
@@ -60,7 +66,7 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
         accent={ACCENTS.amber}
         label="Short before orders"
         value={totals.short_before_po_count}
-        sub={`${formatQtyCompact(totals.short_before_po_qty)} pcs short of the rest of the plan`}
+        sub={`${formatQtyCompact(totals.short_before_po_qty)} units short of the rest of the plan`}
         onClick={() => onFilter('at-risk')}
         delayMs={60}
       />
@@ -72,10 +78,10 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
         value={totals.covered_by_po_count}
         sub={
           totals.po_overdue_count
-            ? `${formatQtyCompact(totals.open_po_qty)} pcs on order · ${
+            ? `${formatQtyCompact(totals.open_po_qty)} units on order · ${
                 totals.po_overdue_count
               } leaning on a late one`
-            : `${formatQtyCompact(totals.open_po_qty)} pcs on order`
+            : `${formatQtyCompact(totals.open_po_qty)} units on order`
         }
         onClick={() => onFilter('at-risk')}
         delayMs={120}
@@ -91,7 +97,7 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
         value={totals.short_after_po_count}
         sub={
           totals.short_after_po_count
-            ? `${formatQtyCompact(totals.short_after_po_qty)} pcs · ${formatInrCompact(
+            ? `${formatQtyCompact(totals.short_after_po_qty)} units · ${formatInrCompact(
                 totals.short_after_po_value,
               )} to buy`
             : 'Stock and open orders cover the rest of the plan'
@@ -143,7 +149,7 @@ export function PmReqHeadline({ totals, isLoading, onFilter }: PmReqHeadlineProp
                 value={totals.over_purchased_count}
                 sub={`${formatInrCompact(totals.over_purchase_value)} · ${formatQtyCompact(
                   totals.over_purchase_qty,
-                )} pcs on order beyond what the plan still needs`}
+                )} units on order beyond what the plan still needs`}
                 onClick={() => onFilter('over-purchased')}
                 delayMs={360}
               />

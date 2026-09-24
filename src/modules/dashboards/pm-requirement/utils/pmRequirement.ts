@@ -28,10 +28,87 @@ export function formatQty(value: number): string {
   return qtyFormatter.format(value);
 }
 
+/**
+ * SAP's inventory unit as the short label the board prints after a figure.
+ *
+ * This board is NOT all pieces, which is the whole reason the label exists.
+ * Of Oil's 881 packing-material items 851 are PCS, but 13 are kilograms, 9
+ * metres, 7 "nos" and 1 grams — and they are not obscure ones: TAPE LOGO
+ * PRINTED is in METRES and is called for by 61 of the SKUs on the September
+ * 2026 plan, with 2,03,902 of it on hand. A metre figure sitting unlabelled
+ * in the same column as a count of caps is a number somebody will read as
+ * pieces, and act on.
+ *
+ * Mapped rather than printed raw so the sheet reads in the units people say
+ * out loud — `KGS` is written kg, `MTR` is m. Anything SAP holds that is not
+ * in the map is lower-cased and printed as it stands: an unknown unit shown
+ * as itself is honest, and inventing a translation for it would not be.
+ */
+const UNIT_LABELS: Record<string, string> = {
+  PCS: 'pcs',
+  PC: 'pcs',
+  NOS: 'nos',
+  NO: 'nos',
+  KGS: 'kg',
+  KG: 'kg',
+  GMS: 'g',
+  GM: 'g',
+  MTR: 'm',
+  MTS: 'm',
+  MTRS: 'm',
+  LTR: 'L',
+  LTRS: 'L',
+};
+
+/** The unit to print after a quantity, or '' where SAP holds none. */
+export function unitLabel(uom?: string | null): string {
+  const code = (uom ?? '').trim();
+  if (!code) return '';
+  return UNIT_LABELS[code.toUpperCase()] ?? code.toLowerCase();
+}
+
 /** A quantity with its unit, for a headline where the unit is not obvious. */
-export function formatQtyWithUom(value: number, uom?: string): string {
+export function formatQtyWithUom(value: number, uom?: string | null): string {
+  const unit = unitLabel(uom);
   const formatted = formatQty(value);
-  return uom ? `${formatted} ${uom}` : formatted;
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+/** The same, keeping the minus sign that says a row is short. */
+export function formatSignedWithUom(value: number, uom?: string | null): string {
+  const unit = unitLabel(uom);
+  const formatted = formatSigned(value);
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+/**
+ * The unit every row on screen shares, or null where they do not.
+ *
+ * What the footer needs before it adds a column down. Six of the 197
+ * components on the September 2026 plan are in metres or kilograms, so an
+ * unfiltered total of `On hand` adds 2,03,902 metres of tape to a count of
+ * caps. The sum is not a smaller truth than the rows above it, it is not a
+ * quantity at all, and the footer says so instead of printing it.
+ */
+export function sharedUnit(rows: PmReqRow[]): string | null {
+  const units = distinctUnits(rows);
+  if (units.length !== 1) return null;
+  return units[0] || null;
+}
+
+/**
+ * Every unit present in a set of rows, commonest first.
+ *
+ * So the footer can name what it declined to add rather than leaving a dash
+ * somebody reads as a figure that failed to calculate.
+ */
+export function distinctUnits(rows: PmReqRow[]): string[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const unit = unitLabel(row.uom);
+    counts.set(unit, (counts.get(unit) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([unit]) => unit);
 }
 
 /**
@@ -242,6 +319,10 @@ export function visibleTotals(rows: PmReqRow[]) {
 
   return {
     item_count: rows.length,
+    // The unit the columns below are in -- null where the rows on screen do
+    // not agree, which is the footer's cue not to print a sum at all.
+    uom: sharedUnit(rows),
+    units: distinctUnits(rows),
     planning_qty: sum((row) => row.planning_qty),
     issued_pc_qty: sum((row) => row.issued_pc_qty),
     rest_planning_qty: sum((row) => row.rest_planning_qty),

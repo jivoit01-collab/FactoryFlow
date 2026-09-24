@@ -13,7 +13,7 @@ import { cn } from '@/shared/utils';
 
 import { formatDay, STATUS_LABELS } from '../constants';
 import type { PmReqMeta, PmReqPoLine, PmReqRow } from '../types';
-import { formatInr, formatQty, formatSigned, rowStatus } from '../utils';
+import { formatInr, formatQty, formatQtyWithUom, formatSignedWithUom, rowStatus } from '../utils';
 import { PmReqPoDocDialog } from './PmReqPoDocDialog';
 
 /** A PO line's identity: the document and the row on it. */
@@ -114,14 +114,14 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   </h4>
                   <Line
                     label="Planning"
-                    value={formatQty(row.planning_qty)}
+                    value={formatQtyWithUom(row.planning_qty, row.uom)}
                     hint={`What the plan needs, across ${row.driver_count || row.sku_count} ${
                       (row.driver_count || row.sku_count) === 1 ? 'product' : 'products'
                     }`}
                   />
                   <Line
                     label="Less issued to the floor"
-                    value={formatQty(row.issued_pc_qty)}
+                    value={formatQtyWithUom(row.issued_pc_qty, row.uom)}
                     hint={
                       meta
                         ? `Into ${meta.issue_warehouses.join(', ')}, ${formatDay(
@@ -132,7 +132,7 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   />
                   <Line
                     label="Rest of the plan"
-                    value={formatSigned(row.rest_planning_qty)}
+                    value={formatSignedWithUom(row.rest_planning_qty, row.uom)}
                     tone={row.rest_planning_qty < 0 ? 'good' : undefined}
                     hint={
                       row.over_issued
@@ -142,18 +142,18 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   />
                   <Line
                     label="On hand in the stores"
-                    value={formatQty(row.on_hand_qty)}
+                    value={formatQtyWithUom(row.on_hand_qty, row.uom)}
                     hint={meta ? meta.supply_warehouses.join(', ') : undefined}
                   />
                   <Line
                     label="Req"
-                    value={formatSigned(row.req_qty)}
+                    value={formatSignedWithUom(row.req_qty, row.uom)}
                     tone={row.req_qty < 0 ? 'short' : 'good'}
                     hint="On hand less the rest of the plan"
                   />
                   <Line
                     label="On open purchase orders"
-                    value={row.open_po_qty ? formatQty(row.open_po_qty) : '—'}
+                    value={row.open_po_qty ? formatQtyWithUom(row.open_po_qty, row.uom) : '—'}
                     hint={
                       row.open_po_qty
                         ? `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}${
@@ -170,7 +170,7 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   />
                   <Line
                     label="REQ after PO"
-                    value={formatSigned(row.req_after_po_qty)}
+                    value={formatSignedWithUom(row.req_after_po_qty, row.uom)}
                     tone={row.req_after_po_qty < 0 ? 'short' : 'good'}
                     hint={
                       row.short_value > 0
@@ -270,13 +270,15 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                                   )}
                                 </td>
                                 <td className="py-1.5 text-right tabular-nums text-muted-foreground">
-                                  {formatQty(line.ordered_qty)}
+                                  {formatQtyWithUom(line.ordered_qty, row.uom)}
                                 </td>
                                 <td className="py-1.5 text-right tabular-nums text-muted-foreground">
-                                  {line.received_qty > 0 ? formatQty(line.received_qty) : '—'}
+                                  {line.received_qty > 0
+                                    ? formatQtyWithUom(line.received_qty, row.uom)
+                                    : '—'}
                                 </td>
                                 <td className="py-1.5 text-right font-medium tabular-nums">
-                                  {formatQty(line.open_qty)}
+                                  {formatQtyWithUom(line.open_qty, row.uom)}
                                 </td>
                               </tr>
                             );
@@ -303,7 +305,7 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                     </h4>
                     <Line
                       label="Still to buy"
-                      value={formatQty(row.to_buy_qty)}
+                      value={formatQtyWithUom(row.to_buy_qty, row.uom)}
                       hint={
                         row.to_buy_qty > 0
                           ? 'The rest of the plan, less what the stores already hold'
@@ -312,12 +314,12 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                     />
                     <Line
                       label="Less on open orders"
-                      value={formatQty(row.open_po_qty)}
+                      value={formatQtyWithUom(row.open_po_qty, row.uom)}
                       hint={`${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}`}
                     />
                     <Line
                       label="Over-purchased"
-                      value={formatQty(row.over_purchase_qty)}
+                      value={formatQtyWithUom(row.over_purchase_qty, row.uom)}
                       tone="short"
                       hint={`${formatInr(
                         row.over_purchase_value,
@@ -364,10 +366,10 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                     )}
                     {row.issued_produced_qty > 0 && (
                       <p className="rounded-lg border border-violet-300/60 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                        {formatQty(row.issued_produced_qty)} of the issued figure was made in-house
-                        straight onto the floor rather than drawn from the stores
+                        {formatQtyWithUom(row.issued_produced_qty, row.uom)} of the issued figure
+                        was made in-house straight onto the floor rather than drawn from the stores
                         {row.issued_transfer_qty > 0
-                          ? `, and ${formatQty(row.issued_transfer_qty)} was transferred up`
+                          ? `, and ${formatQtyWithUom(row.issued_transfer_qty, row.uom)} was transferred up`
                           : ''}
                         . Both count as plan produced, but the in-house part never depleted the
                         stores — so this is not a component to buy, it is one to make.
@@ -420,7 +422,7 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                                 {driver.qty_per_unit}
                               </td>
                               <td className="py-1.5 text-right font-medium tabular-nums">
-                                {formatQty(driver.required_qty)}
+                                {formatQtyWithUom(driver.required_qty, row.uom)}
                               </td>
                             </tr>
                           ))}

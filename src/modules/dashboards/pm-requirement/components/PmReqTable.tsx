@@ -17,6 +17,7 @@ import {
   formatSigned,
   overPurchaseKind,
   rowStatus,
+  unitLabel,
   visibleTotals,
 } from '../utils';
 
@@ -62,7 +63,54 @@ function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
  * `Planning` is not good or bad, and colouring every number leaves nothing
  * standing out.
  */
-function SignedCell({ value, emphasise }: { value: number; emphasise?: boolean }) {
+/**
+ * The unit a figure is in, printed after it.
+ *
+ * On every quantity rather than once in the column head, because the unit is
+ * a property of the ROW and not of the column: `On hand` is pieces on a cap
+ * and metres on tape, and a header cannot say both. Smaller and muted so the
+ * figures still read as a column of numbers with a unit attached, rather than
+ * as a column of two-part strings.
+ */
+function UnitTag({ uom }: { uom?: string | null }) {
+  const unit = unitLabel(uom);
+  if (!unit) return null;
+  return <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">{unit}</span>;
+}
+
+/**
+ * What the footer says instead of a sum it has no business printing.
+ *
+ * `On hand` down a table showing caps AND tape adds 2,03,902 METRES to a
+ * count of pieces. The result is not a rougher truth than the rows above it,
+ * it is not a quantity at all — so the cell says which units it found and
+ * how to get a total, rather than leaving a dash that reads as arithmetic
+ * that fell over. Same shape as the `Req` cell beside it, which has declined
+ * to total for a different reason since the board was built.
+ */
+function MixedUnitsCell({ units }: { units: string[] }) {
+  const named = units.filter(Boolean);
+  return (
+    <td
+      className="px-3 py-2.5 text-right text-xs text-muted-foreground"
+      title={`Not totalled: the components shown are in different units${
+        named.length ? ` (${named.join(', ')})` : ''
+      }, so adding the column would put metres and kilograms into a count of pieces. Narrow the table to one family to total it.`}
+    >
+      mixed units
+    </td>
+  );
+}
+
+function SignedCell({
+  value,
+  uom,
+  emphasise,
+}: {
+  value: number;
+  uom?: string | null;
+  emphasise?: boolean;
+}) {
   const short = value < 0;
   return (
     <span
@@ -77,6 +125,7 @@ function SignedCell({ value, emphasise }: { value: number; emphasise?: boolean }
       )}
     >
       {formatSigned(value)}
+      <UnitTag uom={uom} />
     </span>
   );
 }
@@ -167,9 +216,11 @@ export function PmReqTable({
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {formatQty(row.planning_qty)}
+                      <UnitTag uom={row.uom} />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {formatQty(row.issued_pc_qty)}
+                      <UnitTag uom={row.uom} />
                       {/* Blown or made in-house rather than drawn from the
                           stores. Worth marking: it never depleted BH-BS or
                           BH-PM, so the row is not a buying signal. */}
@@ -183,13 +234,14 @@ export function PmReqTable({
                       )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <SignedCell value={row.rest_planning_qty} />
+                      <SignedCell value={row.rest_planning_qty} uom={row.uom} />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {formatQty(row.on_hand_qty)}
+                      <UnitTag uom={row.uom} />
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <SignedCell value={row.req_qty} />
+                      <SignedCell value={row.req_qty} uom={row.uom} />
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {row.open_po_qty ? (
@@ -205,6 +257,7 @@ export function PmReqTable({
                             <Clock className="h-3 w-3 shrink-0 text-orange-500" />
                           )}
                           {formatQty(row.open_po_qty)}
+                          <UnitTag uom={row.uom} />
                         </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
@@ -221,12 +274,13 @@ export function PmReqTable({
                             row.open_po_qty,
                           )} order — ${OVER_PURCHASE_NOTE[overPurchaseKind(row)]}`}
                         >
-                          +{formatQty(row.over_purchase_qty)} over
+                          +{formatQty(row.over_purchase_qty)}
+                          <UnitTag uom={row.uom} /> over
                         </span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <SignedCell value={row.req_after_po_qty} emphasise />
+                      <SignedCell value={row.req_after_po_qty} uom={row.uom} emphasise />
                       {row.short_value > 0 && (
                         <span className="block text-[11px] tabular-nums text-muted-foreground">
                           {formatInrCompact(row.short_value)}
@@ -257,18 +311,42 @@ export function PmReqTable({
                 <td className="sticky left-[112px] z-10 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
                   {totals.item_count} {totals.item_count === 1 ? 'component' : 'components'}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {formatQty(totals.planning_qty)}
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {formatQty(totals.issued_pc_qty)}
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {formatQty(totals.rest_planning_qty)}
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {formatQty(totals.on_hand_qty)}
-                </td>
+                {/* Four straight sums, and they are only sums while every
+                    row on screen is in the same unit. Six of this plan's 197
+                    components are metres or kilograms, so the unfiltered
+                    table is exactly the case that must not add. */}
+                {totals.uom === null ? (
+                  <MixedUnitsCell units={totals.units} />
+                ) : (
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatQty(totals.planning_qty)}
+                    <UnitTag uom={totals.uom} />
+                  </td>
+                )}
+                {totals.uom === null ? (
+                  <MixedUnitsCell units={totals.units} />
+                ) : (
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatQty(totals.issued_pc_qty)}
+                    <UnitTag uom={totals.uom} />
+                  </td>
+                )}
+                {totals.uom === null ? (
+                  <MixedUnitsCell units={totals.units} />
+                ) : (
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatQty(totals.rest_planning_qty)}
+                    <UnitTag uom={totals.uom} />
+                  </td>
+                )}
+                {totals.uom === null ? (
+                  <MixedUnitsCell units={totals.units} />
+                ) : (
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatQty(totals.on_hand_qty)}
+                    <UnitTag uom={totals.uom} />
+                  </td>
+                )}
                 {/* Deliberately not a sum: adding signed requirements across
                     items is meaningless, because spare caps are not missing
                     cartons. The hover says so, so it does not read as a
@@ -279,21 +357,27 @@ export function PmReqTable({
                 >
                   —
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">
-                  {formatQty(totals.open_po_qty)}
-                  {totals.over_purchased_count > 0 && (
-                    <span
-                      className="block text-[11px] tabular-nums text-amber-600 dark:text-amber-400"
-                      title={`${formatInrCompact(
-                        totals.over_purchase_value,
-                      )} on order beyond what the plan needs, across ${
-                        totals.over_purchased_count
-                      } component${totals.over_purchased_count === 1 ? '' : 's'}`}
-                    >
-                      +{formatQty(totals.over_purchase_qty)} over
-                    </span>
-                  )}
-                </td>
+                {totals.uom === null ? (
+                  <MixedUnitsCell units={totals.units} />
+                ) : (
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatQty(totals.open_po_qty)}
+                    <UnitTag uom={totals.uom} />
+                    {totals.over_purchased_count > 0 && (
+                      <span
+                        className="block text-[11px] tabular-nums text-amber-600 dark:text-amber-400"
+                        title={`${formatInrCompact(
+                          totals.over_purchase_value,
+                        )} on order beyond what the plan needs, across ${
+                          totals.over_purchased_count
+                        } component${totals.over_purchased_count === 1 ? '' : 's'}`}
+                      >
+                        +{formatQty(totals.over_purchase_qty)}
+                        <UnitTag uom={totals.uom} /> over
+                      </span>
+                    )}
+                  </td>
+                )}
                 {/* The column added straight down, which is what somebody
                     reading a footer expects -- with the shortfall kept under
                     it, because the sum alone would mislead in one specific
@@ -301,23 +385,48 @@ export function PmReqTable({
                     total to a comfortable +83,950, and nobody can make the
                     plan with it. The sub-line is what has to be bought, and
                     is summed as a magnitude so no surplus can cancel it. */}
-                <td
-                  className="px-3 py-2.5 text-right"
-                  title={
-                    totals.short_qty > 0
-                      ? `The column added up: ${formatQty(totals.req_after_po_qty)}. It nets, so a surplus on one component offsets a shortage on another — ${formatQty(totals.short_count)} of the ${totals.item_count} components shown are short by ${formatQty(totals.short_qty)} in total, and that is the figure to buy against.`
-                      : `The column added up: ${formatQty(totals.req_after_po_qty)}. None of the components shown is short once its open orders are counted.`
-                  }
-                >
-                  <SignedCell value={totals.req_after_po_qty} emphasise />
-                  {totals.short_qty > 0 ? (
-                    <span className="block text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
-                      {formatQty(totals.short_qty)} short · {formatInrCompact(totals.short_value)}
-                    </span>
-                  ) : (
-                    <span className="block text-[11px] text-muted-foreground">nothing short</span>
-                  )}
-                </td>
+                {/* The one cell that still says something across mixed
+                    units, because the money does: 84,568 rupees short is
+                    84,568 rupees whether the shortfall is in metres or in
+                    caps. The QUANTITY is dropped when the units disagree and
+                    the value stands on its own. */}
+                {totals.uom === null ? (
+                  <td
+                    className="px-3 py-2.5 text-right"
+                    title={`Not totalled in quantity: the components shown are in different units${
+                      totals.units.filter(Boolean).length
+                        ? ` (${totals.units.filter(Boolean).join(', ')})`
+                        : ''
+                    }. The money is still a total — rupees add up whatever the goods are measured in.`}
+                  >
+                    <span className="text-xs text-muted-foreground">mixed units</span>
+                    {totals.short_value > 0 && (
+                      <span className="block text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatQty(totals.short_count)} short ·{' '}
+                        {formatInrCompact(totals.short_value)}
+                      </span>
+                    )}
+                  </td>
+                ) : (
+                  <td
+                    className="px-3 py-2.5 text-right"
+                    title={
+                      totals.short_qty > 0
+                        ? `The column added up: ${formatQty(totals.req_after_po_qty)}. It nets, so a surplus on one component offsets a shortage on another — ${formatQty(totals.short_count)} of the ${totals.item_count} components shown are short by ${formatQty(totals.short_qty)} in total, and that is the figure to buy against.`
+                        : `The column added up: ${formatQty(totals.req_after_po_qty)}. None of the components shown is short once its open orders are counted.`
+                    }
+                  >
+                    <SignedCell value={totals.req_after_po_qty} uom={totals.uom} emphasise />
+                    {totals.short_qty > 0 ? (
+                      <span className="block text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
+                        {formatQty(totals.short_qty)}
+                        <UnitTag uom={totals.uom} /> short · {formatInrCompact(totals.short_value)}
+                      </span>
+                    ) : (
+                      <span className="block text-[11px] text-muted-foreground">nothing short</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-3 py-2.5" />
               </tr>
             </tfoot>

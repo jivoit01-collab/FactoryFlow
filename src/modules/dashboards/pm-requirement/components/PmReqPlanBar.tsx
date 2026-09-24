@@ -78,7 +78,7 @@ export function PmReqPlanBar({
                   today" is only true while the plan is the current month. */}
               Issued to the floor {formatWindow(dateFrom ?? '', dateTo ?? '')}
               {plan.planned_qty
-                ? ` · plan ${formatQtyCompact(plan.planned_qty)} pcs across ${plan.item_count} SKUs`
+                ? ` · plan ${formatQtyCompact(plan.planned_qty)} units across ${plan.item_count} SKUs`
                 : ''}
             </span>
           </div>

@@ -98,7 +98,7 @@ export function PmReqNotes({ meta, coverage, unplanned }: PmReqNotesProps) {
         <Note tone="info">
           {unplanned.item_count} packing-material {unplanned.item_count === 1 ? 'item' : 'items'}{' '}
           went into {meta.issue_warehouses.join(', ') || 'the floor'} this period —{' '}
-          {formatQtyCompact(unplanned.qty)} pieces — that this plan&rsquo;s bills of material do not
+          {formatQtyCompact(unplanned.qty)} units — that this plan&rsquo;s bills of material do not
           call for. Those are not rows below, because the table answers what the plan needs. It
           usually means production the plan does not describe, or a recipe that is out of date.
         </Note>
