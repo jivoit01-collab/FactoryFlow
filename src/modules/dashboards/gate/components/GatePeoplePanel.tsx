@@ -69,7 +69,7 @@ export function GatePeoplePanel({
   // Send each viewer to the one they can actually open — a row that lands on an
   // access-denied screen is worse than a row that does nothing.
   const labourRoute = hasPermission(GATE_PERMISSIONS.LABOUR_GATE.ALLOCATE)
-    ? '/labour'
+    ? '/organization/allocate-labour'
     : '/gate/labour-in';
 
   return (

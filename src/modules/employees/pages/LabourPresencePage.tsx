@@ -385,7 +385,7 @@ export default function LabourPresencePage() {
           <p className="text-sm text-muted-foreground">
             The plant&apos;s own labourers on the rolls, and how many of them were present each
             shift. Contractor labour is counted separately, on the{' '}
-            <Link to="/labour" className="underline underline-offset-2">
+            <Link to="/organization/allocate-labour" className="underline underline-offset-2">
               Allocate labour
             </Link>{' '}
             screen.

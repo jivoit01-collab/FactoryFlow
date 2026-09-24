@@ -8,7 +8,7 @@
  *                                   (`org_chart.*`)
  *   /organization/request-labour  — what each department needs on the next day's
  *                                   shifts (`labour_request.*`)
- *   /labour                       — Allocate labour: splitting the labour that
+ *   /organization/allocate-labour — Allocate labour: splitting the labour that
  *                                   actually came through the gate across those
  *                                   departments (`labour_gate.*`)
  *
@@ -16,9 +16,8 @@
  * them without the others.
  *
  * Allocate labour was a top-level module of its own until it was folded in here,
- * next to the request it answers. Only the sidebar moved — the page keeps its
- * `/labour` URL, so bookmarks, the gate board's people panel and the permanent
- * labour page's cross-link all still land on it.
+ * next to the request it answers. Its URL followed it under `/organization/`;
+ * the old `/labour` URL still redirects there, so bookmarks keep working.
  *
  * The route lives here; the sidebar entry that reaches it lives in the
  * Organisation module (`employees/module.config.tsx`), which opens on this
@@ -27,6 +26,8 @@
  * people), and only the navigation joins them.
  */
 import { LABOUR_PERMISSIONS, LABOUR_REQUEST_ACCESS, ORG_CHART_ACCESS } from '@/config/permissions';
+import { Navigate } from 'react-router-dom';
+
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
@@ -64,11 +65,18 @@ export const organizationModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Request labour' },
     },
     {
-      path: '/labour',
+      path: '/organization/allocate-labour',
       element: <AllocateLabourPage />,
       layout: 'main',
       permissions: ALLOCATE_LABOUR_ACCESS,
       breadcrumb: { label: 'Allocate labour' },
+    },
+    // The page's old top-level URL, kept so bookmarks still land on it.
+    {
+      path: '/labour',
+      element: <Navigate to="/organization/allocate-labour" replace />,
+      layout: 'main',
+      permissions: ALLOCATE_LABOUR_ACCESS,
     },
   ],
   // No sidebar entry of its own: the chart is what the Organisation module

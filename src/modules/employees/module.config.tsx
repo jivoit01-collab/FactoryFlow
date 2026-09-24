@@ -4,10 +4,10 @@
  * The sidebar calls it "Organisation" and it opens on the department ownership
  * chart at `/organization`, which is registered by its own module, alongside
  * Request Labour (`/organization/request-labour`) -- what each department needs
- * on the next day's shifts -- and Allocate Labour (`/labour`) -- how the labour
- * that turned up is split across those departments. Allocate Labour used to be
- * a top-level module of its own; only its sidebar entry moved, so its URL is
- * unchanged. Everything below those three is the employee screens,
+ * on the next day's shifts -- and Allocate Labour
+ * (`/organization/allocate-labour`) -- how the labour that turned up is split
+ * across those departments. Allocate Labour used to be a top-level module at
+ * `/labour`, which now redirects there. Everything below those three is the employee screens,
  * which keep their `/employees/*` paths. The name is the only thing shared —
  * nothing was moved, so a bookmark, a deep link or a printed URL still lands
  * where it did.
@@ -157,7 +157,7 @@ export const employeesModuleConfig: ModuleConfig = {
           permissions: LABOUR_REQUEST_ACCESS,
         },
         {
-          path: '/labour',
+          path: '/organization/allocate-labour',
           title: 'Allocate labour',
           icon: Split,
           permissions: ALLOCATE_LABOUR_ACCESS,

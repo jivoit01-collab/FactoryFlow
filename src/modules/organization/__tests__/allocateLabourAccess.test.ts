@@ -30,7 +30,7 @@ const organisationNav = employeesModuleConfig.navigation?.find(
   (item) => item.path === '/organization',
 );
 const children: ModuleNavItem[] = organisationNav?.children ?? [];
-const allocateChild = children.find((child) => child.path === '/labour');
+const allocateChild = children.find((child) => child.path === '/organization/allocate-labour');
 
 describe('Allocate labour — access is unchanged by the move', () => {
   it('gates on the same two permissions the old Labour module did', () => {
@@ -41,7 +41,15 @@ describe('Allocate labour — access is unchanged by the move', () => {
     ]);
   });
 
-  it('keeps the /labour route, still gated on those two', () => {
+  it('serves the page at /organization/allocate-labour, still gated on those two', () => {
+    const route = organizationModuleConfig.routes?.find(
+      (r) => r.path === '/organization/allocate-labour',
+    );
+    expect(route).toBeDefined();
+    expect([...(route?.permissions ?? [])]).toEqual(OLD_LABOUR_MODULE_PERMISSIONS);
+  });
+
+  it('still answers the old /labour URL, so bookmarks keep working', () => {
     const route = organizationModuleConfig.routes?.find((r) => r.path === '/labour');
     expect(route).toBeDefined();
     expect([...(route?.permissions ?? [])]).toEqual(OLD_LABOUR_MODULE_PERMISSIONS);
