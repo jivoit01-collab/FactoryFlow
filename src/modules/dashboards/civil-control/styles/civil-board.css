@@ -25,11 +25,11 @@
    A project nobody has costed and a project costing nothing are different
    problems and this board must not draw them alike.
 
-   THE SAMPLE MARKING IS PART OF THE DESIGN. `.civ-pill[data-state='sample']`
-   and `.civ-sample` exist because this board has no feed yet and draws four
-   invented projects. They are amber-on-grey rather than decorative: a capex
-   figure a manager cannot tell from a real one is the one failure here that
-   matters. Both disappear on their own the day the register is wired up.
+   THE PILL HAS THREE STATES, NOT TWO. Green while the construction register is
+   answering, amber while it is being read, red when it could not be reached.
+   An unreachable register draws exactly the same empty table as a campus with
+   nothing being built, and `.civ-pill[data-state='error']` is the only thing
+   on the screen that tells those two apart.
    ══════════════════════════════════════════════════════════════ */
 
 .civil-board {
@@ -114,13 +114,25 @@
   border-radius: 50%;
   background: #10b981;
 }
-.civ-pill[data-state='sample'] {
+/* Reading. Amber, because a figure on screen during a read is the figure from
+   the last one — true a moment ago rather than true now. */
+.civ-pill[data-state='loading'] {
   background: rgba(245, 158, 11, 0.16);
   box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.36);
   color: #b45309;
 }
-.civ-pill[data-state='sample'] i {
+.civ-pill[data-state='loading'] i {
   background: #f59e0b;
+}
+/* The register could not be reached. Red and unmissable: everything below it
+   is either empty or stale, and neither says so by itself. */
+.civ-pill[data-state='error'] {
+  background: rgba(220, 38, 38, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.38);
+  color: #b91c1c;
+}
+.civ-pill[data-state='error'] i {
+  background: #dc2626;
 }
 
 /* ───────── the sample notice ───────── */
@@ -144,6 +156,35 @@
 .civ-notice b {
   font-weight: 700;
   color: #78350f;
+}
+/*
+ * The register did not answer.
+ *
+ * Red rather than amber, and it carries its own retry: an amber strip reads as
+ * a caveat about the figures below, and there are no figures below.
+ */
+.civ-notice[data-tone='bad'] {
+  background: rgba(220, 38, 38, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.3);
+  color: #991b1b;
+}
+.civ-notice[data-tone='bad'] b {
+  color: #7f1d1d;
+}
+.civ-notice button {
+  margin-left: calc(0.6 * var(--u));
+  padding: calc(0.18 * var(--u)) calc(0.7 * var(--u));
+  border: 0;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(220, 38, 38, 0.34);
+  font: inherit;
+  font-weight: 700;
+  color: #991b1b;
+  cursor: pointer;
+}
+.civ-notice button:hover {
+  background: rgba(220, 38, 38, 0.24);
 }
 
 /* ───────── the sheet ───────── */
@@ -300,15 +341,21 @@
   line-height: 1.15;
   color: var(--ink);
 }
-.civ-sample {
+/*
+ * The register's code for the job — PRJ-2026-004.
+ *
+ * Grey and quiet, where the sample marking that used to sit here was amber: a
+ * code is an identifier, not a warning, and a row that shouted it would read
+ * as a row with something wrong with it.
+ */
+.civ-code {
   text-decoration: none;
   font-size: calc(0.82 * var(--u));
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.32);
+  letter-spacing: 0.04em;
+  color: var(--ink3, #64748b);
+  background: rgba(100, 116, 139, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(100, 116, 139, 0.22);
   padding: 0 calc(0.34 * var(--u));
   border-radius: calc(0.35 * var(--u));
 }

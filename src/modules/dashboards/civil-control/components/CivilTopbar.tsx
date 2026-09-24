@@ -1,22 +1,35 @@
 import { useEffect, useState } from 'react';
 
+import type { CivilBoardState } from '../types';
+
 export interface CivilTopbarProps {
   title: string;
   scope: string;
   chips: { label: string; value: string }[];
   totals: { caption: string; value: string; sub: string; missing?: boolean }[];
   /**
-   * The rows are the worked example rather than the register.
+   * Whether the register answered.
    *
-   * Drives the pill, which is the whole reason this component exists instead of
-   * `OpsTopbar`: that one's pill says LIVE or SYNCING, and both are claims
-   * about a feed. This board has none, and a green LIVE over four invented
-   * capex figures is the single worst thing this screen could say.
+   * Drives the pill, which is the whole reason this component exists instead
+   * of `OpsTopbar`: that one's pill says LIVE or SYNCING, and neither can say
+   * that the feed failed. On this board that distinction carries the most
+   * weight of anything in the header — a campus with nothing being built and a
+   * register nobody can reach both draw an empty table, and this pill is the
+   * only thing that tells a manager which of the two they are looking at.
    */
-  sample?: boolean;
+  state?: CivilBoardState;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
 }
+
+/** What the pill says in each state. `NO FEED` rather than `ERROR`, because
+ *  what the reader needs to know is that the board is not reporting, not that
+ *  something threw. */
+const PILL_WORD: Record<CivilBoardState, string> = {
+  loading: 'READING',
+  live: 'LIVE',
+  error: 'NO FEED',
+};
 
 /** Corner brackets, sized against `--u` like everything else on the board. */
 function FullscreenIcon({ exit }: { exit: boolean }) {
@@ -47,8 +60,8 @@ function FullscreenIcon({ exit }: { exit: boolean }) {
  * Every class here is the shared `ops-*` vocabulary untouched, so this sits in
  * the same room as the other boards and is read the same way. The one
  * difference is the state pill: `.civ-pill` in place of `.ops-pill-live`,
- * because this board has no feed to be live or stale about and must say which
- * of the two it is not.
+ * which has three states rather than two because this board can be reading,
+ * reporting, or unable to reach the register at all.
  *
  * The clock is kept even though nothing behind it refreshes. It is the one
  * thing on any of these screens that moves without the data changing, which is
@@ -60,7 +73,7 @@ export function CivilTopbar({
   scope,
   chips,
   totals,
-  sample = false,
+  state = 'loading',
   isFullscreen = false,
   onToggleFullscreen,
 }: CivilTopbarProps) {
@@ -73,9 +86,9 @@ export function CivilTopbar({
 
   return (
     <header className="ops-topbar civ-topbar">
-      <div className="civ-pill" data-state={sample ? 'sample' : 'live'}>
+      <div className="civ-pill" data-state={state}>
         <i />
-        {sample ? 'SAMPLE' : 'LIVE'}
+        {PILL_WORD[state]}
       </div>
 
       <div className="ops-title">

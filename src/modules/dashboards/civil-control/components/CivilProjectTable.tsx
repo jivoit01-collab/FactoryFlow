@@ -16,8 +16,14 @@ import { CivilRing } from './CivilRing';
 
 export interface CivilProjectTableProps {
   projects: CivilProject[];
-  /** Every row is a worked example. Marked on the row, not only in the header. */
-  sample?: boolean;
+  /**
+   * The register has not answered yet.
+   *
+   * Changes nothing but the empty row, and that one line is the point: with no
+   * rows and no flag, "no project is on the board" is what a board still
+   * waiting for its first read would say about a campus it has not seen.
+   */
+  loading?: boolean;
   /** Fixed, so two renders a second apart cannot disagree about "today". */
   today?: Date;
 }
@@ -46,7 +52,7 @@ export interface CivilProjectTableProps {
  * bill and none of the building — so the two columns are read from the register
  * separately and never fall back to each other.
  */
-export function CivilProjectTable({ projects, sample = false, today }: CivilProjectTableProps) {
+export function CivilProjectTable({ projects, loading = false, today }: CivilProjectTableProps) {
   const now = today ?? new Date();
 
   return (
@@ -72,20 +78,15 @@ export function CivilProjectTable({ projects, sample = false, today }: CivilProj
         </thead>
         <tbody>
           {projects.map((project, index) => (
-            <ProjectRow
-              key={project.id}
-              project={project}
-              serial={index + 1}
-              sample={sample}
-              now={now}
-            />
+            <ProjectRow key={project.id} project={project} serial={index + 1} now={now} />
           ))}
 
           {projects.length === 0 && (
             <tr className="civ-empty">
               <td colSpan={6}>
-                No project is on the board. Nothing is shown rather than a row
-                standing in for one.
+                {loading
+                  ? 'Reading the construction register…'
+                  : 'No project is on the board. Nothing is shown rather than a row standing in for one.'}
               </td>
             </tr>
           )}
@@ -98,12 +99,10 @@ export function CivilProjectTable({ projects, sample = false, today }: CivilProj
 function ProjectRow({
   project,
   serial,
-  sample,
   now,
 }: {
   project: CivilProject;
   serial: number;
-  sample: boolean;
   now: Date;
 }) {
   const { money: cost, schedule } = project;
@@ -133,19 +132,32 @@ function ProjectRow({
       : null;
 
   return (
-    <tr data-sample={sample ? '1' : undefined}>
+    <tr>
       <td className="civ-no">{serial}</td>
 
       <td className="civ-name">
         <b>
           {project.name}
-          {sample && <u className="civ-sample">sample</u>}
+          {/* The register's own code for the job. It sits beside the name
+              rather than in the first column because the serial there is a
+              position on this board and changes as projects finish, while
+              PRJ-2026-004 is what a site office quotes down the phone. */}
+          {project.code && <u className="civ-code">{project.code}</u>}
         </b>
         <span className={`ops-tag civ-stage ${project.stage === 'on-hold' ? 'ops-t-nil' : 'ops-t-neut'}`}>
           {CIVIL_STAGE_LABEL[project.stage]}
         </span>
+        {/* Where it is, and who answers for it. The register records a manager
+            and does NOT record a contractor, so the second half names the
+            manager and the missing contractor is reported as unrecorded — not
+            as "not awarded", which would claim a tender state that nobody has
+            entered anywhere. */}
         <small>
-          {[project.location, project.contractor ?? 'contractor not awarded']
+          {[
+            project.location,
+            project.manager,
+            project.contractor ?? 'contractor not recorded',
+          ]
             .filter(Boolean)
             .join(' · ')}
         </small>
@@ -157,13 +169,14 @@ function ProjectRow({
 
       <td className="civ-area">
         <b>{sqft(project.area_sqft)}</b>
-        {/* The plot as the site office writes it. Kept beside the area because
-            "will it fit against the boundary" is the question the total area
-            cannot answer. */}
+        {/* The plot as the site office writes it, in feet whatever unit the
+            project was filed in. Kept beside the area because "will it fit
+            against the boundary" is the question the total area cannot
+            answer. */}
         <small>
           {project.plot
             ? `${project.plot.length_ft.toLocaleString('en-IN')} × ${project.plot.width_ft.toLocaleString('en-IN')} ft`
-            : 'no approved drawing'}
+            : 'no dimensions filed'}
         </small>
       </td>
 

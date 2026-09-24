@@ -16,9 +16,12 @@ const TODAY = new Date('2026-09-21T09:00:00');
 function project(over: Partial<CivilProject> = {}): CivilProject {
   return {
     id: 'p1',
+    code: 'PRJ-2026-004',
     name: 'New Warehouse',
     location: 'North yard',
-    contractor: 'Awarded',
+    manager: 'R. Sharma',
+    // The register has no contractor field; every row it feeds has this null.
+    contractor: null,
     stage: 'structure',
     area_sqft: 40_500,
     plot: { length_ft: 300, width_ft: 135 },
@@ -68,12 +71,23 @@ describe('CivilProjectTable — a figure with no source is a rule, never a zero'
     expect(row('New Warehouse').querySelector('.civ-ring[data-nil]')).not.toBeNull();
   });
 
-  it('names the missing drawing instead of printing a nil area', () => {
+  it('names the missing dimensions instead of printing a nil area', () => {
     render(
       <CivilProjectTable projects={[project({ area_sqft: null, plot: null })]} today={TODAY} />,
     );
 
-    expect(within(row('New Warehouse')).getByText('no approved drawing')).toBeInTheDocument();
+    expect(within(row('New Warehouse')).getByText('no dimensions filed')).toBeInTheDocument();
+  });
+
+  it('reports an unrecorded contractor as unrecorded, not as unawarded', () => {
+    render(<CivilProjectTable projects={[project()]} today={TODAY} />);
+
+    // "not awarded" would claim a tender state. The register has no contractor
+    // column at all, so the only true statement is that nothing records one —
+    // and the manager it DOES record is named beside it.
+    const cells = within(row('New Warehouse'));
+    expect(cells.getByText(/contractor not recorded/)).toBeInTheDocument();
+    expect(cells.getByText(/R\. Sharma/)).toBeInTheDocument();
   });
 });
 
@@ -110,14 +124,13 @@ describe('CivilProjectTable — slippage is work against time, not against money
   });
 });
 
-describe('CivilProjectTable — the register it is not', () => {
-  it('marks every sample row, not only the board header', () => {
-    render(<CivilProjectTable projects={[project()]} sample today={TODAY} />);
+describe('CivilProjectTable — the register, and what it has not said yet', () => {
+  it('prints the register code beside the name, not the board position', () => {
+    render(<CivilProjectTable projects={[project()]} today={TODAY} />);
 
-    // A screenshot of one row is how a figure from this board reaches somebody
-    // who never saw the notice at the top of it.
-    expect(within(row('New Warehouse')).getByText('sample')).toBeInTheDocument();
-    expect(row('New Warehouse').getAttribute('data-sample')).toBe('1');
+    // The serial in the first column is a position on this board and changes
+    // as projects finish. PRJ-2026-004 is what the site office quotes.
+    expect(within(row('New Warehouse')).getByText('PRJ-2026-004')).toBeInTheDocument();
   });
 
   it('keeps the original committed date where the programme has been re-based', () => {
@@ -139,5 +152,14 @@ describe('CivilProjectTable — the register it is not', () => {
     render(<CivilProjectTable projects={[]} today={TODAY} />);
 
     expect(screen.getByText(/No project is on the board/)).toBeInTheDocument();
+  });
+
+  it('says it is still reading rather than that the campus is empty', () => {
+    render(<CivilProjectTable projects={[]} loading today={TODAY} />);
+
+    // Without this the first paint of the board states, as fact, that nothing
+    // is being built — about a register it has not read yet.
+    expect(screen.getByText(/Reading the construction register/)).toBeInTheDocument();
+    expect(screen.queryByText(/No project is on the board/)).toBeNull();
   });
 });
