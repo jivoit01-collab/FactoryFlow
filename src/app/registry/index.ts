@@ -76,12 +76,11 @@ export const moduleRegistry: ModuleConfig[] = [
   // The department ownership chart. Route only — its sidebar entry is the
   // Organisation module's, which opens on it.
   organizationModuleConfig,
-  // Attendance sits immediately above the directory: same people, read daily
-  // rather than looked up. Its permissions are separate from the directory's,
-  // so gate supervisors can see who turned up without seeing the org tree.
+  // Attendance and Leave: routes only. Their sidebar entries are listed under
+  // Organisation. Attendance's permissions are still separate from the
+  // directory's, so gate supervisors can see who turned up without seeing the
+  // org tree.
   attendanceModuleConfig,
-  // Next to Attendance: an approved leave becomes ON_LEAVE on that
-  // same daily sheet, and the two screens are read together.
   leaveModuleConfig,
   // Organisation: the ownership chart plus the people themselves — the
   // directory, the reporting tree and compensation, each with its own access

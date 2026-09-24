@@ -5,7 +5,14 @@
  * `[ALLOCATE, VIEW]`, and holding either one still has to reveal the
  * Organisation parent that the entry now hides behind.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Organisation's sidebar entry carries the pending-leave badge, which reaches
+// `@/core/auth`, whose store builds its reducers from the registry. Importing
+// the config on its own would evaluate that registry half-built.
+vi.mock('@/modules/leave/components/PendingLeaveBadge', () => ({
+  PendingLeaveBadge: () => null,
+}));
 
 import { LABOUR_PERMISSIONS } from '@/config/permissions';
 import type { ModuleNavItem } from '@/core/types';
@@ -48,12 +55,9 @@ describe('Allocate labour — access is unchanged by the move', () => {
   });
 
   it('reveals the Organisation parent to somebody who holds only a labour right', () => {
-    // The parent is the only way to the child, so either labour right on its
-    // own has to pass the parent's any-of check.
-    const parentPermissions = organisationNav?.permissions ?? [];
-    for (const permission of OLD_LABOUR_MODULE_PERMISSIONS) {
-      expect(parentPermissions).toContain(permission);
-    }
+    // The parent is the only way to the child. It is ungated (everyone may read
+    // the ownership chart), so a labour-only user always reaches it.
+    expect(organisationNav?.permissions ?? []).toHaveLength(0);
   });
 
   it('no longer registers a second, top-level /labour nav item', () => {

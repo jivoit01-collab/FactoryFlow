@@ -1,9 +1,9 @@
 /**
  * Leave module — apply, approve, and see who is out.
  *
- * Sits beside Attendance because that is where an approved leave lands: the
- * days become `ON_LEAVE` on the daily sheet, while the punch machine's own
- * reading stays beside them untouched.
+ * Listed under Organisation in the sidebar, beside Attendance, because that is
+ * where an approved leave lands: the days become `ON_LEAVE` on the daily sheet,
+ * while the punch machine's own reading stays beside them untouched.
  *
  * Gated on `LEAVE_ACCESS` rather than on a module prefix. Applying, viewing a
  * team and deciding are three separate grants for three different audiences —
@@ -15,8 +15,6 @@
  * server's answer (`can_decide` per request), because that depends on the
  * reporting tree. The route opens the page; the rows decide the buttons.
  */
-import { CalendarCheck2, CalendarDays, CalendarRange, Inbox, Settings } from 'lucide-react';
-
 import {
   LEAVE_ACCESS,
   LEAVE_DECIDE_ACCESS,
@@ -25,8 +23,6 @@ import {
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
-
-import { PendingLeaveBadge } from './components/PendingLeaveBadge';
 
 const MyLeavePage = lazy(() => import('./pages/MyLeavePage'));
 const LeaveApprovalsPage = lazy(() => import('./pages/LeaveApprovalsPage'));
@@ -68,44 +64,8 @@ export const leaveModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Settings' },
     },
   ],
-  navigation: [
-    {
-      path: '/leave',
-      title: 'Leave',
-      icon: CalendarCheck2,
-      showInSidebar: true,
-      hasSubmenu: true,
-      permissions: LEAVE_ACCESS,
-      badge: PendingLeaveBadge,
-      children: [
-        {
-          path: '/leave',
-          title: 'My leave',
-          icon: CalendarDays,
-          permissions: LEAVE_ACCESS,
-        },
-        {
-          // Only for people who can decide something. A supervisor who can see
-          // their team but not decide does not get an empty queue to stare at.
-          path: '/leave/approvals',
-          title: 'Approvals',
-          icon: Inbox,
-          permissions: LEAVE_DECIDE_ACCESS,
-          badge: PendingLeaveBadge,
-        },
-        {
-          path: '/leave/calendar',
-          title: 'Calendar',
-          icon: CalendarRange,
-          permissions: LEAVE_TEAM_ACCESS,
-        },
-        {
-          path: '/leave/settings',
-          title: 'Settings',
-          icon: Settings,
-          permissions: LEAVE_MANAGE_ACCESS,
-        },
-      ],
-    },
-  ],
+  // No sidebar entry of its own: all four pages are listed under Organisation
+  // (`employees/module.config.tsx`), and the pending-leave badge went with
+  // them. Only the navigation moved; the routes above keep their `/leave` URLs.
+  navigation: [],
 };

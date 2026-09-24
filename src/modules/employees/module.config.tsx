@@ -12,6 +12,11 @@
  * nothing was moved, so a bookmark, a deep link or a printed URL still lands
  * where it did.
  *
+ * Attendance and Leave were top-level sidebar modules too, and were folded in
+ * the same way: they are about the same people, read day to day. Their routes
+ * are still registered by their own modules (`attendance/`, `leave/`) at
+ * `/attendance/*` and `/leave/*`; only the sidebar entries moved here.
+ *
  * Seven screens, gated on their own `employee_hierarchy.*` permissions rather
  * than on a module prefix, because the permissions here are not a ladder: the
  * directory, the structure masters, the reports and the salary screens are four
@@ -31,9 +36,14 @@
  */
 import {
   Building2,
+  CalendarCheck,
+  CalendarCheck2,
+  CalendarRange,
   ClipboardList,
   HardHat,
+  Inbox,
   Network,
+  Settings,
   Split,
   Table2,
   Users,
@@ -41,15 +51,21 @@ import {
 } from 'lucide-react';
 
 import {
+  ATTENDANCE_ACCESS,
   EMPLOYEE_ACCESS,
   EMPLOYEE_REPORTS_ACCESS,
   EMPLOYEE_STRUCTURE_ACCESS,
   LABOUR_REQUEST_ACCESS,
+  LEAVE_ACCESS,
+  LEAVE_DECIDE_ACCESS,
+  LEAVE_MANAGE_ACCESS,
+  LEAVE_TEAM_ACCESS,
   ORG_CHART_ACCESS,
   SALARY_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
+import { PendingLeaveBadge } from '@/modules/leave/components/PendingLeaveBadge';
 import { ALLOCATE_LABOUR_ACCESS } from '@/modules/organization/module.config';
 
 const EmployeeDirectoryPage = lazy(() => import('./pages/EmployeeDirectoryPage'));
@@ -59,19 +75,6 @@ const OrgStructurePage = lazy(() => import('./pages/OrgStructurePage'));
 const WorkforceReportsPage = lazy(() => import('./pages/WorkforceReportsPage'));
 const CompensationReviewPage = lazy(() => import('./pages/CompensationReviewPage'));
 const LabourPresencePage = lazy(() => import('./pages/LabourPresencePage'));
-
-/**
- * Anything that should reveal the Organisation module in the sidebar: the
- * ownership chart or any of the employee screens. The parent item is a link as
- * well as a header, so it has to be visible to somebody who holds only one
- * side of that.
- */
-const ORGANISATION_ACCESS: readonly string[] = [
-  ...ORG_CHART_ACCESS,
-  ...EMPLOYEE_ACCESS,
-  ...LABOUR_REQUEST_ACCESS,
-  ...ALLOCATE_LABOUR_ACCESS,
-];
 
 export const employeesModuleConfig: ModuleConfig = {
   name: 'employees',
@@ -132,7 +135,14 @@ export const employeesModuleConfig: ModuleConfig = {
       icon: Network,
       showInSidebar: true,
       hasSubmenu: true,
-      permissions: ORGANISATION_ACCESS,
+      // No permissions: every signed-in user may read the ownership chart this
+      // header opens on, so every user sees Organisation. The children below
+      // are still filtered one by one, so a user without other rights sees the
+      // chart alone.
+      // The pending-leave count used to sit on the Leave header. It is carried
+      // up here so an approver still sees it with the sidebar collapsed, when
+      // only the Organisation icon shows.
+      badge: PendingLeaveBadge,
       children: [
         {
           path: '/organization',
@@ -175,6 +185,48 @@ export const employeesModuleConfig: ModuleConfig = {
           title: 'Permanent labour',
           icon: HardHat,
           permissions: EMPLOYEE_ACCESS,
+        },
+        // Attendance's two screens read the same rows, so they share
+        // ATTENDANCE_ACCESS. The register cannot show anything the daily sheet
+        // would have hidden.
+        {
+          path: '/attendance',
+          title: 'Attendance',
+          icon: CalendarCheck,
+          permissions: ATTENDANCE_ACCESS,
+        },
+        {
+          path: '/attendance/register',
+          title: 'Attendance register',
+          icon: Table2,
+          permissions: ATTENDANCE_ACCESS,
+        },
+        {
+          path: '/leave',
+          title: 'My leave',
+          icon: CalendarCheck2,
+          permissions: LEAVE_ACCESS,
+        },
+        {
+          // Only for people who can decide something. A supervisor who can see
+          // their team but not decide does not get an empty queue to stare at.
+          path: '/leave/approvals',
+          title: 'Leave approvals',
+          icon: Inbox,
+          permissions: LEAVE_DECIDE_ACCESS,
+          badge: PendingLeaveBadge,
+        },
+        {
+          path: '/leave/calendar',
+          title: 'Leave calendar',
+          icon: CalendarRange,
+          permissions: LEAVE_TEAM_ACCESS,
+        },
+        {
+          path: '/leave/settings',
+          title: 'Leave settings',
+          icon: Settings,
+          permissions: LEAVE_MANAGE_ACCESS,
         },
         {
           path: '/employees/compensation',

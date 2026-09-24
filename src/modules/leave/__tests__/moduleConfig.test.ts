@@ -42,10 +42,10 @@ describe('leave module config', () => {
     expect(route?.permissions).not.toContain(LEAVE_PERMISSIONS.DECIDE);
   });
 
-  it('puts the pending badge on the approvals item', () => {
-    const group = leaveModuleConfig.navigation?.[0];
-    const approvals = group?.children?.find((c) => c.path === '/leave/approvals');
-    expect(approvals?.badge).toBeDefined();
+  it('has no sidebar entry of its own -- it is listed under Organisation', () => {
+    // The badge and the per-child gating are checked where the entries now
+    // live: `employees/__tests__/attendanceLeaveNav.test.ts`.
+    expect(leaveModuleConfig.navigation ?? []).toHaveLength(0);
   });
 
   it('gates the approvals route on a decide grant, not on module access', () => {
@@ -62,18 +62,6 @@ describe('leave module config', () => {
   it('lets anyone in the module reach their own leave', () => {
     const route = leaveModuleConfig.routes.find((r) => r.path === '/leave');
     expect(route?.permissions).toEqual(LEAVE_ACCESS);
-  });
-
-  it('every sidebar child is gated at least as narrowly as its route', () => {
-    const group = leaveModuleConfig.navigation?.[0];
-    expect(group?.permissions).toEqual(LEAVE_ACCESS);
-
-    const byPath = new Map(
-      leaveModuleConfig.routes.map((route) => [route.path, route.permissions]),
-    );
-    for (const child of group?.children ?? []) {
-      expect(child.permissions).toEqual(byPath.get(child.path));
-    }
   });
 
   it('applying and deciding never collapse into one grant', () => {

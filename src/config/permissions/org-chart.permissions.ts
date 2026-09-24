@@ -15,10 +15,16 @@ export const ORG_CHART_PERMISSIONS = {
 
 export const ORG_CHART_MODULE_PREFIX = 'org_chart';
 
-/** Anything that should reveal the chart page. */
-export const ORG_CHART_ACCESS: readonly string[] = [
-  ORG_CHART_PERMISSIONS.VIEW,
-  ORG_CHART_PERMISSIONS.MANAGE,
-];
+/**
+ * What it takes to open the chart page: nothing beyond being signed in. Every
+ * user may read the chart, and the backend's read check is open the same way.
+ * Editing is still `can_manage_org_chart`, which the page learns from the API's
+ * `can_manage` flag rather than from this list.
+ *
+ * An empty list passes both the route guard and the sidebar filter.
+ * `VIEW` is still defined because the Django groups still carry it, but it
+ * no longer decides anything.
+ */
+export const ORG_CHART_ACCESS: readonly string[] = [];
 
 export type OrgChartPermission = (typeof ORG_CHART_PERMISSIONS)[keyof typeof ORG_CHART_PERMISSIONS];
