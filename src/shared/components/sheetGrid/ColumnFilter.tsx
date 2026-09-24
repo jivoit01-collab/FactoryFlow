@@ -51,6 +51,8 @@ export function ColumnFilter({
   onOpen,
   align = 'left',
   sortable = true,
+  truncated = false,
+  total,
 }: {
   label: string;
   columnKey: string;
@@ -65,6 +67,18 @@ export function ColumnFilter({
   onOpen?: () => void;
   align?: 'left' | 'right';
   sortable?: boolean;
+  /**
+   * True when the column holds more distinct values than `values` carries.
+   *
+   * A list that quietly stops at its cap is the one thing worse than no
+   * filter: you tick what you can see, and the rows behind the values it left
+   * out vanish without saying why. Said in the footer instead, with how many
+   * there really are, so an invoice-number column reads as a list that has
+   * been cut rather than as the whole of it.
+   */
+  truncated?: boolean;
+  /** How many distinct values the column really holds. */
+  total?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -218,7 +232,11 @@ export function ColumnFilter({
 
             <div className="flex items-center justify-between border-t p-2">
               <span className="text-xs text-muted-foreground">
-                {filtered ? `${selected.length} picked` : 'Showing all'}
+                {truncated
+                  ? `First ${values.length} of ${total ?? values.length}`
+                  : filtered
+                    ? `${selected.length} picked`
+                    : 'Showing all'}
               </span>
               <Button
                 variant="ghost"

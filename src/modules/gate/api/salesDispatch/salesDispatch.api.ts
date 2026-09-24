@@ -487,6 +487,32 @@ export interface SalesDispatchListParams {
   /** 1 = include the heavy per-line `items`/`documents` arrays (export only). The
    *  board load omits them for speed. */
   detail?: number;
+  /** `vehicle` / `-vehicle`. The board is paged, so the server sorts it. */
+  sort?: string;
+  /** One entry per column funnel that is filtering. Empty means it is not. */
+  filters?: DockingColumnFilters;
+}
+
+/**
+ * The docking board's column funnels, keyed by column name.
+ *
+ * An empty or missing list means that column is not filtering — nothing ticked
+ * is "show everything", not "show nothing".
+ */
+export type DockingColumnFilters = Record<string, string[]>;
+
+export interface DockingColumnValue {
+  value: string;
+  label: string;
+  count: number;
+}
+
+export interface DockingColumnValues {
+  column: string;
+  values: DockingColumnValue[];
+  /** True when the column holds more distinct values than the list can carry. */
+  truncated: boolean;
+  total: number;
 }
 
 /** Adds numbered-page pagination on top of the list filters. Passing `page`
@@ -688,16 +714,38 @@ export interface SalesDispatchAdditionalWeightsRequest {
   items: { name: string; weight: number }[];
 }
 
-function buildQuery(params?: Record<string, string | number | undefined>) {
+function buildQuery(params?: object) {
   const queryParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
+    // `filters` is the one nested param: it spreads into one `f_<column>` each
+    // rather than going up as an object (see `columnFilterParams`).
+    if (key === 'filters') {
+      Object.entries(columnFilterParams(value as DockingColumnFilters)).forEach(
+        ([name, joined]) => queryParams.append(name, joined),
+      );
+      return;
+    }
     if (value !== undefined && value !== '') {
       queryParams.append(key, String(value));
     }
   });
 
   return queryParams.toString();
+}
+
+/**
+ * Column funnels go up as `f_status=DOCKED|DISPATCHED`.
+ *
+ * A pipe rather than a comma: commas run all through a customer name and an
+ * item summary, and would split one value in half.
+ */
+function columnFilterParams(filters?: DockingColumnFilters) {
+  const out: Record<string, string> = {};
+  for (const [column, values] of Object.entries(filters ?? {})) {
+    if (values.length > 0) out[`f_${column}`] = values.join('|');
+  }
+  return out;
 }
 
 export const salesDispatchApi = {
@@ -735,6 +783,18 @@ export const salesDispatchApi = {
     const query = buildQuery({ page: 1, ...params });
     const response = await apiClient.get<SalesDispatchListPage>(
       `${API_ENDPOINTS.GATE_CORE.SALES_DISPATCHES}?${query}`,
+    );
+    return response.data;
+  },
+
+  /** What one column's funnel should offer, counted over the whole date range. */
+  async columnValues(
+    column: string,
+    params: SalesDispatchListParams,
+  ): Promise<DockingColumnValues> {
+    const query = buildQuery({ ...params, column });
+    const response = await apiClient.get<DockingColumnValues>(
+      `${API_ENDPOINTS.GATE_CORE.SALES_DISPATCH_COLUMN_VALUES}?${query}`,
     );
     return response.data;
   },

@@ -170,6 +170,7 @@ export const API_ENDPOINTS = {
     SALES_DISPATCH_LOCK: '/gate-core/sales-dispatch/lock/',
     SALES_DISPATCH_REPORTS: '/gate-core/sales-dispatch/reports/',
     SALES_DISPATCH_PENDING_BOOKINGS: '/gate-core/sales-dispatch/pending-bookings/',
+    SALES_DISPATCH_COLUMN_VALUES: '/gate-core/sales-dispatch/columns/',
     SALES_DISPATCHES: '/gate-core/sales-dispatch/',
     SALES_DISPATCH_BY_ID: (id: number) => `/gate-core/sales-dispatch/${id}/`,
     SALES_DISPATCH_BY_VEHICLE_ENTRY: (vehicleEntryId: number) =>

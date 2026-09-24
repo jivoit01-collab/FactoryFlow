@@ -14,7 +14,7 @@ import {
   Unlock,
   Warehouse,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
@@ -30,14 +30,17 @@ import {
   getPipelineStageRowClass,
 } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import {
+  type DockingColumnFilters,
   salesDispatchApi,
   type SalesDispatchDashboardEntry,
   type SalesDispatchDocument,
   type SalesDispatchGateOut,
   type SalesDispatchGateOutDocument,
+  type SalesDispatchListParams,
   type SalesDispatchLock,
   type SalesDispatchPendingBooking,
   useAddDocumentToDocking,
+  useSalesDispatchColumnValues,
   useSalesDispatchEntries,
   useSalesDispatchEntriesPaged,
   useSalesDispatchLock,
@@ -47,6 +50,11 @@ import {
 import { DateRangePicker, GateStatusBadge } from '@/modules/gate/components';
 import { promptDialog } from '@/shared/components';
 import { EmptyPanel, PageHeader, PageSection } from '@/shared/components/page';
+import {
+  ColumnFilter,
+  type SortState,
+  toSortParam,
+} from '@/shared/components/sheetGrid';
 import {
   Button,
   Dialog,
@@ -59,6 +67,11 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import {
+  DOCKING_COLUMNS,
+  labelColumnValues,
+  pendingBookingMatchesFilters,
+} from './dockingColumns';
 import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
 import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
 import {
@@ -77,6 +90,21 @@ const ACTIVE_SALES_DISPATCH_STATUSES = [
 ];
 const GATEPASS_PENDING_STATUSES = ['DOCKED', 'PHOTO_ATTACHED', 'READY_FOR_GATEPASS'];
 const DOCKING_PAGE_SIZE = 25;
+
+/** One shared empty object, so "not filtering" keeps a stable identity. */
+const EMPTY_FILTERS: DockingColumnFilters = {};
+
+/**
+ * The order a board opens in, before anybody has clicked a heading.
+ *
+ * Docking opens newest planned dispatch first, and says so with an arrow on
+ * that heading. The gate-out board opens with the trucks still waiting to go
+ * out at the top — which is not any one column's order, so it names none and
+ * sorts itself (`sortSalesDispatchOutEntries`) until a heading is clicked.
+ */
+function defaultSortFor(isGateOutMode: boolean): SortState | null {
+  return isGateOutMode ? null : { key: 'dispatch_date', direction: 'desc' };
+}
 
 type ExportCellValue = string | number;
 type ExportRow = Record<string, ExportCellValue>;
@@ -104,13 +132,51 @@ export default function SalesDispatchDashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
   const [dockingPage, setDockingPage] = useState(1);
+  // What the column headers are set to, and which board they were set on.
+  // The two boards are one component and one URL apart, so a funnel carried
+  // across would filter the other board by a value it has never heard of --
+  // they are dropped on the way over, the way the stat-card filter is.
+  //
+  // Both the ticks and the sort go to the server. The docking board is paged,
+  // so narrowing or reordering the twenty-five rows on a page would only
+  // shuffle those twenty-five; the gate-out board is not paged, but it reads
+  // the same endpoint and there is no second way of asking worth keeping.
+  const [columnState, setColumnState] = useState<{
+    isGateOutMode: boolean;
+    filters: DockingColumnFilters;
+    sort: SortState | null;
+  }>(() => ({ isGateOutMode, filters: {}, sort: defaultSortFor(isGateOutMode) }));
+  const columnStateIsCurrent = columnState.isGateOutMode === isGateOutMode;
+  const filters = columnStateIsCurrent ? columnState.filters : EMPTY_FILTERS;
+  const sort = columnStateIsCurrent ? columnState.sort : defaultSortFor(isGateOutMode);
+  const setFilters = useCallback(
+    (next: (current: DockingColumnFilters) => DockingColumnFilters) =>
+      setColumnState((current) => ({
+        isGateOutMode,
+        sort: current.isGateOutMode === isGateOutMode ? current.sort : defaultSortFor(isGateOutMode),
+        filters: next(current.isGateOutMode === isGateOutMode ? current.filters : EMPTY_FILTERS),
+      })),
+    [isGateOutMode],
+  );
+  const setSort = useCallback(
+    (next: SortState) =>
+      setColumnState((current) => ({
+        isGateOutMode,
+        sort: next,
+        filters: current.isGateOutMode === isGateOutMode ? current.filters : EMPTY_FILTERS,
+      })),
+    [isGateOutMode],
+  );
+  // Which funnel is open, so only that column's values are fetched -- ten
+  // filterable columns then cost nothing until one is actually used.
+  const [openColumn, setOpenColumn] = useState<string | null>(null);
   const [selectedFilterState, setSelectedFilterState] = useState<{
     isGateOutMode: boolean;
     filter: DashboardFilter;
   }>({ isGateOutMode, filter: 'ALL' });
   const selectedFilter =
     selectedFilterState.isGateOutMode === isGateOutMode ? selectedFilterState.filter : 'ALL';
-  const listParams = useMemo(
+  const listParams: SalesDispatchListParams = useMemo(
     () => ({
       from_date: dateRange.from,
       to_date: dateRange.to,
@@ -120,15 +186,78 @@ export default function SalesDispatchDashboardPage() {
       // docking / dispatch-out board always aggregates across the user's companies
       // regardless of the active Company-Code. Each row is tagged with its company.
       all_companies: 1,
+      filters,
+      // Only once a heading has been clicked: an unsorted request is what
+      // leaves the gate-out board its own "waiting to go out first" order.
+      ...(sort ? { sort: toSortParam(sort) } : {}),
     }),
-    [dateRange.from, dateRange.to, searchTerm, isGateOutMode],
+    [dateRange.from, dateRange.to, searchTerm, isGateOutMode, sort, filters],
   );
 
-  // A new search or date range restarts paging from the top -- otherwise you
-  // could land on page 5 of a result set that now has two pages.
+  // A new search, date range or funnel restarts paging from the top --
+  // otherwise you could land on page 5 of a result set that now has two pages.
   useEffect(() => {
     setDockingPage(1);
-  }, [searchTerm, dateRange.from, dateRange.to, isGateOutMode]);
+  }, [searchTerm, dateRange.from, dateRange.to, isGateOutMode, filters, sort]);
+
+  // Only the OPEN funnel fetches, and its own ticks are left out of that
+  // request: that is what lets a column still offer the values it is currently
+  // hiding, so a third can be added without first clearing the other two.
+  const columnValuesParams = useMemo(
+    // Without the sort: a value list is the same list whichever way the rows
+    // below it are pointing, and carrying it would refetch every column on
+    // every click of a heading.
+    () => ({
+      ...listParams,
+      sort: undefined,
+      filters: Object.fromEntries(
+        Object.entries(filters).filter(([key]) => key !== openColumn),
+      ),
+    }),
+    [listParams, filters, openColumn],
+  );
+  const { data: columnValues, isFetching: columnValuesFetching } =
+    useSalesDispatchColumnValues(openColumn ?? '', columnValuesParams, openColumn !== null);
+
+  const filteredColumns = useMemo(
+    () =>
+      DOCKING_COLUMNS.filter((column) => filters[column.key]?.length).map(
+        (column) => column.label,
+      ),
+    [filters],
+  );
+
+  /** Everything one column header needs, so the table below stays readable. */
+  const columnProps = useCallback(
+    (key: string, label: string) => ({
+      label,
+      columnKey: key,
+      // `null` while a board is in an order no column names, so no heading
+      // wears an arrow it did not earn.
+      sort: sort ?? undefined,
+      onSort: setSort,
+      selected: filters[key] ?? [],
+      // Unticking the last value drops the column rather than leaving an empty
+      // list behind it, so "filtered by nothing" and "not filtered" are the
+      // same state and ask the server the same question.
+      onSelect: (picked: string[]) =>
+        setFilters((current) => {
+          const rest = { ...current };
+          delete rest[key];
+          return picked.length > 0 ? { ...rest, [key]: picked } : rest;
+        }),
+      values:
+        openColumn === key ? labelColumnValues(key, columnValues?.values ?? []) : [],
+      isLoading: openColumn === key && columnValuesFetching,
+      // Items and SAP Document hold a near-unique value per row, so their
+      // lists run past the server's cap most days. Saying so beats a list that
+      // stops without a word.
+      truncated: openColumn === key && Boolean(columnValues?.truncated),
+      total: openColumn === key ? columnValues?.total : undefined,
+      onOpen: () => setOpenColumn(key),
+    }),
+    [sort, setSort, filters, setFilters, openColumn, columnValues, columnValuesFetching],
+  );
 
   // The gate-out board still loads the full set: its stat cards count across
   // every entry, so it can't be server-paginated. The docking board is.
@@ -179,13 +308,30 @@ export default function SalesDispatchDashboardPage() {
   };
 
   const displayEntries = useMemo(() => {
-    if (isGateOutMode) return entries.slice().sort(sortSalesDispatchOutEntries);
+    // The gate-out board arrives whole, so it keeps sorting itself — trucks
+    // waiting to go out at the top — right up until a heading is clicked, at
+    // which point the server's order is the answer and re-sorting it here
+    // would only undo what was asked for.
+    if (isGateOutMode) {
+      return sort ? entries.slice() : entries.slice().sort(sortSalesDispatchOutEntries);
+    }
 
-    // The not-yet-docked "pending" bookings ride along on the first page only;
-    // deeper pages are pure docked entries in the server's order.
-    const base = dockingCurrentPage === 1 ? [...pendingBookings, ...entries] : entries.slice();
-    return base.sort(sortDockingDashboardEntries);
-  }, [entries, isGateOutMode, pendingBookings, dockingCurrentPage]);
+    // The docked rows arrive already narrowed and ordered by the server, which
+    // is the only place that can see past this page -- so they are taken as
+    // they come rather than re-sorted here.
+    if (dockingCurrentPage !== 1) return entries.slice();
+
+    // The not-yet-docked "pending" bookings ride along on page one only, and
+    // they come from a different endpoint that the board's funnels never
+    // reach. Sieve them by the same ticks here, or a filtered board would
+    // leave rows standing that plainly do not match it. They lead the page
+    // because they are the trucks still waiting to be docked -- the work --
+    // and because the server's order has nothing to say about them.
+    const riders = pendingBookings
+      .filter((booking) => pendingBookingMatchesFilters(booking, filters))
+      .sort(sortDockingDashboardEntries);
+    return [...riders, ...entries];
+  }, [entries, isGateOutMode, pendingBookings, dockingCurrentPage, filters, sort]);
 
   // Docking shows every truck in the date range -- the worker just finds his
   // and clicks it. Only the gate-out board keeps its stat-card filters.
@@ -306,8 +452,15 @@ export default function SalesDispatchDashboardPage() {
         });
       } else {
         // Docking is server-paginated, so the on-screen rows are just one page.
-        // Export every matching row across all pages (plus the pending bookings).
-        entriesToExport = [...pendingBookings, ...detailed].sort(sortDockingDashboardEntries);
+        // Export every matching row across all pages -- the column funnels and
+        // the sort ride in `listParams`, so the server hands back exactly what
+        // is on screen, only all of it. The pending bookings are sieved here
+        // for the same reason they are on the board: they come from an
+        // endpoint the funnels never reach.
+        const riders = pendingBookings.filter((booking) =>
+          pendingBookingMatchesFilters(booking, filters),
+        );
+        entriesToExport = [...riders.sort(sortDockingDashboardEntries), ...detailed];
       }
       const exportedRows = exportSalesDispatchDashboard(entriesToExport, {
         dateRange,
@@ -434,15 +587,30 @@ export default function SalesDispatchDashboardPage() {
         title={isGateOutMode ? 'Sales Dispatch Out Entries' : 'Docking Entries'}
         icon={Truck}
         actions={
-          <div className="relative w-full sm:w-80">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search entry, document, customer, vehicle"
-              className="pl-9"
-              aria-label="Search docking entries"
-            />
+          <div className="flex w-full flex-wrap items-center justify-end gap-3">
+            {/* What the funnels are set to, said once. A column filtering
+                quietly behind a small icon is a board that looks wrong rather
+                than one that looks filtered. */}
+            {filteredColumns.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Filtered by {filteredColumns.join(', ')}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setFilters(() => ({}))}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : null}
+            <div className="relative w-full sm:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search entry, document, customer, vehicle"
+                className="pl-9"
+                aria-label="Search docking entries"
+              />
+            </div>
           </div>
         }
       >
@@ -461,9 +629,11 @@ export default function SalesDispatchDashboardPage() {
                 ? isGateOutMode
                   ? 'No sales dispatch out entries match this search'
                   : 'No docking entries match this search'
-                : isGateOutMode
-                  ? 'No sales dispatch out entries match this filter'
-                  : 'No docking entries match this filter'
+                : filteredColumns.length > 0
+                  ? `No entry matches the ${filteredColumns.join(', ')} filter`
+                  : isGateOutMode
+                    ? 'No sales dispatch out entries match this filter'
+                    : 'No docking entries match this filter'
             }
           />
         ) : (
@@ -477,6 +647,7 @@ export default function SalesDispatchDashboardPage() {
               isGateOutMode={isGateOutMode}
               onAddToDocking={handleAddToDocking}
               isAddingToDocking={addToDocking.isPending}
+              columnProps={columnProps}
             />
             {!isGateOutMode && (
               <DockingPager
@@ -503,6 +674,7 @@ function DispatchTable({
   isGateOutMode,
   onAddToDocking,
   isAddingToDocking,
+  columnProps,
 }: {
   entries: SalesDispatchDashboardEntry[];
   newEntryPath: string;
@@ -512,6 +684,12 @@ function DispatchTable({
   isGateOutMode: boolean;
   onAddToDocking?: (booking: SalesDispatchPendingBooking, docking: SalesDispatchGateOut) => void;
   isAddingToDocking?: boolean;
+  /**
+   * Turns every heading into a funnel and a sort, the way the Dispatch Sheet
+   * reads. Left out — as the gate-out board leaves it out — the headings are
+   * plain text and the board keeps its own order.
+   */
+  columnProps?: (key: string, label: string) => React.ComponentProps<typeof ColumnFilter>;
 }) {
   const navigate = useNavigate();
 
@@ -763,37 +941,23 @@ function DispatchTable({
             <col className="w-[280px]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80">
-            <tr>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Entry No.
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Company
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Vehicle
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Status
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                SAP Document
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Customer
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Items
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Dispatch Date
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Actual Gate Out
-              </th>
-              <th className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Gatepass
-              </th>
+            {/* With the funnels on, the heading row IS the filter bar: click a
+                heading to sort it, the funnel beside it to pick which of its
+                values to keep. Both are the server's -- see `DOCKING_COLUMNS`
+                on either side. */}
+            <tr className={columnProps ? 'text-[11px] font-semibold uppercase tracking-wide' : ''}>
+              {DOCKING_COLUMNS.map((column) =>
+                columnProps ? (
+                  <ColumnFilter key={column.key} {...columnProps(column.key, column.label)} />
+                ) : (
+                  <th
+                    key={column.key}
+                    className="whitespace-nowrap p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    {column.label}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>

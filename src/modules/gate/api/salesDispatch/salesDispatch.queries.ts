@@ -32,6 +32,8 @@ export const SALES_DISPATCH_QUERY_KEYS = {
     [...SALES_DISPATCH_QUERY_KEYS.all, 'list', params] as const,
   listPaged: (params?: SalesDispatchListPageParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'listPaged', params] as const,
+  columnValues: (column: string, params?: SalesDispatchListParams) =>
+    [...SALES_DISPATCH_QUERY_KEYS.all, 'columnValues', column, params] as const,
   pendingBookings: (params?: SalesDispatchPendingBookingParams) =>
     [...SALES_DISPATCH_QUERY_KEYS.all, 'pendingBookings', params] as const,
   expectedVehicles: (params?: SalesDispatchPendingBookingParams) =>
@@ -105,6 +107,27 @@ export function useSalesDispatchEntriesPaged(
     placeholderData: (previous) => previous,
     staleTime: 30 * 1000,
     enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * What one column's funnel should offer.
+ *
+ * Only the drop-down that is OPEN fetches, so ten filterable columns cost
+ * nothing until one is used. The column's own ticks are left out of the query
+ * by the caller, which is what lets a funnel still show the values it is
+ * currently hiding.
+ */
+export function useSalesDispatchColumnValues(
+  column: string,
+  params: SalesDispatchListParams,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: SALES_DISPATCH_QUERY_KEYS.columnValues(column, params),
+    queryFn: () => salesDispatchApi.columnValues(column, params),
+    staleTime: 30 * 1000,
+    enabled: enabled && Boolean(column),
   });
 }
 
