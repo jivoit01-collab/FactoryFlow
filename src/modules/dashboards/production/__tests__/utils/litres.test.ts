@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   formatLitres,
+  formatLitresCompact,
   formatLitresSigned,
   litresNote,
   litresOf,
@@ -38,6 +39,12 @@ describe('formatLitres', () => {
   it('spells litres out, so the suffix can never be read as the lakh "L"', () => {
     expect(formatLitres(330000)).toBe('3,30,000 ltr');
     expect(formatLitres(330000)).not.toMatch(/ L$/);
+  });
+
+  it('short-scales for a tile, still spelling litres out after the lakh "L"', () => {
+    expect(formatLitresCompact(129780)).toBe('1.3 L ltr');
+    expect(formatLitresCompact(2400)).toBe('2.4K ltr');
+    expect(formatLitresCompact(null)).toBe('—');
   });
 
   it('signs a surplus so it cannot be read as a shortfall', () => {

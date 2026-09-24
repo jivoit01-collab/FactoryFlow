@@ -6,7 +6,7 @@ import { useWallPalette } from '../../dispatch/constants/wall.palette';
 import { compact, count, deltaPct, money } from '../../dispatch/utils/format';
 import { reconTone } from '../constants/production-wall.constants';
 import type { ProductionBoard, ProductionDay } from '../hooks';
-import { formatLitres } from '../utils/litres';
+import { formatLitres, formatLitresCompact } from '../utils/litres';
 
 /**
  * The six numbers a plant head wants before they have finished sitting down:
@@ -77,13 +77,17 @@ export function ProductionWallKpis({
       <WallStat
         icon={Droplets}
         label="Volume produced"
-        value={litresKnown ? formatLitres(board.fg.litres.app) : '—'}
+        // Short-scaled, because the full figure overflows the tile; the exact
+        // litres go on the sub-line, which is kept short enough to fit too.
+        value={litresKnown ? formatLitresCompact(board.fg.litres.app) : '—'}
         sub={
           board.fg.isError
-            ? 'SAP unreachable — volume comes from the item master'
-            : board.fg.litres.unknown > 0
-              ? `${board.fg.litres.unknown} SKU${board.fg.litres.unknown === 1 ? '' : 's'} carry no SAP volume`
-              : 'SAP item master · litres per piece × pack'
+            ? 'SAP unreachable — no volume'
+            : !litresKnown
+              ? 'litres from the SAP item master'
+              : board.fg.litres.unknown > 0
+                ? `${formatLitres(board.fg.litres.app)} · ${board.fg.litres.unknown} SKU${board.fg.litres.unknown === 1 ? '' : 's'} excluded`
+                : `${formatLitres(board.fg.litres.app)} · SAP item master`
         }
         hex={palette.hue('litres')}
         delayMs={60}

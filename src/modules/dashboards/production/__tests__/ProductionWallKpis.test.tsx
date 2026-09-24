@@ -158,12 +158,24 @@ describe('ProductionWallKpis', () => {
     expect(screen.queryByText('₹0')).not.toBeInTheDocument();
   });
 
+  it('short-scales the volume so it fits the tile, and keeps every litre beneath', () => {
+    renderKpis(
+      board({
+        fg: recon({
+          rows: [{} as ReconSlice['rows'][number]],
+          litres: { perRow: [], app: 129_780, sap: 0, unknown: 0 },
+        }),
+      }),
+    );
+
+    expect(screen.getByText('1.3 L ltr')).toBeInTheDocument();
+    expect(screen.getByText('1,29,780 ltr · SAP item master')).toBeInTheDocument();
+  });
+
   it('refuses to state a volume or a SAP gap when SAP could not be read', () => {
     renderKpis(board({ fg: recon({ isError: true }), waste: recon({ isError: true }) }));
 
-    expect(
-      screen.getByText('SAP unreachable — volume comes from the item master'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('SAP unreachable — no volume')).toBeInTheDocument();
     expect(screen.getByText('SAP could not be reached for reconciliation')).toBeInTheDocument();
     expect(screen.getByText('SAP could not be reached for scrap')).toBeInTheDocument();
   });

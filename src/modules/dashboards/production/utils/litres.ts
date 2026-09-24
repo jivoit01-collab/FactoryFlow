@@ -21,6 +21,8 @@
  * reads as "—" instead of dragging a litre total down.
  */
 
+import { compact } from '../../dispatch/utils/format';
+
 /** Litres for a case quantity, given the SKU's litres per case from the API. */
 export function litresOf(
   cases: number | null | undefined,
@@ -40,6 +42,17 @@ export function formatLitres(value: number | null | undefined): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })} ltr`;
+}
+
+/**
+ * "1.3 L ltr" — short-scaled for a headline tile. Every digit of "1,29,780 ltr"
+ * does not fit a sixth of the wall and gets cut to "1,29,780 …", so the tile
+ * carries this and puts the exact figure on the line beneath it. The "L" is
+ * lakh, as it is everywhere else on the board.
+ */
+export function formatLitresCompact(value: number | null | undefined): string {
+  if (value == null) return '—';
+  return `${compact(value || 0)} ltr`;
 }
 
 /** Same, with an explicit "+" so a positive difference reads as a surplus. */
