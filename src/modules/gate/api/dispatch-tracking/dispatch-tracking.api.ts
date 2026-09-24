@@ -13,6 +13,19 @@ export type TruckDispatchStatus =
   | 'DELAYED'
   | 'CLOSED';
 
+/** A customer's delivery point on a dispatched truck, as the bills name it —
+ *  the same Location / State the Dispatch Sheet shows. */
+export interface DispatchTrackingCustomerLocation {
+  customer_name: string;
+  /** SAP ship-to name, e.g. "R K WORLDINFOCOM PVT LTD GURUGRAM". */
+  ship_to_code: string;
+  /** SAP's address block, lines separated by CR, ending in the country code. */
+  ship_to_address: string;
+  /** State code, e.g. "HR". */
+  place_of_supply: string;
+  documents: string[];
+}
+
 /** One dispatched truck (trip) on the tracking board. */
 export interface DispatchTrackingTruck {
   arrival: number;
@@ -31,6 +44,9 @@ export interface DispatchTrackingTruck {
   companies: string[];
   documents: string[];
   customers: string[];
+  /** Where the truck's goods are going — one entry per customer + ship-to,
+   *  with the bills bound there. */
+  customer_locations: DispatchTrackingCustomerLocation[];
   current_status: TruckDispatchStatus;
   current_status_display: string;
   last_update_at: string | null;

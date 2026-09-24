@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   ChevronRight,
+  Download,
   MapPin,
   Navigation,
   Package,
@@ -17,8 +18,10 @@ import { toast } from 'sonner';
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { downloadTrackingSheet } from '@/modules/dispatch/components/tracking/trackingExport';
 import {
   type CreateTruckDispatchUpdateRequest,
+  type DispatchTrackingCustomerLocation,
   type DispatchTrackingFilters,
   type DispatchTrackingTruck,
   type TruckDispatchStatus,
@@ -174,6 +177,25 @@ export default function DispatchTrackingPage() {
     if (lateTrucks.length === 0) alertedRef.current = false;
   }, [lateTrucks.length]);
 
+  // The download is what is on screen: this page of trucks, under these filters.
+  const handleExport = () => {
+    const totalPages = trucksPage?.total_pages ?? 1;
+    const total = trucksPage?.count ?? trucks.length;
+    downloadTrackingSheet({
+      trucks,
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+      page: trucksPage?.page ?? page,
+      totalPages,
+    });
+    const shown = `${trucks.length} truck${trucks.length === 1 ? '' : 's'}`;
+    toast.success(
+      total > trucks.length
+        ? `Exported the ${shown} on this page (of ${total}).`
+        : `Exported ${shown}.`,
+    );
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -191,6 +213,16 @@ export default function DispatchTrackingPage() {
         >
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={trucksQuery.isLoading || trucks.length === 0}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export Excel
         </Button>
       </PageHeader>
 
@@ -342,11 +374,79 @@ export default function DispatchTrackingPage() {
                 </SheetDescription>
               </SheetHeader>
 
+              {/* `?? []`: the board can deploy ahead of the backend that sends it,
+                  and a missing key must not take the sheet down. */}
+              <CustomerLocations locations={selected.customer_locations ?? []} />
+
               <TruckTrackingPanel arrivalId={selected.arrival} canUpdate={canUpdate} />
             </>
           ) : null}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+/** SAP's address block as display lines: CR-separated, closing on the country
+ *  code ("IN"), which is dropped — every customer here is in India. */
+function addressLines(address: string) {
+  const lines = address
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length > 1 && lines[lines.length - 1] === 'IN' ? lines.slice(0, -1) : lines;
+}
+
+/** Where the truck is delivering — each customer's ship-to address off its bills. */
+function CustomerLocations({ locations }: { locations: DispatchTrackingCustomerLocation[] }) {
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <MapPin className="h-4 w-4 text-muted-foreground" />
+        Customer location{locations.length === 1 ? '' : 's'}
+      </p>
+      {locations.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No customer address on this truck’s bills.</p>
+      ) : (
+        <ul className="divide-y">
+          {locations.map((location) => {
+            const lines = addressLines(location.ship_to_address);
+            return (
+              <li
+                key={`${location.customer_name}|${location.ship_to_code}|${location.ship_to_address}`}
+                className="space-y-0.5 py-2 text-sm first:pt-0 last:pb-0"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{location.customer_name || '—'}</span>
+                  {location.place_of_supply ? (
+                    <Badge variant="outline">{location.place_of_supply}</Badge>
+                  ) : null}
+                </div>
+                {location.ship_to_code && location.ship_to_code !== location.customer_name ? (
+                  <p className="text-xs text-muted-foreground">Ship to {location.ship_to_code}</p>
+                ) : null}
+                {lines.length ? (
+                  <address className="not-italic text-muted-foreground">
+                    {lines.map((line, index) => (
+                      <span key={`${index}-${line}`} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </address>
+                ) : (
+                  <p className="text-muted-foreground">No address on the bill.</p>
+                )}
+                {location.documents.length ? (
+                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Package className="h-3 w-3" />
+                    {location.documents.join(', ')}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
