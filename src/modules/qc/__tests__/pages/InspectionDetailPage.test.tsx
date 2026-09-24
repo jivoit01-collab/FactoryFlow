@@ -188,4 +188,13 @@ describe('InspectionDetailPage — Error Handling', () => {
     const content = readSource();
     expect(content).toContain('useScrollToError(apiErrors)');
   });
+
+  // A number box holding a range reads as empty, so without this the save says
+  // "result is required" about a box the chemist can see is filled.
+  it('flags a number box the browser could not read instead of calling it empty', () => {
+    const content = readSource();
+    expect(content.match(/e\.target\.validity\.badInput/g)).toHaveLength(2);
+    expect(content).toContain('if (result?.unreadable)');
+    expect(content).toContain('takes a single number');
+  });
 });

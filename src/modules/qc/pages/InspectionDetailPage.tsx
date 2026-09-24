@@ -146,11 +146,19 @@ export default function InspectionDetailPage() {
   const [qcAttachmentFiles, setQcAttachmentFiles] = useState<File[]>([]);
   const qcAttachmentInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Parameter results state
+  // Parameter results state. `unreadable` marks a number box holding text the
+  // browser can't parse (e.g. a range "36.76-37"): the box still shows it, but
+  // its value reads as empty, so the save has to say why instead of "required".
   const [parameterResults, setParameterResults] = useState<
     Record<
       number,
-      { result_value: string; result_numeric?: number; is_within_spec?: boolean; remarks: string }
+      {
+        result_value: string;
+        result_numeric?: number;
+        is_within_spec?: boolean;
+        remarks: string;
+        unreadable?: boolean;
+      }
     >
   >({});
 
@@ -410,7 +418,7 @@ export default function InspectionDetailPage() {
 
   const handleParameterChange = (
     parameterId: number,
-    field: 'result_value' | 'result_numeric' | 'is_within_spec' | 'remarks',
+    field: 'result_value' | 'result_numeric' | 'is_within_spec' | 'remarks' | 'unreadable',
     value: string | number | boolean,
   ) => {
     setParameterResults((prev) => ({
@@ -440,8 +448,10 @@ export default function InspectionDetailPage() {
     paramType: string,
     minValue?: number | string | null,
     maxValue?: number | string | null,
+    unreadable = false,
   ) => {
     handleParameterChange(parameterId, 'result_value', value);
+    handleParameterChange(parameterId, 'unreadable', unreadable);
 
     if (paramType === 'NUMERIC' || paramType === 'RANGE') {
       const numericVal = parseFloat(value);
@@ -544,10 +554,12 @@ export default function InspectionDetailPage() {
           : materialTypeMappingError || 'No linked material type found';
       }
       // Validate mandatory parameters have result values
-      const mandatoryParams = qcParameters.filter((p) => p.is_mandatory);
-      for (const param of mandatoryParams) {
+      for (const param of qcParameters) {
         const result = parameterResults[param.id];
-        if (!result?.result_value?.trim()) {
+        if (result?.unreadable) {
+          errors[`param_${param.id}`] =
+            `${param.parameter_name} takes a single number — put a range like 36.76-37 in Remarks`;
+        } else if (param.is_mandatory && !result?.result_value?.trim()) {
           errors[`param_${param.id}`] = `${param.parameter_name} result is required`;
         }
       }
@@ -1742,6 +1754,7 @@ export default function InspectionDetailPage() {
                                 paramType,
                                 minValue,
                                 maxValue,
+                                e.target.validity.badInput,
                               )
                             }
                             disabled={!canEdit || isSaving}
@@ -1854,6 +1867,7 @@ export default function InspectionDetailPage() {
                                   paramType,
                                   minValue,
                                   maxValue,
+                                  e.target.validity.badInput,
                                 )
                               }
                               disabled={!canEdit || isSaving}
