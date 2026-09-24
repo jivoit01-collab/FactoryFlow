@@ -45,6 +45,28 @@ export interface PmReqDriver {
 }
 
 /**
+ * One open purchase-order line behind a component's `PO` figure.
+ *
+ * `open_qty` is the part that still has to arrive, and it is what sums to
+ * `open_po_qty` on the row — `ordered_qty` does not, because a line 80%
+ * received is still open for the remaining fifth.
+ */
+export interface PmReqPoLine {
+  doc_entry: number;
+  /** What the buyer and the supplier both call the order. */
+  doc_num: number;
+  line_num: number;
+  card_code: string;
+  card_name: string;
+  doc_date: string | null;
+  /** SAP leaves this empty on plenty of open lines, which is itself a finding. */
+  due_date: string | null;
+  ordered_qty: number;
+  received_qty: number;
+  open_qty: number;
+}
+
+/**
  * One packing-material component the plan needs.
  *
  * The seven figures the buyer reads across, in order:
@@ -118,6 +140,13 @@ export interface PmReqRow {
 
   drivers: PmReqDriver[];
   driver_count: number;
+
+  /**
+   * The orders behind `open_po_qty`, soonest due first and capped — a row
+   * whose list is shorter than `po_lines` is showing the nearest few, not
+   * all of them.
+   */
+  po_details: PmReqPoLine[];
 }
 
 export interface PmReqTotals {

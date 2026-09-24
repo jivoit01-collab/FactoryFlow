@@ -150,7 +150,7 @@ export function PmReqTable({
                     key={row.item_code}
                     className="cursor-pointer border-b last:border-0 transition-colors hover:bg-muted/40"
                     onClick={() => onOpenRow(row)}
-                    title="Open to see which products drive this figure"
+                    title="Open to see the orders behind it and the products that drive it"
                   >
                     <td className="sticky left-0 z-10 whitespace-nowrap bg-card px-3 py-2 font-mono text-xs">
                       {row.item_code}
@@ -197,8 +197,8 @@ export function PmReqTable({
                           className="inline-flex items-center gap-1"
                           title={
                             row.po_earliest_due
-                              ? `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, earliest due ${formatDay(row.po_earliest_due, true)}`
-                              : `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, no due date`
+                              ? `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, earliest due ${formatDay(row.po_earliest_due, true)} — open the row for the orders`
+                              : `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, no due date — open the row for the orders`
                           }
                         >
                           {(row.po_overdue || row.po_due_after_plan) && (

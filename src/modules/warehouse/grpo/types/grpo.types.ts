@@ -900,7 +900,15 @@ export interface POPrintTotals {
 }
 
 export interface POPrintPayload {
-  po_receipt_id: number;
+  /**
+   * Which gate receipt asked for the sheet, when one did.
+   *
+   * Optional because the order is now also opened from the PM requirement
+   * board, where there is no receipt — nothing has arrived yet, that being
+   * the point. The sheet itself never reads it; it is a passenger the GRPO
+   * endpoint adds so its screens can tie the print back to a row.
+   */
+  po_receipt_id?: number;
   /** Which SAP company the order was raised in, for the per-company banner. */
   company_code: string;
   doc_entry: number;

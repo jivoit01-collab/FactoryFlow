@@ -21,6 +21,9 @@ export const PM_REQUIREMENT_QUERY_KEYS = {
 
   requirement: (absId: number | null | undefined, companyId?: number | string) =>
     [...PM_REQUIREMENT_QUERY_KEYS.all, 'requirement', companyId, absId ?? 'default'] as const,
+
+  purchaseOrder: (docEntry: number | null | undefined, companyId?: number | string) =>
+    [...PM_REQUIREMENT_QUERY_KEYS.all, 'purchase-order', companyId, docEntry ?? 'none'] as const,
 };
 
 /**
@@ -55,7 +58,32 @@ export function usePmRequirement(absId: number | null | undefined) {
     retry: sapRetry,
     // Changing plan is a different key. Keeping the previous answer on screen
     // while the new one loads means the table dims rather than empties, which
-    // matters on a 196-row table that takes six HANA reads to rebuild.
+    // matters on a 196-row table that takes seven HANA reads to rebuild.
     placeholderData: (previous) => previous,
+  });
+}
+
+/**
+ * One open order, read when somebody opens it and not before.
+ *
+ * `enabled` on the DocEntry, so the board does not fetch an order per row it
+ * happens to render — a component can have a dozen, and nobody opens more
+ * than one at a time.
+ *
+ * Deliberately NOT cached the way the board is. A purchase order can be
+ * amended or cancelled in SAP after this board counted it as cover, and the
+ * one moment somebody is looking at the sheet is the moment it has to be the
+ * live one. That is the same call `POPrintButton` makes for the same reason.
+ */
+export function usePmPurchaseOrder(docEntry: number | null | undefined) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: PM_REQUIREMENT_QUERY_KEYS.purchaseOrder(docEntry, currentCompany?.company_id),
+    queryFn: () => pmRequirementApi.getPurchaseOrder(docEntry as number),
+    enabled: !!docEntry,
+    staleTime: 0,
+    gcTime: 0,
+    retry: sapRetry,
   });
 }

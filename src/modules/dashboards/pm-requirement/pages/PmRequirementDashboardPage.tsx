@@ -44,7 +44,7 @@ function isMissingPlan(error: unknown): boolean {
  * hand in a spreadsheet, read live from SAP instead.
  *
  * Two requests. The plan list fills the picker and changes when a planner
- * authors a month; the requirement is six HANA reads and is re-read only when
+ * authors a month; the requirement is seven HANA reads and is re-read only when
  * a different plan is chosen. Everything else on this page — the filter, the
  * search, the family, the sort — is a reading of the one answer already on
  * the client, because the API returns every component on the plan and

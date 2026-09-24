@@ -650,6 +650,10 @@ export const API_ENDPOINTS = {
     // useful partial answer to load separately.
     PLANS: '/packing-material/plans/',
     REQUIREMENT: '/packing-material/requirement/',
+    // One open order off that board, as SAP's own Purchase Order sheet. Keyed
+    // on DocEntry rather than on the PO number, which is ambiguous across the
+    // three company schemas.
+    PURCHASE_ORDER: (docEntry: number) => `/packing-material/purchase-order/${docEntry}/`,
   },
   // Factory Expense wall board — labour, salary, electricity and maintenance,
   // all from FactoryFlow's own registers rather than SAP.

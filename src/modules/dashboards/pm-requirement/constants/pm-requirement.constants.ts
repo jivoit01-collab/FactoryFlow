@@ -6,7 +6,7 @@ import type { PmReqFilter, PmReqSort } from '../types';
 
 /**
  * The plan is read live from SAP and so are the movements behind it, and one
- * request costs six HANA reads. Nothing on this board changes minute to
+ * request costs seven HANA reads. Nothing on this board changes minute to
  * minute: a transfer to the floor happens a few times a day and a purchase
  * order less often than that.
  */
