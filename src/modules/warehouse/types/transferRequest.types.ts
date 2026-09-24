@@ -96,6 +96,9 @@ export interface TransferRequestDetail extends TransferRequestListItem {
   bst_entry_no: string;
   reviewed_by_name: string;
   posted_by_name: string;
+  /** User ids of the requester and the approver — the only two who may post. */
+  requested_by?: number | null;
+  reviewed_by?: number | null;
   reviewed_at: string | null;
   posted_at: string | null;
   updated_at: string;

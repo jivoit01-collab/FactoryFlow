@@ -14,7 +14,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import { confirmSapPost, promptSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent } from '@/shared/components/ui';
@@ -71,6 +71,7 @@ export default function TransferRequestDetailPage() {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
+  const { user } = useAuth();
   const id = Number(requestId);
 
   const { data: request, isLoading, isError } = useTransferRequest(id);
@@ -114,6 +115,10 @@ export default function TransferRequestDetailPage() {
   const isPending = r.status === 'PENDING';
   const isApproved = r.status === 'APPROVED' || r.status === 'PARTIALLY_APPROVED';
   const notPosted = r.posting_status === 'NOT_POSTED' || r.posting_status === 'FAILED';
+  // Moving the stock belongs to the two people on the request — whoever raised
+  // it and whoever approved it — not to every holder of the post permission.
+  const isOnRequest =
+    !!user && (user.id === r.requested_by || user.id === r.reviewed_by);
   const hasBatchLines = r.lines.some((l) => l.is_batch_managed);
 
   async function run(fn: () => Promise<unknown>, fallback: string) {
@@ -336,6 +341,13 @@ export default function TransferRequestDetailPage() {
           </div>
         )}
 
+      {isApproved && notPosted && !isOnRequest && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          Only {r.requested_by_name || 'the person who raised it'} or{' '}
+          {r.reviewed_by_name || 'the person who approved it'} can post this transfer to SAP.
+        </div>
+      )}
+
       {/* --- actions ----------------------------------------------------- */}
       <div className="flex flex-wrap justify-end gap-2">
         {isPending && canApprove && (
@@ -393,7 +405,7 @@ export default function TransferRequestDetailPage() {
           </>
         )}
 
-        {isApproved && notPosted && canPost && (
+        {isApproved && notPosted && isOnRequest && (
           <Button
             disabled={post.isPending}
             onClick={() => {
