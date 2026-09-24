@@ -189,3 +189,34 @@ export function sectionHeadcount(
 ): number | null {
   return configured ?? employeesForSection(departments, names);
 }
+
+/**
+ * The head count the board itself is printing, added across its three sections.
+ *
+ * The topbar used to head this figure with the whole directory's roll — every
+ * employee of both companies, some 247 of them — above three cards that
+ * between them showed fifteen. Both numbers were true and the wall could not
+ * tell you so: a board about a warehouse, a dispatch floor and a transport
+ * desk has no room to explain that its headline counts the sales office too.
+ * So the headline is now the sum of what the bands below it show, and adds up.
+ *
+ * Null rather than zero when no section has a head count at all — a board
+ * nobody has configured must not read as a site that employs nobody. A section
+ * that *is* unknown while others are known is named instead, because the
+ * printed total is short by it.
+ */
+export function boardHeadcount(
+  sections: readonly { name: string; employees: number | null }[],
+): { headcount: number | null; unset: string[] } {
+  const known = sections.filter((section) => section.employees !== null);
+
+  return {
+    headcount:
+      known.length === 0
+        ? null
+        : known.reduce((total, section) => total + Math.max(section.employees ?? 0, 0), 0),
+    unset: sections
+      .filter((section) => section.employees === null)
+      .map((section) => section.name),
+  };
+}

@@ -50,6 +50,7 @@ import {
   labourForSection,
   rollUpTonnage,
   sectionHeadcount,
+  boardHeadcount,
   weighItems,
 } from '../utils';
 
@@ -657,6 +658,25 @@ export function useLogisticsControlBoard(
       });
     };
 
+    const warehouse = strip(
+      'warehouse',
+      scope.sectionDepartments.warehouse,
+      cfg?.warehouse_employees ?? null,
+      cfg?.warehouse_salary_daily ?? null,
+    );
+    const dispatch = strip(
+      'dispatch',
+      scope.sectionDepartments.dispatch,
+      cfg?.dispatch_employees ?? null,
+      cfg?.dispatch_salary_daily ?? null,
+    );
+    const transport = strip(
+      'transport',
+      scope.sectionDepartments.transport,
+      cfg?.transport_employees ?? null,
+      cfg?.transport_salary_daily ?? null,
+    );
+
     return {
       total: buildWorkforceStrip({
         // Both companies' rolls added. It IS a fan-out — every employee
@@ -704,24 +724,20 @@ export function useLogisticsControlBoard(
         if (labourCost === null && employeeCost === null) return null;
         return (labourCost ?? 0) + (employeeCost ?? 0);
       })(),
-      warehouse: strip(
-        'warehouse',
-        scope.sectionDepartments.warehouse,
-        cfg?.warehouse_employees ?? null,
-        cfg?.warehouse_salary_daily ?? null,
-      ),
-      dispatch: strip(
-        'dispatch',
-        scope.sectionDepartments.dispatch,
-        cfg?.dispatch_employees ?? null,
-        cfg?.dispatch_salary_daily ?? null,
-      ),
-      transport: strip(
-        'transport',
-        scope.sectionDepartments.transport,
-        cfg?.transport_employees ?? null,
-        cfg?.transport_salary_daily ?? null,
-      ),
+      warehouse,
+      dispatch,
+      transport,
+      /**
+       * The three sections added — what the topbar heads the board with.
+       *
+       * Built from the same strips the bands render, never from the roll
+       * beside it, so the headline and the cards under it are one arithmetic.
+       */
+      onBoard: boardHeadcount([
+        { name: 'Warehouse', employees: warehouse.employees },
+        { name: 'Dispatch', employees: dispatch.employees },
+        { name: 'Transport', employees: transport.employees },
+      ]),
     };
   }, [
     expense.data,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS } from '../constants';
 import {
+  boardHeadcount,
   buildWorkforceStrip,
   dailyFromAnnual,
   employeesForSection,
@@ -223,6 +224,49 @@ describe('sectionHeadcount', () => {
 
   it('reports an unknown head count where neither master answers', () => {
     expect(sectionHeadcount(null, directory, ['DOCK'])).toBeNull();
+  });
+});
+
+describe('boardHeadcount', () => {
+  it('adds the sections the board prints, so the headline reconciles', () => {
+    // The wall this came from: 4 + 6 + 5 on the bands, 247 over them.
+    expect(
+      boardHeadcount([
+        { name: 'Warehouse', employees: 4 },
+        { name: 'Dispatch', employees: 6 },
+        { name: 'Transport', employees: 5 },
+      ]),
+    ).toEqual({ headcount: 15, unset: [] });
+  });
+
+  it('names a section nobody has configured, since the total is short by it', () => {
+    expect(
+      boardHeadcount([
+        { name: 'Warehouse', employees: 4 },
+        { name: 'Dispatch', employees: null },
+        { name: 'Transport', employees: 5 },
+      ]),
+    ).toEqual({ headcount: 9, unset: ['Dispatch'] });
+  });
+
+  it('reports an unknown head count, not a site that employs nobody', () => {
+    expect(
+      boardHeadcount([
+        { name: 'Warehouse', employees: null },
+        { name: 'Dispatch', employees: null },
+        { name: 'Transport', employees: null },
+      ]).headcount,
+    ).toBeNull();
+  });
+
+  it('keeps a deliberate zero in the total', () => {
+    expect(
+      boardHeadcount([
+        { name: 'Warehouse', employees: 0 },
+        { name: 'Dispatch', employees: 6 },
+        { name: 'Transport', employees: 5 },
+      ]),
+    ).toEqual({ headcount: 11, unset: [] });
   });
 });
 
