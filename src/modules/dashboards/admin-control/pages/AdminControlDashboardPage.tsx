@@ -13,7 +13,11 @@ import {
   AdminBand,
   AdminCorner,
   AdminCostDrill,
+  AdminDispatchDrill,
   AdminDonut,
+  AdminFgDrill,
+  AdminPmDrill,
+  AdminProductionDrill,
   AdminTankFarm,
 } from '../components';
 import { ADMIN_BOARD_STALE_AFTER_MS } from '../constants';
@@ -64,10 +68,16 @@ export default function AdminControlDashboardPage() {
   const { isFullscreen, toggle } = useFullscreen(shellRef);
 
   // Which tile has been opened out, by name rather than a boolean — which is
-  // what let the cost tile join the oil tile here without a rewrite. Each opens
-  // its own view: the oil tile a tank farm, the cost tile the rows behind the
-  // four cost lines.
-  const [openTile, setOpenTile] = useState<'oil' | 'cost' | null>(null);
+  // what let the other four join the oil and cost tiles here without a rewrite.
+  // Each opens its own view: the oil tile a tank farm, the cost tile the rows
+  // behind the four cost lines, and the rest the rows behind their own figure.
+  //
+  // ONE AT A TIME, and deliberately so. Every panel covers the board, so a
+  // second one open behind the first would be a board the reader cannot get
+  // back to in one Escape.
+  const [openTile, setOpenTile] = useState<
+    'production' | 'dispatch' | 'fg' | 'pm' | 'oil' | 'cost' | null
+  >(null);
   // Releases the shell's max-width and padding while the board is mounted. Every
   // length here is a multiple of a unit read off this element's own width, so
   // without it the board is laid out for a column several hundred pixels
@@ -187,8 +197,17 @@ export default function AdminControlDashboardPage() {
         <main className="ops-stack">
           {/* ═════ OUTPUT ═════ */}
           <AdminBand domain="output" title="Output" scope="month to date">
-            <ProductionTile production={production} elapsedPct={meta?.period.elapsed_pct} loading={loading} />
-            <DispatchTile dispatch={dispatch} loading={loading} />
+            <ProductionTile
+              production={production}
+              elapsedPct={meta?.period.elapsed_pct}
+              loading={loading}
+              onOpen={() => setOpenTile('production')}
+            />
+            <DispatchTile
+              dispatch={dispatch}
+              loading={loading}
+              onOpen={() => setOpenTile('dispatch')}
+            />
           </AdminBand>
 
           {/* ═════ STORAGE ═════ */}
@@ -198,8 +217,8 @@ export default function AdminControlDashboardPage() {
             scope="on hand now"
             columns="minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr)"
           >
-            <FgTile fg={fg} loading={loading} />
-            <PmTile pm={pm} loading={loading} />
+            <FgTile fg={fg} loading={loading} onOpen={() => setOpenTile('fg')} />
+            <PmTile pm={pm} loading={loading} onOpen={() => setOpenTile('pm')} />
             <OilTile oil={oil} loading={loading} onOpen={() => setOpenTile('oil')} />
           </AdminBand>
 
@@ -278,6 +297,26 @@ export default function AdminControlDashboardPage() {
           </AdminBand>
         </main>
 
+        {openTile === 'production' && production && (
+          <AdminProductionDrill
+            production={production}
+            period={periodLabel}
+            onClose={() => setOpenTile(null)}
+          />
+        )}
+
+        {openTile === 'dispatch' && dispatch && (
+          <AdminDispatchDrill
+            dispatch={dispatch}
+            period={periodLabel}
+            onClose={() => setOpenTile(null)}
+          />
+        )}
+
+        {openTile === 'fg' && fg && <AdminFgDrill fg={fg} onClose={() => setOpenTile(null)} />}
+
+        {openTile === 'pm' && pm && <AdminPmDrill pm={pm} onClose={() => setOpenTile(null)} />}
+
         {openTile === 'oil' && oil && (
           <AdminTankFarm oil={oil} onClose={() => setOpenTile(null)} />
         )}
@@ -306,10 +345,12 @@ function ProductionTile({
   production,
   elapsedPct,
   loading,
+  onOpen,
 }: {
   production: AdminProduction | null;
   elapsedPct: number | undefined;
   loading: boolean;
+  onOpen: () => void;
 }) {
   const planPct = num(production?.plan_pct);
   const elapsed = num(elapsedPct);
@@ -329,9 +370,20 @@ function ProductionTile({
 
   const avg = production?.avg_tons_per_producing_day;
 
+  // Counted, not asserted — the rule the cost tile already follows. The panel's
+  // table is the trend window, so a payload carrying no days would open onto a
+  // stated emptiness, and a tile that offers to show nothing is worse than one
+  // that never offered.
+  const trendDays = production?.trend.length ?? 0;
+
   return (
     <OpsGroup
       className="adm-has-corner"
+      // Every figure on this tile is a roll-up of something countable, and
+      // "which days" is the question that follows all of them. `OpsGroup` turns
+      // a tile with this into a keyboard-reachable button and marks it
+      // drillable — the affordance the oil tile taught the board.
+      onOpen={production && trendDays > 0 ? onOpen : undefined}
       name="Total production"
       tag={production ? tag : undefined}
       sub=""
@@ -351,6 +403,7 @@ function ProductionTile({
       }
       viz={
         production && (
+          <>
           <OpsMeter
             segments={[
               {
@@ -389,6 +442,10 @@ function ProductionTile({
                 : []),
             ]}
           />
+          {trendDays > 0 && (
+            <p className="adm-open-hint">{trendDays} days of output — open the detail →</p>
+          )}
+          </>
         )
       }
     />
@@ -398,9 +455,11 @@ function ProductionTile({
 function DispatchTile({
   dispatch,
   loading,
+  onOpen,
 }: {
   dispatch: AdminDispatch | null;
   loading: boolean;
+  onOpen: () => void;
 }) {
   const total = dispatch?.mtd_tons ?? 0;
   const oilCo = dispatch?.companies.find((company) => company.company_code === 'JIVO_OIL');
@@ -414,9 +473,15 @@ function DispatchTile({
   // is how much of this month's billing is still sitting in the warehouse.
   const invoiced = num(dispatch?.invoiced_tons);
 
+  // A month on which nothing left the gate has no companies under it, and a
+  // tile that opened onto an empty table would be promising a list that cannot
+  // exist.
+  const shippers = dispatch?.companies.length ?? 0;
+
   return (
     <OpsGroup
       className="adm-has-corner"
+      onOpen={dispatch && shippers > 0 ? onOpen : undefined}
       name="Total dispatch"
       tag={
         dispatch?.avg_tons_per_dispatch_day != null
@@ -477,6 +542,11 @@ function DispatchTile({
                       : `${tons(total - invoiced)} T of what shipped was billed earlier`
                   }`}
             </p>
+            {shippers > 0 && (
+              <p className="adm-open-hint">
+                {shippers} {shippers === 1 ? 'company' : 'companies'} — open the detail →
+              </p>
+            )}
           </div>
         )
       }
@@ -488,7 +558,15 @@ function DispatchTile({
 // Storage
 // ---------------------------------------------------------------------------
 
-function FgTile({ fg, loading }: { fg: AdminFgStorage | null; loading: boolean }) {
+function FgTile({
+  fg,
+  loading,
+  onOpen,
+}: {
+  fg: AdminFgStorage | null;
+  loading: boolean;
+  onOpen: () => void;
+}) {
   // The fullest rated store decides the tile's condition. A combined percentage
   // can sit comfortably at 52% while one of its two stores has half a day of
   // headroom left, and the headroom is the thing somebody acts on.
@@ -498,9 +576,14 @@ function FgTile({ fg, loading }: { fg: AdminFgStorage | null; loading: boolean }
 
   const condition = fillCondition(fullest?.used_pct);
 
+  // The unrated stores count too: they are the ones the headline leaves out,
+  // which makes them the reason to open the panel rather than a reason not to.
+  const stores = (fg?.rows.length ?? 0) + (fg?.unrated.length ?? 0);
+
   return (
     <OpsGroup
       className="adm-has-corner"
+      onOpen={fg && stores > 0 ? onOpen : undefined}
       name="Total FG storage"
       tag={
         fullest
@@ -540,6 +623,7 @@ function FgTile({ fg, loading }: { fg: AdminFgStorage | null; loading: boolean }
       }
       viz={
         fg && (
+          <>
           <OpsPair
             rows={fg.rows.map((row, index) => ({
               label: row.label,
@@ -566,19 +650,35 @@ function FgTile({ fg, loading }: { fg: AdminFgStorage | null; loading: boolean }
                 : undefined
             }
           />
+          {stores > 0 && (
+            <p className="adm-open-hint">
+              {stores} {stores === 1 ? 'store' : 'stores'} — open the detail →
+            </p>
+          )}
+          </>
         )
       }
     />
   );
 }
 
-function PmTile({ pm, loading }: { pm: AdminPmStorage | null; loading: boolean }) {
+function PmTile({
+  pm,
+  loading,
+  onOpen,
+}: {
+  pm: AdminPmStorage | null;
+  loading: boolean;
+  onOpen: () => void;
+}) {
   const headline = moneyParts(pm?.total_value);
   const used = num(pm?.used_pct);
+  const stores = pm?.rows.length ?? 0;
 
   return (
     <OpsGroup
       className="adm-has-corner"
+      onOpen={pm && stores > 0 ? onOpen : undefined}
       name="Total PM storage"
       // No subtitle: the meter under the figure already names the filled and
       // free floor, which is what the pallet count was standing in for. The row
@@ -624,6 +724,11 @@ function PmTile({ pm, loading }: { pm: AdminPmStorage | null; loading: boolean }
                   },
                 ]}
               />
+            )}
+            {stores > 0 && (
+              <p className="adm-open-hint">
+                {stores} {stores === 1 ? 'store' : 'stores'} — open the detail →
+              </p>
             )}
           </div>
         )

@@ -443,7 +443,7 @@
   color: var(--d1);
 }
 
-/* ───────── the cost drill panel ───────── */
+/* ───────── the drill panels ───────── */
 
 /*
  * SCOPED TO `.ops-drill`, NOT `.admin-board`.
@@ -474,6 +474,21 @@
   height: calc(0.55 * var(--du));
   border-radius: calc(0.16 * var(--du));
   flex: none;
+}
+
+/*
+ * A qualifier on a store's name in the FG table — "outside the rating",
+ * "14 SKUs unweighed".
+ *
+ * Inline with the name rather than in a column of its own: it applies to a
+ * minority of rows, and a column that is empty for most of them spends the
+ * table's width saying nothing. Quieter and lighter than the name it hangs
+ * off, so the column still scans as a list of stores.
+ */
+.ops-drill .adm-dstore em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-3);
 }
 
 /* ───────── the action centre ───────── */
