@@ -248,20 +248,21 @@ export interface AdminOilStorage {
  * One row behind a cost line — a department, a meter, a payroll line, a spare.
  *
  * THE ROWS SUM TO THEIR LINE WHEREVER `rows_sum_to_line` says so, which is
- * three lines of the four: the server guarantees it, including for today,
+ * all four as the server stands: it guarantees the sum, including for today,
  * because a breakdown whose parts do not add up is the drill panel disagreeing
- * with the tile that opened it. Electricity is the exception — see that field.
+ * with the tile that opened it. See that field for the case it leaves open.
  */
 export interface AdminCostRow {
   label: string;
   /**
    * This is the row the line above was priced from.
    *
-   * Only on a line whose rows do NOT add up to it: electricity lists every
-   * meter the register was read on, and one of them — the main the supply
-   * comes in on — IS the line, while the rest re-measure slices of that same
-   * supply. Absent everywhere else, where every row is part of the line and
-   * none of them is it.
+   * Only on a line whose rows do NOT add up to it, where the rows are context
+   * and one of them IS the line. No line sends it as the server stands — the
+   * electricity line did until 2026-09-24, while it was the one main meter
+   * among the register rows it listed — and it is still read here because the
+   * two repos deploy separately: a backend on the older basis must not have
+   * its rows silently added up. Absent wherever every row is part of the line.
    */
   is_line?: boolean;
   /** The row in its own unit — "1,128 man-days", "172,810 units at ₹7.00/unit". */
@@ -297,9 +298,9 @@ export interface AdminCostSlice {
    * departments over 11 days", "KWH · 169,730 units".
    *
    * Rupees alone cannot be sanity-checked by anyone standing in front of the
-   * board; a head count and a meter's own dial can. Electricity names the
-   * meter it is showing, because the line is that one meter and not a total.
-   * Null on a line with no unit worth printing.
+   * board; a head count and a meter's own dial can. Electricity counts the
+   * sub-meters behind it, because the line is Oil's share of those and not the
+   * register's total. Null on a line with no unit worth printing.
    */
   detail: string | null;
   /** The same figure as a number, for anything that needs to compare it. */
@@ -308,7 +309,7 @@ export interface AdminCostSlice {
    * What this line cost TODAY, on the same basis as `amount`.
    *
    * Never derived from `amount`: labour and electricity are this tile's own
-   * subsets — five named departments, Jivo Oil's meters — and the wall board's
+   * subsets — five named departments, Jivo Oil's sub-meters — and the wall board's
    * own "today" key holds the selected range, which for this board is the whole
    * month. Both figures come off one pass server-side so the day and the month
    * on a line can be compared without either being re-derived here.
@@ -345,14 +346,18 @@ export interface AdminCostSlice {
   /**
    * Do those rows ADD UP to this line?
    *
-   * True on labour, salary and maintenance, where the rows are the line split
-   * — the panel adds them and prints the total beside the line's own, so a
-   * server that got the split wrong is visible rather than hidden. False on
-   * electricity, whose rows are the whole Daily Electricity register while the
-   * line is the ONE main meter among them: summing those would print ₹29.70 L
-   * under a ₹12.03 L line. The panel then names the row the line came from
-   * (`AdminCostRow.is_line`) instead of stating a total the tile disagrees
-   * with.
+   * True on all four lines as the server stands, because the rows are the
+   * line split — the panel adds them and prints the total beside the line's
+   * own, so a server that got the split wrong is visible rather than hidden.
+   *
+   * An explicit `false` says the rows are context rather than parts, and the
+   * panel then names the row the line came from (`AdminCostRow.is_line`)
+   * instead of stating a total the tile disagrees with. Electricity sent that
+   * until 2026-09-24, while it listed the whole register and was priced off
+   * the one main meter in it; it now prices Oil's sub-meters, which add up.
+   * The branch stays because the two repos deploy separately and a backend on
+   * the older basis would otherwise have ₹29.70 L printed under a ₹12.03 L
+   * line.
    *
    * Optional for the same reason `rows` is: a backend that predates it sends
    * nothing, and only an explicit `false` turns the sum off.
@@ -365,8 +370,9 @@ export interface AdminCostSlice {
    * production(oil), Warehouse Basement, Dock, Scrap, Boiling Floor 1 — while
    * the Factory Expense wall board prices every department AND the gate tally
    * that re-describes those same people; and on electricity, which this tile
-   * prices over ONE meter — the main Jivo Oil's supply comes in on — while the
-   * wall board adds up every meter on the campus.
+   * prices over Jivo Oil's SUB-meters, halving one shared with Beverages,
+   * while the wall board adds up every meter on the campus, mains included and
+   * nothing halved.
    *
    * On labour the note also says what share of the gate the line covers. It is
    * a subset by design, and a figure that silently omitted half the people who
@@ -391,16 +397,16 @@ export interface AdminCost {
   slices: AdminCostSlice[];
   warnings: string[];
   /**
-   * Which meter the electricity slice is.
+   * Which meters the electricity slice is.
    *
-   * ONE meter: the main Jivo Oil's supply comes in on, and the biggest of them
-   * where the campus ran on more than one supply. The sub-meters re-measure
-   * slices of that same supply, so adding them in — which the Factory Expense
-   * wall does on purpose, and reads ~3x this for it — would price the same
-   * electricity twice over. The main is shared with Beverages and counts in
-   * full: the register holds one reading a day per meter and nothing to split
-   * it by. The note is how the tile says all of that where the two boards
-   * disagree.
+   * Jivo Oil's SUB-meters, added up. The mains are left out: the supply they
+   * measure is the same electricity these meters slice up, so a figure holding
+   * both prices it twice — which is what the Factory Expense wall does on
+   * purpose, because what the campus drew is a campus question. A sub-meter
+   * shared with Beverages counts half; the register holds one reading a day
+   * per meter with nothing behind it to divide by, so the equal split is this
+   * board's convention rather than a measurement, and the note is where it
+   * says so.
    */
   electricity_note: string;
 }

@@ -31,15 +31,17 @@ function rowToday(value: number | null | undefined): string {
  * both screens open needs most, and it belongs where the rows are: it is an
  * explanation of what they are looking at, not an alert.
  *
- * TWO KINDS OF ROW LIST, AND THE HEAD SAYS WHICH. On labour, salary and
- * maintenance the rows ARE the line, split: adding them up and printing the
- * total beside the line's own is how a panel disagreeing with the tile that
- * opened it becomes visible instead of hidden. On electricity they are the
- * REGISTER — every meter that was read, of which the line is the one the
- * supply comes in on — and the same sum would print ₹29.70 L under a ₹12.03 L
- * line and call it the same month. `rows_sum_to_line` is the payload saying
- * which of the two this is; where it is false the head names the row the line
- * was priced from instead of stating a rival total.
+ * TWO KINDS OF ROW LIST, AND THE HEAD SAYS WHICH. On every line the server
+ * currently sends, the rows ARE the line, split: adding them up and printing
+ * the total beside the line's own is how a panel disagreeing with the tile
+ * that opened it becomes visible instead of hidden. The other kind is a list
+ * that is CONTEXT — rows the line was read against, one of which is the line
+ * — and summing those would state a rival total for a month the tile has just
+ * priced differently. Electricity was that until the server moved it onto
+ * Oil's sub-meters, which add up; the branch stays because this repo and the
+ * backend deploy separately. `rows_sum_to_line` is the payload saying which of
+ * the two it is; where it is false the head names the row the line was priced
+ * from instead of stating a total.
  */
 function CostLineRows({ slice }: { slice: AdminCostSlice }) {
   // `rows` may be absent rather than empty — see `AdminCostSlice.rows`. Both

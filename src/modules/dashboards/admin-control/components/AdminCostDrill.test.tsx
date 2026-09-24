@@ -180,11 +180,14 @@ describe('AdminCostDrill', () => {
   });
 
   /*
-   * THE ONE LINE WHOSE ROWS ARE NOT WHAT IT IS MADE OF. Electricity lists the
-   * whole Daily Electricity register and is priced off the ONE main meter in
-   * it, because the sub-meters re-measure slices of that same supply. A head
-   * that added the rows up would state a rival total for a month the tile has
-   * just priced at a third of it.
+   * A LINE WHOSE ROWS ARE NOT WHAT IT IS MADE OF. The payload shape below is
+   * the electricity line as the server sent it until it moved onto Oil's
+   * sub-meters: the whole Daily Electricity register listed, priced off the
+   * ONE main meter in it, because the sub-meters re-measure slices of that
+   * same supply. A head that added the rows up would state a rival total for a
+   * month the tile has just priced at a third of it — which is still what this
+   * component must do for any line that sends `rows_sum_to_line: false`, and
+   * a backend on the older basis is exactly that until it deploys.
    */
   it('names the row a line was priced from where the rows do not add up to it', () => {
     const power = slice({
