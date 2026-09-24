@@ -23,7 +23,8 @@ export const CASH_BOOK_QUERY_KEYS = {
     [...CASH_BOOK_QUERY_KEYS.all, 'branches', includeRetired] as const,
   atmAccounts: (includeClosed: boolean) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'atm', includeClosed] as const,
-  atmStatement: (id: number) => [...CASH_BOOK_QUERY_KEYS.all, 'atm', 'statement', id] as const,
+  atmStatement: (id: number, includeCancelled = false) =>
+    [...CASH_BOOK_QUERY_KEYS.all, 'atm', 'statement', id, includeCancelled] as const,
   advanceHolders: () => [...CASH_BOOK_QUERY_KEYS.all, 'advance-holders'] as const,
   advanceStatement: (id: number, includeCancelled = false) =>
     [...CASH_BOOK_QUERY_KEYS.all, 'advance-statement', id, includeCancelled] as const,
@@ -210,10 +211,10 @@ export function useAtmAccounts(includeClosed = false) {
   });
 }
 
-export function useAtmStatement(accountId: number | null) {
+export function useAtmStatement(accountId: number | null, includeCancelled = false) {
   return useQuery({
-    queryKey: CASH_BOOK_QUERY_KEYS.atmStatement(accountId ?? 0),
-    queryFn: () => cashBookApi.atmStatement(accountId as number),
+    queryKey: CASH_BOOK_QUERY_KEYS.atmStatement(accountId ?? 0, includeCancelled),
+    queryFn: () => cashBookApi.atmStatement(accountId as number, includeCancelled),
     enabled: accountId != null,
   });
 }

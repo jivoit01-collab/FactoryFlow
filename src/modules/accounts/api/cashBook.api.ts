@@ -503,9 +503,10 @@ export const cashBookApi = {
     return data;
   },
 
-  async atmStatement(accountId: number): Promise<AtmStatement> {
+  async atmStatement(accountId: number, includeCancelled = false): Promise<AtmStatement> {
     const { data } = await apiClient.get<AtmStatement>(
       API_ENDPOINTS.CASH_BOOK.ATM_DETAIL(accountId),
+      { params: includeCancelled ? { include_cancelled: true } : {} },
     );
     return data;
   },

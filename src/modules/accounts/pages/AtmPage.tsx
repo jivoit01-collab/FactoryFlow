@@ -1,4 +1,4 @@
-import { ArrowDownLeft, CreditCard, Loader2, Plus } from 'lucide-react';
+import { ArrowDownLeft, CreditCard, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -8,8 +8,10 @@ import {
   useAddAtmCash,
   useAtmAccounts,
   useAtmStatement,
+  useCancelAtmReceipt,
   useCreateAtmAccount,
 } from '@/modules/accounts/api';
+import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   ColumnFilter,
@@ -21,6 +23,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -56,7 +59,11 @@ export default function AtmPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
-
+  const cancelReceipt = useCancelAtmReceipt();
+  // Off by default, like the register's own "Show cancelled": a deleted
+  // payment is off the card, and somebody reading a balance should not have
+  // to subtract it back out by eye.
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const { data: accounts = [], isLoading } = useAtmAccounts();
 
@@ -64,7 +71,10 @@ export default function AtmPage() {
   // another. An effect writing this back into state would re-render twice and
   // fight the list every time it reloads.
   const activeId = selectedId ?? accounts[0]?.id ?? null;
-  const { data: statement, isLoading: statementLoading } = useAtmStatement(activeId);
+  const { data: statement, isLoading: statementLoading } = useAtmStatement(
+    activeId,
+    showCancelled,
+  );
 
   const selected = accounts.find((account) => account.id === activeId) ?? null;
 
@@ -89,7 +99,8 @@ export default function AtmPage() {
         value: (row) => money(row.amount),
         sortValue: (row) => Number(row.amount),
         blankWhen: (row) => row.kind !== 'RECEIPT',
-        total: (row) => Number(row.amount),
+        // A cancelled payment is shown, struck through, but is off the card.
+        total: (row) => (row.is_active === false ? 0 : Number(row.amount)),
       },
       drawn: {
         value: (row) => money(row.amount),
@@ -105,6 +116,30 @@ export default function AtmPage() {
     { key: 'date', direction: 'asc' },
   );
   const filtering = filteredColumns.length > 0;
+
+  /**
+   * Take a payment back off the card.
+   *
+   * Only a "Paid on" row can go from here. A withdrawal is the cash receipt it
+   * produced, so it is removed on the cash book, where the cash balance it
+   * moves can be seen.
+   */
+  async function deleteReceipt(row: { id: number; amount: string }) {
+    const ok = await confirmDialog({
+      title: `Delete this payment of ${money(row.amount)} onto the card?`,
+      description:
+        'It stops counting towards the card balance. Use this when the payment was recorded by mistake.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await cancelReceipt.mutateAsync(row.id);
+      toast.success('Payment deleted');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'That could not be deleted.'));
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -172,6 +207,13 @@ export default function AtmPage() {
           <div className="rounded-md border">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
               <p className="font-medium">{selected?.name ?? 'Statement'}</p>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={showCancelled}
+                  onCheckedChange={(checked) => setShowCancelled(checked === true)}
+                />
+                Show cancelled
+              </label>
               <p className="text-sm text-muted-foreground">
                 {filtering ? (
                   <>
@@ -211,6 +253,7 @@ export default function AtmPage() {
                       <ColumnFilter {...column('amount', 'Paid on', 'right')} />
                       <ColumnFilter {...column('drawn', 'Drawn off', 'right')} />
                       <ColumnFilter {...column('balance', 'Balance', 'right')} />
+                      {canManage && <th className="px-3 py-2" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -229,11 +272,18 @@ export default function AtmPage() {
                         {money(totals.drawn ?? 0)}
                       </td>
                       <td />
+                      {canManage && <td />}
                     </tr>
                     {sorted.map((row) => {
                       const paidOn = row.kind === 'RECEIPT';
+                      const removed = row.is_active === false;
                       return (
-                        <tr key={`${row.kind}-${row.id}`} className="border-b hover:bg-muted/40">
+                        <tr
+                          key={`${row.kind}-${row.id}`}
+                          className={`border-b hover:bg-muted/40 ${
+                            removed ? 'text-muted-foreground line-through' : ''
+                          }`}
+                        >
                           <td className="whitespace-nowrap px-3 py-2">{formatDay(row.date)}</td>
                           <td className="px-3 py-2">
                             <Badge
@@ -257,6 +307,29 @@ export default function AtmPage() {
                           <td className="px-3 py-2 text-right font-medium tabular-nums">
                             {money(row.balance_after)}
                           </td>
+                          {canManage && (
+                            <td className="px-3 py-2">
+                              {removed ? (
+                                <span className="text-xs text-muted-foreground no-underline">
+                                  Cancelled
+                                </span>
+                              ) : paidOn ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteReceipt(row)}
+                                  disabled={cancelReceipt.isPending}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  On the cash book
+                                </span>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
