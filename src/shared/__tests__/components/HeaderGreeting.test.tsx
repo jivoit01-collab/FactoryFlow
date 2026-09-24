@@ -26,12 +26,12 @@ describe('HeaderGreeting', () => {
   // ─── Greeting by time of day ──────────────────────────────────
 
   it.each([
-    [0, 'Good morning, Rajesh'],
-    [9, 'Good morning, Rajesh'],
-    [12, 'Good afternoon, Rajesh'],
-    [16, 'Good afternoon, Rajesh'],
-    [17, 'Good evening, Rajesh'],
-    [23, 'Good evening, Rajesh'],
+    [0, 'Good morning, Rajesh Kumar'],
+    [9, 'Good morning, Rajesh Kumar'],
+    [12, 'Good afternoon, Rajesh Kumar'],
+    [16, 'Good afternoon, Rajesh Kumar'],
+    [17, 'Good evening, Rajesh Kumar'],
+    [23, 'Good evening, Rajesh Kumar'],
   ])('at %i:00 greets "%s"', (hour, expected) => {
     vi.setSystemTime(at(hour));
     render(<HeaderGreeting />);
@@ -55,17 +55,24 @@ describe('HeaderGreeting', () => {
   it('shows the greeting alone — no date, no shift', () => {
     vi.setSystemTime(at(9));
     const { container } = render(<HeaderGreeting />);
-    expect(container.textContent).toBe('Good morning, Rajesh');
+    expect(container.textContent).toBe('Good morning, Rajesh Kumar');
     expect(screen.queryByText(/shift/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/September/)).not.toBeInTheDocument();
   });
 
   // ─── Name handling ────────────────────────────────────────────
 
-  it('uses only the first name', () => {
+  it('uses the full name, not just the first', () => {
     vi.setSystemTime(at(9));
     render(<HeaderGreeting />);
-    expect(screen.queryByText(/Kumar/)).not.toBeInTheDocument();
+    expect(screen.getByText('Good morning, Rajesh Kumar')).toBeInTheDocument();
+  });
+
+  it('collapses stray whitespace in the name', () => {
+    mockFullName = '  Rajesh   Kumar  ';
+    vi.setSystemTime(at(9));
+    render(<HeaderGreeting />);
+    expect(screen.getByText('Good morning, Rajesh Kumar')).toBeInTheDocument();
   });
 
   it('greets without a name when the user has none', () => {

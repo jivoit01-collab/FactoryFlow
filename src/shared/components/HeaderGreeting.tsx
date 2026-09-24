@@ -9,10 +9,10 @@ function greetingFor(date: Date): string {
   return 'Good evening';
 }
 
-/** "Rajesh Kumar" -> "Rajesh". Falls back to a neutral greeting if unnamed. */
-function firstNameOf(fullName: string | undefined): string | null {
-  const first = fullName?.trim().split(/\s+/)[0];
-  return first ? first : null;
+/** Collapses stray whitespace. Falls back to a neutral greeting if unnamed. */
+function displayNameOf(fullName: string | undefined): string | null {
+  const name = fullName?.trim().replace(/\s+/g, ' ');
+  return name ? name : null;
 }
 
 /**
@@ -27,7 +27,18 @@ function firstNameOf(fullName: string | undefined): string | null {
  * `pointer-events-none` because it is a label, not a control — it must never
  * swallow a click meant for the chip or an icon it overlaps.
  *
+ * Sized from the space the two side groups actually leave, not a flat
+ * percentage: the cap is the header width less twice the wider side, so a
+ * centred line stops short of both. Below `md` that is the menu button and
+ * the company chip against one overflow button (~8 rem a side); from `md` up
+ * the icon row unfolds to five buttons (~15 rem a side). The `max()` floor
+ * keeps the cap positive on a narrow viewport, where the two would otherwise
+ * cross. Reserving the room this way fits a full name — "Kulbeer Singh
+ * Sandhu", not "Kulbeer" — at the widths the plant actually runs.
+ *
  * Truncates rather than wraps: the header is a fixed 4 rem and must not grow.
+ * That is the last resort for a name longer than any of this, not the normal
+ * case.
  *
  * Set in the system serif stack (`font-serif`) to give the one human line in
  * the chrome a different voice from the data everywhere else. It is a system
@@ -47,12 +58,12 @@ export function HeaderGreeting() {
     return () => window.clearInterval(id);
   }, []);
 
-  const firstName = firstNameOf(fullName);
+  const name = displayNameOf(fullName);
 
   return (
-    <p className="pointer-events-none absolute left-1/2 hidden max-w-[42%] -translate-x-1/2 truncate text-center font-serif text-xl font-semibold tracking-tight sm:block">
+    <p className="pointer-events-none absolute left-1/2 hidden max-w-[max(9rem,calc(100%_-_17rem))] -translate-x-1/2 truncate text-center font-serif text-lg font-semibold tracking-tight sm:block md:max-w-[max(12rem,calc(100%_-_31rem))] md:text-xl">
       {greetingFor(now)}
-      {firstName ? `, ${firstName}` : ''}
+      {name ? `, ${name}` : ''}
     </p>
   );
 }
