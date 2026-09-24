@@ -10,6 +10,7 @@ import { Button, Collapsible, CollapsibleContent } from '@/shared/components/ui'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
+import { activeChildPath } from './activeChild';
 import { SettingsDialog } from './SettingsDialog';
 
 interface SidebarProps {
@@ -229,20 +230,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 </div>
                 <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
                   {item.children!.map((child) => {
-                    const childIsActive = location.pathname === child.path;
+                    const childIsActive =
+                      child.path === activeChildPath(item.children!, location.pathname);
                     const ChildBadge = child.badge;
                     return (
                       <NavLink
                         key={child.path}
                         to={child.path}
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
-                            isActive || childIsActive
-                              ? 'bg-accent text-accent-foreground font-medium'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                          )
-                        }
+                        className={cn(
+                          'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                          childIsActive
+                            ? 'bg-accent text-accent-foreground font-medium'
+                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                        )}
                       >
                         <span>{child.title}</span>
                         {ChildBadge ? <ChildBadge className="ml-auto" /> : null}
