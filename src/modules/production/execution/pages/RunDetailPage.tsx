@@ -257,14 +257,19 @@ function RunDetailPage() {
     return runMachines.length > 0 ? runMachines : lineMachines;
   }, [lineMachines, run?.machine_ids]);
   const hasClearedClearance = runClearance?.status === 'CLEARED';
+  // Where the checks are optional (Beverages), each one gates the start only
+  // once it has been sent: the BOM request submitted, the clearance sent to QA.
+  const startChecksOptional = run?.start_checks_optional === true;
+  const clearanceSent = !!runClearance && runClearance.status !== 'DRAFT';
+  const clearanceRequired = !startChecksOptional || clearanceSent;
   const startProductionBlockReason =
-    run?.warehouse_approval_status === 'NOT_REQUESTED'
+    run?.warehouse_approval_status === 'NOT_REQUESTED' && !startChecksOptional
       ? 'Submit the BOM request to warehouse before starting production.'
       : run?.warehouse_approval_status === 'PENDING'
         ? 'Cannot start production while warehouse approval is pending.'
         : run?.warehouse_approval_status === 'REJECTED'
           ? 'Cannot start production because warehouse approval was rejected.'
-          : !hasClearedClearance
+          : clearanceRequired && !hasClearedClearance
             ? 'Cannot start production — line clearance has not been approved by QA.'
             : undefined;
 
@@ -598,7 +603,7 @@ function RunDetailPage() {
               }}
             >
               {createBOMRequest.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-              Submit BOM to WH
+              Submit BOM to WH{startChecksOptional && ' (optional)'}
             </Button>
           )}
           {!isCompleted && canReRequestShortfall && (
@@ -625,9 +630,11 @@ function RunDetailPage() {
             className={
               hasClearedClearance
                 ? 'border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/25 hover:text-green-800 dark:hover:text-green-400'
-                : 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
+                : !clearanceRequired
+                  ? ''
+                  : 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
             }
-            title={`Line Clearance: ${clearanceStatusText}`}
+            title={`Line Clearance: ${clearanceStatusText}${clearanceRequired ? '' : ' (optional)'}`}
             onClick={() =>
               navigate(
                 runClearance

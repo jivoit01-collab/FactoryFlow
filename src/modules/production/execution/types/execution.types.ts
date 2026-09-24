@@ -254,6 +254,8 @@ export interface ProductionRun {
 
 export interface ProductionRunDetail extends ProductionRun {
   machine_ids: number[];
+  /** Beverages: the RM/PM request and line clearance gate a start only once sent. */
+  start_checks_optional?: boolean;
   updated_at: string;
   segments: ProductionSegment[];
   breakdowns: MachineBreakdown[];
@@ -808,6 +810,10 @@ export interface PlanCheckMaterialRow {
   /** REGISTER for raw material (the store keeper's count) and SAP for
    *  everything else. The two must never be presented as the same number. */
   stock_source: 'REGISTER' | 'SAP';
+  /** PRODUCTION_CONSUMPTION (Oil): only what is already at the line's
+   *  consumption warehouse (BH-PC) counts, for RM and PM alike; godown stock
+   *  travels as `sap_on_hand` for information. STORES: the scoped stores. */
+  stock_scope?: 'STORES' | 'PRODUCTION_CONSUMPTION';
   /** True when a raw material has no Raw Material register row at all — it
    *  reads as 0, which is not the same as a counted zero. */
   register_missing: boolean;
