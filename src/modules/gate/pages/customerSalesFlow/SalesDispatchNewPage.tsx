@@ -309,14 +309,23 @@ export default function SalesDispatchNewPage() {
   // Every company's bills gated in and READY TO DOCK on this physical truck: the
   // pending bookings across all the user's companies, filtered to this vehicle
   // (one booking per company). A truck spanning >1 company docks them together.
-  const { data: allPendingBookings = [] } = useSalesDispatchPendingBookings(
-    { all_companies: 1 },
-    { enabled: Boolean(draftVehicleId) && !existingEntry },
-  );
-  const truckBookings = useMemo(
-    () => allPendingBookings.filter((booking) => booking.vehicle === draftVehicleId),
-    [allPendingBookings, draftVehicleId],
-  );
+  const { data: allPendingBookings = [], isLoading: isAllPendingBookingsLoading } =
+    useSalesDispatchPendingBookings(
+      { all_companies: 1 },
+      { enabled: Boolean(draftVehicleId) && !existingEntry },
+    );
+  // The bills the board handed over (every company on the truck) count even before
+  // the full list arrives -- or if it is capped short of them -- so the truck is
+  // never docked one company short.
+  const truckBookings = useMemo(() => {
+    const byId = new Map<string, SalesDispatchPendingBooking>();
+    for (const booking of [...pendingBookings, ...allPendingBookings]) {
+      if (booking.vehicle === draftVehicleId && !byId.has(booking.id)) {
+        byId.set(booking.id, booking);
+      }
+    }
+    return Array.from(byId.values());
+  }, [pendingBookings, allPendingBookings, draftVehicleId]);
   // Group the truck's pending bills by COMPANY: one docking per company carrying
   // ALL its bills. A company's bills can arrive as several bookings (different
   // dispatch dates / biltys), but they still load onto that company's one docking.
@@ -728,6 +737,8 @@ export default function SalesDispatchNewPage() {
         onNext={handleSaveAndNext}
         showPrevious={false}
         isSaving={isSaving}
+        // Hold Save until the truck's other companies are known, or it docks one.
+        isNextDisabled={!existingEntry && isAllPendingBookingsLoading}
         nextLabel={
           isExistingReadOnly ? 'Continue to Box Scanning' : isSaving ? 'Saving...' : 'Save and Next'
         }

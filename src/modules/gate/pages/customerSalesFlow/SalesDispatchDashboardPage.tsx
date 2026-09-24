@@ -855,14 +855,20 @@ function DispatchTable({
         )}
         onClick={() =>
           navigate(
-            getSalesDispatchDashboardEntryPath(
-              slowest,
-              newEntryPath,
-              detailPath,
-              weighmentPath,
-              gatepassPath,
-              isGateOutMode,
-            ),
+            isPendingBookingEntry(slowest)
+              ? // Dock the whole truck: hand over every company's pending bills,
+                // not just the slowest row's, so docking never starts one company short.
+                `${newEntryPath}?dispatchPlanIds=${group.subEntries
+                  .flatMap((entry) => (isPendingBookingEntry(entry) ? entry.dispatch_plan_ids : []))
+                  .join(',')}`
+              : getSalesDispatchDashboardEntryPath(
+                  slowest,
+                  newEntryPath,
+                  detailPath,
+                  weighmentPath,
+                  gatepassPath,
+                  isGateOutMode,
+                ),
           )
         }
       >
