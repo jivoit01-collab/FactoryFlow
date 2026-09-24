@@ -331,12 +331,6 @@ export function MaterialReadinessPanel({
                               SAP {qty(check.sap_on_hand)}
                             </p>
                           )}
-                          {check?.stock_scope === 'PRODUCTION_CONSUMPTION' &&
-                            !!check.sap_on_hand && (
-                              <p className="text-[11px] font-normal text-muted-foreground/70">
-                                {qty(check.sap_on_hand)} in godowns, not at the line
-                              </p>
-                            )}
                           {check && check.warehouses.length > 0 && (
                             <div className="mt-0.5 space-y-0.5 text-[11px] font-normal text-muted-foreground">
                               {check.warehouses.slice(0, 2).map((w) => (
@@ -399,7 +393,7 @@ export function MaterialReadinessPanel({
                                   actually consumes from, which is BH-PP for
                                   every Beverages line. */}
                               <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                {check.material_type === 'RAW' ? 'RM request' : 'PM request'}
+                                {check.stock_source === 'REGISTER' ? 'RM request' : 'PM request'}
                                 {!!check.qty_at_production_consumption &&
                                   ` · ${qty(check.qty_at_production_consumption)} already at ${
                                     check.issue_warehouse || 'BH-PC'
@@ -434,14 +428,6 @@ export function MaterialReadinessPanel({
                                     {check.sap_on_hand !== null && (
                                       <> SAP holds {qty(check.sap_on_hand)} for comparison.</>
                                     )}
-                                  </p>
-                                ) : check.stock_scope === 'PRODUCTION_CONSUMPTION' ? (
-                                  <p className="text-[11px] text-muted-foreground mb-1">
-                                    Only stock already at{' '}
-                                    <span className="font-mono">
-                                      {check.searched_warehouses.join(', ')}
-                                    </span>{' '}
-                                    counts. Anything still in a godown has to be fetched first.
                                   </p>
                                 ) : (
                                   check.searched_warehouses.length > 0 && (
