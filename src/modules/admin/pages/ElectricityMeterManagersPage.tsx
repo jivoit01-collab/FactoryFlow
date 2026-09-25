@@ -1,11 +1,10 @@
-import { AlertTriangle, Gauge, Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Gauge, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
   useAssignMeters,
   useElectricityMeters,
-  useMeterScopeGaps,
   useRemoveUserElectricityMeter,
   useUserElectricityMeters,
 } from '@/modules/maintenance/api';
@@ -40,17 +39,11 @@ interface PickableUser {
  * This is what decides who may retune a meter and who may book a day's units
  * against it, so it is deliberately an admin-only screen — letting a keeper
  * widen their own scope would defeat the point.
- *
- * The warning panel is not decoration. An unassigned user is refused
- * everywhere, so a missing row is a person who cannot do their job; and a meter
- * nobody keeps is quieter still, because it simply stops being read. Both are
- * listed up front rather than discovered as a 403 mid-shift.
  */
 export default function ElectricityMeterManagersPage() {
   const { data: users = [], isLoading: usersLoading } = useCompanyUsers();
   const { data: meters = [], isLoading: metersLoading } = useElectricityMeters();
   const { data: assignments = [], isLoading: assignmentsLoading } = useUserElectricityMeters();
-  const { data: gaps } = useMeterScopeGaps();
 
   const assign = useAssignMeters();
   const remove = useRemoveUserElectricityMeter();
@@ -95,9 +88,6 @@ export default function ElectricityMeterManagersPage() {
       assignments.filter((r) => r.user === selectedUser.id && r.is_active).map((r) => r.meter),
     );
   }, [assignments, selectedUser]);
-
-  const strandedUsers = gaps?.users_without_meters ?? [];
-  const unkeptMeters = gaps?.meters_without_managers ?? [];
 
   async function handleAssign() {
     if (!selectedUser) {
@@ -156,38 +146,6 @@ export default function ElectricityMeterManagersPage() {
           onClick: () => setAssignOpen(true),
         }}
       />
-
-      {(strandedUsers.length > 0 || unkeptMeters.length > 0) && (
-        <Card className="border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-          <CardContent className="space-y-3 p-4 text-sm">
-            <p className="flex items-center gap-2 font-medium text-amber-900 dark:text-amber-200">
-              <AlertTriangle className="h-4 w-4" /> Needs configuring
-            </p>
-            {strandedUsers.length > 0 && (
-              <div>
-                <p className="text-amber-900 dark:text-amber-200">
-                  {strandedUsers.length} user(s) may work the electricity register but keep
-                  no meter — they will be refused:
-                </p>
-                <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
-                  {strandedUsers.map((u) => u.full_name || u.email).join(', ')}
-                </p>
-              </div>
-            )}
-            {unkeptMeters.length > 0 && (
-              <div>
-                <p className="text-amber-900 dark:text-amber-200">
-                  {unkeptMeters.length} active meter(s) have no manager — nobody can edit them
-                  or record a reading on them:
-                </p>
-                <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
-                  {unkeptMeters.map((m) => m.name).join(', ')}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       <Dialog open={assignOpen} onOpenChange={handleAssignOpenChange}>
         <DialogContent className="sm:max-w-lg">
