@@ -90,7 +90,7 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
   }
 
-  // A live internal transfer stays sender-scannable through IN_TRANSIT / RECEIVING
+  // A live transfer stays sender-scannable through IN_TRANSIT / RECEIVING
   // until it's sealed via approve (scan_approved_at), so keep "Resume scanning".
   const liveActive =
     isLiveBst(t) && !t.scan_approved_at && (t.status === 'IN_TRANSIT' || t.status === 'RECEIVING');

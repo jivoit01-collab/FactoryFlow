@@ -39,7 +39,7 @@ export default function BSTReviewPage() {
     return <p className="text-muted-foreground py-12 text-center">Loading…</p>;
   }
 
-  // A live internal transfer is already in transit from its first scan; approving
+  // A live transfer is already in transit from its first scan; approving
   // it just *seals* the send. Allow it through IN_TRANSIT / RECEIVING until sealed.
   const live = isLiveBst(t);
   const liveActive =
@@ -77,13 +77,11 @@ export default function BSTReviewPage() {
 
   const handleApprove = async () => {
     try {
-      const updated = await approveMut.mutateAsync(transferId);
+      await approveMut.mutateAsync(transferId);
       toast.success(
         live
           ? 'Sending sealed — the destination can finalize when everything has landed'
-          : updated.requires_gate
-            ? 'Approved — sent to the gate for vehicle out'
-            : 'Approved — now in transit',
+          : 'Approved — sent to the gate for vehicle out',
       );
       navigate(`/warehouse/bst/${transferId}`);
     } catch (err) {

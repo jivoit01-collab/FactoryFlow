@@ -64,7 +64,7 @@ export default function BSTScanPage() {
   const [pickedScanIds, setPickedScanIds] = useState<number[]>([]);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
-  // A live internal transfer stays sender-editable through IN_TRANSIT / RECEIVING
+  // A live transfer stays sender-editable through IN_TRANSIT / RECEIVING
   // (the destination is already receiving) until it's sealed via approve
   // (scan_approved_at). Mirrors BSTService._live_editable on the backend.
   const liveActive =

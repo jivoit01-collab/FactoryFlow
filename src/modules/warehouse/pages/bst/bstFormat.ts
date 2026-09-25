@@ -1,12 +1,10 @@
-import type { BSTSourceType } from '../../types';
-
-// A *live* internal transfer: an intra-company stock transfer with no gate step.
-// These become receivable the moment the sender scans the first box, so the
-// destination can accept/reject while the sender is still scanning. Mirrors
-// `BSTService._is_live` on the backend. (INVOICE / gated transfers stay
-// sequential: scan → approve → [gate] → receive.)
-export function isLiveBst(t: { source_type: BSTSourceType; requires_gate: boolean }): boolean {
-  return t.source_type === 'STOCK_TRANSFER' && !t.requires_gate;
+// A *live* transfer: one with no gate step, i.e. no truck — an internal stock
+// transfer or an Oil → Mart invoice alike. These become receivable the moment
+// the sender scans the first box, so the destination can accept/reject while the
+// sender is still scanning. Mirrors `BSTService._is_live` on the backend. (Gated
+// transfers stay sequential: scan → approve → gate → receive.)
+export function isLiveBst(t: { requires_gate: boolean }): boolean {
+  return !t.requires_gate;
 }
 
 /** Shared date+time formatting for BST screens (date + HH:MM, no seconds). */
