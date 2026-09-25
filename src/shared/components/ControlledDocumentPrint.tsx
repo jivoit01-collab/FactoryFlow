@@ -76,9 +76,11 @@ function ControlledDocumentHeaderBox({
 function ControlledDocumentFooterBox({
   doc,
   documentId,
+  hideDocumentIdLabel,
 }: {
   doc: ControlledDocumentMeta;
   documentId?: string | null;
+  hideDocumentIdLabel?: boolean;
 }) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -92,7 +94,9 @@ function ControlledDocumentFooterBox({
           </td>
           <td style={cell({ fontSize: 9, textAlign: 'right', width: '28%', fontWeight: 700 })}>
             {documentId && (
-              <div style={{ fontWeight: 600 }}>Document ID: {documentId}</div>
+              <div style={{ fontWeight: 600 }}>
+                {hideDocumentIdLabel ? documentId : `Document ID: ${documentId}`}
+              </div>
             )}
             Controlled Document
           </td>
@@ -107,6 +111,7 @@ export function ControlledDocumentFrame({
   children,
   hideHeaderCode,
   documentId,
+  hideDocumentIdLabel,
 }: {
   doc: ControlledDocumentMeta;
   children: ReactNode;
@@ -114,6 +119,8 @@ export function ControlledDocumentFrame({
   hideHeaderCode?: boolean;
   /** Per-instance document ID shown in the footer (e.g. the selected QC print document). */
   documentId?: string | null;
+  /** Print the footer document ID on its own, without the "Document ID:" label. */
+  hideDocumentIdLabel?: boolean;
 }) {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -131,7 +138,11 @@ export function ControlledDocumentFrame({
         <tr>
           <td style={{ padding: 0 }}>
             <div style={{ height: 8 }} />
-            <ControlledDocumentFooterBox doc={doc} documentId={documentId} />
+            <ControlledDocumentFooterBox
+              doc={doc}
+              documentId={documentId}
+              hideDocumentIdLabel={hideDocumentIdLabel}
+            />
           </td>
         </tr>
       </tfoot>

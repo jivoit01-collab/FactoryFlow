@@ -173,6 +173,7 @@ export function InspectionReportPrintView({
             doc={CONTROLLED_DOCUMENTS.QC_INSPECTION_REPORT}
             hideHeaderCode
             documentId={report.print_document_id}
+            hideDocumentIdLabel
           >
             {topBar}
 
@@ -278,6 +279,7 @@ export function InspectionReportPrintView({
             doc={CONTROLLED_DOCUMENTS.QC_PARAMETERS_REPORT}
             hideHeaderCode
             documentId={report.parameters_print_document_id}
+            hideDocumentIdLabel
           >
             {topBar}
 
