@@ -5,6 +5,7 @@ import {
   LogIn,
   RefreshCw,
   Search,
+  ShieldAlert,
   Truck,
   Undo2,
 } from 'lucide-react';
@@ -21,8 +22,10 @@ import {
   useMarkGoodsReturnIn,
 } from '@/modules/returns/customer/api';
 import {
+  APPROVAL_BADGE_CLASS,
   formatDate,
   formatDateTime,
+  gateHoldReason,
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
 } from '@/modules/returns/customer/utils';
@@ -279,6 +282,9 @@ function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
 
   const vehicleReady = Boolean(entry.vehicle_no) || Boolean(vehicleId);
   const driverReady = Boolean(entry.driver_name) || Boolean(driverId);
+  // Still listed while it waits on an admin, so the gate can tell the driver why
+  // rather than find no booking at all — but it cannot be marked in.
+  const holdReason = gateHoldReason(entry);
 
   async function handleMarkIn() {
     try {
@@ -376,10 +382,22 @@ function ExpectedReturnCard({ entry }: { entry: GoodsReturnListItem }) {
           </div>
         )}
 
+        {holdReason && (
+          <p
+            className={cn(
+              'flex items-start gap-2 rounded-md p-3 text-sm font-medium',
+              APPROVAL_BADGE_CLASS[entry.approval_status],
+            )}
+          >
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            {holdReason}
+          </p>
+        )}
+
         <Button
           className="w-full"
           onClick={handleMarkIn}
-          disabled={markIn.isPending || !vehicleReady || !driverReady}
+          disabled={markIn.isPending || !vehicleReady || !driverReady || Boolean(holdReason)}
         >
           {markIn.isPending ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

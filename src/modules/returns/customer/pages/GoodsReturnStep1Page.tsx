@@ -465,7 +465,8 @@ export default function GoodsReturnStep1Page() {
             <span className="text-sm">
               <span className="font-medium">This return is coming on approval</span>
               <span className="block text-xs text-muted-foreground">
-                An admin must approve it before the goods can be received.
+                An admin must approve it before the gate can let the truck in or the goods
+                be received.
               </span>
             </span>
           </label>

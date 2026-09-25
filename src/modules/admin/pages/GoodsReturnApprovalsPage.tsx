@@ -40,8 +40,8 @@ type ReviewMode = 'approve' | 'reject';
 /**
  * Admin queue for goods returns. Shows ALL returns for the admin's companies, but
  * an approve/reject action only appears on those the GR creator flagged "coming on
- * approval" and that are still pending. Approval is what unlocks receiving (the SAP
- * A/R Returns post).
+ * approval" and that are still pending. Approval is what lets the gate mark the
+ * truck in and the return be received (the SAP A/R Returns post).
  */
 export default function GoodsReturnApprovalsPage() {
   const navigate = useNavigate();
@@ -223,8 +223,8 @@ export default function GoodsReturnApprovalsPage() {
             </DialogTitle>
             <DialogDescription>
               {reviewMode === 'approve'
-                ? 'Approving unlocks receiving this return (its SAP posting).'
-                : 'Rejecting blocks this return from being received.'}
+                ? 'Approving lets the gate mark this truck in and the return be received (its SAP posting).'
+                : 'Rejecting keeps this truck out at the gate and blocks the return from being received.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

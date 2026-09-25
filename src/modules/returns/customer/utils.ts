@@ -62,6 +62,25 @@ export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
 };
 
 /**
+ * Why the gate must keep a return's truck outside, or null when it may come in.
+ *
+ * A return coming on approval waits for the admin's decision before anything
+ * happens to it — the server refuses the mark-in — so the gate card says so
+ * rather than offering a button that can only fail. Mirrors the server's rule:
+ * flagged and not approved is held, whatever the status reads.
+ */
+export function gateHoldReason(entry: {
+  requires_approval: boolean;
+  approval_status: GoodsReturnApprovalStatus;
+}): string | null {
+  if (!entry.requires_approval || entry.approval_status === 'APPROVED') return null;
+  if (entry.approval_status === 'REJECTED') {
+    return 'Approval was rejected — do not let this vehicle in.';
+  }
+  return 'Awaiting admin approval — keep this vehicle outside until it is approved.';
+}
+
+/**
  * The condition picker, most-used first — `DAMAGED` is the default the line is
  * created with, and `LEAKED` sits next to it because the two are what the clerk
  * is choosing between on nearly every line.
