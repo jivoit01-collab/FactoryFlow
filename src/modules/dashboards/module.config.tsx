@@ -33,6 +33,7 @@ import {
 } from './logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from './plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
+import { TOMORROW_RUN_VIEW_PERMISSIONS } from './tomorrow-run/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
 const DashboardsLandingPage = lazy(() => import('./pages/DashboardsLandingPage'));
@@ -60,6 +61,7 @@ const PackingMaterialDashboardPage = lazy(
 const PmRequirementDashboardPage = lazy(
   () => import('./pm-requirement/pages/PmRequirementDashboardPage'),
 );
+const TomorrowRunPage = lazy(() => import('./tomorrow-run/pages/TomorrowRunPage'));
 const DispatchDayDashboardPage = lazy(() => import('./dispatch/pages/DispatchDayDashboardPage'));
 const DispatchPipelineDashboardPage = lazy(
   () => import('./dispatch-pipeline/pages/DispatchPipelineDashboardPage'),
@@ -146,6 +148,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...COMPANY_EXPENSE_VIEW_PERMISSIONS,
         ...CUSTOMER_RETURNS_VIEW_PERMISSIONS,
         ...HR_BOARD_VIEW_PERMISSIONS,
+        // Tomorrow's run has rights of its own that nothing above covers.
+        ...TOMORROW_RUN_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -432,6 +436,16 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'PM Requirement' },
     },
     {
+      // Oil's machine plan for the next working day, read at 7 pm from the
+      // planning sheet, stock, oil, packaging and the production log. Its own
+      // rights, because picking what runs first is Gurvinder veerji's call.
+      path: '/dashboards/tomorrow-run',
+      element: <TomorrowRunPage />,
+      layout: 'main',
+      permissions: TOMORROW_RUN_VIEW_PERMISSIONS,
+      breadcrumb: { label: "Tomorrow's run" },
+    },
+    {
       path: '/dashboards/production',
       element: <ProductionDashboardPage />,
       layout: 'main',
@@ -658,6 +672,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // entire Dashboards menu -- not just this board -- is hidden from the
         // very people it was granted to.
         ...HR_BOARD_VIEW_PERMISSIONS,
+        // Tomorrow's run mints its own rights, so a picker holding only those
+        // would otherwise never see the Dashboards menu at all.
+        ...TOMORROW_RUN_VIEW_PERMISSIONS,
         // And the Accounts board. A cash book viewer holds none of the rights
         // above, so without this spread the entire Dashboards menu -- not just
         // this one board -- stays hidden from the people it was built for.
@@ -752,6 +769,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/gate',
           title: 'Gate',
           permissions: GATE_DASHBOARD_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/tomorrow-run',
+          title: "Tomorrow's Run",
+          permissions: TOMORROW_RUN_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/production',
