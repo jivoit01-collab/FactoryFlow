@@ -40,31 +40,36 @@ vi.mock('@/modules/warehouse/grpo/api', () => ({
   }),
 }));
 
-// The real picker is a popover; a plain <select> drives the same callbacks.
+// The real picker is a popover; a plain <select> drives the same callbacks. It
+// takes the input id, so the row's own <label> names it as it does the real one.
 vi.mock('@/shared/components', () => ({
   SearchableSelect: (props: {
-    label: string;
+    inputId: string;
     value?: string;
+    error?: string;
     items: { warehouse_code: string }[];
     onItemSelect: (item: { warehouse_code: string }) => void;
     onClear: () => void;
   }) => (
-    <select
-      aria-label={props.label}
-      value={props.value}
-      onChange={(event) => {
-        const item = props.items.find((w) => w.warehouse_code === event.target.value);
-        if (item) props.onItemSelect(item);
-        else props.onClear();
-      }}
-    >
-      <option value="">—</option>
-      {props.items.map((w) => (
-        <option key={w.warehouse_code} value={w.warehouse_code}>
-          {w.warehouse_code}
-        </option>
-      ))}
-    </select>
+    <>
+      <select
+        id={props.inputId}
+        value={props.value}
+        onChange={(event) => {
+          const item = props.items.find((w) => w.warehouse_code === event.target.value);
+          if (item) props.onItemSelect(item);
+          else props.onClear();
+        }}
+      >
+        <option value="">—</option>
+        {props.items.map((w) => (
+          <option key={w.warehouse_code} value={w.warehouse_code}>
+            {w.warehouse_code}
+          </option>
+        ))}
+      </select>
+      {props.error && <p>{props.error}</p>}
+    </>
   ),
 }));
 
@@ -78,6 +83,20 @@ describe('Production settings', () => {
     expect(screen.getByLabelText('FG warehouse')).toHaveValue('BH-PF');
     expect(screen.getByText(/nobody has changed them yet/)).toBeInTheDocument();
     // Nothing changed yet, so nothing to save.
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+  });
+
+  it('marks a changed warehouse, and Discard puts it back', () => {
+    perms.canEdit = true;
+    render(<ProductionSettingsPage />);
+
+    expect(screen.queryByText('Changed')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('PM warehouse'), { target: { value: 'BH-PM' } });
+    expect(screen.getAllByText('Changed')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.getByLabelText('PM warehouse')).toHaveValue('BH-PC');
+    expect(screen.queryByText('Changed')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
   });
 
@@ -105,7 +124,7 @@ describe('Production settings', () => {
     fireEvent.change(screen.getByLabelText('FG warehouse'), { target: { value: '' } });
 
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
-    expect(screen.getByText('Pick the FG warehouse.')).toBeInTheDocument();
+    expect(screen.getByText('Pick a warehouse.')).toBeInTheDocument();
   });
 
   it('is read-only without the manage permission', () => {
@@ -114,8 +133,10 @@ describe('Production settings', () => {
 
     expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('RM warehouse')).not.toBeInTheDocument();
+    // Each code is shown with its SAP name.
     expect(screen.getAllByText('BH-PC')).toHaveLength(2);
+    expect(screen.getAllByText(/Production Consumption/)).toHaveLength(2);
     expect(screen.getByText('BH-PF')).toBeInTheDocument();
-    expect(screen.getByText(/Read-only/)).toBeInTheDocument();
+    expect(screen.getByText('Read-only')).toBeInTheDocument();
   });
 });
