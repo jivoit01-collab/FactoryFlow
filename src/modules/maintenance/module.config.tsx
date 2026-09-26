@@ -7,6 +7,7 @@ import {
   Factory,
   FileText,
   LayoutDashboard,
+  Network,
   Package,
   PackageOpen,
   PackagePlus,
@@ -25,6 +26,7 @@ import {
   RETURNABLE_MODULE_PREFIX,
   RETURNABLE_PERMISSIONS,
 } from '@/config/permissions';
+import { DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS } from '@/config/permissions/maintenance.permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig, ModuleRoute } from '@/core/types';
 
@@ -50,6 +52,9 @@ const MaintenanceReturnableDetailPage = lazy(
 const MaintenanceReturnableFormPage = lazy(() => import('./pages/MaintenanceReturnableFormPage'));
 const MaintenanceDailyElectricityPage = lazy(
   () => import('./pages/MaintenanceDailyElectricityPage'),
+);
+const MaintenanceDailyElectricityPlusPage = lazy(
+  () => import('./pages/MaintenanceDailyElectricityPlusPage'),
 );
 const MaintenanceDailyWastagePage = lazy(() => import('./pages/MaintenanceDailyWastagePage'));
 
@@ -157,6 +162,13 @@ const maintenanceRoutes: ModuleRoute[] = [
     breadcrumb: { label: 'Daily Electricity' },
   },
   {
+    path: '/maintenance/daily-electricity-plus',
+    element: <MaintenanceDailyElectricityPlusPage />,
+    layout: 'main',
+    permissions: [...DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS],
+    breadcrumb: { label: 'Daily Electricity++' },
+  },
+  {
     path: '/maintenance/daily-wastage',
     element: <MaintenanceDailyWastagePage />,
     layout: 'main',
@@ -209,7 +221,7 @@ const maintenanceRoutes: ModuleRoute[] = [
       MAINTENANCE_PERMISSIONS.VIEW_ASSET_DEPARTMENT,
       MAINTENANCE_PERMISSIONS.MANAGE_SETTINGS,
       RETURNABLE_PERMISSIONS.VIEW_GATEPASS,
-      ...DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
+      ...DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS,
       MAINTENANCE_PERMISSIONS.VIEW_DAILY_WASTAGE,
       MAINTENANCE_PERMISSIONS.MANAGE_DAILY_WASTAGE,
     ],
@@ -288,6 +300,12 @@ export const maintenanceModuleConfig: ModuleConfig = {
           title: 'Daily Electricity',
           icon: Zap,
           permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
+        },
+        {
+          path: '/maintenance/daily-electricity-plus',
+          title: 'Daily Electricity++',
+          icon: Network,
+          permissions: [...DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS],
         },
         {
           path: '/maintenance/daily-wastage',

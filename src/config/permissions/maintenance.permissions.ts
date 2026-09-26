@@ -86,6 +86,9 @@ export const MAINTENANCE_PERMISSIONS = {
   ADD_DAILY_ELECTRICITY: 'maintenance.can_add_daily_electricity',
   EDIT_DAILY_ELECTRICITY: 'maintenance.can_edit_daily_electricity',
   DELETE_DAILY_ELECTRICITY: 'maintenance.can_delete_daily_electricity',
+  // Place meters in the tree and decide who pays for each one's units. An
+  // accounts decision, deliberately not a meter keeper's.
+  MANAGE_ELECTRICITY_ALLOCATION: 'maintenance.can_manage_electricity_allocation',
   // Who keeps which meter. Admin-only, and deliberately not one of the
   // electricity rights above: a keeper must not be able to widen their own scope.
   MANAGE_USER_ELECTRICITY_METERS: 'maintenance.can_manage_user_electricity_meters',
@@ -109,4 +112,14 @@ export const DAILY_ELECTRICITY_ACCESS_PERMISSIONS = [
   MAINTENANCE_PERMISSIONS.ADD_DAILY_ELECTRICITY,
   MAINTENANCE_PERMISSIONS.EDIT_DAILY_ELECTRICITY,
   MAINTENANCE_PERMISSIONS.DELETE_DAILY_ELECTRICITY,
+] as const;
+
+/**
+ * Who reaches Daily Electricity++ — the same register, as the meter tree, with
+ * who pays for each meter. Anyone who reaches the Daily Electricity page does,
+ * and so does whoever sets the split, which needs no meter of their own.
+ */
+export const DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS = [
+  ...DAILY_ELECTRICITY_ACCESS_PERMISSIONS,
+  MAINTENANCE_PERMISSIONS.MANAGE_ELECTRICITY_ALLOCATION,
 ] as const;

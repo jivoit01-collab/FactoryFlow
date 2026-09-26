@@ -1,5 +1,7 @@
 export { dailyRegisterApi } from './dailyRegister.api';
 export * from './dailyRegister.queries';
+export { ELECTRICITY_TREE_ENDPOINTS, electricityTreeApi } from './electricityTree.api';
+export * from './electricityTree.queries';
 export { fireApi } from './fire.api';
 export * from './fire.queries';
 export { fireIssueApi } from './fireIssue.api';

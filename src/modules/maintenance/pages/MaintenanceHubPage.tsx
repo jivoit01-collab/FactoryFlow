@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   type LucideIcon,
+  Network,
   Package,
   PackageOpen,
   PackagePlus,
@@ -22,6 +23,7 @@ import {
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
 } from '@/config/permissions';
+import { DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS } from '@/config/permissions/maintenance.permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { AccentKey } from '@/shared/components/dashboard/accents';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -94,6 +96,13 @@ const SUB_MODULES: SubModule[] = [
     icon: Zap,
     accent: 'amber',
     permissions: [...DAILY_ELECTRICITY_ACCESS_PERMISSIONS],
+  },
+  {
+    title: 'Daily Electricity++',
+    to: '/maintenance/daily-electricity-plus',
+    icon: Network,
+    accent: 'amber',
+    permissions: [...DAILY_ELECTRICITY_PLUS_ACCESS_PERMISSIONS],
   },
   {
     title: 'Daily Wastage',

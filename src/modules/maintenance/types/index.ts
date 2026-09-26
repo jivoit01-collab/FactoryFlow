@@ -1,4 +1,5 @@
 export * from './dailyRegister.types';
+export * from './electricityTree.types';
 export * from './fire.types';
 export * from './fireIssue.types';
 export * from './fireReport.types';
