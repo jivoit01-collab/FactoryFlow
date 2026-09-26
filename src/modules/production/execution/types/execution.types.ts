@@ -256,6 +256,9 @@ export interface ProductionRunDetail extends ProductionRun {
   machine_ids: number[];
   /** Beverages: the RM/PM request and line clearance gate a start only once sent. */
   start_checks_optional?: boolean;
+  /** False for Oil: no BOM request is sent to the warehouse at all — the run is
+   *  planned on the stock at BH-PC and starts without one. */
+  bom_request_required?: boolean;
   updated_at: string;
   segments: ProductionSegment[];
   breakdowns: MachineBreakdown[];
@@ -754,6 +757,8 @@ export type MaterialReadinessStatus =
   | 'UNKNOWN'
   | 'TIGHT'
   | 'CONTESTED'
+  /** Oil only: some of the requirement is at BH-PC, not all. Plans as it stands. */
+  | 'PARTIAL'
   | 'NO_STOCK_RECORD'
   | 'SHORT';
 
@@ -810,6 +815,10 @@ export interface PlanCheckMaterialRow {
   /** REGISTER for raw material (the store keeper's count) and SAP for
    *  everything else. The two must never be presented as the same number. */
   stock_source: 'REGISTER' | 'SAP';
+  /** PRODUCTION_CONSUMPTION (Oil): only what is already at BH-PC counts and is
+   *  shown, for RM and PM alike — no godown, no register, no approval.
+   *  STORES: the scoped stores. */
+  stock_scope?: 'STORES' | 'PRODUCTION_CONSUMPTION';
   /** True when a raw material has no Raw Material register row at all — it
    *  reads as 0, which is not the same as a counted zero. */
   register_missing: boolean;
@@ -836,6 +845,8 @@ export interface PlanCheckMaterialSummary {
   ok_lines: number;
   tight_lines: number;
   contested_lines: number;
+  /** Oil only: components partly at BH-PC. */
+  partial_lines?: number;
   short_lines: number;
   no_record_lines: number;
   status: MaterialReadinessStatus;

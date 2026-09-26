@@ -78,6 +78,7 @@ import type { MachineBreakdown, ProductionSegment } from '../types';
 function WarehouseApprovalBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
     NOT_REQUESTED: { label: 'Not Requested', cls: 'bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground' },
+    NOT_REQUIRED: { label: 'WH Not Needed', cls: 'bg-gray-100 dark:bg-muted text-gray-600 dark:text-muted-foreground' },
     PENDING: { label: 'WH Pending', cls: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400' },
     APPROVED: { label: 'WH Approved', cls: 'bg-green-100 dark:bg-green-500/15 text-green-800 dark:text-green-400' },
     PARTIALLY_APPROVED: { label: 'WH Partial', cls: 'bg-blue-100 dark:bg-blue-500/15 text-blue-800 dark:text-blue-400' },
@@ -260,14 +261,18 @@ function RunDetailPage() {
   // Where the checks are optional (Beverages), each one gates the start only
   // once it has been sent: the BOM request submitted, the clearance sent to QA.
   const startChecksOptional = run?.start_checks_optional === true;
+  // Oil sends the warehouse nothing: the run is planned on BH-PC stock, so
+  // there is no request to submit, re-request or wait for.
+  const bomRequestRequired = run?.bom_request_required !== false;
   const clearanceSent = !!runClearance && runClearance.status !== 'DRAFT';
   const clearanceRequired = !startChecksOptional || clearanceSent;
+  const warehouseStatus = bomRequestRequired ? run?.warehouse_approval_status : undefined;
   const startProductionBlockReason =
-    run?.warehouse_approval_status === 'NOT_REQUESTED' && !startChecksOptional
+    warehouseStatus === 'NOT_REQUESTED' && !startChecksOptional
       ? 'Submit the BOM request to warehouse before starting production.'
-      : run?.warehouse_approval_status === 'PENDING'
+      : warehouseStatus === 'PENDING'
         ? 'Cannot start production while warehouse approval is pending.'
-        : run?.warehouse_approval_status === 'REJECTED'
+        : warehouseStatus === 'REJECTED'
           ? 'Cannot start production because warehouse approval was rejected.'
           : clearanceRequired && !hasClearedClearance
             ? 'Cannot start production — line clearance has not been approved by QA.'
@@ -537,7 +542,9 @@ function RunDetailPage() {
               run.status === 'IN_PROGRESS' ? 'STOPPED' :
               run.status
             } />
-            <WarehouseApprovalBadge status={run.warehouse_approval_status ?? 'NOT_REQUESTED'} />
+            {bomRequestRequired && (
+              <WarehouseApprovalBadge status={run.warehouse_approval_status ?? 'NOT_REQUESTED'} />
+            )}
           </div>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -582,7 +589,7 @@ function RunDetailPage() {
               </Button>
             </>
           )}
-          {!isCompleted && run.warehouse_approval_status === 'NOT_REQUESTED' && (
+          {!isCompleted && bomRequestRequired && run.warehouse_approval_status === 'NOT_REQUESTED' && (
             <Button
               variant="outline" size="sm"
               className="border-orange-300 dark:border-orange-500/30 bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/25 hover:text-orange-800 dark:hover:text-orange-400"
@@ -606,7 +613,7 @@ function RunDetailPage() {
               Submit BOM to WH{startChecksOptional && ' (optional)'}
             </Button>
           )}
-          {!isCompleted && canReRequestShortfall && (
+          {!isCompleted && bomRequestRequired && canReRequestShortfall && (
             <Button
               variant="outline" size="sm"
               className="border-blue-300 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/25 hover:text-blue-800 dark:hover:text-blue-400"

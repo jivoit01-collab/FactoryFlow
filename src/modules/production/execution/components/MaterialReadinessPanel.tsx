@@ -74,6 +74,11 @@ const STATUS_STYLE: Record<
     className: 'bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300',
     icon: AlertTriangle,
   },
+  PARTIAL: {
+    label: 'Partly at the line',
+    className: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
+    icon: CircleAlert,
+  },
   SHORT: {
     label: 'Short',
     className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
@@ -152,6 +157,13 @@ export function MaterialReadinessPanel({
 
   const shortCount = summary?.short_lines ?? 0;
   const contestedCount = summary?.contested_lines ?? 0;
+  const partialCount = summary?.partial_lines ?? 0;
+  // Oil: only BH-PC stock is counted and shown, and nothing goes to the
+  // warehouse, so the Free and Approval columns have nothing to say.
+  const atLineOnly = rows.some((r) => r.check?.stock_scope === 'PRODUCTION_CONSUMPTION');
+  const atLineWarehouse =
+    rows.find((r) => r.check?.stock_scope === 'PRODUCTION_CONSUMPTION')?.check
+      ?.searched_warehouses[0] ?? 'BH-PC';
   const tightCount = summary?.tight_lines ?? 0;
   const okCount = summary?.ok_lines ?? 0;
 
@@ -180,6 +192,14 @@ export function MaterialReadinessPanel({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {atLineOnly && (
+          <p className="text-xs text-muted-foreground">
+            Stock at <span className="font-mono">{atLineWarehouse}</span> only — nothing is
+            requested from the warehouse. A component with none there needs a reason; one that is
+            partly there does not.
+          </p>
+        )}
+
         {!hasSku && (
           <p className="text-sm text-muted-foreground">
             Pick a product SKU to load its BOM and check the warehouse.
@@ -217,7 +237,12 @@ export function MaterialReadinessPanel({
               { label: 'ready', value: okCount, dot: 'bg-emerald-500' },
               { label: 'committed elsewhere', value: tightCount, dot: 'bg-sky-500' },
               { label: 'claimed by another plan', value: contestedCount, dot: 'bg-amber-500' },
-              { label: 'short', value: shortCount, dot: 'bg-red-500' },
+              { label: 'partly at the line', value: partialCount, dot: 'bg-orange-500' },
+              {
+                label: atLineOnly ? `none at ${atLineWarehouse}` : 'short',
+                value: shortCount,
+                dot: 'bg-red-500',
+              },
             ]
               .filter((count) => count.value > 0)
               .map((count) => (
@@ -239,11 +264,13 @@ export function MaterialReadinessPanel({
                   <th className="text-left py-2 px-3">Component</th>
                   <th className="text-right py-2 px-3">Per case</th>
                   <th className="text-left py-2 px-3">Required</th>
-                  <th className="text-right py-2 px-3">In stock</th>
-                  <th className="text-right py-2 px-3">Free</th>
+                  <th className="text-right py-2 px-3">
+                    {atLineOnly ? `At ${atLineWarehouse}` : 'In stock'}
+                  </th>
+                  {!atLineOnly && <th className="text-right py-2 px-3">Free</th>}
                   <th className="text-right py-2 px-3">Other plans</th>
                   <th className="text-right py-2 px-3">Balance</th>
-                  <th className="text-left py-2 px-3">Approval</th>
+                  {!atLineOnly && <th className="text-left py-2 px-3">Approval</th>}
                   <th className="text-left py-2 px-3">Status</th>
                 </tr>
               </thead>
@@ -267,7 +294,9 @@ export function MaterialReadinessPanel({
                             ? 'bg-red-50/60 dark:bg-red-500/10'
                             : status === 'CONTESTED'
                               ? 'bg-amber-50/60 dark:bg-amber-500/10'
-                              : ''
+                              : status === 'PARTIAL'
+                                ? 'bg-orange-50/60 dark:bg-orange-500/10'
+                                : ''
                         }`}
                       >
                         <td className="py-2 pl-2 align-top">
@@ -331,7 +360,7 @@ export function MaterialReadinessPanel({
                               SAP {qty(check.sap_on_hand)}
                             </p>
                           )}
-                          {check && check.warehouses.length > 0 && (
+                          {check && check.warehouses.length > 0 && !atLineOnly && (
                             <div className="mt-0.5 space-y-0.5 text-[11px] font-normal text-muted-foreground">
                               {check.warehouses.slice(0, 2).map((w) => (
                                 <p key={w.warehouse}>
@@ -353,9 +382,11 @@ export function MaterialReadinessPanel({
                             </p>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                          {qty(check?.free)}
-                        </td>
+                        {!atLineOnly && (
+                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                            {qty(check?.free)}
+                          </td>
+                        )}
                         <td className="py-2 px-3 text-right tabular-nums">
                           {check?.other_plan_demand ? (
                             <span className="text-amber-700 dark:text-amber-400">
@@ -378,32 +409,34 @@ export function MaterialReadinessPanel({
                             </span>
                           )}
                         </td>
-                        <td className="py-2 px-3 align-top">
-                          {!check ? (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          ) : check.approval_required ? (
-                            <>
-                              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
-                                <ClipboardCheck className="h-3 w-3" />
-                                {qty(check.approval_qty)}
-                              </span>
-                              {/* Oil is netted against the line's staging the
-                                  same way caps are, so the note belongs on
-                                  both — and it names the warehouse the bill
-                                  actually consumes from, which is BH-PP for
-                                  every Beverages line. */}
-                              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                {check.stock_source === 'REGISTER' ? 'RM request' : 'PM request'}
-                                {!!check.qty_at_production_consumption &&
-                                  ` · ${qty(check.qty_at_production_consumption)} already at ${
-                                    check.issue_warehouse || 'BH-PC'
-                                  }`}
-                              </p>
-                            </>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">not needed</span>
-                          )}
-                        </td>
+                        {!atLineOnly && (
+                          <td className="py-2 px-3 align-top">
+                            {!check ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : check.approval_required ? (
+                              <>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-500/15 dark:text-violet-300">
+                                  <ClipboardCheck className="h-3 w-3" />
+                                  {qty(check.approval_qty)}
+                                </span>
+                                {/* Oil is netted against the line's staging the
+                                    same way caps are, so the note belongs on
+                                    both — and it names the warehouse the bill
+                                    actually consumes from, which is BH-PP for
+                                    every Beverages line. */}
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  {check.material_type === 'RAW' ? 'RM request' : 'PM request'}
+                                  {!!check.qty_at_production_consumption &&
+                                    ` · ${qty(check.qty_at_production_consumption)} already at ${
+                                      check.issue_warehouse || 'BH-PC'
+                                    }`}
+                                </p>
+                              </>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">not needed</span>
+                            )}
+                          </td>
+                        )}
                         <td className="py-2 px-3">
                           <StatusPill status={status} />
                           {!!check?.shortfall && check.shortfall > 0 && (
@@ -417,7 +450,7 @@ export function MaterialReadinessPanel({
                       {isOpen && check && (
                         <tr className="border-b last:border-0 bg-muted/30">
                           <td />
-                          <td colSpan={9} className="py-3 px-3">
+                          <td colSpan={atLineOnly ? 7 : 9} className="py-3 px-3">
                             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                               <div>
                                 <p className="text-xs font-medium mb-1">Where the stock is</p>
@@ -428,6 +461,14 @@ export function MaterialReadinessPanel({
                                     {check.sap_on_hand !== null && (
                                       <> SAP holds {qty(check.sap_on_hand)} for comparison.</>
                                     )}
+                                  </p>
+                                ) : check.stock_scope === 'PRODUCTION_CONSUMPTION' ? (
+                                  <p className="text-[11px] text-muted-foreground mb-1">
+                                    Only{' '}
+                                    <span className="font-mono">
+                                      {check.searched_warehouses.join(', ')}
+                                    </span>{' '}
+                                    is counted.
                                   </p>
                                 ) : (
                                   check.searched_warehouses.length > 0 && (
@@ -447,7 +488,9 @@ export function MaterialReadinessPanel({
                                   <p className="text-xs text-muted-foreground">
                                     {check.register_missing
                                       ? 'Nobody has entered this material on the Raw Material register, so it counts as zero.'
-                                      : 'No stock in any of those warehouses.'}
+                                      : atLineOnly
+                                        ? `None at ${atLineWarehouse}.`
+                                        : 'No stock in any of those warehouses.'}
                                   </p>
                                 ) : (
                                   <ul className="space-y-0.5">
@@ -505,12 +548,14 @@ export function MaterialReadinessPanel({
                                 )}
                               </div>
 
-                              <div>
-                                <p className="text-xs font-medium mb-1">Warehouse approval</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {check.approval_reason}
-                                </p>
-                              </div>
+                              {!atLineOnly && (
+                                <div>
+                                  <p className="text-xs font-medium mb-1">Warehouse approval</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {check.approval_reason}
+                                  </p>
+                                </div>
+                              )}
 
                               <div>
                                 <p className="text-xs font-medium mb-1">On order</p>
