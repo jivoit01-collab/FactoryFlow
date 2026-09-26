@@ -115,6 +115,13 @@ export {
   SAP_DOCUMENTS_PERMISSIONS,
   type SapDocumentsPermission,
 } from './sap-documents.permissions';
+// SAP Approvals (every SAP approval request that involves the caller, from SAP Portal)
+export {
+  SAP_APPROVALS_ACCESS,
+  SAP_APPROVALS_MODULE_PREFIX,
+  SAP_APPROVALS_PERMISSIONS,
+  type SapApprovalsPermission,
+} from './sap-approvals.permissions';
 
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {

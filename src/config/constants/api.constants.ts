@@ -1475,6 +1475,15 @@ export const API_ENDPOINTS = {
     BUDGET_DETAIL: (docEntry: number) => `/sap-finance/budgets/${docEntry}/`,
     BUDGET_CHANGES: '/sap-finance/budget-changes/',
   },
+  // SAP Portal's approvals inbox: every SAP approval request that involves the
+  // caller, any document type, decided or withdrawn as their own SAP user.
+  SAP_APPROVALS: {
+    REQUESTS: '/sap-approvals/requests/',
+    REQUEST: (wddCode: number) => `/sap-approvals/requests/${wddCode}/`,
+    DECISION: (wddCode: number) => `/sap-approvals/requests/${wddCode}/decision/`,
+    WITHDRAW: (wddCode: number) => `/sap-approvals/requests/${wddCode}/withdraw/`,
+    PENDING_COUNT: '/sap-approvals/pending-count/',
+  },
 
   // SAP Portal's document browser: SAP documents by type, one document with
   // its journal, outgoing-payment drafts, and attachment lists and files.

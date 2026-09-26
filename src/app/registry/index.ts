@@ -26,6 +26,7 @@ import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { returnsModuleConfig } from '@/modules/returns/module.config';
+import { sapApprovalsModuleConfig } from '@/modules/sap-approvals/module.config';
 import { sapDocumentsModuleConfig } from '@/modules/sap-documents/module.config';
 import { sapFinanceModuleConfig } from '@/modules/sap-finance/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
@@ -97,6 +98,11 @@ export const moduleRegistry: ModuleConfig[] = [
   // browser. Beside SAP Finance, the other SAP Portal screen: that one is the
   // books, this one the documents behind them, and each has its own audience.
   sapDocumentsModuleConfig,
+  // SAP's approval requests of every document type, merged in from SAP Portal:
+  // the ones waiting on the caller and the ones they raised. Beside SAP Finance
+  // because both are SAP's own work surfaced here; separate from the warehouse
+  // approval queues, which list one document family company-wide.
+  sapApprovalsModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,
