@@ -1476,6 +1476,19 @@ export const API_ENDPOINTS = {
     BUDGET_CHANGES: '/sap-finance/budget-changes/',
   },
 
+  // SAP Portal's document browser: SAP documents by type, one document with
+  // its journal, outgoing-payment drafts, and attachment lists and files.
+  SAP_DOCUMENTS: {
+    TYPES: '/sap-documents/types/',
+    LIST: (type: string) => `/sap-documents/documents/${encodeURIComponent(type)}/`,
+    DETAIL: (type: string, docEntry: number) =>
+      `/sap-documents/documents/${encodeURIComponent(type)}/${docEntry}/`,
+    PAYMENT_DRAFT: (docEntry: number) => `/sap-documents/payment-drafts/${docEntry}/`,
+    ATTACHMENTS: (absEntry: number) => `/sap-documents/attachments/${absEntry}/`,
+    ATTACHMENT_DOWNLOAD: (absEntry: number, line: number) =>
+      `/sap-documents/attachments/${absEntry}/${line}/download/`,
+  },
+
   BARCODE: {
     // Activation — printed labels are inactive until received or approved.
     // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).

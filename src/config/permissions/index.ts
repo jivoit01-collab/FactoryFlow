@@ -107,6 +107,15 @@ export {
   type SapFinancePermission,
 } from './sap-finance.permissions';
 
+// SAP Documents (the document browser and its attachments, from SAP Portal)
+export {
+  SAP_DOCUMENTS_ACCESS,
+  SAP_DOCUMENTS_DOWNLOAD_ACCESS,
+  SAP_DOCUMENTS_MODULE_PREFIX,
+  SAP_DOCUMENTS_PERMISSIONS,
+  type SapDocumentsPermission,
+} from './sap-documents.permissions';
+
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {
   SAP_REPORTS_ACCESS,
