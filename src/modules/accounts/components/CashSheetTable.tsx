@@ -1,5 +1,5 @@
 import { Copy } from 'lucide-react';
-import { type ComponentProps, useCallback, useMemo } from 'react';
+import { type ComponentProps, type ReactNode, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import type { CashEntry } from '@/modules/accounts/api';
@@ -25,15 +25,17 @@ import { formatNumber } from '@/shared/utils';
  * Excel's status bar at the foot saying what is picked and what it comes to.
  *
  * It is a second way of reading the register rather than a replacement for
- * it. The register proper carries the tick boxes, the row buttons and the
- * dialogs; a grid you drag a selection across is no place for any of them,
- * and a cell that is both a selection target and a button is neither.
+ * it. The register proper carries the tick boxes; a grid you drag a selection
+ * across is no place for them. The row buttons are here, but in a column of
+ * their own past the last lettered one: a cell that is both a selection target
+ * and a button is neither, so that column is never picked, summed or copied.
  */
 export function CashSheetTable({
   rows,
   resetKey,
   column,
   onOpenColumn,
+  actions,
 }: {
   rows: CashEntry[];
   /**
@@ -57,6 +59,8 @@ export function CashSheetTable({
    * goes with it.
    */
   resetKey: string;
+  /** The register's own Actions cell for a row; absent, the column is not drawn. */
+  actions?: (row: CashEntry) => ReactNode;
 }) {
   const byKey = useMemo(() => {
     const map = new Map<string, CashSheetColumn>();
@@ -127,6 +131,8 @@ export function CashSheetTable({
                   {columnLetter(index)}
                 </th>
               ))}
+              {/* No letter: this column is not part of the sheet. */}
+              {actions && <th className="px-1 py-0.5" />}
             </tr>
             {/* The headings, each with its own sort and filter -- the same
                 ones the register uses, because they are the register's. */}
@@ -142,6 +148,7 @@ export function CashSheetTable({
                   />
                 );
               })}
+              {actions && <th className="px-3 py-2">Actions</th>}
             </tr>
           </thead>
 
@@ -189,6 +196,7 @@ export function CashSheetTable({
                     {column.value(row)}
                   </td>
                 ))}
+                {actions && <td className="whitespace-nowrap px-3 py-0.5">{actions(row)}</td>}
               </tr>
             ))}
           </tbody>

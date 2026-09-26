@@ -95,9 +95,10 @@ export default function CashBookPage() {
 
   const [includeCancelled, setIncludeCancelled] = useState(false);
   // A second way of reading the same page. The register carries the tick
-  // boxes, the row buttons and the dialogs; a grid you drag a selection
-  // across is no place for any of them.
-  const [sheetMode, setSheetMode] = useState(false);
+  // boxes; a grid you drag a selection across is no place for them. The row
+  // buttons do come along, in a column of their own outside the grid. The
+  // sheet is what the page opens on.
+  const [sheetMode, setSheetMode] = useState(true);
   // One entry per column that is filtering. Empty means the column is not.
   const [filters, setFilters] = useState<ColumnFilters>({});
   // Which drop-down is open, so only that column's values are fetched.
@@ -307,6 +308,36 @@ export default function CashBookPage() {
     } catch (err) {
       toast.error(getErrorMessage(err, 'That entry could not be cancelled.'));
     }
+  }
+
+  /** A row's Actions cell — the same on the register and the sheet. */
+  function rowActions(row: CashEntry) {
+    const cancelled = !row.is_active;
+    if (cancelled || row.is_locked) {
+      return (
+        <span className="text-xs text-muted-foreground">{cancelled ? 'Cancelled' : 'Locked'}</span>
+      );
+    }
+    return (
+      <div className="flex gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openEdit(row)}
+          aria-label="Correct this entry"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleCancel(row)}
+          aria-label="Cancel this entry"
+        >
+          <Ban className="h-4 w-4" />
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -522,6 +553,7 @@ export default function CashBookPage() {
               rows={rows}
               column={column}
               onOpenColumn={setOpenColumn}
+              actions={canManage ? rowActions : undefined}
               resetKey={`${page}|${pageSize}|${toSortParam(sort)}|${includeCancelled}|${JSON.stringify(filters)}`}
             />
           </div>
@@ -609,7 +641,6 @@ export default function CashBookPage() {
                 </tr>
                 {rows.map((row) => {
                   const cancelled = !row.is_active;
-                  const editable = canManage && !cancelled && !row.is_locked;
                   return (
                     <tr
                       key={row.id}
@@ -716,34 +747,7 @@ export default function CashBookPage() {
                           )
                         )}
                       </td>
-                      {canManage && (
-                        <td className="px-3 py-2">
-                          {editable ? (
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEdit(row)}
-                                aria-label="Correct this entry"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCancel(row)}
-                                aria-label="Cancel this entry"
-                              >
-                                <Ban className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {cancelled ? 'Cancelled' : 'Locked'}
-                            </span>
-                          )}
-                        </td>
-                      )}
+                      {canManage && <td className="px-3 py-2">{rowActions(row)}</td>}
                     </tr>
                   );
                 })}
