@@ -166,13 +166,18 @@ export default function RequestLabourPage() {
       toast.error('Enter how many labourers are needed');
       return;
     }
+    const reason = addNote.trim();
+    if (!reason) {
+      toast.error('Give a reason for this request');
+      return;
+    }
     try {
       await raise.mutateAsync({
         department: Number(departmentId),
         work_date: workDate,
         shift,
         requested_count: count,
-        note: addNote.trim(),
+        note: reason,
       });
       toast.success(
         existingForDepartment
@@ -258,7 +263,7 @@ export default function RequestLabourPage() {
         </div>
       </div>
 
-      {/* Add / revise form — department first, then the number and what it is for */}
+      {/* Add / revise form — department first, then the number and why it is needed */}
       {canRaise && (
         <Card>
           <CardContent className="space-y-4 pt-6">
@@ -294,12 +299,12 @@ export default function RequestLabourPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="request-note">What for (optional)</Label>
+                    <Label htmlFor="request-note">Reason</Label>
                     <Input
                       id="request-note"
                       value={addNote}
                       onChange={(e) => setAddNote(e.target.value)}
-                      placeholder="e.g. Bottling line 2, loading"
+                      placeholder="Why is it needed? e.g. Loading 3 trucks"
                       maxLength={255}
                       className="border-2 font-medium"
                     />

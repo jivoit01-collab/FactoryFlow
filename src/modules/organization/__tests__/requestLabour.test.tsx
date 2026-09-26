@@ -41,6 +41,9 @@ const update = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const remove = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const reopen = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const restore = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const toastError = vi.hoisted(() => vi.fn());
+
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: toastError } }));
 
 vi.mock('../api/labourRequest.queries', () => ({
   useLabourRequestDay: () => ({ data: day.current, isLoading: false }),
@@ -61,18 +64,17 @@ vi.mock('@/core/auth', () => ({
 // The department picker fetches the master; the screen only needs it to hand
 // back an id, so it is replaced by a plain button.
 vi.mock('@/modules/gate/components/DepartmentSelect', () => ({
-  DepartmentSelect: ({
-    onChange,
-  }: {
-    onChange: (id: number | '', name: string) => void;
-  }) => (
+  DepartmentSelect: ({ onChange }: { onChange: (id: number | '', name: string) => void }) => (
     <button type="button" onClick={() => onChange(10, 'Production')}>
       pick-department
     </button>
   ),
 }));
 
-function open(requests: LabourRequest[], { raise: canRaise = true, decide: canDecide = true } = {}) {
+function open(
+  requests: LabourRequest[],
+  { raise: canRaise = true, decide: canDecide = true } = {},
+) {
   day.current = requests;
   rights.raise = canRaise;
   rights.decide = canDecide;
@@ -85,7 +87,7 @@ function expandDepartment() {
 }
 
 beforeEach(() => {
-  [raise, decide, update, remove, reopen, restore].forEach((fn) => fn.mockClear());
+  [raise, decide, update, remove, reopen, restore, toastError].forEach((fn) => fn.mockClear());
 });
 
 describe('Request Labour', () => {
@@ -143,7 +145,7 @@ describe('Request Labour', () => {
 
     fireEvent.click(screen.getByText('pick-department'));
     fireEvent.change(screen.getByLabelText('Labourers needed'), { target: { value: '15' } });
-    fireEvent.change(screen.getByLabelText('What for (optional)'), {
+    fireEvent.change(screen.getByLabelText('Reason'), {
       target: { value: 'Loading' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Request/ }));
@@ -155,6 +157,32 @@ describe('Request Labour', () => {
       requested_count: 15,
       note: 'Loading',
     });
+  });
+
+  it('will not raise an ask without a reason', async () => {
+    open([]);
+
+    fireEvent.click(screen.getByText('pick-department'));
+    fireEvent.change(screen.getByLabelText('Labourers needed'), { target: { value: '15' } });
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: /Request/ }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Give a reason for this request'));
+    expect(raise).not.toHaveBeenCalled();
+  });
+
+  it('asks for a reason when editing a request that was raised without one', async () => {
+    open([makeRequest({ note: '' })]);
+    expandDepartment();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await screen.findByRole('dialog');
+
+    expect(screen.getByRole('button', { name: /Save/ })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Reason'), { target: { value: 'Loading 3 trucks' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(update.mock.calls[0][0]).toMatchObject({ id: 1, note: 'Loading 3 trucks' });
   });
 
   it('warns that saving replaces a department’s existing ask for the shift', () => {
@@ -224,7 +252,7 @@ describe('Request Labour', () => {
     expect(dialog).toHaveTextContent('Edit labour request');
     // Seeded from the request being edited.
     expect(screen.getByLabelText('Labourers needed')).toHaveValue(12);
-    expect(screen.getByLabelText('What for')).toHaveValue('Bottling line 2');
+    expect(screen.getByLabelText('Reason')).toHaveValue('Bottling line 2');
 
     fireEvent.change(screen.getByLabelText('Labourers needed'), { target: { value: '18' } });
     fireEvent.click(screen.getByRole('button', { name: /Save/ }));
@@ -251,7 +279,7 @@ describe('Request Labour', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     await screen.findByRole('dialog');
 
-    // The note alone leaves the decision standing, so no warning yet.
+    // The reason alone leaves the decision standing, so no warning yet.
     expect(screen.queryByText(/sends it back for approval/)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Labourers needed'), { target: { value: '9' } });
