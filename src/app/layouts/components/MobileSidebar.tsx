@@ -116,13 +116,16 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-64 p-0 flex flex-col overflow-hidden">
-        <SheetHeader className="border-b p-4">
+      <SheetContent
+        side="left"
+        className="w-64 p-0 flex flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground [color-scheme:dark]"
+      >
+        <SheetHeader className="border-b border-sidebar-border p-4">
           <SheetTitle className="flex items-center gap-2">
             <img
               src="/JivoWellnessLogo.png"
               alt="Jivo Wellness Logo"
-              className="h-8 dark:brightness-0 dark:invert"
+              className="h-8 brightness-0 invert"
             />
           </SheetTitle>
         </SheetHeader>
@@ -151,8 +154,8 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                       className={cn(
                         'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         isActive
-                          ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-                          : 'hover:bg-accent hover:text-accent-foreground',
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
+                          : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                       )}
                     >
                       <Icon className="h-5 w-5" />
@@ -162,7 +165,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 border-l border-border"
+                      className="h-8 w-8 border-l border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -176,7 +179,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                       )}
                     </Button>
                   </div>
-                  <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
+                  <CollapsibleContent className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
                     {item.children!.map((child) => {
                       const childIsActive =
                         child.path === activeChildPath(item.children!, location.pathname);
@@ -189,8 +192,8 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                           className={cn(
                             'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
                             childIsActive
-                              ? 'bg-accent text-accent-foreground font-medium'
-                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                              : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                           )}
                         >
                           <span>{child.title}</span>
@@ -212,8 +215,8 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                   cn(
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-accent hover:text-accent-foreground',
+                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                      : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                   )
                 }
               >
@@ -225,7 +228,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         </nav>
 
         {/* Settings Button */}
-        <div className="border-t px-2 py-2">
+        <div className="border-t border-sidebar-border px-2 py-2">
           <SettingsDialog isCollapsed={false} />
         </div>
       </SheetContent>

@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { SIDEBAR_CONFIG } from '@/config/constants';
 import { useAuth } from '@/core/auth';
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
@@ -62,7 +63,7 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="h-10 w-10 rounded-md transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <Settings className="h-5 w-5" />
           </Button>
@@ -74,7 +75,7 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
     <PopoverTrigger asChild>
       <Button
         variant="ghost"
-        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground justify-start"
+        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground justify-start"
       >
         <Settings className="h-5 w-5" />
         <span>Settings</span>
@@ -85,11 +86,18 @@ export function SettingsDialog({ isCollapsed }: SettingsDialogProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       {trigger}
+      {/* Expanded, the popover matches the rail it rises from, less the rail's
+          own padding. The width is read from the constant rather than repeated
+          — the literal that used to sit here silently stopped matching the
+          moment the rail was widened. */}
       <PopoverContent
         side="top"
         align="start"
         sideOffset={8}
-        className={cn('p-0', isCollapsed ? 'w-56' : 'w-[calc(256px-1rem)]')}
+        className={cn('p-0', isCollapsed && 'w-56')}
+        style={
+          isCollapsed ? undefined : { width: `calc(${SIDEBAR_CONFIG.expandedWidth}px - 1rem)` }
+        }
       >
         {/* Menu items */}
         <div className="p-1">

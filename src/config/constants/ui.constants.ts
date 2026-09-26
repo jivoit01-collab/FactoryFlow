@@ -11,7 +11,7 @@ export const TABLE_CONFIG = {
 
 export const SIDEBAR_CONFIG = {
   collapsedWidth: 64,
-  expandedWidth: 256,
+  expandedWidth: 280,
   mobileBreakpoint: 768,
 } as const;
 

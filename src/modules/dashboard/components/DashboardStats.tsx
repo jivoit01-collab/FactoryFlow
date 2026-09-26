@@ -4,15 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { getAllNavigation } from '@/app/registry';
 import { usePermission } from '@/core/auth';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
-
-const descriptions: Record<string, string> = {
-  '/gate':
-    'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
-  '/qc': 'Inspections, approvals, and master data management',
-  '/production': 'Production execution, line clearance, waste, and reports',
-  '/barcode': 'Pallets, boxes, labels, scanning, and dispatch barcode operations',
-};
+import { Card, CardHeader, CardTitle } from '@/shared/components/ui';
 
 export function DashboardStats() {
   const navigate = useNavigate();
@@ -52,10 +44,7 @@ export function DashboardStats() {
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                 <Icon className="h-6 w-6 text-primary" />
               </div>
-              <div>
-                <CardTitle className="text-lg">{mod.title}</CardTitle>
-                <CardDescription>{descriptions[mod.path] || mod.title}</CardDescription>
-              </div>
+              <CardTitle className="text-lg">{mod.title}</CardTitle>
             </CardHeader>
           </Card>
         );

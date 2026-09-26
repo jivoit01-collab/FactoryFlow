@@ -122,7 +122,11 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen flex flex-col border-r bg-background transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen flex flex-col border-r transition-all duration-300',
+        // The nav is dark even while the page is light, so the native scrollbar
+        // on the item list has to be told which surface it is drawn on —
+        // otherwise it paints a light-mode track as a white stripe up the rail.
+        'border-sidebar-border bg-sidebar text-sidebar-foreground [color-scheme:dark]',
         'transition-all duration-300',
       )}
       style={{
@@ -133,7 +137,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       <Link
         to="/"
         className={cn(
-          'flex h-16 items-center border-b px-4 transition-all',
+          'flex h-16 items-center border-b border-sidebar-border px-4 transition-all',
           isCollapsed ? 'justify-center' : 'justify-center gap-3',
         )}
       >
@@ -141,7 +145,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           src="/JivoWellnessLogo.png"
           alt="Jivo Wellness Logo"
           className={cn(
-            'dark:brightness-0 dark:invert transition-all object-contain',
+            'brightness-0 invert transition-all object-contain',
             isCollapsed ? 'h-8 w-8' : 'h-10 w-auto',
           )}
         />
@@ -172,8 +176,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                       cn(
                         'relative flex h-10 w-10 items-center justify-center rounded-md transition-colors',
                         isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-accent hover:text-accent-foreground',
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                       )
                     }
                   >
@@ -203,8 +207,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                     className={cn(
                       'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
-                        : 'hover:bg-accent hover:text-accent-foreground',
+                        ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
+                        : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                   >
                     <Icon className="h-5 w-5" />
@@ -214,7 +218,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 border-l border-border"
+                    className="h-8 w-8 border-l border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -228,7 +232,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                     )}
                   </Button>
                 </div>
-                <CollapsibleContent className="ml-4 space-y-1 border-l pl-3">
+                <CollapsibleContent className="ml-4 space-y-1 border-l border-sidebar-border pl-3">
                   {item.children!.map((child) => {
                     const childIsActive =
                       child.path === activeChildPath(item.children!, location.pathname);
@@ -240,8 +244,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                         className={cn(
                           'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
                           childIsActive
-                            ? 'bg-accent text-accent-foreground font-medium'
-                            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                            : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
                         <span>{child.title}</span>
@@ -263,8 +267,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                 cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent hover:text-accent-foreground',
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                    : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 )
               }
             >
@@ -277,7 +281,12 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </nav>
 
       {/* Settings Button */}
-      <div className={cn('border-t py-2', isCollapsed ? 'flex justify-center' : 'px-2')}>
+      <div
+        className={cn(
+          'border-t border-sidebar-border py-2',
+          isCollapsed ? 'flex justify-center' : 'px-2',
+        )}
+      >
         <SettingsDialog isCollapsed={isCollapsed} />
       </div>
 
@@ -286,7 +295,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         variant="ghost"
         size="icon"
         onClick={onToggle}
-        className="absolute -right-3 top-20 h-6 w-6 rounded-full border bg-background"
+        className="absolute -right-3 top-20 h-6 w-6 rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       >
         {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </Button>

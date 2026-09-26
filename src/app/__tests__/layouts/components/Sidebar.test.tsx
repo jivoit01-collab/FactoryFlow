@@ -130,7 +130,9 @@ describe('Sidebar', () => {
     const content = readSource();
     expect(content).toContain('src="/JivoWellnessLogo.png"');
     expect(content).toContain('alt="Jivo Wellness Logo"');
-    expect(content).toContain('dark:brightness-0 dark:invert');
+    // The nav is dark in both themes, so the near-black logo mark is knocked
+    // out to white unconditionally — not only under .dark.
+    expect(content).toContain('brightness-0 invert');
   });
 
   it('contains <nav> element for navigation items', () => {

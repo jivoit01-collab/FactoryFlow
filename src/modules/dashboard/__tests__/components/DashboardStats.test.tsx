@@ -55,7 +55,6 @@ describe('DashboardStats', () => {
     expect(content).toContain('Card');
     expect(content).toContain('CardHeader');
     expect(content).toContain('CardTitle');
-    expect(content).toContain('CardDescription');
     expect(content).toContain("'@/shared/components/ui'");
   });
 
@@ -112,25 +111,15 @@ describe('DashboardStats', () => {
     expect(filterBlock![0]).toContain('return true');
   });
 
-  // ─── Hardcoded Descriptions ─────────────────────────────────
+  // ─── Descriptions ───────────────────────────────────────────
 
-  it('has hardcoded description for /gate path', () => {
+  it('renders no description under the title', () => {
     const content = readDashboardStats();
-    expect(content).toContain("'/gate'");
-    expect(content).toContain(
-      'Manage gate entries for raw materials, daily needs, maintenance, construction, and visitors',
-    );
-  });
-
-  it('has hardcoded description for /qc path', () => {
-    const content = readDashboardStats();
-    expect(content).toContain("'/qc'");
-    expect(content).toContain('Inspections, approvals, and master data management');
-  });
-
-  it('falls back to module title when path has no hardcoded description', () => {
-    const content = readDashboardStats();
-    expect(content).toMatch(/descriptions\[mod\.path\]\s*\|\|\s*mod\.title/);
+    // The tile is a title and an icon. The old subtitle fell back to the title
+    // itself whenever a path had no hardcoded blurb, so most tiles printed
+    // their own name twice.
+    expect(content).not.toContain('CardDescription');
+    expect(content).not.toContain('descriptions[mod.path]');
   });
 
   // ─── Card Rendering ────────────────────────────────────────

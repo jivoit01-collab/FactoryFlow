@@ -110,7 +110,9 @@ describe('MobileSidebar', () => {
     expect(content).toContain('src="/JivoWellnessLogo.png"');
     expect(content).toContain('<SheetHeader');
     expect(content).toContain('alt="Jivo Wellness Logo"');
-    expect(content).toContain('dark:brightness-0 dark:invert');
+    // The nav is dark in both themes, so the near-black logo mark is knocked
+    // out to white unconditionally — not only under .dark.
+    expect(content).toContain('brightness-0 invert');
   });
 
   it('NavLink items call onClose on click to close sidebar', () => {

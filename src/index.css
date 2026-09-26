@@ -75,6 +75,47 @@
     --emp-series-1: #2a78d6;
     --emp-series-2: #eb6834;
     --emp-series-3: #1baf7a;
+
+    /*
+     * Sidebar. The nav is the one surface that does NOT follow the page's
+     * light/dark theme: it is a dark rail in both, so it reads as a fixed frame
+     * rather than as another panel. It DOES follow the company unit — each one
+     * gets its own rail below, in that unit's hue.
+     *
+     * Cascade, and why this one block breaks the rule stated further down:
+     * the `[data-company]` light blocks are (0,2,0) and the dark ones (0,3,0),
+     * and the rule there is that anything a light block sets, its dark twin
+     * must reset. These tokens are the deliberate exception — the dark blocks
+     * leave them alone precisely so the rail stays the unit's colour in dark
+     * mode too. Nothing in `.dark` may define a --sidebar-* token; if it did,
+     * it would sit at (0,1,0) and lose to every company block anyway.
+     *
+     * The text tokens are set here once and never overridden: plain white for
+     * labels, and the same white stepped down to 76% for the quieter tier —
+     * section captions and the children under an open submenu. Two strengths of
+     * one colour rather than two colours. Every rail below is dark enough to
+     * carry both (white ≥ 10:1, muted ≥ 5.7:1).
+     *
+     * Because the nav opts out of the page palette, every colour inside it has
+     * to come from this set — `bg-accent`, `border-border` and friends are
+     * mixed for the light canvas and turn to mud here.
+     *
+     * The active pill is the one place the text is not white. On the warm and
+     * green rails the pill has to be bright to separate from its rail, and
+     * white on a bright amber or mint is ~2:1 — so those pills carry near-black
+     * instead. Navy is the exception: blue is dark enough at full chroma that
+     * its pill still takes white. Per-unit values below.
+     *
+     * Default (no unit selected — login, company picker): the brand petrol.
+     */
+    --sidebar-background: 188 100% 15%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-muted-foreground: 0 0% 76%;
+    --sidebar-primary: 188 100% 40%;
+    --sidebar-primary-foreground: 188 100% 8%;
+    --sidebar-accent: 188 100% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 188 60% 32%;
   }
 
   /*
@@ -194,6 +235,16 @@
     --border: 38 25.3% 83.7%;
     --input: 38 25.3% 83.7%;
     --ring: 38 100% 24.9%;
+
+    /* Sidebar — amber. --primary's own 25% is too light to carry two text
+     * tiers, so the rail sits at 15% and --primary's neighbourhood reappears as
+     * the hover fill. White 12.1:1, muted 6.8:1, pill 4.9:1 off the rail with
+     * near-black text at 6.8:1. */
+    --sidebar-background: 38 100% 15%;
+    --sidebar-primary: 38 100% 45%;
+    --sidebar-primary-foreground: 38 100% 8%;
+    --sidebar-accent: 38 100% 22%;
+    --sidebar-border: 38 60% 32%;
   }
   :root.dark[data-company='JIVO_OIL'] {
     --background: 38 30.6% 9.6%;
@@ -234,6 +285,14 @@
     --border: 152 25.3% 83.7%;
     --input: 152 25.3% 83.7%;
     --ring: 152 100% 24.9%;
+
+    /* Sidebar — emerald. White 10.2:1, muted 5.7:1, pill 4.8:1 off the rail
+     * with near-black text at 7.4:1. */
+    --sidebar-background: 152 100% 15%;
+    --sidebar-primary: 152 100% 40%;
+    --sidebar-primary-foreground: 152 100% 8%;
+    --sidebar-accent: 152 100% 22%;
+    --sidebar-border: 152 60% 32%;
   }
   :root.dark[data-company='JIVO_MART'] {
     --background: 152 30.6% 9.6%;
@@ -274,6 +333,18 @@
     --border: 216 25.3% 83.7%;
     --input: 216 25.3% 83.7%;
     --ring: 216 100% 24.9%;
+
+    /* Sidebar — navy. Blue is the one hue dark enough at full chroma that the
+     * pill still takes white (5.2:1), so this rail keeps white text throughout.
+     * Rail: white 14.6:1, muted 8.2:1. The pill separates 2.8:1 from the rail
+     * rather than the 3:1 the others manage — blue simply has less room between
+     * "dark enough to be a rail" and "light enough to carry white" — so the
+     * pill's own white label does part of the work of marking its edge. */
+    --sidebar-background: 222 60% 20%;
+    --sidebar-primary: 222.2 82% 54.1%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 50% 30%;
+    --sidebar-border: 222 40% 40%;
   }
   :root.dark[data-company='JIVO_BEVERAGES'] {
     --background: 216 30.6% 9.6%;
