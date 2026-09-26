@@ -23,6 +23,7 @@ import { maintenanceModuleConfig } from '@/modules/maintenance/module.config';
 import { marketplaceModuleConfig } from '@/modules/marketplace/module.config';
 import { notificationsModuleConfig } from '@/modules/notifications/module.config';
 import { organizationModuleConfig } from '@/modules/organization/module.config';
+import { partnerOnboardingModuleConfig } from '@/modules/partner-onboarding/module.config';
 import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
@@ -110,6 +111,12 @@ export const moduleRegistry: ModuleConfig[] = [
   // office keeps; its own group because its approvers are production and
   // costing people, not accountants.
   bomChangesModuleConfig,
+  // Customer and vendor registration, from SAP Portal: the public forms and
+  // the queue where registrations are verified and created in SAP. Beside SAP
+  // Finance because it too came over from SAP Portal and writes to SAP; its
+  // own entry because the people who onboard partners are not the ones who
+  // read the ledgers.
+  partnerOnboardingModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

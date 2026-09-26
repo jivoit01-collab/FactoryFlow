@@ -130,6 +130,15 @@ export {
   BOM_CHANGES_PERMISSIONS,
   type BomChangesPermission,
 } from './bom-changes.permissions';
+// Partner Onboarding (customer and vendor registration, from SAP Portal)
+export {
+  CUSTOMER_REGISTRATIONS_ACCESS,
+  PARTNER_ONBOARDING_ACCESS,
+  PARTNER_ONBOARDING_MODULE_PREFIX,
+  PARTNER_ONBOARDING_PERMISSIONS,
+  type PartnerOnboardingPermission,
+  VENDOR_REGISTRATIONS_ACCESS,
+} from './partner-onboarding.permissions';
 
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {

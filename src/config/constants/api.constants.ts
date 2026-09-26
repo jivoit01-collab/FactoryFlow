@@ -1513,6 +1513,25 @@ export const API_ENDPOINTS = {
     CANCEL: (id: number) => `/bom-changes/requests/${id}/cancel/`,
   },
 
+  // Customer and vendor registration (from SAP Portal): the public forms need
+  // no login; the queue is per company, like every other list.
+  PARTNER_ONBOARDING: {
+    PUBLIC_COMPANIES: '/partner-onboarding/public/companies/',
+    PUBLIC_STATES: '/partner-onboarding/public/states/',
+    PUBLIC_CUSTOMERS: '/partner-onboarding/public/customers/',
+    PUBLIC_VENDORS: '/partner-onboarding/public/vendors/',
+    LIST: (family: 'customers' | 'vendors') => `/partner-onboarding/${family}/`,
+    DETAIL: (family: 'customers' | 'vendors', id: number) => `/partner-onboarding/${family}/${id}/`,
+    VERIFY: (family: 'customers' | 'vendors', id: number) =>
+      `/partner-onboarding/${family}/${id}/verify/`,
+    REJECT: (family: 'customers' | 'vendors', id: number) =>
+      `/partner-onboarding/${family}/${id}/reject/`,
+    APPROVE: (family: 'customers' | 'vendors', id: number) =>
+      `/partner-onboarding/${family}/${id}/approve/`,
+    ATTACHMENT: (family: 'customers' | 'vendors', id: number, attachmentId: number) =>
+      `/partner-onboarding/${family}/${id}/attachments/${attachmentId}/`,
+  },
+
   BARCODE: {
     // Activation — printed labels are inactive until received or approved.
     // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).
