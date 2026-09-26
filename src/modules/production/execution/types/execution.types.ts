@@ -1573,14 +1573,14 @@ export interface CostAnalysisParams extends AnalyticsParams {
 }
 
 // ============================================================================
-// Filling Cost Sheet — the month's filling cost, entered by hand
+// Filling Cost Sheet — the day's filling cost, entered by hand
 // ============================================================================
 
 export interface FillingCostEntry {
   id: number;
   /** The head as the sheet names it, e.g. 'Ground Water Extraction Bill' */
   head: string;
-  /** The month's amount for this head */
+  /** The day's amount for this head */
   amount: string;
   sort_order: number;
   /** amount / cases, rounded half-up to paise — the sheet's per-case column */
@@ -1592,14 +1592,14 @@ export interface FillingCostSheet {
   /** null = the filling floor as a whole */
   line: number | null;
   line_name: string;
-  /** First day of the month the sheet covers */
-  period: string;
+  /** The day the sheet covers, YYYY-MM-DD */
+  date: string;
   /** The sheet's 'Per N Cases' divisor */
   cases: string;
   notes: string;
   entries: FillingCostEntry[];
   total_amount: string;
-  /** The month's total over the cases — not the per-case column added up */
+  /** The day's total over the cases — not the per-case column added up */
   total_per_case: string;
   created_by_name: string;
   updated_by_name: string;
@@ -1615,8 +1615,8 @@ export interface FillingCostEntryPayload {
 export interface CreateFillingCostSheetPayload {
   /** Omitted or null = the filling floor as a whole */
   line_id?: number | null;
-  /** Any day in the month; the backend keeps the month */
-  period: string;
+  /** The day the sheet covers, YYYY-MM-DD */
+  date: string;
   cases: string;
   notes?: string;
   entries: FillingCostEntryPayload[];
@@ -1628,8 +1628,10 @@ export type UpdateFillingCostSheetPayload = Partial<CreateFillingCostSheetPayloa
 export interface FillingCostSheetParams {
   /** A line id, or 'none' for the floor-wide sheet */
   line_id?: number | 'none';
-  /** Any day in the month */
-  period?: string;
+  /** One day, YYYY-MM-DD */
+  date?: string;
+  /** Only the newest this many sheets */
+  limit?: number;
 }
 
 // ============================================================================

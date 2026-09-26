@@ -1530,13 +1530,13 @@ export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
 }
 
 // ============================================================================
-// Filling Cost Sheet — the month's filling cost, entered by hand
+// Filling Cost Sheet — the day's filling cost, entered by hand
 // ============================================================================
 
 /**
- * Every sheet entered so far, newest month first. The page reads them all —
- * one row a month is a short list — so it can open the month you pick and
- * start a new month from the heads the last one used.
+ * The sheets entered so far, newest day first. A sheet a day adds up, so the
+ * page asks only for what it shows: the day picked, and the newest couple for
+ * a blank day to start from.
  */
 export function useFillingCostSheets(params?: FillingCostSheetParams) {
   return useQuery({

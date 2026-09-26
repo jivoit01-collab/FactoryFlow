@@ -275,7 +275,7 @@ export const productionModuleConfig: ModuleConfig = {
       permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
     },
     {
-      // The month's filling cost, typed in. Cost figures, so it is held behind
+      // The day's filling cost, typed in. Cost figures, so it is held behind
       // its own permission rather than the run-view one — and behind the
       // company, so a direct URL from another unit lands on /unauthorized
       // rather than rendering. The API refuses the other units too.

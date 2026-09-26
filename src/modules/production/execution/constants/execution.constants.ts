@@ -354,8 +354,8 @@ export const STANDARD_CLEARANCE_ITEMS = [
 
 /**
  * The heads the filling sheet is normally written against, in the order the
- * factory writes them. Only a starting point for a blank month — heads are
- * free text on the page and nothing resolves against these.
+ * factory writes them. Only a starting point for the first day ever entered —
+ * heads are free text on the page and nothing resolves against these.
  */
 export const DEFAULT_FILLING_COST_HEADS = [
   'Salary',
@@ -368,6 +368,3 @@ export const DEFAULT_FILLING_COST_HEADS = [
   'Lab',
   'Miscellaneous',
 ] as const;
-
-/** The case count the sheet is usually spread over, until a month says otherwise. */
-export const DEFAULT_FILLING_COST_CASES = '160000';

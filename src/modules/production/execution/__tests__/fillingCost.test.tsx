@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import FillingCostPage from '../pages/FillingCostPage';
 
-/** September's sheet, as the factory wrote it and the API hands it back. */
-const SEPTEMBER = {
+/** 25 September's sheet, as the factory wrote it and the API hands it back. */
+const SEP_25 = {
   id: 4,
   line: null,
   line_name: '',
-  period: '2026-09-01',
+  date: '2026-09-25',
   cases: '160000.00',
   notes: '',
   entries: [
@@ -32,17 +32,21 @@ const SEPTEMBER = {
   total_per_case: '15.55',
   created_by_name: 'Anurag',
   updated_by_name: '',
-  created_at: '2026-09-30T10:00:00Z',
-  updated_at: '2026-09-30T10:00:00Z',
+  created_at: '2026-09-25T10:00:00Z',
+  updated_at: '2026-09-25T10:00:00Z',
 };
 
 const createSheet = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 const updateSheet = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 const perms = vi.hoisted(() => ({ canEdit: true }));
+const askedFor = vi.hoisted(() => [] as unknown[]);
 
 vi.mock('../api', () => ({
   useLines: () => ({ data: [{ id: 1, name: 'Line 1' }] }),
-  useFillingCostSheets: () => ({ data: [SEPTEMBER], isLoading: false }),
+  useFillingCostSheets: (params: unknown) => {
+    askedFor.push(params);
+    return { data: [SEP_25], isLoading: false };
+  },
   useCreateFillingCostSheet: () => ({ mutateAsync: createSheet, isPending: false }),
   useUpdateFillingCostSheet: () => ({ mutateAsync: updateSheet, isPending: false }),
   useDeleteFillingCostSheet: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -55,19 +59,26 @@ vi.mock('@/core/auth', () => ({
   }),
 }));
 
-/** The page opens on the current month; every test picks its own. */
-const openMonth = (month: string) => {
-  fireEvent.change(screen.getByLabelText('Month'), { target: { value: month } });
+/** The page opens on today; every test picks its own day. */
+const openDay = (date: string) => {
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: date } });
 };
 
 const row = (head: string) =>
   within((screen.getByDisplayValue(head).closest('tr') as HTMLElement) ?? document.body);
 
 describe('Filling cost sheet', () => {
-  it('shows the month as it was written, per case', () => {
-    render(<FillingCostPage />);
-    openMonth('2026-09');
+  beforeEach(() => {
+    createSheet.mockClear();
+    updateSheet.mockClear();
+    askedFor.length = 0;
+  });
 
+  it('shows the day as it was written, per case', () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-25');
+
+    expect(screen.getByText('Filling Cost — 25 September 2026')).toBeInTheDocument();
     expect(screen.getByText(/Per 1,60,000 Cases/)).toBeInTheDocument();
     expect(row('Salary').getByDisplayValue('1200000')).toBeInTheDocument();
     expect(row('Salary').getByText('7.50')).toBeInTheDocument();
@@ -75,16 +86,25 @@ describe('Filling cost sheet', () => {
     expect(row('Batch Coding').getByText('0.38')).toBeInTheDocument();
     expect(row('Miscellaneous').getByText('0.63')).toBeInTheDocument();
 
-    // The total row: the month over the cases. Adding the rounded column above
+    // The total row: the day over the cases. Adding the rounded column above
     // would read 15.56.
     const total = screen.getByText('Total').closest('tr') as HTMLElement;
     expect(within(total).getByText('24,88,400.00')).toBeInTheDocument();
     expect(within(total).getByText('15.55')).toBeInTheDocument();
   });
 
+  it('asks only for the day picked and the newest two, not every day entered', () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-25');
+
+    expect(askedFor).toContainEqual({ line_id: 'none', date: '2026-09-25' });
+    expect(askedFor).toContainEqual({ line_id: 'none', limit: 2 });
+    expect(askedFor).not.toContainEqual(undefined);
+  });
+
   it('reprices every head when the case count changes', () => {
     render(<FillingCostPage />);
-    openMonth('2026-09');
+    openDay('2026-09-25');
 
     fireEvent.change(screen.getByLabelText('Cases'), { target: { value: '80000' } });
 
@@ -93,40 +113,56 @@ describe('Filling cost sheet', () => {
     expect(within(total).getByText('31.11')).toBeInTheDocument();
   });
 
-  it('starts a month nobody has entered from the last month’s heads', () => {
+  it('starts a day nobody has entered from the last day’s heads', () => {
     render(<FillingCostPage />);
-    openMonth('2026-10');
+    openDay('2026-09-26');
 
-    expect(screen.getByText(/No sheet for this month yet/)).toBeInTheDocument();
-    // The heads carry over; the amounts do not.
+    expect(
+      screen.getByText(
+        /No sheet for this day yet — the heads are carried over from 25 September 2026/,
+      ),
+    ).toBeInTheDocument();
+    // The heads carry over; the amounts and the case count do not.
     expect(screen.getByDisplayValue('Salary')).toBeInTheDocument();
     expect(row('Salary').getByPlaceholderText('0')).toHaveValue('');
+    expect(screen.getByLabelText('Cases')).toHaveValue('');
   });
 
-  it('saves a new month as a sheet of its own', async () => {
+  it('saves a new day as a sheet of its own', async () => {
     render(<FillingCostPage />);
-    openMonth('2026-10');
+    openDay('2026-09-26');
 
-    fireEvent.change(row('Salary').getByPlaceholderText('0'), { target: { value: '1250000' } });
-    fireEvent.change(row('Electricity').getByPlaceholderText('0'), { target: { value: '810000' } });
+    fireEvent.change(screen.getByLabelText('Cases'), { target: { value: '5200' } });
+    fireEvent.change(row('Salary').getByPlaceholderText('0'), { target: { value: '40000' } });
+    fireEvent.change(row('Electricity').getByPlaceholderText('0'), { target: { value: '27000' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => expect(createSheet).toHaveBeenCalled());
     const payload = createSheet.mock.calls[0][0];
-    expect(payload).toMatchObject({ period: '2026-10-01', cases: '160000', line_id: null });
+    expect(payload).toMatchObject({ date: '2026-09-26', cases: '5200', line_id: null });
     // Heads left blank are still part of the sheet, at zero.
     expect(payload.entries.slice(0, 2)).toEqual([
-      { head: 'Salary', amount: '1250000' },
-      { head: 'Electricity', amount: '810000' },
+      { head: 'Salary', amount: '40000' },
+      { head: 'Electricity', amount: '27000' },
     ]);
     expect(payload.entries).toContainEqual({ head: 'Lab', amount: '0' });
+  });
+
+  it('will not save a new day until its cases are entered', () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    fireEvent.change(row('Salary').getByPlaceholderText('0'), { target: { value: '40000' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(createSheet).not.toHaveBeenCalled();
   });
 
   it('is read-only without the entry permission', () => {
     perms.canEdit = false;
     try {
       render(<FillingCostPage />);
-      openMonth('2026-09');
+      openDay('2026-09-25');
 
       expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
       expect(screen.getByDisplayValue('Salary')).toBeDisabled();

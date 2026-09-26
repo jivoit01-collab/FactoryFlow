@@ -1026,7 +1026,7 @@ export const executionApi = {
   },
 
   // =========================================================================
-  // Filling Cost Sheet — the month's filling cost, entered by hand
+  // Filling Cost Sheet — the day's filling cost, entered by hand
   // =========================================================================
 
   async getFillingCostSheets(params?: FillingCostSheetParams): Promise<FillingCostSheet[]> {

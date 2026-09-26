@@ -1,5 +1,5 @@
 import { Plus, Save, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { EXECUTION_PERMISSIONS } from '@/config/permissions';
@@ -30,7 +30,7 @@ import {
   useLines,
   useUpdateFillingCostSheet,
 } from '../api';
-import { DEFAULT_FILLING_COST_CASES, DEFAULT_FILLING_COST_HEADS } from '../constants';
+import { DEFAULT_FILLING_COST_HEADS } from '../constants';
 import type { FillingCostSheet } from '../types';
 
 const ALL_LINES = 'all';
@@ -48,10 +48,19 @@ const newRow = (head = '', amount = ''): Row => {
   return { key: `row-${rowSeq}`, head, amount };
 };
 
-const thisMonth = () => {
+const today = () => {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
+
+/** '2026-09-26' → '26 September 2026'. */
+const dayLabel = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
 const num = (value: string) => {
   const parsed = Number(value);
@@ -69,12 +78,12 @@ const plain = (value: string) =>
   value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
 
 interface SheetEditorProps {
-  /** The month's sheet, or null when nobody has entered it yet. */
+  /** The day's sheet, or null when nobody has entered it yet. */
   sheet: FillingCostSheet | null;
-  /** The latest other month for this scope — what a blank month starts from. */
+  /** The latest other day for this scope — what a blank day starts from. */
   template: FillingCostSheet | null;
-  /** First day of the month being entered. */
-  period: string;
+  /** The day being entered, YYYY-MM-DD. */
+  date: string;
   /** null = the filling floor as a whole. */
   lineId: number | null;
   lineName: string;
@@ -82,15 +91,14 @@ interface SheetEditorProps {
 }
 
 /**
- * The sheet itself. Mounted under a key of the month, the line and the saved
- * version, so picking another month — or a save coming back — starts it over
- * from what the server holds rather than leaving a half-edited month on screen.
+ * The sheet itself. Mounted under a key of the day, the line and the saved
+ * version, so picking another day — or a save coming back — starts it over
+ * from what the server holds rather than leaving a half-edited day on screen.
  */
-function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: SheetEditorProps) {
-  const [cases, setCases] = useState(() => {
-    if (sheet) return plain(sheet.cases);
-    return template ? plain(template.cases) : DEFAULT_FILLING_COST_CASES;
-  });
+function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: SheetEditorProps) {
+  // A blank day starts with no case count: the cases are that day's own, and
+  // carrying yesterday's over would price the day on the wrong figure unseen.
+  const [cases, setCases] = useState(() => (sheet ? plain(sheet.cases) : ''));
   const [notes, setNotes] = useState(() => sheet?.notes ?? '');
   const [rows, setRows] = useState<Row[]>(() => {
     if (sheet) return sheet.entries.map((entry) => newRow(entry.head, plain(entry.amount)));
@@ -149,7 +157,7 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
       if (sheet) {
         await updateSheet.mutateAsync({ sheetId: sheet.id, data: { cases, notes, entries } });
       } else {
-        await createSheet.mutateAsync({ line_id: lineId, period, cases, notes, entries });
+        await createSheet.mutateAsync({ line_id: lineId, date, cases, notes, entries });
       }
       toast.success('Filling cost saved');
     } catch (error) {
@@ -160,7 +168,7 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
   const handleDelete = async () => {
     if (!sheet) return;
     const confirmed = await confirmDialog({
-      title: 'Delete this month’s filling cost?',
+      title: 'Delete this day’s filling cost?',
       description: 'The sheet and every head on it are removed.',
       confirmLabel: 'Delete',
       destructive: true,
@@ -174,17 +182,12 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
     }
   };
 
-  const monthLabel = new Date(`${period}T00:00:00`).toLocaleDateString('en-IN', {
-    month: 'long',
-    year: 'numeric',
-  });
-
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center justify-between gap-3">
           <span>
-            Filling Cost — {monthLabel}
+            Filling Cost — {dayLabel(date)}
             {lineName && ` · ${lineName}`}
           </span>
           <span className="flex flex-wrap items-center gap-2">
@@ -195,6 +198,7 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
               id="filling-cost-cases"
               className="w-36 text-right font-mono"
               inputMode="decimal"
+              placeholder="Day’s cases"
               value={cases}
               disabled={!canEdit}
               onChange={(e) => setCases(e.target.value)}
@@ -228,7 +232,9 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
               <tr className="border-b bg-muted/50">
                 <th className="text-left p-3 font-medium">Cost Head</th>
                 <th className="text-right p-3 font-medium w-56">Amount (₹)</th>
-                <th className="text-right p-3 font-medium w-52">Per {fmt(caseCount, 0)} Cases</th>
+                <th className="text-right p-3 font-medium w-52">
+                  {caseCount > 0 ? `Per ${fmt(caseCount, 0)} Cases` : 'Per Case'}
+                </th>
                 {canEdit && <th className="w-12 p-3" />}
               </tr>
             </thead>
@@ -289,11 +295,11 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
           </table>
         </div>
 
-        {/* The sheet's own total row: the month over the cases. Adding up the
+        {/* The sheet's own total row: the day over the cases. Adding up the
             rounded per-case column instead lands a paisa or two out. */}
         <p className="mt-3 text-xs text-muted-foreground">
-          The total per case is the month’s total over {fmt(caseCount, 0)} cases, not the column
-          above added up.
+          The total per case is the day’s total over {fmt(caseCount, 0)} cases, not the column above
+          added up.
         </p>
 
         <div className="mt-4 space-y-1">
@@ -301,7 +307,7 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
           <Textarea
             id="filling-cost-notes"
             rows={2}
-            placeholder="Anything about this month worth writing down"
+            placeholder="Anything about this day worth writing down"
             value={notes}
             disabled={!canEdit}
             onChange={(e) => setNotes(e.target.value)}
@@ -313,7 +319,7 @@ function SheetEditor({ sheet, template, period, lineId, lineName, canEdit }: She
 }
 
 /**
- * The filling cost sheet — the month's filling cost, typed in head by head as
+ * The filling cost sheet — the day's filling cost, typed in head by head as
  * the factory writes it, over the cases it is spread across.
  *
  * Nothing on the page is derived from production: the per-case column is the
@@ -326,23 +332,22 @@ function FillingCostPage() {
   const canEdit = hasPermission(EXECUTION_PERMISSIONS.MANAGE_FILLING_COST);
 
   const { data: lines = [] } = useLines(true);
-  const { data: sheets = [], isLoading } = useFillingCostSheets();
 
-  const [month, setMonth] = useState(thisMonth);
+  const [date, setDate] = useState(today);
   const [lineId, setLineId] = useState<number | null>(null);
 
-  const period = `${month}-01`;
-  const sheet = useMemo(
-    () => sheets.find((s) => s.period === period && (s.line ?? null) === lineId) ?? null,
-    [sheets, period, lineId],
-  );
-  // The latest other month for this scope — the list comes back newest first.
-  // A month nobody has entered opens with the heads that one used, so the
-  // sheet is typed out once and filled in thereafter.
-  const template = useMemo(
-    () => sheets.find((s) => (s.line ?? null) === lineId && s.period !== period) ?? null,
-    [sheets, period, lineId],
-  );
+  const scope = lineId ?? 'none';
+  const inScope = (s: FillingCostSheet) => (s.line ?? null) === lineId;
+  const dayQuery = useFillingCostSheets({ line_id: scope, date });
+  // The newest two for this scope, whatever day is picked: one of them is not
+  // the picked day, and that is the latest other day. A day nobody has
+  // entered opens with the heads it used, so the sheet is typed out once and
+  // filled in thereafter.
+  const latestQuery = useFillingCostSheets({ line_id: scope, limit: 2 });
+  const isLoading = dayQuery.isLoading || latestQuery.isLoading;
+
+  const sheet = (dayQuery.data ?? []).find((s) => s.date === date && inScope(s)) ?? null;
+  const template = (latestQuery.data ?? []).find((s) => s.date !== date && inScope(s)) ?? null;
 
   return (
     <div className="space-y-6">
@@ -350,8 +355,8 @@ function FillingCostPage() {
         title="Filling Cost"
         description={
           canEdit
-            ? 'Enter the month’s filling cost head by head. The per-case column is the amount over the cases.'
-            : 'The month’s filling cost, head by head. Read-only.'
+            ? 'Enter the day’s filling cost head by head. The per-case column is the amount over the cases.'
+            : 'The day’s filling cost, head by head. Read-only.'
         }
       />
 
@@ -359,13 +364,13 @@ function FillingCostPage() {
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
-              <Label htmlFor="filling-cost-month">Month</Label>
+              <Label htmlFor="filling-cost-date">Date</Label>
               <Input
-                id="filling-cost-month"
-                type="month"
+                id="filling-cost-date"
+                type="date"
                 className="w-44"
-                value={month}
-                onChange={(e) => setMonth(e.target.value || thisMonth())}
+                value={date}
+                onChange={(e) => setDate(e.target.value || today())}
               />
             </div>
             <div className="space-y-1">
@@ -392,7 +397,9 @@ function FillingCostPage() {
                 ? `Entered by ${sheet.created_by_name || '—'}${
                     sheet.updated_by_name ? `, last saved by ${sheet.updated_by_name}` : ''
                   }`
-                : 'No sheet for this month yet — fill the heads in and save.'}
+                : template
+                  ? `No sheet for this day yet — the heads are carried over from ${dayLabel(template.date)}.`
+                  : 'No sheet for this day yet — fill the heads in and save.'}
             </div>
           </div>
         </CardContent>
@@ -404,10 +411,10 @@ function FillingCostPage() {
         </div>
       ) : (
         <SheetEditor
-          key={`${period}|${lineId ?? 'none'}|${sheet?.id ?? 'new'}|${sheet?.updated_at ?? ''}`}
+          key={`${date}|${lineId ?? 'none'}|${sheet?.id ?? 'new'}|${sheet?.updated_at ?? ''}`}
           sheet={sheet}
           template={template}
-          period={period}
+          date={date}
           lineId={lineId}
           lineName={lineId === null ? '' : (lines.find((l) => l.id === lineId)?.name ?? '')}
           canEdit={canEdit}
