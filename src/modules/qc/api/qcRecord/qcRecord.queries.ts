@@ -106,6 +106,34 @@ export function useSaveRecordValues() {
   });
 }
 
+export function useImportRecordSheet() {
+  return useMutation({
+    mutationFn: ({ file, sheet }: { file: File; sheet?: string }) =>
+      qcRecordApi.importSheet(file, sheet),
+  });
+}
+
+export function useSaveRecordCells() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      cells,
+      remarks,
+    }: {
+      id: number;
+      cells: Record<string, string>;
+      remarks?: string;
+    }) => qcRecordApi.saveCells(id, cells, remarks),
+    onSuccess: (record) => {
+      // Seeded from the response so the sheet shows the server's own spec
+      // verdicts at once.
+      queryClient.setQueryData(QC_RECORD_QUERY_KEYS.detail(record.id), record);
+      queryClient.invalidateQueries({ queryKey: QC_RECORD_QUERY_KEYS.all });
+    },
+  });
+}
+
 export function useSubmitQCRecord() {
   const queryClient = useQueryClient();
   return useMutation({

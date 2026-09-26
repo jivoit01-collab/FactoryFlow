@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   Settings2,
+  Upload,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -264,13 +265,23 @@ export default function QCDocumentsPage() {
           {canManageForms && (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
               <p className="text-xs text-muted-foreground">
-                These are the report formats. Edit one when the controlled document is
-                revised, or add a format for a form QA still keeps on paper.
+                These are the report formats. Upload the Excel sheet QA already keeps to use it
+                exactly as it looks, or lay out a new format row by row.
               </p>
-              <Button size="sm" onClick={() => navigate('/qc/documents/forms/new')}>
-                <FilePlus2 className="mr-2 h-4 w-4" />
-                New format
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => navigate('/qc/documents/sheets/new')}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Excel format
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate('/qc/documents/forms/new')}
+                >
+                  <FilePlus2 className="mr-2 h-4 w-4" />
+                  New format
+                </Button>
+              </div>
             </div>
           )}
 
@@ -292,7 +303,15 @@ export default function QCDocumentsPage() {
               {templates.map((template) => (
                 <Card key={template.id}>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{template.title}</CardTitle>
+                    <CardTitle className="flex items-start justify-between gap-2 text-base">
+                      {template.title}
+                      {template.kind === 'SHEET' && (
+                        <Badge variant="secondary" className="shrink-0">
+                          <FileSpreadsheet className="mr-1 h-3 w-3" />
+                          Excel sheet
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <p className="font-mono text-xs text-muted-foreground">
                       {template.document_code}
                       {template.revision_label && ` · Rev ${template.revision_label}`}
@@ -301,14 +320,23 @@ export default function QCDocumentsPage() {
                   <CardContent className="space-y-3 text-sm text-muted-foreground">
                     {template.description && <p>{template.description}</p>}
                     <p>
-                      {template.parameter_count} parameters · {template.record_count}{' '}
-                      record{template.record_count === 1 ? '' : 's'} filled
+                      {template.kind === 'SHEET'
+                        ? `${template.field_count} cells filled in`
+                        : `${template.parameter_count} parameters`}{' '}
+                      · {template.record_count} record{template.record_count === 1 ? '' : 's'}{' '}
+                      filled
                     </p>
                     {canManageForms && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/qc/documents/forms/${template.id}`)}
+                        onClick={() =>
+                          navigate(
+                            template.kind === 'SHEET'
+                              ? `/qc/documents/sheets/${template.id}`
+                              : `/qc/documents/forms/${template.id}`,
+                          )
+                        }
                       >
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit format

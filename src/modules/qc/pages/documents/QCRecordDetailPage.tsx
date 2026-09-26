@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, Loader2, Printer, Save, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Printer, Save, Send, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -22,9 +22,17 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import { useDecideQCRecord, useQCRecord, useSaveRecordValues } from '../../api/qcRecord';
+import {
+  useDecideQCRecord,
+  useQCRecord,
+  useSaveRecordCells,
+  useSaveRecordValues,
+  useSubmitQCRecord,
+} from '../../api/qcRecord';
+import SheetViewport from '../../components/sheet/SheetViewport';
 import type { RecordStatus } from '../../types/qcRecord.types';
 import { cellKey, toHHMM } from '../../utils/recordGrid';
+import { signature } from '../../utils/sheetLayout';
 import RecordFillGrid from './RecordFillGrid';
 import { useQCRecordPrint } from './useQCRecordPrint';
 
@@ -52,6 +60,8 @@ export default function QCRecordDetailPage() {
   const id = recordId ? Number(recordId) : null;
   const { data: record, isLoading } = useQCRecord(id);
   const saveValues = useSaveRecordValues();
+  const saveCells = useSaveRecordCells();
+  const submitRecord = useSubmitQCRecord();
   const decideRecord = useDecideQCRecord();
   const { print, printPortal } = useQCRecordPrint();
 
@@ -61,6 +71,10 @@ export default function QCRecordDetailPage() {
   const [pendingSlots, setPendingSlots] = useState<string[]>([]);
   const [isTimeDialogOpen, setIsTimeDialogOpen] = useState(false);
   const [newTime, setNewTime] = useState('');
+  /** A sheet form's unsaved edits, keyed by cell ('D10'). */
+  const [cellDrafts, setCellDrafts] = useState<Record<string, string>>({});
+  /** A sheet form's unsaved remarks; null while untouched. */
+  const [remarksDraft, setRemarksDraft] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -76,7 +90,11 @@ export default function QCRecordDetailPage() {
 
   const isApproved = record.status === 'APPROVED';
   const readOnly = !canFill || isApproved;
-  const dirtyCount = Object.keys(drafts).length;
+  const isSheet = record.template_detail.kind === 'SHEET' && !!record.template_detail.layout;
+  const dirtyCount = isSheet
+    ? Object.keys(cellDrafts).length + (remarksDraft !== null ? 1 : 0)
+    : Object.keys(drafts).length;
+  const canSubmit = canFill && (record.status === 'DRAFT' || record.status === 'REJECTED');
 
   // A locally-added column has no id yet, so give the grid a synthetic one.
   const recordForGrid = {
@@ -124,9 +142,28 @@ export default function QCRecordDetailPage() {
     setDrafts((current) => ({ ...current, [cellKey(slotTime, parameterId)]: value }));
   };
 
+  const handleSaveSheet = async () => {
+    try {
+      await saveCells.mutateAsync({
+        id: record.id,
+        cells: cellDrafts,
+        ...(remarksDraft !== null ? { remarks: remarksDraft } : {}),
+      });
+      setCellDrafts({});
+      setRemarksDraft(null);
+      toast.success(`Saved ${dirtyCount} change${dirtyCount === 1 ? '' : 's'}.`);
+    } catch (error) {
+      toast.error((error as ApiError).message || 'Failed to save the sheet.');
+    }
+  };
+
   const handleSave = async () => {
     if (dirtyCount === 0) {
       toast.info('Nothing to save.');
+      return;
+    }
+    if (isSheet) {
+      await handleSaveSheet();
       return;
     }
     const cells = Object.entries(drafts).map(([key, value]) => {
@@ -145,6 +182,19 @@ export default function QCRecordDetailPage() {
       toast.success(`Saved ${cells.length} cell${cells.length === 1 ? '' : 's'}.`);
     } catch (error) {
       toast.error((error as ApiError).message || 'Failed to save the sheet.');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (dirtyCount > 0) {
+      toast.error('Save your changes before submitting the sheet.');
+      return;
+    }
+    try {
+      await submitRecord.mutateAsync(record.id);
+      toast.success('Submitted for approval.');
+    } catch (error) {
+      toast.error((error as ApiError).message || 'Failed to submit the sheet.');
     }
   };
 
@@ -195,13 +245,37 @@ export default function QCRecordDetailPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <RecordFillGrid
-            record={recordForGrid}
-            drafts={drafts}
-            onCellChange={handleCellChange}
-            onAddTimeSlot={handleOpenTimeDialog}
-            readOnly={readOnly}
-          />
+          {isSheet && template.layout ? (
+            <SheetViewport
+              layout={template.layout}
+              fields={template.cell_fields}
+              mode="fill"
+              values={{ ...record.cell_values, ...cellDrafts }}
+              dirty={new Set(Object.keys(cellDrafts))}
+              checks={record.cell_checks}
+              readOnly={readOnly}
+              bound={{
+                recordDate: record.record_date,
+                shift: record.shift,
+                remarks: remarksDraft ?? record.remarks,
+                submittedBy: signature(record.submitted_by_name, record.submitted_at),
+                // Set on a rejection too, so only an approval signs the sheet.
+                approvedBy: isApproved
+                  ? signature(record.approved_by_name, record.approved_at)
+                  : '',
+              }}
+              onChange={(ref, value) => setCellDrafts((current) => ({ ...current, [ref]: value }))}
+              onRemarksChange={setRemarksDraft}
+            />
+          ) : (
+            <RecordFillGrid
+              record={recordForGrid}
+              drafts={drafts}
+              onCellChange={handleCellChange}
+              onAddTimeSlot={handleOpenTimeDialog}
+              readOnly={readOnly}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="outline" onClick={() => print(record)}>
@@ -210,13 +284,28 @@ export default function QCRecordDetailPage() {
             </Button>
 
             {!readOnly && (
-              <Button onClick={handleSave} disabled={saveValues.isPending || dirtyCount === 0}>
-                {saveValues.isPending ? (
+              <Button
+                onClick={handleSave}
+                disabled={saveValues.isPending || saveCells.isPending || dirtyCount === 0}
+              >
+                {saveValues.isPending || saveCells.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Save className="mr-2 h-4 w-4" />
                 )}
                 Save{dirtyCount > 0 ? ` (${dirtyCount})` : ''}
+              </Button>
+            )}
+
+            {canSubmit && (
+              <Button
+                variant="outline"
+                onClick={handleSubmit}
+                disabled={submitRecord.isPending || dirtyCount > 0}
+                title={dirtyCount > 0 ? 'Save your changes first' : 'Send the sheet for approval'}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Submit for approval
               </Button>
             )}
 
@@ -239,7 +328,7 @@ export default function QCRecordDetailPage() {
 
             {dirtyCount > 0 && (
               <span className="text-sm text-amber-700 dark:text-amber-400">
-                {dirtyCount} unsaved cell{dirtyCount === 1 ? '' : 's'}
+                {dirtyCount} unsaved change{dirtyCount === 1 ? '' : 's'}
               </span>
             )}
           </div>

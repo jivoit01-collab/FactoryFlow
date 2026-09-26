@@ -332,9 +332,11 @@ export const API_ENDPOINTS = {
     // QC Record Forms (Documents) — blank forms and filled sheets
     RECORD_TEMPLATES: '/quality-control/record-templates/',
     RECORD_TEMPLATE_BY_ID: (id: number) => `/quality-control/record-templates/${id}/`,
+    RECORD_TEMPLATE_IMPORT_SHEET: '/quality-control/record-templates/import-sheet/',
     QC_RECORDS: '/quality-control/qc-records/',
     QC_RECORD_BY_ID: (id: number) => `/quality-control/qc-records/${id}/`,
     QC_RECORD_VALUES: (id: number) => `/quality-control/qc-records/${id}/values/`,
+    QC_RECORD_CELLS: (id: number) => `/quality-control/qc-records/${id}/cells/`,
     QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
     QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
 

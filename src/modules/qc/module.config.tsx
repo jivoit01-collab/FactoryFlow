@@ -21,6 +21,7 @@ const QAProcedureLogPage = lazy(() => import('./pages/qaProcedures/QAProcedureLo
 const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
 const QCRecordDetailPage = lazy(() => import('./pages/documents/QCRecordDetailPage'));
 const RecordFormatPage = lazy(() => import('./pages/documents/RecordFormatPage'));
+const RecordSheetFormatPage = lazy(() => import('./pages/documents/RecordSheetFormatPage'));
 
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
@@ -217,6 +218,22 @@ export const qcModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
       breadcrumb: { label: 'Customize Format' },
+    },
+    {
+      // A format uploaded as the Excel sheet QA already keeps. Same gate as
+      // the format builder above.
+      path: '/qc/documents/sheets/new',
+      element: <RecordSheetFormatPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
+      breadcrumb: { label: 'Upload Excel Format' },
+    },
+    {
+      path: '/qc/documents/sheets/:templateId',
+      element: <RecordSheetFormatPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
+      breadcrumb: { label: 'Sheet Format' },
     },
     {
       path: '/qc/documents/records/:recordId',

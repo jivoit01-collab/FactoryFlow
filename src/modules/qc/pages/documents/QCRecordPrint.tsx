@@ -3,6 +3,7 @@ import { ControlledDocumentFrame } from '@/shared/components';
 
 import type { QCRecord } from '../../types/qcRecord.types';
 import { cellKey, toHHMM } from '../../utils/recordGrid';
+import SheetRecordPrintView from './SheetRecordPrint';
 
 /** ISO (YYYY-MM-DD) to the DD-MM-YYYY the printed forms use. */
 function toDDMMYYYY(iso: string | null): string {
@@ -71,6 +72,10 @@ export function QCRecordPrintStyles() {
  * a printout has to survive being photocopied in black and white.
  */
 export function QCRecordPrintView({ record }: { record: QCRecord }) {
+  // An Excel-uploaded form prints as its own sheet, not as the parameter table.
+  if (record.template_detail.kind === 'SHEET' && record.template_detail.layout) {
+    return <SheetRecordPrintView record={record} />;
+  }
   const template = record.template_detail;
   const slots = record.time_slots;
 

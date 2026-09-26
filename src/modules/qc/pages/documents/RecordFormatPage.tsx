@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
@@ -248,6 +248,11 @@ export default function RecordFormatPage() {
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  // An Excel-uploaded form has no rows to lay out; it has its own designer.
+  if (template?.kind === 'SHEET') {
+    return <Navigate to={`/qc/documents/sheets/${template.id}`} replace />;
   }
 
   if (!isNew && !template) {

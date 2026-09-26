@@ -36,6 +36,12 @@ export interface RecordTemplateSection {
   parameters: RecordTemplateParameter[];
 }
 
+/**
+ * GRID: laid out as sections and parameters in the format builder.
+ * SHEET: uploaded as an Excel sheet and drawn exactly as the sheet looks.
+ */
+export type RecordTemplateKind = 'GRID' | 'SHEET';
+
 export interface RecordTemplate {
   id: number;
   document_code: string;
@@ -47,6 +53,14 @@ export interface RecordTemplate {
   classification: string;
   description: string;
   sections: RecordTemplateSection[];
+  kind: RecordTemplateKind;
+  /** The uploaded sheet; null for a GRID form. */
+  layout: SheetLayout | null;
+  /** Which cells of `layout` are filled in, keyed by cell ('D10'). */
+  cell_fields: CellFields;
+  source_file_name: string;
+  /** True once a sheet has been filled against the form: only its header may change. */
+  is_locked: boolean;
 }
 
 export interface RecordTemplateListItem {
@@ -61,6 +75,9 @@ export interface RecordTemplateListItem {
   description: string;
   parameter_count: number;
   record_count: number;
+  kind: RecordTemplateKind;
+  /** Cells typed into on a SHEET form — its counterpart of parameter_count. */
+  field_count: number;
 }
 
 export interface RecordTimeSlot {
@@ -90,6 +107,10 @@ export interface QCRecord {
   status_label: string;
   time_slots: RecordTimeSlot[];
   values: RecordValue[];
+  /** A SHEET form's values, keyed by cell. */
+  cell_values: Record<string, string>;
+  /** Per judged cell: true = meets its spec, false = does not. */
+  cell_checks: Record<string, boolean>;
   submitted_by_name: string;
   submitted_at: string | null;
   approved_by_name: string;
@@ -175,4 +196,134 @@ export interface RecordTemplateWrite {
    * the way to correct a title or revision on a form that is in use.
    */
   sections?: RecordTemplateSectionWrite[];
+  /** A SHEET form's layout, exactly as the import returned it. */
+  layout?: SheetLayout;
+  /** The token the import issued for `layout`; required whenever it is sent. */
+  layout_token?: string;
+  cell_fields?: CellFields;
+  source_file_name?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Excel sheet forms
+// ---------------------------------------------------------------------------
+
+/**
+ * One distinct cell look, in the compact keys the backend parser emits
+ * (`quality_control/services/record_sheet.py`). Sizes are Excel's: font in
+ * points; borders by Excel style name.
+ */
+export interface SheetStyle {
+  ff?: string;
+  fs?: number;
+  b?: boolean;
+  i?: boolean;
+  u?: boolean;
+  st?: boolean;
+  /** '#rrggbb' */
+  fc?: string;
+  bg?: string;
+  ha?: 'left' | 'center' | 'right' | 'justify';
+  va?: 'top' | 'middle' | 'bottom';
+  wr?: boolean;
+  rot?: number;
+  ind?: number;
+  bl?: string;
+  br?: string;
+  bt?: string;
+  bb?: string;
+}
+
+export interface SheetCell {
+  /** Index into `SheetLayout.styles`. */
+  s: number;
+  /** The text as Excel shows it; absent for a blank cell. */
+  v?: string;
+  /** A number, so "general" alignment puts it on the right. */
+  n?: boolean;
+}
+
+export interface SheetImage {
+  src: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface SheetHeaderFooter {
+  left: string;
+  center: string;
+  right: string;
+}
+
+/** An uploaded sheet, as data. Pixel sizes are at Excel's 100% zoom. */
+export interface SheetLayout {
+  version: number;
+  sheet: string;
+  /** e.g. 'A1:M30' — the print area. */
+  range: string;
+  cols: { w: number; hidden?: boolean }[];
+  rows: { h: number; hidden?: boolean }[];
+  styles: SheetStyle[];
+  /** Every cell in range except those covered by a merge, keyed 'D10'. */
+  cells: Record<string, SheetCell>;
+  /** 'A1:M1' blocks; the first cell holds the content. */
+  merges: string[];
+  images: SheetImage[];
+  header: SheetHeaderFooter;
+  footer: SheetHeaderFooter;
+  orientation: 'portrait' | 'landscape';
+}
+
+/**
+ * The first five are typed in and stored per record. The rest are *bound* to
+ * the record and only shown: its date, shift, remarks, and who submitted and
+ * approved it (the Q.A Chemist / Q.A.M signatures on the paper form).
+ */
+export type CellFieldType =
+  | 'TEXT'
+  | 'NUMBER'
+  | 'TIME'
+  | 'DATE'
+  | 'CHOICE'
+  | 'RECORD_DATE'
+  | 'SHIFT'
+  | 'REMARKS'
+  | 'SIGN_SUBMITTED'
+  | 'SIGN_APPROVED';
+
+export interface CellField {
+  type: CellFieldType;
+  /** What the cell is, e.g. 'Free Fatty Acids · Time 3'. */
+  label?: string;
+  /** NUMBER limits, as decimal strings. */
+  min?: string | null;
+  max?: string | null;
+  /** CHOICE suggestions; free text is still allowed. */
+  options?: string[];
+  /** CHOICE values that meet the specification. */
+  ok?: string[];
+  /** The specification as printed on the sheet. */
+  spec?: string;
+}
+
+export type CellFields = Record<string, CellField>;
+
+/** What the import endpoint returns: nothing is saved until the designer saves. */
+export interface SheetImportResult {
+  sheets: string[];
+  sheet: string;
+  layout: SheetLayout;
+  layout_token: string;
+  cell_fields: CellFields;
+  header: {
+    document_code: string;
+    title: string;
+    organisation: string;
+    revision_number: string;
+    revision_date: string | null;
+    classification: string;
+  };
+  source_file_name: string;
 }

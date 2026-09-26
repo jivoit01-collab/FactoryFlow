@@ -10,6 +10,7 @@ import type {
   RecordTemplate,
   RecordTemplateListItem,
   RecordTemplateWrite,
+  SheetImportResult,
 } from '../../types/qcRecord.types';
 
 export const qcRecordApi = {
@@ -53,6 +54,24 @@ export const qcRecordApi = {
     return response.data;
   },
 
+  /**
+   * Read an Excel form into a layout for the designer. Nothing is saved:
+   * the result goes back through createTemplate / updateTemplate.
+   */
+  async importSheet(file: File, sheet?: string): Promise<SheetImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    if (sheet) form.append('sheet', sheet);
+    // The shared client defaults to application/json, which would send the
+    // body without a multipart boundary.
+    const response = await apiClient.post<SheetImportResult>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATE_IMPORT_SHEET,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
   /** Retire a form. Sheets already filled against it are kept. */
   async removeTemplate(id: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.QUALITY_CONTROL_V2.RECORD_TEMPLATE_BY_ID(id));
@@ -89,6 +108,22 @@ export const qcRecordApi = {
     const response = await apiClient.post<QCRecord>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.QC_RECORD_VALUES(id),
       { cells },
+    );
+    return response.data;
+  },
+
+  /**
+   * Save a SHEET record's cells. Only the cells sent are touched; a blank
+   * value clears one.
+   */
+  async saveCells(
+    id: number,
+    cells: Record<string, string>,
+    remarks?: string,
+  ): Promise<QCRecord> {
+    const response = await apiClient.post<QCRecord>(
+      API_ENDPOINTS.QUALITY_CONTROL_V2.QC_RECORD_CELLS(id),
+      remarks === undefined ? { cells } : { cells, remarks },
     );
     return response.data;
   },
