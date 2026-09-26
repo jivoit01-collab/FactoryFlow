@@ -1225,6 +1225,14 @@ export const API_ENDPOINTS = {
     // SAP Orders & BOM
     SAP_ORDERS: '/production-execution/sap/orders/',
     SAP_ORDER_DETAIL: (docEntry: number) => `/production-execution/sap/orders/${docEntry}/`,
+    // SAP production orders of every status, and the actions on them (ported
+    // from SAP Portal). The two above serve the run screens.
+    SAP_PRODUCTION_ORDERS: '/production-execution/sap-orders/',
+    SAP_PRODUCTION_ORDER: (docEntry: number) => `/production-execution/sap-orders/${docEntry}/`,
+    SAP_PRODUCTION_ORDER_RELEASE: (docEntry: number) => `/production-execution/sap-orders/${docEntry}/release/`,
+    SAP_PRODUCTION_ORDER_CLOSE: (docEntry: number) => `/production-execution/sap-orders/${docEntry}/close/`,
+    SAP_PRODUCTION_ORDER_ISSUE: (docEntry: number) => `/production-execution/sap-orders/${docEntry}/issue/`,
+    SAP_PRODUCTION_ORDER_RECEIPT: (docEntry: number) => `/production-execution/sap-orders/${docEntry}/receipt/`,
     SAP_ITEMS: '/production-execution/sap/items/',
     SAP_BOM: '/production-execution/sap/bom/',
     // Reports

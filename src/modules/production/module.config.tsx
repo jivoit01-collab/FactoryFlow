@@ -8,6 +8,7 @@ import {
   EXECUTION_PERMISSIONS,
   PRODUCTION_MODULE_PREFIX,
   PRODUCTION_PERMISSIONS,
+  SAP_ORDER_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
@@ -23,6 +24,10 @@ const BulkImportPage = lazy(() => import('./planning/pages/BulkImportPage'));
 
 // Lazy load Production Execution pages
 const ExecutionDashboardPage = lazy(() => import('./execution/pages/ExecutionDashboardPage'));
+
+// SAP production orders — SAP Portal's Production / Issue / Receipt / Close pages
+const SapOrdersPage = lazy(() => import('./sap-orders/pages/SapOrdersPage'));
+const SapOrderDetailPage = lazy(() => import('./sap-orders/pages/SapOrderDetailPage'));
 const StartRunPage = lazy(() => import('./execution/pages/StartRunPage'));
 const RunDetailPage = lazy(() => import('./execution/pages/RunDetailPage'));
 const YieldReportPage = lazy(() => import('./execution/pages/YieldReportPage'));
@@ -305,6 +310,23 @@ export const productionModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.VIEW_RUN, EXECUTION_PERMISSIONS.MANAGE_SETTINGS],
     },
+    // ---- SAP production orders (ported from SAP Portal) ----
+    // SAP's own orders of every status, outside the run flow. Any of the five
+    // SAP-order rights opens them; each action inside checks its own.
+    {
+      path: '/production/sap-orders',
+      element: <SapOrdersPage />,
+      layout: 'main',
+      permissions: SAP_ORDER_ACCESS,
+      breadcrumb: { label: 'SAP Orders' },
+    },
+    {
+      path: '/production/sap-orders/:docEntry',
+      element: <SapOrderDetailPage />,
+      layout: 'main',
+      permissions: SAP_ORDER_ACCESS,
+      breadcrumb: { label: 'Order' },
+    },
     // ---- Blowing (preform -> bottle) ----
     {
       path: '/production/blowing',
@@ -363,6 +385,11 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/execution',
           title: 'Execution',
           permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
+        },
+        {
+          path: '/production/sap-orders',
+          title: 'SAP Orders',
+          permissions: SAP_ORDER_ACCESS,
         },
         {
           path: '/production/blowing',

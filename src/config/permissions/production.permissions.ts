@@ -146,7 +146,29 @@ export const EXECUTION_PERMISSIONS = {
   VIEW_FILLING_COST: 'production_execution.can_view_filling_cost',
   /** Enter / edit the filling cost sheet */
   MANAGE_FILLING_COST: 'production_execution.can_manage_filling_cost',
+
+  // SAP production orders (screens ported from SAP Portal). Each write right
+  // also lets the holder see the orders.
+  /** See SAP production orders with what was issued and received */
+  VIEW_SAP_ORDERS: 'production_execution.can_view_sap_production_orders',
+  /** Create SAP production orders */
+  CREATE_SAP_ORDERS: 'production_execution.can_create_sap_production_orders',
+  /** Release and close SAP production orders */
+  RELEASE_CLOSE_SAP_ORDERS: 'production_execution.can_release_close_sap_production_orders',
+  /** Issue components to SAP production orders */
+  ISSUE_SAP_ORDERS: 'production_execution.can_issue_for_sap_production_orders',
+  /** Receive finished goods from SAP production orders */
+  RECEIVE_SAP_ORDERS: 'production_execution.can_receive_from_sap_production_orders',
 } as const;
+
+/** Anything that opens the SAP production-order screens (the server's view rule). */
+export const SAP_ORDER_ACCESS: readonly string[] = [
+  EXECUTION_PERMISSIONS.VIEW_SAP_ORDERS,
+  EXECUTION_PERMISSIONS.CREATE_SAP_ORDERS,
+  EXECUTION_PERMISSIONS.RELEASE_CLOSE_SAP_ORDERS,
+  EXECUTION_PERMISSIONS.ISSUE_SAP_ORDERS,
+  EXECUTION_PERMISSIONS.RECEIVE_SAP_ORDERS,
+];
 
 export const EXECUTION_MODULE_PREFIX = 'production_execution';
 

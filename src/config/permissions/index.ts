@@ -134,6 +134,7 @@ export {
   PRODUCTION_MODULE_PREFIX,
   PRODUCTION_PERMISSIONS,
   type ProductionPermission,
+  SAP_ORDER_ACCESS,
 } from './production.permissions';
 
 // Planning & Purchase Module
