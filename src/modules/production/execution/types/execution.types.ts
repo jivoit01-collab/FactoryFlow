@@ -229,6 +229,9 @@ export interface ProductionRun {
   /** Bottles per case (SAP SalFactor2); null when unresolved */
   pieces_per_case: number | null;
   total_production: string;
+  /** Cases made so far: `total_production` once complete, the running segments'
+   *  until then. Sent by the run list only. */
+  produced_cases?: string;
   total_running_minutes: number;
   total_breakdown_time: number;
   rejected_qty: string;

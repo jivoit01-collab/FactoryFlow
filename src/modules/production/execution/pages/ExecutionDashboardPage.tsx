@@ -1,17 +1,23 @@
-import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Download, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
+import { useAppSelector } from '@/core/store';
 import { confirmDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { formatDateToISOString, getErrorMessage } from '@/shared/utils';
 
 import { useDeleteRun, useLines, useRuns } from '../api';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
+import { ProductionTotals } from '../components/ProductionTotals';
 import { RunDraftModal } from '../components/RunDraftModal';
-import type { ProductionRun } from '../types';
+import { RUN_STATUS_LABELS } from '../constants';
+import type { ProductionRun, RunStatus } from '../types';
+import { formatCases, runProducedCases } from '../utils';
+import { buildRunsWorkbook, runsExportFileName } from '../utils/runsExport';
 
 function runSortTime(run: ProductionRun) {
   const createdAt = Date.parse(run.created_at || '');
@@ -31,9 +37,16 @@ function formatDateTime(value: string) {
   }).format(new Date(parsed));
 }
 
+function productionLabel(run: ProductionRun) {
+  const made = runProducedCases(run);
+  if (made <= 0) return 'No production yet';
+  return run.status === 'COMPLETED' ? `${formatCases(made)} cases` : `${formatCases(made)} cases so far`;
+}
+
 function ExecutionDashboardPage() {
   const navigate = useNavigate();
   const { data: lines } = useLines(true);
+  const currentCompany = useAppSelector((state) => state.auth.currentCompany);
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [lineFilter, setLineFilter] = useState<string>('ALL');
@@ -99,6 +112,28 @@ function ExecutionDashboardPage() {
     [runs],
   );
 
+  // The 1st of this month to today — the month's production so far.
+  const showThisMonth = () => {
+    const today = new Date();
+    setDateFrom(formatDateToISOString(new Date(today.getFullYear(), today.getMonth(), 1)));
+    setDateTo(formatDateToISOString(today));
+  };
+
+  // The runs as listed, and the totals above them — whatever the filters leave.
+  const exportExcel = () => {
+    const workbook = buildRunsWorkbook(sortedRuns, {
+      dateFrom,
+      dateTo,
+      lineName: lineFilter !== 'ALL' ? lines?.find((l) => String(l.id) === lineFilter)?.name : '',
+      statusLabel: statusFilter !== 'ALL' ? RUN_STATUS_LABELS[statusFilter as RunStatus] : '',
+      search,
+      companyName: currentCompany?.company_name,
+    });
+    const today = formatDateToISOString(new Date());
+    XLSX.writeFile(workbook, runsExportFileName(currentCompany?.company_code, dateFrom, dateTo, today));
+    toast.success('Export downloaded');
+  };
+
   const clearFilters = () => {
     setStatusFilter('ALL');
     setLineFilter('ALL');
@@ -117,7 +152,12 @@ function ExecutionDashboardPage() {
           icon: <Plus className="h-4 w-4 mr-2" />,
           onClick: openNewDraft,
         }}
-      />
+      >
+        <Button variant="outline" onClick={exportExcel} disabled={isLoading || sortedRuns.length === 0}>
+          <Download className="mr-2 h-4 w-4" />
+          Export Excel
+        </Button>
+      </DashboardHeader>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
@@ -152,7 +192,7 @@ function ExecutionDashboardPage() {
             ))}
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             type="date"
             value={dateFrom}
@@ -168,6 +208,9 @@ function ExecutionDashboardPage() {
             className="w-[150px]"
             placeholder="To"
           />
+          <Button variant="outline" size="sm" onClick={showThisMonth}>
+            This month
+          </Button>
         </div>
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -175,6 +218,16 @@ function ExecutionDashboardPage() {
           </Button>
         )}
       </div>
+
+      {/* Totals for whatever the filters leave on the board */}
+      {!isLoading && sortedRuns.length > 0 && (
+        <ProductionTotals
+          runs={sortedRuns}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          filtered={statusFilter !== 'ALL' || lineFilter !== 'ALL' || !!search.trim()}
+        />
+      )}
 
       {/* Results */}
       {isLoading ? (
@@ -221,9 +274,7 @@ function ExecutionDashboardPage() {
                     <p className="max-w-[360px] truncate font-medium">{run.product || '-'}</p>
                   </td>
                   <td className="px-3 py-3">{run.line_name}</td>
-                  <td className="px-3 py-3 text-right">
-                    {parseFloat(run.total_production || '0') > 0 ? `${run.total_production} cases` : 'No production yet'}
-                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums">{productionLabel(run)}</td>
                   <td className="px-3 py-3">{run.sap_doc_entry ?? '-'}</td>
                   <td className="px-3 py-3">
                     <ProductionStatusBadge status={run.live_status || run.status} />
