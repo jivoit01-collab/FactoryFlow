@@ -50,6 +50,7 @@ const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 const FillingCostPage = lazy(() => import('./execution/pages/FillingCostPage'));
+const ProductionSettingsPage = lazy(() => import('./execution/pages/ProductionSettingsPage'));
 // Cost rates are managed centrally on the admin Cost Master page (/admin/cost-master).
 
 // Lazy load Blowing (preform -> bottle) pages
@@ -296,6 +297,14 @@ export const productionModuleConfig: ModuleConfig = {
         EXECUTION_PERMISSIONS.MANAGE_LINE_CONFIG,
       ],
     },
+    {
+      // The RM / PM / FG warehouses. Everyone who sees runs reads them; the
+      // Save inside is gated separately on MANAGE_SETTINGS.
+      path: '/production/settings',
+      element: <ProductionSettingsPage />,
+      layout: 'main',
+      permissions: [EXECUTION_PERMISSIONS.VIEW_RUN, EXECUTION_PERMISSIONS.MANAGE_SETTINGS],
+    },
     // ---- Blowing (preform -> bottle) ----
     {
       path: '/production/blowing',
@@ -401,6 +410,11 @@ export const productionModuleConfig: ModuleConfig = {
             EXECUTION_PERMISSIONS.VIEW_LINE_CONFIG,
             EXECUTION_PERMISSIONS.MANAGE_LINE_CONFIG,
           ],
+        },
+        {
+          path: '/production/settings',
+          title: 'Settings',
+          permissions: [EXECUTION_PERMISSIONS.VIEW_RUN, EXECUTION_PERMISSIONS.MANAGE_SETTINGS],
         },
       ],
     },

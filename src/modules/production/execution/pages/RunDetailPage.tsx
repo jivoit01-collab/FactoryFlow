@@ -49,6 +49,7 @@ import {
   useLineClearances,
   useMachines,
   useMaterials,
+  useProductionSettings,
   useResolveBreakdown,
   useRunDetail,
   useStartProduction,
@@ -226,6 +227,8 @@ function RunDetailPage() {
   const [selectedFGWarehouse, setSelectedFGWarehouse] = useState('');
   const [fgWarehouseError, setFGWarehouseError] = useState('');
   const { data: fgWarehouses = [], isLoading: fgWarehousesLoading, isError: fgWarehousesError } = useWarehouses(dialog === 'fg-receipt');
+  // A new FG receipt opens on the FG warehouse from Production Settings.
+  const { data: productionSettings } = useProductionSettings();
   const isCompleted = run?.status === 'COMPLETED';
   // Total produced so far: the run-level figure once completed, else the sum of
   // stopped segments' produced cases (active segments report at stop time).
@@ -702,7 +705,9 @@ function RunDetailPage() {
                   }
                   return;
                 }
-                setSelectedFGWarehouse(editableFGReceipt?.warehouse || '');
+                setSelectedFGWarehouse(
+                  editableFGReceipt?.warehouse || productionSettings?.fg_warehouse || '',
+                );
                 setFGWarehouseError('');
                 setDialog('fg-receipt');
               }}

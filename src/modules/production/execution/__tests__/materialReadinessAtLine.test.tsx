@@ -106,4 +106,18 @@ describe('MaterialReadinessPanel for a company that plans on BH-PC stock', () =>
     expect(screen.getByText('partly at the line')).toBeInTheDocument();
     expect(screen.getByText('none at BH-PC')).toBeInTheDocument();
   });
+
+  it('names both line warehouses when RM and PM are set apart', () => {
+    renderPanel([
+      oilRow({ consumption_warehouse: 'BH-PM', searched_warehouses: ['BH-PM'] }),
+      oilRow({
+        item_code: 'RM001',
+        item_name: 'Canola oil',
+        material_type: 'RAW',
+        consumption_warehouse: 'BH-LO',
+        searched_warehouses: ['BH-LO'],
+      }),
+    ]);
+    expect(screen.getByRole('columnheader', { name: 'At BH-PM / BH-LO' })).toBeInTheDocument();
+  });
 });

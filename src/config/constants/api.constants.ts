@@ -1264,6 +1264,8 @@ export const API_ENDPOINTS = {
     LINE_CONFIGS: '/production-execution/line-configs/',
     LINE_CONFIG_DETAIL: (id: number) => `/production-execution/line-configs/${id}/`,
     LINE_CONFIG_AUTO_FILL: '/production-execution/line-configs/auto-fill/',
+    // Production settings — RM / PM / FG warehouses (GET, PATCH)
+    SETTINGS: '/production-execution/settings/',
     // Cost rates moved to the central Cost Master (COST_MASTER block below).
   },
   // Warehouse

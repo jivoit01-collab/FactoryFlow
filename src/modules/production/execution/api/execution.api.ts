@@ -63,6 +63,7 @@ import type {
   ProductionRunCost,
   ProductionRunDetail,
   ProductionSegment,
+  ProductionSettings,
   ResolveBreakdownRequest,
   ResourceCompressedAir,
   ResourceConsumptionReport,
@@ -81,6 +82,7 @@ import type {
   UpdateFillingCostSheetPayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
+  UpdateProductionSettingsPayload,
   UpdateRunRequest,
   UpdateSegmentRequest,
   UpdateWasteLogRequest,
@@ -1047,6 +1049,22 @@ export const executionApi = {
 
   async deleteFillingCostSheet(sheetId: number): Promise<void> {
     await apiClient.delete(EP.FILLING_COST_DETAIL(sheetId));
+  },
+
+  // =========================================================================
+  // Production settings — the RM / PM / FG warehouses
+  // =========================================================================
+
+  async getProductionSettings(): Promise<ProductionSettings> {
+    const res = await apiClient.get<ProductionSettings>(EP.SETTINGS);
+    return res.data;
+  },
+
+  async updateProductionSettings(
+    data: UpdateProductionSettingsPayload,
+  ): Promise<ProductionSettings> {
+    const res = await apiClient.patch<ProductionSettings>(EP.SETTINGS, data);
+    return res.data;
   },
 
   // Cost rates are managed on the admin Cost Master page (/admin/cost-master).

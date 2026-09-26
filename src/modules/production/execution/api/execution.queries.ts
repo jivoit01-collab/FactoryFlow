@@ -39,6 +39,7 @@ import type {
   UpdateFillingCostSheetPayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
+  UpdateProductionSettingsPayload,
   UpdateRunRequest,
   UpdateSegmentRequest,
   UpdateWasteLogRequest,
@@ -94,6 +95,8 @@ export const EXECUTION_QUERY_KEYS = {
   // Cost
   fillingCosts: (params?: FillingCostSheetParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'filling-costs', params] as const,
+  // Settings
+  settings: () => [...EXECUTION_QUERY_KEYS.all, 'settings'] as const,
   runCost: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'cost', runId] as const,
   costAnalytics: (params?: AnalyticsParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'cost-analytics', params] as const,
@@ -1570,6 +1573,33 @@ export function useDeleteFillingCostSheet() {
     mutationFn: (sheetId: number) => executionApi.deleteFillingCostSheet(sheetId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-costs'] });
+    },
+  });
+}
+
+// ============================================================================
+// Production settings — the RM / PM / FG warehouses
+// ============================================================================
+
+/** The active company's production settings (the defaults until first saved). */
+export function useProductionSettings(enabled = true) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.settings(),
+    queryFn: () => executionApi.getProductionSettings(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateProductionSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateProductionSettingsPayload) =>
+      executionApi.updateProductionSettings(data),
+    onSuccess: (saved) => {
+      qc.setQueryData(EXECUTION_QUERY_KEYS.settings(), saved);
+      // Plan checks read the RM/PM warehouses: anything cached is now stale.
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'plan-check'] });
     },
   });
 }

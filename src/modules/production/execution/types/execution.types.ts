@@ -792,6 +792,10 @@ export interface PlanCheckMaterialRow {
   material_type: 'PACKAGING' | 'RAW' | 'OTHER';
   item_group: string;
   issue_warehouse: string;
+  /** The line's own warehouse for this component — the RM or PM warehouse from
+   *  the production settings. What stands there narrows the request (or, at the
+   *  line only, is all that counts), whatever `issue_warehouse` the bill names. */
+  consumption_warehouse?: string;
   /** The warehouses this component's stock was looked for in — RM and PM are
    *  scoped separately, so this is per row, not per screen. */
   searched_warehouses: string[];
@@ -1624,3 +1628,24 @@ export interface FillingCostSheetParams {
   /** Any day in the month */
   period?: string;
 }
+
+// ============================================================================
+// Production settings — the RM / PM / FG warehouses, one set per company
+// ============================================================================
+
+export interface ProductionSettings {
+  /** Raw material is drawn from here for production. */
+  rm_warehouse: string;
+  /** Packing material is drawn from here for production. */
+  pm_warehouse: string;
+  /** Finished goods are received into here. */
+  fg_warehouse: string;
+  /** False until somebody saves the page: the values are the defaults. */
+  is_saved: boolean;
+  updated_by_name: string;
+  updated_at: string | null;
+}
+
+export type UpdateProductionSettingsPayload = Partial<
+  Pick<ProductionSettings, 'rm_warehouse' | 'pm_warehouse' | 'fg_warehouse'>
+>;

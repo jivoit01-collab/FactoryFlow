@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, Cog, Play, ShieldCheck, Trash2 } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Cog, Play, Settings, ShieldCheck, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -65,6 +65,13 @@ const quickActions: ProductionModuleCard[] = [
     route: '/production/execution/master-data',
     color: 'text-gray-600 dark:text-muted-foreground',
     permissions: [EXECUTION_PERMISSIONS.MANAGE_LINES],
+  },
+  {
+    title: 'Settings',
+    icon: <Settings className="h-5 w-5" />,
+    route: '/production/settings',
+    color: 'text-gray-600 dark:text-muted-foreground',
+    permissions: [EXECUTION_PERMISSIONS.VIEW_RUN, EXECUTION_PERMISSIONS.MANAGE_SETTINGS],
   },
 ];
 

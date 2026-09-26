@@ -158,12 +158,21 @@ export function MaterialReadinessPanel({
   const shortCount = summary?.short_lines ?? 0;
   const contestedCount = summary?.contested_lines ?? 0;
   const partialCount = summary?.partial_lines ?? 0;
-  // Oil: only BH-PC stock is counted and shown, and nothing goes to the
-  // warehouse, so the Free and Approval columns have nothing to say.
+  // Oil: only the line's own stock — the RM and PM warehouses from Production
+  // Settings, BH-PC for both by default — is counted and shown, and nothing goes
+  // to the warehouse, so the Free and Approval columns have nothing to say.
   const atLineOnly = rows.some((r) => r.check?.stock_scope === 'PRODUCTION_CONSUMPTION');
+  const lineWarehouseOf = (check?: PlanCheckMaterialRow) =>
+    check?.consumption_warehouse ?? check?.searched_warehouses[0];
   const atLineWarehouse =
-    rows.find((r) => r.check?.stock_scope === 'PRODUCTION_CONSUMPTION')?.check
-      ?.searched_warehouses[0] ?? 'BH-PC';
+    [
+      ...new Set(
+        rows
+          .filter((r) => r.check?.stock_scope === 'PRODUCTION_CONSUMPTION')
+          .map((r) => lineWarehouseOf(r.check))
+          .filter((w): w is string => Boolean(w)),
+      ),
+    ].join(' / ') || 'BH-PC';
   const tightCount = summary?.tight_lines ?? 0;
   const okCount = summary?.ok_lines ?? 0;
 
@@ -421,14 +430,16 @@ export function MaterialReadinessPanel({
                                 </span>
                                 {/* Oil is netted against the line's staging the
                                     same way caps are, so the note belongs on
-                                    both — and it names the warehouse the bill
-                                    actually consumes from, which is BH-PP for
-                                    every Beverages line. */}
+                                    both — and it names the line's own RM or PM
+                                    warehouse from Production Settings (BH-PP
+                                    for Beverages by default). */}
                                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                                   {check.material_type === 'RAW' ? 'RM request' : 'PM request'}
                                   {!!check.qty_at_production_consumption &&
                                     ` · ${qty(check.qty_at_production_consumption)} already at ${
-                                      check.issue_warehouse || 'BH-PC'
+                                      check.consumption_warehouse ||
+                                      check.issue_warehouse ||
+                                      'BH-PC'
                                     }`}
                                 </p>
                               </>
@@ -489,7 +500,7 @@ export function MaterialReadinessPanel({
                                     {check.register_missing
                                       ? 'Nobody has entered this material on the Raw Material register, so it counts as zero.'
                                       : atLineOnly
-                                        ? `None at ${atLineWarehouse}.`
+                                        ? `None at ${lineWarehouseOf(check) ?? atLineWarehouse}.`
                                         : 'No stock in any of those warehouses.'}
                                   </p>
                                 ) : (

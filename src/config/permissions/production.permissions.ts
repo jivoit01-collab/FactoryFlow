@@ -114,6 +114,11 @@ export const EXECUTION_PERMISSIONS = {
   /** Edit the line configuration. Held by no group — superusers only. */
   MANAGE_LINE_CONFIG: 'production_execution.can_manage_line_config',
 
+  // Production settings (RM / PM / FG warehouses). Anyone who can view runs
+  // may read them; changing them is Production HOD (and superusers).
+  /** Change the production settings */
+  MANAGE_SETTINGS: 'production_execution.can_manage_production_settings',
+
   // Waste Management
   /** View waste logs */
   VIEW_WASTE: 'production_execution.can_view_waste_log',
