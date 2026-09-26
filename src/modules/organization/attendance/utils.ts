@@ -114,3 +114,13 @@ export function monthLabel(month: string): string {
     year: 'numeric',
   });
 }
+
+/** Hand a fetched file to the browser as a download. The one non-pure helper here. */
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

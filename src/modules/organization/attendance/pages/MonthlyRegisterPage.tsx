@@ -19,8 +19,8 @@
  */
 import { AlertTriangle, Download } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
-import { API_CONFIG } from '@/config/constants/api.constants';
 import { ATTENDANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { Badge, Button, Card, CardContent, Input, Label, Switch } from '@/shared/components/ui';
@@ -30,7 +30,7 @@ import type { AttendanceStatusValue, MusterRow } from '../api/attendance.api';
 import { attendanceApi } from '../api/attendance.api';
 import { OverrideDialog } from '../components/OverrideDialog';
 import { STATUS_STYLES, statusLabel } from '../components/statusBits';
-import { cellKind, cellLetter, currentMonth, monthLabel } from '../utils';
+import { cellKind, cellLetter, currentMonth, monthLabel, saveBlob } from '../utils';
 
 /** The order the totals columns read in, widest concept last. */
 const TOTAL_ORDER: AttendanceStatusValue[] = [
@@ -76,10 +76,21 @@ export default function MonthlyRegisterPage() {
 
   // The export already honours date_from/date_to, so a month costs nothing
   // beyond handing it the register's own bounds.
-  const exportUrl = `${API_CONFIG.baseUrl}${attendanceApi.exportUrl({
-    date_from: muster.data?.date_from,
-    date_to: muster.data?.date_to,
-  })}`;
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    const dateFrom = muster.data?.date_from;
+    const dateTo = muster.data?.date_to;
+    if (!dateFrom || !dateTo) return;
+    setIsExporting(true);
+    try {
+      const blob = await attendanceApi.exportXlsx({ date_from: dateFrom, date_to: dateTo });
+      saveBlob(blob, `attendance_${month}.xlsx`);
+    } catch {
+      toast.error('Could not export attendance');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-4 p-4">
@@ -121,9 +132,13 @@ export default function MonthlyRegisterPage() {
               Include past employees
             </Label>
           </div>
-          <Button variant="outline" onClick={() => window.open(exportUrl, '_blank')}>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={isExporting || !muster.data}
+          >
             <Download className="mr-2 h-4 w-4" />
-            Export
+            {isExporting ? 'Exporting…' : 'Export'}
           </Button>
         </div>
       </div>

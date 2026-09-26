@@ -327,10 +327,15 @@ export const attendanceApi = {
     return response.data;
   },
 
-  exportUrl: (filters?: DailyFilters): string => {
-    const params = new URLSearchParams(
-      Object.entries(toParams(filters)).map(([k, v]) => [k, String(v)]),
-    );
-    return `${API_ENDPOINTS.ATTENDANCE.EXPORT}?${params.toString()}`;
+  /**
+   * Fetched through the API client, not opened as a URL: a bare browser tab
+   * carries neither the bearer token nor the Company-Code header, so it 401s.
+   */
+  exportXlsx: async (filters?: DailyFilters): Promise<Blob> => {
+    const response = await apiClient.get(API_ENDPOINTS.ATTENDANCE.EXPORT, {
+      params: toParams(filters),
+      responseType: 'blob',
+    });
+    return response.data as Blob;
   },
 };

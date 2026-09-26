@@ -21,7 +21,6 @@ import { AlertTriangle, Download, History,Pencil, RefreshCw } from 'lucide-react
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
-import { API_CONFIG } from '@/config/constants/api.constants';
 import { ATTENDANCE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
@@ -48,7 +47,7 @@ import { HistoryDialog } from '../components/HistoryDialog';
 import { OverrideDialog } from '../components/OverrideDialog';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatMinutes, formatTime, statusLabel } from '../components/statusBits';
-import { countsInView, rowMatches, todayLocal } from '../utils';
+import { countsInView, rowMatches, saveBlob, todayLocal } from '../utils';
 
 const TILE_ORDER: AttendanceStatusValue[] = [
   'PRESENT',
@@ -102,12 +101,16 @@ export default function DailyAttendancePage() {
     }
   };
 
-  const handleExport = () => {
-    window.open(
-      `${API_CONFIG.baseUrl}${attendanceApi.exportUrl({ date })}`,
-      '_blank',
-      'noopener',
-    );
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      saveBlob(await attendanceApi.exportXlsx({ date }), `attendance_${date}.xlsx`);
+    } catch {
+      toast.error('Could not export attendance');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -133,9 +136,9 @@ export default function DailyAttendancePage() {
               {sync.isPending ? 'Syncing…' : 'Sync punches'}
             </Button>
           )}
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" onClick={handleExport} disabled={isExporting}>
             <Download className="mr-2 h-4 w-4" />
-            Export
+            {isExporting ? 'Exporting…' : 'Export'}
           </Button>
         </div>
       </div>
