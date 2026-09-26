@@ -1429,6 +1429,45 @@ export const API_ENDPOINTS = {
     ME: '/sap-identity/me/',
   },
 
+  // SAP master-data pickers shared by several modules' forms (ported from SAP
+  // Portal's /api/sap/lookup/*). Login + Company-Code only; each reads the
+  // company in the header.
+  SAP_LOOKUPS: {
+    ITEMS: '/sap-lookups/items/',
+    SAC_CODES: '/sap-lookups/sac-codes/',
+    LOCATIONS: '/sap-lookups/locations/',
+    WAREHOUSES: '/sap-lookups/warehouses/',
+    TAX_CODES: '/sap-lookups/tax-codes/',
+    COSTING_CODES: '/sap-lookups/costing-codes/',
+    BRANCHES: '/sap-lookups/branches/',
+    RESOURCES: '/sap-lookups/resources/',
+    BATCHES: '/sap-lookups/batches/',
+    GL_ACCOUNTS: '/sap-lookups/gl-accounts/',
+    AR_ACCOUNTS: '/sap-lookups/ar-accounts/',
+    AP_ACCOUNTS: '/sap-lookups/ap-accounts/',
+    BUSINESS_PARTNERS: '/sap-lookups/business-partners/',
+    BP_GROUPS: '/sap-lookups/bp-groups/',
+    SALES_EMPLOYEES: '/sap-lookups/sales-employees/',
+    PAYMENT_TERMS: '/sap-lookups/payment-terms/',
+    STATES: '/sap-lookups/states/',
+    BANKS: '/sap-lookups/banks/',
+    MAIN_GROUP: '/sap-lookups/main-group/',
+    CHAIN: '/sap-lookups/chain/',
+    NEXT_CARD_CODE: '/sap-lookups/next-card-code/',
+  },
+
+  // SAP Portal's finance screens: journal entries, ledgers, chart of accounts
+  // and the SAP BUDGET user-defined object.
+  SAP_FINANCE: {
+    JOURNAL_ENTRIES: '/sap-finance/journal-entries/',
+    GENERAL_LEDGER: '/sap-finance/general-ledger/',
+    LEDGER_ACCOUNTS: '/sap-finance/ledger-accounts/',
+    CHART_OF_ACCOUNTS: '/sap-finance/chart-of-accounts/',
+    BUDGETS: '/sap-finance/budgets/',
+    BUDGET_DETAIL: (docEntry: number) => `/sap-finance/budgets/${docEntry}/`,
+    BUDGET_CHANGES: '/sap-finance/budget-changes/',
+  },
+
   BARCODE: {
     // Activation — printed labels are inactive until received or approved.
     // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).

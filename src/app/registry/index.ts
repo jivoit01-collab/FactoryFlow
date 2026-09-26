@@ -26,6 +26,7 @@ import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module
 import { productionModuleConfig } from '@/modules/production/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { returnsModuleConfig } from '@/modules/returns/module.config';
+import { sapFinanceModuleConfig } from '@/modules/sap-finance/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
@@ -85,6 +86,11 @@ export const moduleRegistry: ModuleConfig[] = [
   // other thing the office keeps a book of, and it is nobody's shop-floor
   // screen.
   accountsModuleConfig,
+  // SAP's books, merged in from SAP Portal: journal entries, ledgers, the chart
+  // of accounts and budgets. Beside Accounts because it is the other set of
+  // books; separate because it is SAP's, not the factory's cash box, and a
+  // person often holds one without the other.
+  sapFinanceModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

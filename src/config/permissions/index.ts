@@ -97,6 +97,16 @@ export {
   type SapIdentityPermission,
 } from './sap-identity.permissions';
 
+// SAP Finance (journal entries, ledgers, chart of accounts and budgets, from SAP Portal)
+export {
+  SAP_FINANCE_ACCESS,
+  SAP_FINANCE_BUDGETS_ACCESS,
+  SAP_FINANCE_LEDGERS_ACCESS,
+  SAP_FINANCE_MODULE_PREFIX,
+  SAP_FINANCE_PERMISSIONS,
+  type SapFinancePermission,
+} from './sap-finance.permissions';
+
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {
   SAP_REPORTS_ACCESS,
