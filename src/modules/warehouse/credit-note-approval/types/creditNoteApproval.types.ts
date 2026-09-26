@@ -108,6 +108,12 @@ export interface CreditNoteApproval {
 export interface CreditNoteDecisionPayload {
   status: 'APPROVED' | 'REJECTED';
   rejection_reason?: string;
+  /**
+   * SAP's "Without Qty Posting", written to the draft's item lines before an
+   * approval: true credits the value only, false moves stock. Left out, SAP's
+   * per-line settings stay as they are. Ignored on a rejection.
+   */
+  without_qty_posting?: boolean;
 }
 
 export interface CreditNoteDecisionResult {
@@ -118,4 +124,25 @@ export interface CreditNoteDecisionResult {
 
 export interface CreditNotePendingCount {
   total: number;
+}
+
+/**
+ * What the caller may additionally do on one request (ported from SAP Portal's
+ * credit-note screen), read when its row is opened.
+ */
+export interface CreditNoteActions {
+  wdd_code: number;
+  status: CreditNoteApprovalStatus | 'GENERATED' | 'CANCELLED';
+  is_originator: boolean;
+  /** The caller raised it, it is pending and their SAP password is stored. */
+  can_withdraw: boolean;
+  /** Why not, when the caller raised it but cannot withdraw it here. */
+  withdraw_note: string | null;
+  without_qty_posting: {
+    /** True: every item line credits value only; false: every one moves stock; null: mixed or none. */
+    current: boolean | null;
+    item_lines: number;
+    /** Still a draft, has item lines, and the caller may approve it. */
+    can_set: boolean;
+  };
 }

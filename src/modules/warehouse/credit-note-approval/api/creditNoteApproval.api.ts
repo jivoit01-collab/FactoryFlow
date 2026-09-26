@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 
 import type { ARInvoicePrintPayload } from '../../ar-invoice/types';
 import type {
+  CreditNoteActions,
   CreditNoteApproval,
   CreditNoteApprovalStatus,
   CreditNoteDecisionPayload,
@@ -55,6 +56,28 @@ export const creditNoteApprovalApi = {
    */
   async getPrint(docEntry: number): Promise<ARInvoicePrintPayload> {
     const res = await apiClient.get<ARInvoicePrintPayload>(E.CREDIT_NOTE_PRINT(docEntry));
+    return res.data;
+  },
+
+  /**
+   * Withdraw and Without Qty Posting for one request (from SAP Portal's
+   * credit-note screen). Read when a row is opened; a failure just hides the
+   * extras, so no toast.
+   */
+  async actions(wddCode: number): Promise<CreditNoteActions> {
+    const res = await apiClient.get<CreditNoteActions>(
+      `${E.CREDIT_NOTE_APPROVALS}${wddCode}/actions/`,
+      { suppressErrorToast: true },
+    );
+    return res.data;
+  },
+
+  /** The originator withdraws their own pending request, signed as themselves. */
+  async withdraw(wddCode: number): Promise<CreditNoteDecisionResult> {
+    const res = await apiClient.post<CreditNoteDecisionResult>(
+      `${E.CREDIT_NOTE_APPROVALS}${wddCode}/withdraw/`,
+      {},
+    );
     return res.data;
   },
 

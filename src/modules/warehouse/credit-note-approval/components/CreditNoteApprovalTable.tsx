@@ -40,7 +40,7 @@ import {
   UserCheck,
   XCircle,
 } from 'lucide-react';
-import { Fragment, useState } from 'react';
+import { Fragment, type ReactNode, useState } from 'react';
 
 import { confirmSapPost } from '@/shared/components';
 import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
@@ -52,6 +52,7 @@ import type {
   CreditNoteApprovalLine,
   CreditNoteApprovalStatus,
 } from '../types';
+import { CreditNoteExtras } from './CreditNoteExtras';
 import { CreditNotePrintButton } from './CreditNotePrintButton';
 
 function apiError(err: unknown, fallback: string): string {
@@ -351,7 +352,7 @@ function ServiceLineTable({ row }: { row: CreditNoteApproval }) {
  * its lines in the shape they actually are, what it was raised against, SAP's
  * comments, and where the document stands now.
  */
-function DetailPanel({ row }: { row: CreditNoteApproval }) {
+function DetailPanel({ row, extras }: { row: CreditNoteApproval; extras?: ReactNode }) {
   /**
    * Only what nothing above the panel already says.
    *
@@ -401,6 +402,8 @@ function DetailPanel({ row }: { row: CreditNoteApproval }) {
       {printableEntry !== null && (
         <CreditNotePrintButton docEntry={printableEntry} docNum={row.posted_doc_num} />
       )}
+
+      {extras}
 
       {/*
         Only what the row itself could not say. The party, its card code and
@@ -477,6 +480,8 @@ export function CreditNoteApprovalTable({
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
+  // Without Qty Posting chosen per row in its panel; absent = leave SAP's lines as they are.
+  const [withoutQty, setWithoutQty] = useState<Record<number, boolean | undefined>>({});
 
   function toggle(id: number) {
     setOpenIds((prev) => {
@@ -728,6 +733,12 @@ export function CreditNoteApprovalTable({
                                                     : 'Comes back into the warehouse'
                                                   : 'No goods move (service)',
                                               },
+                                              withoutQty[row.id] !== undefined && {
+                                                label: 'Without Qty Posting',
+                                                value: withoutQty[row.id]
+                                                  ? 'Set on every item line — value only, no stock moves'
+                                                  : 'Cleared on every item line — stock moves',
+                                              },
                                               {
                                                 label: 'Recorded',
                                                 value: 'With your own SAP user',
@@ -736,9 +747,13 @@ export function CreditNoteApprovalTable({
                                             confirmLabel: 'Approve in SAP',
                                           });
                                           if (!confirmed) return null;
+                                          const choice = withoutQty[row.id];
                                           return decide.mutateAsync({
                                             wddCode: row.id,
-                                            payload: { status: 'APPROVED' },
+                                            payload:
+                                              choice === undefined
+                                                ? { status: 'APPROVED' }
+                                                : { status: 'APPROVED', without_qty_posting: choice },
                                           });
                                         },
                                         'Could not approve this credit note in SAP.',
@@ -769,7 +784,28 @@ export function CreditNoteApprovalTable({
                         {open && (
                           <tr className="border-b last:border-0">
                             <td colSpan={colSpan} className="p-0">
-                              <DetailPanel row={row} />
+                              <DetailPanel
+                                row={row}
+                                extras={
+                                  row.status === 'PENDING' ? (
+                                    <CreditNoteExtras
+                                      row={row}
+                                      withoutQty={withoutQty[row.id]}
+                                      onWithoutQtyChange={(value) =>
+                                        setWithoutQty((prev) => ({ ...prev, [row.id]: value }))
+                                      }
+                                      onResult={(message) => {
+                                        setError('');
+                                        setDone(message);
+                                      }}
+                                      onError={(message) => {
+                                        setDone('');
+                                        setError(message);
+                                      }}
+                                    />
+                                  ) : null
+                                }
+                              />
                             </td>
                           </tr>
                         )}

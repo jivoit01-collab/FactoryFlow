@@ -15,6 +15,8 @@ export const CREDIT_NOTE_APPROVAL_QUERY_KEYS = {
   pendingCount: () => [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'pending-count'] as const,
   print: (docEntry: number) =>
     [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'print', docEntry] as const,
+  actions: (wddCode: number) =>
+    [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'actions', wddCode] as const,
 };
 
 export function useCreditNoteApprovals(
@@ -76,6 +78,28 @@ export function useDecideCreditNoteApproval() {
     onSuccess: () => {
       // The row leaves PENDING — `all` covers every tab, both families and the
       // sidebar badge.
+      queryClient.invalidateQueries({ queryKey: CREDIT_NOTE_APPROVAL_QUERY_KEYS.all });
+    },
+  });
+}
+
+/** Withdraw / Without Qty Posting for one opened row; read fresh, never retried. */
+export function useCreditNoteActions(wddCode: number, enabled: boolean) {
+  return useQuery({
+    queryKey: CREDIT_NOTE_APPROVAL_QUERY_KEYS.actions(wddCode),
+    queryFn: () => creditNoteApprovalApi.actions(wddCode),
+    enabled,
+    staleTime: 0,
+    retry: false,
+  });
+}
+
+export function useWithdrawCreditNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (wddCode: number) => creditNoteApprovalApi.withdraw(wddCode),
+    onSuccess: () => {
+      // The request leaves PENDING: every tab, both families and the badge.
       queryClient.invalidateQueries({ queryKey: CREDIT_NOTE_APPROVAL_QUERY_KEYS.all });
     },
   });
