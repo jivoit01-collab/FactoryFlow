@@ -122,6 +122,14 @@ export {
   SAP_APPROVALS_PERMISSIONS,
   type SapApprovalsPermission,
 } from './sap-approvals.permissions';
+// BOM Changes (BOM change requests, their approval levels and the SAP BOM viewer, from SAP Portal)
+export {
+  BOM_CHANGES_ACCESS,
+  BOM_CHANGES_APPROVER_ACCESS,
+  BOM_CHANGES_MODULE_PREFIX,
+  BOM_CHANGES_PERMISSIONS,
+  type BomChangesPermission,
+} from './bom-changes.permissions';
 
 // SAP Reports Module (SAP Query Manager reports, run from the app)
 export {

@@ -8,6 +8,7 @@ import { adminModuleConfig } from '@/modules/admin/module.config';
 import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
+import { bomChangesModuleConfig } from '@/modules/bom-changes/module.config';
 import { constructionModuleConfig } from '@/modules/construction/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
@@ -103,6 +104,12 @@ export const moduleRegistry: ModuleConfig[] = [
   // because both are SAP's own work surfaced here; separate from the warehouse
   // approval queues, which list one document family company-wide.
   sapApprovalsModuleConfig,
+  // Changes to SAP's bills of materials, merged in from SAP Portal: a request,
+  // level approvals, then the write to SAP, plus a viewer of the trees SAP
+  // holds. After SAP Finance because it is the other SAP master data the
+  // office keeps; its own group because its approvers are production and
+  // costing people, not accountants.
+  bomChangesModuleConfig,
   // The software's own bug list. Last but one: it is about the app rather than
   // about the factory, so it sits with Settings at the bottom.
   issuesModuleConfig,

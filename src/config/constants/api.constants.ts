@@ -1498,6 +1498,21 @@ export const API_ENDPOINTS = {
       `/sap-documents/attachments/${absEntry}/${line}/download/`,
   },
 
+  // BOM change requests with level approvals ending in a SAP ProductTrees
+  // write, and the SAP BOM viewer (from SAP Portal). Not WAREHOUSE.BOM_REQUESTS,
+  // which is production asking the store for material.
+  BOM_CHANGES: {
+    WORKFLOW: '/bom-changes/workflow/',
+    SAP_BOMS: '/bom-changes/sap-boms/',
+    SAP_BOM_DETAIL: (treeCode: string) => `/bom-changes/sap-boms/${encodeURIComponent(treeCode)}/`,
+    REQUESTS: '/bom-changes/requests/',
+    DIRECT_PUSH: '/bom-changes/requests/direct-push/',
+    REQUEST_DETAIL: (id: number) => `/bom-changes/requests/${id}/`,
+    APPROVE: (id: number) => `/bom-changes/requests/${id}/approve/`,
+    REJECT: (id: number) => `/bom-changes/requests/${id}/reject/`,
+    CANCEL: (id: number) => `/bom-changes/requests/${id}/cancel/`,
+  },
+
   BARCODE: {
     // Activation — printed labels are inactive until received or approved.
     // The receive scan itself is under WAREHOUSE (see RECEIVE_SCAN).
