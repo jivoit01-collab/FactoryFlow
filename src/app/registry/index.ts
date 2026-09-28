@@ -15,6 +15,7 @@ import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
 import { dispatchModuleConfig } from '@/modules/dispatch/module.config';
 import { employeesModuleConfig } from '@/modules/employees/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
+import { eximModuleConfig } from '@/modules/exim/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
 import { fleetModuleConfig } from '@/modules/fleet/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
@@ -62,6 +63,9 @@ export const moduleRegistry: ModuleConfig[] = [
   // Sits next to Production: it reads the plan SAP holds and turns its bill of
   // materials into purchase orders.
   planningPurchaseModuleConfig,
+  // Sits after Planning & Purchase: the licences and rates the oil is bought
+  // and sold across the border under. EXIM's screens, moving in one by one.
+  eximModuleConfig,
   maintenanceModuleConfig,
   // Sits after Maintenance: the campus's own building work, from the budget
   // and its approval through the daily record of what was done and what it
