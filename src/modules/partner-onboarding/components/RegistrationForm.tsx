@@ -7,7 +7,7 @@
  * form is sent (the server checks them again), and the server's own answer is
  * mapped back onto the fields.
  */
-import { CheckCircle2, Loader2, Plus, Send } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, Plus, Printer } from 'lucide-react';
 import { useState } from 'react';
 
 import type { ApiError } from '@/core/api';
@@ -54,6 +54,7 @@ import { AddressFields } from './AddressFields';
 import { BankAccountFields } from './BankAccountFields';
 import { DocumentSlots } from './DocumentSlots';
 import { Field, FormSection } from './Field';
+import { RegistrationReview } from './RegistrationReview';
 
 const MAX_ADDRESSES = 10;
 const MAX_BANKS = 5;
@@ -65,6 +66,8 @@ export function RegistrationForm({ family }: { family: Family }) {
   const [files, setFiles] = useState<DocumentFiles>({});
   const [errors, setErrors] = useState<FormErrors>({});
   const [done, setDone] = useState<{ reference: string; message: string } | null>(null);
+  // Checked and shown back before sending (SAP Portal's review step).
+  const [reviewing, setReviewing] = useState(false);
   const companyList = companies.data ?? [];
   // One company on offer: it is the visitor's choice already.
   const company = draft.company || (companyList.length === 1 ? companyList[0].code : '');
@@ -85,19 +88,23 @@ export function RegistrationForm({ family }: { family: Family }) {
     setDraft((current) => ({ ...current, gstin, pan: pan ?? current.pan }));
   };
 
-  const onSubmit = async () => {
+  const onReview = () => {
     const ready = { ...draft, company };
     const found = validateRegistration(family, ready, files);
     setErrors(found);
-    if (Object.keys(found).length > 0) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (Object.keys(found).length === 0) setReviewing(true);
+  };
+
+  const onSubmit = async () => {
+    const ready = { ...draft, company };
     try {
       const answer = await submit.mutateAsync(toSubmission(family, ready, files));
       setDone(answer);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
+      // Back to the form, where the server's objections are shown by field.
+      setReviewing(false);
       const apiError = error as ApiError;
       if (apiError.status === 429) {
         setErrors({
@@ -125,17 +132,43 @@ export function RegistrationForm({ family }: { family: Family }) {
           <p className="text-sm text-muted-foreground">
             Keep this reference; quote it if you are asked about your registration.
           </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setDraft(blankDraft(family, company));
-              setFiles({});
-              setErrors({});
-              setDone(null);
-            }}
-          >
-            Register another {isVendor ? 'vendor' : 'customer'}
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2 print:hidden">
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" />
+              Print
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDraft(blankDraft(family, company));
+                setFiles({});
+                setErrors({});
+                setReviewing(false);
+                setDone(null);
+              }}
+            >
+              Register another {isVendor ? 'vendor' : 'customer'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (reviewing) {
+    const companyName = companyList.find((c) => c.code === company)?.name ?? company;
+    return (
+      <Card className="w-full max-w-3xl">
+        <CardContent className="p-8">
+          <RegistrationReview
+            family={family}
+            draft={{ ...draft, company }}
+            files={files}
+            companyName={companyName}
+            sending={submit.isPending}
+            onEdit={() => setReviewing(false)}
+            onSend={onSubmit}
+          />
         </CardContent>
       </Card>
     );
@@ -681,13 +714,9 @@ export function RegistrationForm({ family }: { family: Family }) {
         </FormSection>
 
         <div className="flex justify-end border-t pt-6">
-          <Button onClick={onSubmit} disabled={submit.isPending} size="lg">
-            {submit.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Submit registration
+          <Button onClick={onReview} size="lg">
+            <ClipboardCheck className="h-4 w-4" />
+            Review registration
           </Button>
         </div>
       </CardContent>

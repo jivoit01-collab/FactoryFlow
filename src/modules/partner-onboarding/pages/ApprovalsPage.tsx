@@ -10,7 +10,11 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { CUSTOMER_REGISTRATIONS_ACCESS, VENDOR_REGISTRATIONS_ACCESS } from '@/config/permissions';
+import {
+  CUSTOMER_REGISTRATIONS_ACCESS,
+  PARTNER_ONBOARDING_PERMISSIONS,
+  VENDOR_REGISTRATIONS_ACCESS,
+} from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import {
   FilterBar,
@@ -46,7 +50,7 @@ const PUBLIC_LINKS: Record<Family, string> = {
 
 export default function ApprovalsPage() {
   const navigate = useNavigate();
-  const { hasAnyPermission } = usePermission();
+  const { hasAnyPermission, hasPermission } = usePermission();
   const canCustomers = hasAnyPermission(CUSTOMER_REGISTRATIONS_ACCESS);
   const canVendors = hasAnyPermission(VENDOR_REGISTRATIONS_ACCESS);
   const [params, setParams] = useSearchParams();
@@ -55,9 +59,21 @@ export default function ApprovalsPage() {
   const family: Family =
     (wanted === 'vendor' && canVendors) || !canCustomers ? 'vendor' : 'customer';
   const status = (params.get('status') ?? '') as RegistrationStatus | '';
+  // "My turn" (SAP Portal's filter): what is waiting on a step this person takes —
+  // verifying pending ones, creating verified ones in SAP.
+  const P = PARTNER_ONBOARDING_PERMISSIONS;
+  const myStatuses = [
+    hasPermission(family === 'vendor' ? P.VERIFY_VENDORS : P.VERIFY_CUSTOMERS) && 'PENDING',
+    hasPermission(family === 'vendor' ? P.APPROVE_VENDORS : P.APPROVE_CUSTOMERS) && 'VERIFIED',
+  ].filter(Boolean) as RegistrationStatus[];
+  const mine = params.get('mine') === '1' && myStatuses.length > 0;
   const [search, setSearch] = useState(params.get('search') ?? '');
   const debounced = useDebounce(search.trim());
-  const list = useRegistrations(family, { status, search: debounced, limit: 200 });
+  const list = useRegistrations(family, {
+    status: mine ? myStatuses.join(',') : status,
+    search: debounced,
+    limit: 200,
+  });
   const rows = list.data?.results ?? [];
   const counts = list.data?.counts;
   const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : undefined;
@@ -108,14 +124,25 @@ export default function ApprovalsPage() {
         isFetching={list.isFetching}
         onReset={() => {
           setSearch('');
-          update({ status: '', search: '' });
+          update({ status: '', search: '', mine: '' });
         }}
       >
         <div className="flex flex-wrap gap-2" role="group" aria-label="Status">
+          {myStatuses.length > 0 && (
+            <Button
+              size="sm"
+              variant={mine ? 'default' : 'outline'}
+              onClick={() => update({ mine: '1', status: '' })}
+              title={myStatuses.includes('PENDING') ? 'Waiting on your verification or SAP approval' : 'Waiting on your SAP approval'}
+            >
+              My turn
+              {counts && ` (${myStatuses.reduce((sum, s) => sum + (counts[s] ?? 0), 0)})`}
+            </Button>
+          )}
           <Button
             size="sm"
-            variant={status === '' ? 'default' : 'outline'}
-            onClick={() => update({ status: '' })}
+            variant={!mine && status === '' ? 'default' : 'outline'}
+            onClick={() => update({ status: '', mine: '' })}
           >
             All{total !== undefined && ` (${total})`}
           </Button>
@@ -123,8 +150,8 @@ export default function ApprovalsPage() {
             <Button
               key={option.value}
               size="sm"
-              variant={status === option.value ? 'default' : 'outline'}
-              onClick={() => update({ status: option.value })}
+              variant={!mine && status === option.value ? 'default' : 'outline'}
+              onClick={() => update({ status: option.value, mine: '' })}
             >
               {option.label}
               {counts && ` (${counts[option.value] ?? 0})`}

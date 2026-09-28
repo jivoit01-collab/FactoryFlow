@@ -199,7 +199,8 @@ export interface RegistrationDetail extends ManagerFields {
 }
 
 export interface ListFilters {
-  status?: RegistrationStatus | '';
+  /** One status, several comma-separated (the server takes either), or '' for all. */
+  status?: RegistrationStatus | '' | string;
   search?: string;
   limit?: number;
   offset?: number;
