@@ -7,10 +7,22 @@ interface ApiErrorShape {
   response?: { status?: number; data?: { code?: string } };
 }
 
-/** True when the server refused an identical post made moments ago (409 REPEAT_POST). */
+/**
+ * True when the server refused a post it may already hold and the operator
+ * can confirm it: the same thing posted moments ago (409 REPEAT_POST), or
+ * posted earlier without SAP answering (409 UNCERTAIN_POST). A posting still
+ * in flight (POSTING_IN_PROGRESS) is not confirmable — wait for it.
+ */
 export function isRepeatPost(error: unknown): boolean {
   const response = (error as ApiErrorShape)?.response;
-  return response?.status === 409 && response.data?.code === 'REPEAT_POST';
+  return (
+    response?.status === 409 &&
+    (response.data?.code === 'REPEAT_POST' || response.data?.code === 'UNCERTAIN_POST')
+  );
+}
+
+function isUncertainPost(error: unknown): boolean {
+  return (error as ApiErrorShape)?.response?.data?.code === 'UNCERTAIN_POST';
 }
 
 /**
@@ -26,8 +38,10 @@ export async function postToSap<T>(send: (confirmRepeat: boolean) => Promise<T>)
     if (isRepeatPost(error)) {
       const again = await confirmSapPost({
         title: 'Post this to SAP again?',
-        description:
-          'You posted exactly this less than two minutes ago. Check SAP first — post again only if it really should happen twice.',
+        // The server's own words: when it was sent, and whether SAP answered.
+        description: isUncertainPost(error)
+          ? getErrorMessage(error, 'SAP did not answer when this was last posted, so it may have gone through. Check SAP first.')
+          : 'You posted exactly this less than two minutes ago. Check SAP first — post again only if it really should happen twice.',
         confirmLabel: 'Post again',
         destructive: true,
       });

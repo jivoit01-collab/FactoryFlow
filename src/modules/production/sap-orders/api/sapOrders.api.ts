@@ -54,6 +54,10 @@ export interface SapOrderAction {
   sap_doc_entry: number | null;
   sap_doc_num: number | null;
   pending_approval_draft: number | null;
+  /** POSTING while SAP is asked; DONE; FAILED (SAP refused); UNKNOWN (SAP did not answer — it may have posted). */
+  outcome: 'POSTING' | 'DONE' | 'FAILED' | 'UNKNOWN';
+  outcome_label: string;
+  error: string;
   taken_by: string;
   created_at: string;
 }

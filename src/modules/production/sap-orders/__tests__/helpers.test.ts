@@ -9,6 +9,10 @@ import { isRepeatPost } from '../utils/postToSap';
 describe('SAP order helpers', () => {
   it('knows the server refusing a repeat post from any other failure', () => {
     expect(isRepeatPost({ response: { status: 409, data: { code: 'REPEAT_POST' } } })).toBe(true);
+    // SAP did not answer last time: confirmable after checking SAP.
+    expect(isRepeatPost({ response: { status: 409, data: { code: 'UNCERTAIN_POST' } } })).toBe(true);
+    // Still in flight: never confirmable.
+    expect(isRepeatPost({ response: { status: 409, data: { code: 'POSTING_IN_PROGRESS' } } })).toBe(false);
     expect(isRepeatPost({ response: { status: 409, data: {} } })).toBe(false);
     expect(isRepeatPost({ response: { status: 400, data: { code: 'REPEAT_POST' } } })).toBe(false);
     expect(isRepeatPost(new Error('network'))).toBe(false);

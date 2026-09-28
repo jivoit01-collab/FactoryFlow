@@ -191,14 +191,15 @@ export default function SapOrderDetailPage() {
                 <Th>Action</Th>
                 <Th align="right">Quantity</Th>
                 <Th>SAP document</Th>
+                <Th>Outcome</Th>
                 <Th>By</Th>
               </tr>
             </thead>
             <tbody>
               {query.isFetching && order.actions.length === 0 ? (
-                <TableLoading colSpan={5} />
+                <TableLoading colSpan={6} />
               ) : order.actions.length === 0 ? (
-                <TableEmpty colSpan={5} message="Nothing done to this order from the app" />
+                <TableEmpty colSpan={6} message="Nothing done to this order from the app" />
               ) : (
                 order.actions.map((action) => (
                   <tr key={action.id} className={ROW_CLASSES}>
@@ -209,6 +210,23 @@ export default function SapOrderDetailPage() {
                       {action.pending_approval_draft
                         ? `Draft ${action.pending_approval_draft} (awaiting approval)`
                         : action.sap_doc_num ?? action.sap_doc_entry ?? '-'}
+                    </Td>
+                    <Td>
+                      <span
+                        title={action.error || undefined}
+                        className={
+                          action.outcome === 'UNKNOWN'
+                            ? 'font-medium text-amber-700 dark:text-amber-400'
+                            : action.outcome === 'FAILED'
+                              ? 'text-destructive'
+                              : undefined
+                        }
+                      >
+                        {action.outcome_label}
+                      </span>
+                      {action.outcome === 'UNKNOWN' && (
+                        <span className="block text-xs text-muted-foreground">Check SAP: it may have posted</span>
+                      )}
                     </Td>
                     <Td>{action.taken_by || '-'}</Td>
                   </tr>
