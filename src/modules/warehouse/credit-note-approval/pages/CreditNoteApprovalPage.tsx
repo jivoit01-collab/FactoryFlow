@@ -13,10 +13,16 @@
  * Approved / Rejected are the log people come back to with "I decided that,
  * where did it go?". The family filter splits customer credit notes from vendor
  * ones — the same queue to the system, rarely the same person's job.
+ *
+ * Two kinds of search. "Search SAP" sends SAP Portal's filters — party,
+ * document number, request number, the dates it was raised between — to the
+ * server, so they reach the whole history and not just the rows loaded. The
+ * quick filter narrows the rows already on screen by anything in them (items,
+ * accounts, people). Rows load a page at a time; "Load more" pages on.
  */
 
 import { RefreshCw, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ChangeEvent, useMemo, useState } from 'react';
 
 import { WAREHOUSE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
@@ -29,7 +35,14 @@ import type {
   CreditNoteApproval,
   CreditNoteApprovalStatus,
   CreditNoteFamily,
+  CreditNoteListFilters,
 } from '../types';
+
+const NO_FILTERS: CreditNoteListFilters = { party: '', doc_num: '', code: '', date_from: '', date_to: '' };
+
+function hasFilters(filters: CreditNoteListFilters): boolean {
+  return Object.values(filters).some((value) => !!value?.trim());
+}
 
 const TABS: { key: CreditNoteApprovalStatus; label: string }[] = [
   { key: 'PENDING', label: 'Pending' },
@@ -104,15 +117,23 @@ export default function CreditNoteApprovalPage() {
   const [tab, setTab] = useState<CreditNoteApprovalStatus>('PENDING');
   const [family, setFamily] = useState<CreditNoteFamily | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
+  // What is typed in the SAP search, and what was last sent.
+  const [draft, setDraft] = useState<CreditNoteListFilters>(NO_FILTERS);
+  const [applied, setApplied] = useState<CreditNoteListFilters>(NO_FILTERS);
 
-  const query = useCreditNoteApprovals(tab, family);
+  const query = useCreditNoteApprovals(tab, family, applied);
   const needle = search.trim().toLowerCase();
-  const searching = needle.length >= MIN_SEARCH;
+  const searching = needle.length >= MIN_SEARCH || hasFilters(applied);
 
-  const rows = useMemo(() => {
-    const all = query.data ?? [];
-    return searching ? all.filter((row) => matches(row, needle)) : all;
-  }, [query.data, needle, searching]);
+  const loaded = useMemo(() => (query.data?.pages ?? []).flat(), [query.data]);
+  const rows = useMemo(
+    () => (needle.length >= MIN_SEARCH ? loaded.filter((row) => matches(row, needle)) : loaded),
+    [loaded, needle],
+  );
+  const field = (key: keyof CreditNoteListFilters) => ({
+    value: draft[key] ?? '',
+    onChange: (e: ChangeEvent<HTMLInputElement>) => setDraft((d) => ({ ...d, [key]: e.target.value })),
+  });
 
   return (
     <div className="space-y-6">
@@ -132,13 +153,49 @@ export default function CreditNoteApprovalPage() {
       </DashboardHeader>
 
       <div className="space-y-3">
+        <form
+          className="grid gap-2 rounded-lg border p-3 sm:grid-cols-3 lg:grid-cols-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setApplied(draft);
+          }}
+          aria-label="Search SAP"
+        >
+          <Input {...field('party')} aria-label="Party" placeholder="Party — code or name" className="h-9" />
+          <Input {...field('doc_num')} aria-label="Document number" placeholder="Document no." inputMode="numeric" className="h-9" />
+          <Input {...field('code')} aria-label="Approval request number" placeholder="Request no." inputMode="numeric" className="h-9" />
+          <Input {...field('date_from')} aria-label="Raised from" type="date" className="h-9" />
+          <Input {...field('date_to')} aria-label="Raised to" type="date" className="h-9" />
+          <div className="flex gap-2">
+            <Button type="submit" size="sm" className="h-9 flex-1">
+              <Search className="mr-1.5 h-4 w-4" />
+              Search SAP
+            </Button>
+            {hasFilters(applied) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9"
+                aria-label="Clear the SAP search"
+                onClick={() => {
+                  setDraft(NO_FILTERS);
+                  setApplied(NO_FILTERS);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </form>
+
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search the credit-note queue"
-            placeholder="Search — SAP no., draft, party, invoice, item, account or person"
+            aria-label="Filter the rows shown"
+            placeholder="Filter the rows shown — SAP no., draft, party, invoice, item, account or person"
             className="h-10 pl-9 pr-9"
           />
           {search && (
@@ -169,6 +226,7 @@ export default function CreditNoteApprovalPage() {
               {tab === t.key && !query.isLoading && (
                 <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums">
                   {rows.length}
+                  {query.hasNextPage && '+'}
                 </span>
               )}
             </button>
@@ -207,6 +265,14 @@ export default function CreditNoteApprovalPage() {
         view={tab}
         searching={searching}
       />
+
+      {query.hasNextPage && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>
+            {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

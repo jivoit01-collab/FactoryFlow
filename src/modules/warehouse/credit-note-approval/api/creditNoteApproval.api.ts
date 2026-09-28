@@ -6,27 +6,44 @@ import type {
   CreditNoteActions,
   CreditNoteApproval,
   CreditNoteApprovalStatus,
+  CreditNoteAttachmentSource,
   CreditNoteDecisionPayload,
   CreditNoteDecisionResult,
   CreditNoteFamily,
+  CreditNoteListFilters,
   CreditNotePendingCount,
 } from '../types';
+
+/** Rows per page. Each costs a HANA read of the draft's lines, so pages stay small. */
+export const CREDIT_NOTE_PAGE_SIZE = 100;
+
+/** Only the filters actually set, so an empty box never reaches SAP as a search. */
+function filterParams(filters: CreditNoteListFilters): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(filters)
+      .map(([key, value]) => [key, (value ?? '').trim()])
+      .filter(([, value]) => value !== ''),
+  );
+}
 
 const E = API_ENDPOINTS.WAREHOUSE;
 
 export const creditNoteApprovalApi = {
   /**
-   * `status: 'ALL'` drops the status filter; `family: 'ALL'` covers both A/R
-   * and A/P. The history views ask for more rows than the live queue — pending
-   * is a backlog that should stay short, approved/rejected is a log people
-   * scroll back through. The server clamps at 500 either way.
+   * One page of the queue, newest first. `status: 'ALL'` drops the status
+   * filter; `family: 'ALL'` covers both A/R and A/P. `filters` are searched in
+   * SAP (SAP Portal's party / document / request / date filters), so a search
+   * reaches the whole history, not just the rows already loaded; `offset`
+   * pages on.
    */
   async list(
     status: CreditNoteApprovalStatus | 'ALL' = 'PENDING',
     family: CreditNoteFamily | 'ALL' = 'ALL',
+    filters: CreditNoteListFilters = {},
+    offset = 0,
   ): Promise<CreditNoteApproval[]> {
     const res = await apiClient.get<CreditNoteApproval[]>(E.CREDIT_NOTE_APPROVALS, {
-      params: { status, family, limit: status === 'PENDING' ? 100 : 300 },
+      params: { status, family, limit: CREDIT_NOTE_PAGE_SIZE, offset, ...filterParams(filters) },
     });
     return res.data;
   },
@@ -72,11 +89,36 @@ export const creditNoteApprovalApi = {
     return res.data;
   },
 
-  /** The originator withdraws their own pending request, signed as themselves. */
-  async withdraw(wddCode: number): Promise<CreditNoteDecisionResult> {
+  /**
+   * The originator withdraws their own pending request, signed as themselves —
+   * with the SAP password they typed, or the stored one when none is sent.
+   */
+  async withdraw(wddCode: number, sapPassword?: string): Promise<CreditNoteDecisionResult> {
     const res = await apiClient.post<CreditNoteDecisionResult>(
       `${E.CREDIT_NOTE_APPROVALS}${wddCode}/withdraw/`,
-      {},
+      sapPassword ? { sap_password: sapPassword } : {},
+    );
+    return res.data;
+  },
+
+  /** The files of this credit note and of the documents it was copied from. */
+  async attachments(wddCode: number): Promise<CreditNoteAttachmentSource[]> {
+    const res = await apiClient.get<{ sources: CreditNoteAttachmentSource[] }>(
+      `${E.CREDIT_NOTE_APPROVALS}${wddCode}/attachments/`,
+      { suppressErrorToast: true },
+    );
+    return res.data.sources;
+  },
+
+  /**
+   * One file as a blob. Fetched through the API rather than linked to, because
+   * the endpoint checks the queue's rights; the error body is a blob too, so
+   * the caller reads it with `attachmentErrorMessage`.
+   */
+  async downloadAttachment(wddCode: number, absEntry: number, line: number): Promise<Blob> {
+    const res = await apiClient.get<Blob>(
+      `${E.CREDIT_NOTE_APPROVALS}${wddCode}/attachments/${absEntry}/${line}/download/`,
+      { responseType: 'blob', suppressErrorToast: true },
     );
     return res.data;
   },

@@ -33,6 +33,36 @@ describe('credit-note extras from SAP Portal', () => {
     expect(post).toHaveBeenCalledWith('/warehouse/credit-note-approvals/75424/withdraw/', {});
   });
 
+  it('sends a typed password with a withdraw, and nothing when none was typed', async () => {
+    await creditNoteApprovalApi.withdraw(75424, 's3cret');
+    expect(post).toHaveBeenLastCalledWith('/warehouse/credit-note-approvals/75424/withdraw/', {
+      sap_password: 's3cret',
+    });
+    await creditNoteApprovalApi.withdraw(75424, '');
+    expect(post).toHaveBeenLastCalledWith('/warehouse/credit-note-approvals/75424/withdraw/', {});
+  });
+
+  it('searches SAP with only the filters that are set, a page at a time', async () => {
+    get.mockResolvedValueOnce({ data: [] });
+    await creditNoteApprovalApi.list('APPROVED', 'AR', { party: ' ilahi ', doc_num: '', date_from: '2026-09-01' }, 100);
+    expect(get).toHaveBeenCalledWith('/warehouse/credit-note-approvals/', {
+      params: { status: 'APPROVED', family: 'AR', limit: 100, offset: 100, party: 'ilahi', date_from: '2026-09-01' },
+    });
+  });
+
+  it('lists and downloads attachments through the queue, quietly', async () => {
+    get.mockResolvedValueOnce({ data: { sources: [] } });
+    await creditNoteApprovalApi.attachments(75424);
+    expect(get).toHaveBeenLastCalledWith('/warehouse/credit-note-approvals/75424/attachments/', {
+      suppressErrorToast: true,
+    });
+    await creditNoteApprovalApi.downloadAttachment(75424, 9002, 1);
+    expect(get).toHaveBeenLastCalledWith('/warehouse/credit-note-approvals/75424/attachments/9002/1/download/', {
+      responseType: 'blob',
+      suppressErrorToast: true,
+    });
+  });
+
   it('sends Without Qty Posting only when chosen', async () => {
     await creditNoteApprovalApi.decide(75424, { status: 'APPROVED' });
     expect(patch).toHaveBeenLastCalledWith('/warehouse/credit-note-approvals/75424/status/', {

@@ -11,11 +11,15 @@
  * Without Qty Posting is a choice held by the table and sent with Approve —
  * only when it differs from what SAP holds, as the portal did, so an untouched
  * mixed credit note keeps SAP's per-line settings.
+ *
+ * Withdrawing asks for the originator's SAP password when none is stored for
+ * them; it is used for that one call and never saved.
  */
-import { PackageX, Undo2 } from 'lucide-react';
+import { KeyRound, PackageX, Undo2 } from 'lucide-react';
+import { useState } from 'react';
 
 import { confirmSapPost } from '@/shared/components';
-import { Button, Checkbox } from '@/shared/components/ui';
+import { Button, Checkbox, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useCreditNoteActions, useWithdrawCreditNote } from '../api/creditNoteApproval.queries';
@@ -37,8 +41,10 @@ export function CreditNoteExtras({
 }) {
   const query = useCreditNoteActions(row.id, row.status === 'PENDING');
   const withdraw = useWithdrawCreditNote();
+  const [password, setPassword] = useState('');
   const actions = query.data;
   if (!actions) return null;
+  const passwordRequired = !actions.password_stored;
 
   const noQty = actions.without_qty_posting;
   const shown = withoutQty ?? noQty.current === true;
@@ -58,7 +64,8 @@ export function CreditNoteExtras({
     });
     if (!confirmed) return;
     try {
-      const result = await withdraw.mutateAsync(row.id);
+      const result = await withdraw.mutateAsync({ wddCode: row.id, sapPassword: password || undefined });
+      setPassword('');
       onResult(`${result.message} Signed in SAP as ${result.signed_as}.`);
     } catch (err) {
       onError(getErrorMessage(err, 'Could not withdraw this credit note in SAP.'));
@@ -108,10 +115,34 @@ export function CreditNoteExtras({
         </label>
       )}
       {actions.can_withdraw ? (
-        <Button size="sm" variant="outline" disabled={withdraw.isPending} onClick={onWithdraw}>
-          <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-          {withdraw.isPending ? 'Withdrawing…' : 'Withdraw request'}
-        </Button>
+        <div className="flex flex-wrap items-end gap-2">
+          {passwordRequired && (
+            <div className="space-y-1">
+              <Label htmlFor={`cn-withdraw-password-${row.id}`} className="flex items-center gap-1.5">
+                <KeyRound className="h-3 w-3" />
+                Your SAP password, to withdraw
+              </Label>
+              <Input
+                id={`cn-withdraw-password-${row.id}`}
+                type="password"
+                autoComplete="off"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-8 w-56"
+                placeholder="Used once, never saved"
+              />
+            </div>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={withdraw.isPending || (passwordRequired && !password)}
+            onClick={onWithdraw}
+          >
+            <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+            {withdraw.isPending ? 'Withdrawing…' : 'Withdraw request'}
+          </Button>
+        </div>
       ) : (
         actions.is_originator &&
         actions.withdraw_note && <p className="text-muted-foreground">{actions.withdraw_note}</p>

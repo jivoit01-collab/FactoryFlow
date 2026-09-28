@@ -6,7 +6,8 @@
  * template names decides it — signing as anybody else is refused with -6006.
  * So each row says who it is waiting on, and Approve/Reject appears only where
  * the reader's own mapped SAP account (Admin → SAP Identities) IS that
- * authorizer and its password is configured. Rows belonging to other people
+ * authorizer — signed with the password stored for them, or one they type for
+ * that decision (SAP Portal's way). Rows belonging to other people
  * are listed anyway: knowing a credit note is stuck, and on whom, is the whole
  * reason for surfacing SAP's queue here.
  *
@@ -42,22 +43,18 @@ import {
 } from 'lucide-react';
 import { Fragment, type ReactNode, useState } from 'react';
 
-import { confirmSapPost } from '@/shared/components';
-import { Button, Card, CardContent, Textarea } from '@/shared/components/ui';
+import { Button, Card, CardContent } from '@/shared/components/ui';
 import { formatCurrency } from '@/shared/utils';
 
-import { useDecideCreditNoteApproval } from '../api/creditNoteApproval.queries';
 import type {
   CreditNoteApproval,
   CreditNoteApprovalLine,
   CreditNoteApprovalStatus,
 } from '../types';
+import { CreditNoteAttachments } from './CreditNoteAttachments';
+import { CreditNoteDecisionPanel } from './CreditNoteDecisionPanel';
 import { CreditNoteExtras } from './CreditNoteExtras';
 import { CreditNotePrintButton } from './CreditNotePrintButton';
-
-function apiError(err: unknown, fallback: string): string {
-  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? fallback;
-}
 
 const CHIP = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium';
 
@@ -403,6 +400,8 @@ function DetailPanel({ row, extras }: { row: CreditNoteApproval; extras?: ReactN
         <CreditNotePrintButton docEntry={printableEntry} docNum={row.posted_doc_num} />
       )}
 
+      <CreditNoteAttachments wddCode={row.id} />
+
       {extras}
 
       {/*
@@ -474,10 +473,14 @@ export function CreditNoteApprovalTable({
   /** A search is on, so an empty queue means "no match", not "nothing here". */
   searching?: boolean;
 }) {
-  const decide = useDecideCreditNoteApproval();
-  const [rejectingId, setRejectingId] = useState<number | null>(null);
+  // The row whose decision panel is open, which decision, and a reason to start
+  // a rejection from ("Reject as duplicate" fills one in).
+  const [deciding, setDeciding] = useState<{
+    id: number;
+    mode: 'approve' | 'reject';
+    reason?: string;
+  } | null>(null);
   const [openIds, setOpenIds] = useState<Set<number>>(() => new Set());
-  const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   // Without Qty Posting chosen per row in its panel; absent = leave SAP's lines as they are.
@@ -489,25 +492,6 @@ export function CreditNoteApprovalTable({
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  }
-
-  async function run(
-    // Null when the user backed out of the SAP warning: nothing was decided, so
-    // there is nothing to report either way.
-    fn: () => Promise<{ message: string; signed_as: string } | null | undefined>,
-    fallback: string,
-  ) {
-    setError('');
-    setDone('');
-    try {
-      const result = await fn();
-      if (!result) return;
-      setDone(`${result.message} Signed in SAP as ${result.signed_as}.`);
-      setRejectingId(null);
-      setReason('');
-    } catch (err) {
-      setError(apiError(err, fallback));
-    }
   }
 
   const anySignable = rows.some((r) => r.can_decide);
@@ -551,8 +535,8 @@ export function CreditNoteApprovalTable({
           {myPasswordMissing && (
             <>
               {' '}
-              <span className="font-medium">Your SAP password is not configured on the server</span>
-              , so your own rows cannot be signed yet — ask an administrator to add it.
+              <span className="font-medium">No SAP password is stored for you</span>, so you will be
+              asked to type yours when you decide — it is used for that one decision and never saved.
             </>
           )}
         </div>
@@ -712,51 +696,11 @@ export function CreditNoteApprovalTable({
                                 <div className="flex justify-end gap-2">
                                   <Button
                                     size="sm"
-                                    disabled={decide.isPending}
                                     onClick={() =>
-                                      run(
-                                        async () => {
-                                          const confirmed = await confirmSapPost({
-                                            title: `Approve this credit note in SAP?`,
-                                            details: [
-                                              { label: 'Document', value: row.doc_type_label },
-                                              { label: 'Party', value: row.party_name },
-                                              {
-                                                label: 'Amount',
-                                                value: money(row.total_amount, row.currency),
-                                              },
-                                              {
-                                                label: 'Stock',
-                                                value: row.moves_stock
-                                                  ? row.stock_direction === 'OUT'
-                                                    ? 'Leaves the warehouse'
-                                                    : 'Comes back into the warehouse'
-                                                  : 'No goods move (service)',
-                                              },
-                                              withoutQty[row.id] !== undefined && {
-                                                label: 'Without Qty Posting',
-                                                value: withoutQty[row.id]
-                                                  ? 'Set on every item line — value only, no stock moves'
-                                                  : 'Cleared on every item line — stock moves',
-                                              },
-                                              {
-                                                label: 'Recorded',
-                                                value: 'With your own SAP user',
-                                              },
-                                            ],
-                                            confirmLabel: 'Approve in SAP',
-                                          });
-                                          if (!confirmed) return null;
-                                          const choice = withoutQty[row.id];
-                                          return decide.mutateAsync({
-                                            wddCode: row.id,
-                                            payload:
-                                              choice === undefined
-                                                ? { status: 'APPROVED' }
-                                                : { status: 'APPROVED', without_qty_posting: choice },
-                                          });
-                                        },
-                                        'Could not approve this credit note in SAP.',
+                                      setDeciding(
+                                        deciding?.id === row.id && deciding.mode === 'approve'
+                                          ? null
+                                          : { id: row.id, mode: 'approve' },
                                       )
                                     }
                                   >
@@ -765,11 +709,13 @@ export function CreditNoteApprovalTable({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    disabled={decide.isPending}
-                                    onClick={() => {
-                                      setRejectingId(rejectingId === row.id ? null : row.id);
-                                      setReason('');
-                                    }}
+                                    onClick={() =>
+                                      setDeciding(
+                                        deciding?.id === row.id && deciding.mode === 'reject'
+                                          ? null
+                                          : { id: row.id, mode: 'reject' },
+                                      )
+                                    }
                                   >
                                     Reject
                                   </Button>
@@ -810,60 +756,23 @@ export function CreditNoteApprovalTable({
                           </tr>
                         )}
 
-                        {rejectingId === row.id && (
-                          <tr className="border-b bg-muted/30">
-                            <td colSpan={colSpan} className="px-4 py-3">
-                              <Textarea
-                                value={reason}
-                                onChange={(e) => setReason(e.target.value)}
-                                placeholder="Why is this being rejected? SAP records it against the authorizer."
-                                rows={2}
+                        {deciding?.id === row.id && (
+                          <tr className="border-b">
+                            <td colSpan={colSpan} className="p-0">
+                              <CreditNoteDecisionPanel
+                                key={`${deciding.mode}-${deciding.reason ?? ''}`}
+                                row={row}
+                                mode={deciding.mode}
+                                initialReason={deciding.reason}
+                                withoutQty={withoutQty[row.id]}
+                                onModeChange={(mode, reason) => setDeciding({ id: row.id, mode, reason })}
+                                onCancel={() => setDeciding(null)}
+                                onDecided={(message) => {
+                                  setDeciding(null);
+                                  setError('');
+                                  setDone(message);
+                                }}
                               />
-                              <div className="mt-2 flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setRejectingId(null)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  disabled={!reason.trim() || decide.isPending}
-                                  onClick={() =>
-                                    run(
-                                      async () => {
-                                        const confirmed = await confirmSapPost({
-                                          title: `Reject this credit note in SAP?`,
-                                          details: [
-                                            { label: 'Document', value: row.doc_type_label },
-                                            { label: 'Party', value: row.party_name },
-                                            {
-                                              label: 'Amount',
-                                              value: money(row.total_amount, row.currency),
-                                            },
-                                            { label: 'Reason', value: reason.trim() },
-                                            { label: 'Recorded', value: 'With your own SAP user' },
-                                          ],
-                                          confirmLabel: 'Reject in SAP',
-                                          destructive: true,
-                                        });
-                                        if (!confirmed) return null;
-                                        return decide.mutateAsync({
-                                          wddCode: row.id,
-                                          payload: {
-                                            status: 'REJECTED',
-                                            rejection_reason: reason.trim(),
-                                          },
-                                        });
-                                      },
-                                      'Could not reject this credit note in SAP.',
-                                    )
-                                  }
-                                >
-                                  {decide.isPending ? 'Rejecting…' : 'Confirm rejection'}
-                                </Button>
-                              </div>
                             </td>
                           </tr>
                         )}

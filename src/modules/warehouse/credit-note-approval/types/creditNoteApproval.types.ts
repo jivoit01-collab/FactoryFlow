@@ -114,6 +114,45 @@ export interface CreditNoteDecisionPayload {
    * per-line settings stay as they are. Ignored on a rejection.
    */
   without_qty_posting?: boolean;
+  /** The approver's own SAP password, typed for this one decision. Never stored. */
+  sap_password?: string;
+  /** A note SAP records with the approval (max 150 characters). */
+  approval_comment?: string;
+  /** Approve although SAP already holds a posted credit note for the same party and amount. */
+  confirm_duplicate?: boolean;
+}
+
+/** A credit note SAP already posted that an approval would duplicate. */
+export interface PostedDuplicate {
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date?: string | null;
+}
+
+/** The server-side search on the queue (SAP Portal's filters). */
+export interface CreditNoteListFilters {
+  /** Part of the card code or name. */
+  party?: string;
+  /** Part of the draft's number. */
+  doc_num?: string;
+  /** The approval request, exactly. */
+  code?: string;
+  /** The day the request was raised, inclusive (YYYY-MM-DD). */
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface CreditNoteAttachmentLine {
+  line: number;
+  file_name: string;
+  attached_on?: string | null;
+}
+
+/** One attachment entry: this credit note's own, or a base document's. */
+export interface CreditNoteAttachmentSource {
+  label: string;
+  abs_entry: number;
+  lines: CreditNoteAttachmentLine[];
 }
 
 export interface CreditNoteDecisionResult {
@@ -134,10 +173,16 @@ export interface CreditNoteActions {
   wdd_code: number;
   status: CreditNoteApprovalStatus | 'GENERATED' | 'CANCELLED';
   is_originator: boolean;
-  /** The caller raised it, it is pending and their SAP password is stored. */
+  /** The caller raised it and it is pending. */
   can_withdraw: boolean;
   /** Why not, when the caller raised it but cannot withdraw it here. */
   withdraw_note: string | null;
+  /** False: the caller must type their SAP password to withdraw or sign. */
+  password_stored: boolean;
+  /** Credit notes SAP already posted for the same party and amount. */
+  posted_duplicates: PostedDuplicate[];
+  /** The duplicate check could not run; the decision re-runs it and fails closed. */
+  duplicate_check_failed: boolean;
   without_qty_posting: {
     /** True: every item line credits value only; false: every one moves stock; null: mixed or none. */
     current: boolean | null;
