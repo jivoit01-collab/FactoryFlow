@@ -17,6 +17,8 @@ vi.mock('@/modules/sap-documents/components/DocumentDetailDialog', () => ({
     </div>
   ),
 }));
+// Without the document browser's right, "Copied from" stays plain text.
+vi.mock('@/core/auth', () => ({ usePermission: () => ({ hasAllPermissions: () => false }) }));
 const openOrSave = vi.fn();
 vi.mock('@/modules/sap-documents/utils/attachments', () => ({ openOrSave: (...a: unknown[]) => openOrSave(...a) }));
 

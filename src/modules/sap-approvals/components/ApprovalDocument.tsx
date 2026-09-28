@@ -10,7 +10,10 @@
 import { FileSearch, FileText, Paperclip } from 'lucide-react';
 import { useState } from 'react';
 
+import { SAP_DOCUMENTS_ACCESS } from '@/config/permissions';
+import { usePermission } from '@/core/auth';
 import { DocumentDetailBody } from '@/modules/sap-documents/components/DocumentDetailDialog';
+import { useBaseDocumentOpener } from '@/modules/sap-documents/hooks/useBaseDocumentOpener';
 import { Button } from '@/shared/components/ui';
 
 import {
@@ -55,6 +58,9 @@ function AttachmentSource({ wddCode, label, absEntry }: { wddCode: number; label
 export function ApprovalDocument({ wddCode }: { wddCode: number }) {
   const [asked, setAsked] = useState(false);
   const query = useSapApprovalDocument(wddCode, asked);
+  const { hasAllPermissions } = usePermission();
+  // "Copied from" documents open in the document browser, which needs its right.
+  const opener = useBaseDocumentOpener(asked && hasAllPermissions(SAP_DOCUMENTS_ACCESS));
 
   if (!asked) {
     return (
@@ -79,6 +85,7 @@ export function ApprovalDocument({ wddCode }: { wddCode: number }) {
     <div className="space-y-5">
       <DocumentDetailBody
         doc={document}
+        opener={opener}
         attachments={
           <section className="space-y-2">
             <h3 className="flex items-center gap-1.5 text-sm font-semibold">

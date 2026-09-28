@@ -123,6 +123,9 @@ export interface DocumentLine {
   dispatched_qty: number | null;
   litres: number | null;
   bilty_no: string;
+  /** Liable to withholding tax (SAP's WTLiable); null when SAP says nothing. */
+  wtax_liable: boolean | null;
+  bilty_date: string | null;
   ar_no: string;
   sub_account: string;
   udf_card_code: string;

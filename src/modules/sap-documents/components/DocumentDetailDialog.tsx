@@ -25,6 +25,7 @@ import {
 } from '@/shared/components/ui';
 
 import { type DocumentDetail, type DocumentLine, type DocumentTypeInfo, useDocumentDetail } from '../api';
+import { type BaseDocumentOpener, useBaseDocumentOpener } from '../hooks/useBaseDocumentOpener';
 import { cleanAddress, money, quantity, sapDate } from '../utils/format';
 import { AttachmentList } from './AttachmentList';
 import { JournalEntryTable } from './JournalEntryTable';
@@ -255,6 +256,8 @@ function LineExtras({ line }: { line: DocumentLine }) {
     line.dispatched_qty !== null && ['Dispatched', quantity(line.dispatched_qty)],
     !!line.litres && ['Litres', quantity(line.litres)],
     !!line.bilty_no && ['Bilty', line.bilty_no],
+    !!line.bilty_date && ['Bilty date', sapDate(line.bilty_date)],
+    line.wtax_liable !== null && line.wtax_liable !== undefined && ['WTax liable', line.wtax_liable ? 'Yes' : 'No'],
     !!line.ar_no && ['AR no.', line.ar_no],
     !!line.sub_account && ['Sub-account', line.sub_account],
     !!line.udf_card_code && ['Party', line.udf_card_code],
@@ -388,17 +391,35 @@ function Withholding({ doc }: { doc: DocumentDetail }) {
   );
 }
 
-function BaseDocuments({ doc }: { doc: DocumentDetail }) {
+function BaseDocuments({ doc, opener }: { doc: DocumentDetail; opener?: BaseDocumentOpener }) {
   if (!doc.base_documents.length) return null;
   return (
     <Section title="Copied from">
       <ul className="flex flex-wrap gap-2 text-sm">
-        {doc.base_documents.map((base) => (
-          <li key={`${base.base_type}-${base.base_entry}`} className="rounded-lg border bg-muted/20 px-3 py-1.5">
-            {base.type_label} #{base.doc_num ?? base.base_entry}
-            {base.doc_date && <span className="ml-1 text-muted-foreground">· {sapDate(base.doc_date)}</span>}
-          </li>
-        ))}
+        {doc.base_documents.map((base) => {
+          const label = (
+            <>
+              {base.type_label} #{base.doc_num ?? base.base_entry}
+              {base.doc_date && <span className="ml-1 text-muted-foreground">· {sapDate(base.doc_date)}</span>}
+            </>
+          );
+          return (
+            <li key={`${base.base_type}-${base.base_entry}`}>
+              {opener?.canOpen(base) ? (
+                <button
+                  type="button"
+                  onClick={() => opener.open(base)}
+                  className="rounded-lg border bg-muted/20 px-3 py-1.5 text-primary hover:bg-muted"
+                  title="Open this document"
+                >
+                  {label}
+                </button>
+              ) : (
+                <span className="block rounded-lg border bg-muted/20 px-3 py-1.5">{label}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </Section>
   );
@@ -580,7 +601,16 @@ function Journals({ doc }: { doc: DocumentDetail }) {
  * attachments section: the approvals inbox serves a request's files through
  * its own endpoints, on its own right, rather than the document browser's.
  */
-export function DocumentDetailBody({ doc, attachments }: { doc: DocumentDetail; attachments: ReactNode }) {
+export function DocumentDetailBody({
+  doc,
+  attachments,
+  opener,
+}: {
+  doc: DocumentDetail;
+  attachments: ReactNode;
+  /** Makes "Copied from" documents openable (`useBaseDocumentOpener`). */
+  opener?: BaseDocumentOpener;
+}) {
   return (
     <>
       {doc.warnings.length > 0 && (
@@ -600,9 +630,12 @@ export function DocumentDetailBody({ doc, attachments }: { doc: DocumentDetail; 
       <Payment doc={doc} />
       <Amounts doc={doc} />
       <Withholding doc={doc} />
-      <BaseDocuments doc={doc} />
+      <BaseDocuments doc={doc} opener={opener} />
       <Journals doc={doc} />
       {attachments}
+      {opener?.target && (
+        <DocumentDetailDialog type={opener.target.type} docEntry={opener.target.entry} onClose={opener.close} />
+      )}
     </>
   );
 }
@@ -622,6 +655,8 @@ export function DocumentDetailDialog({
 }) {
   const { hasAllPermissions } = usePermission();
   const canDownload = hasAllPermissions(SAP_DOCUMENTS_DOWNLOAD_ACCESS);
+  // Whoever has this dialog open can browse documents already.
+  const opener = useBaseDocumentOpener(true);
   const query = useDocumentDetail(type?.key ?? '', docEntry);
   const doc = query.data;
   const number = doc?.header.doc_num ?? doc?.header.doc_entry ?? docEntry;
@@ -643,7 +678,11 @@ export function DocumentDetailDialog({
               {(query.error as { message?: string } | null)?.message || 'The document could not be read from SAP.'}
             </p>
           ) : (
-            <DocumentDetailBody doc={doc} attachments={<Attachments doc={doc} canDownload={canDownload} />} />
+            <DocumentDetailBody
+              doc={doc}
+              attachments={<Attachments doc={doc} canDownload={canDownload} />}
+              opener={opener}
+            />
           )}
         </DialogBody>
       </DialogContent>

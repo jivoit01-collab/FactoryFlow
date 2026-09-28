@@ -12,8 +12,8 @@ const KEYS = {
   attachments: (absEntry: number) => ['sapDocuments', 'attachments', absEntry] as const,
 };
 
-export function useDocumentTypes() {
-  return useQuery({ queryKey: KEYS.types, queryFn: sapDocumentsApi.types, staleTime: Infinity });
+export function useDocumentTypes(enabled = true) {
+  return useQuery({ queryKey: KEYS.types, queryFn: sapDocumentsApi.types, staleTime: Infinity, enabled });
 }
 
 export function useDocumentList(type: string, filters: DocumentFilters) {
