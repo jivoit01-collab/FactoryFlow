@@ -177,8 +177,15 @@ export function useRejectReturnableAtGate() {
 export function useRecordReturnableReturn() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ passId, payload }: { passId: number; payload: ReturnableRecordReturnPayload }) =>
-      returnableGatePassApi.recordReturn(passId, payload),
+    mutationFn: ({
+      passId,
+      payload,
+      photos,
+    }: {
+      passId: number;
+      payload: ReturnableRecordReturnPayload;
+      photos: File[];
+    }) => returnableGatePassApi.recordReturn(passId, payload, photos),
     onSuccess: () => invalidateReturnables(queryClient),
   });
 }

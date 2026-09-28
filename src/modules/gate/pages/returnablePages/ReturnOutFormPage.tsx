@@ -12,6 +12,7 @@ import {
   ReturnableTimeline,
   ReturnableTypeBadge,
 } from '@/modules/maintenance/components/returnable';
+import { isPhotoFile } from '@/modules/maintenance/constants/returnable.constants';
 import {
   Button,
   Card,
@@ -183,6 +184,16 @@ export default function ReturnOutFormPage() {
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Non-returnable — this material is not coming back. Gating it out closes the pass, and it
           will not appear in the Material In queue.
+        </div>
+      ) : null}
+
+      {/* A photo is required before a pass goes for approval, but passes approved
+          before that rule can still be waiting here with none. */}
+      {isAwaitingGateOut && !pass.attachments.some((attachment) => isPhotoFile(attachment.file)) ? (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          No photo of this material was attached. If you cannot match what is physically leaving
+          to the pass, reject it back to the department.
         </div>
       ) : null}
 

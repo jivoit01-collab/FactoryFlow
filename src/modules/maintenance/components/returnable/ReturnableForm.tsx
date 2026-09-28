@@ -23,6 +23,7 @@ import {
 } from '../../api/returnableGatePass.queries';
 import {
   CONDITION_OUT_OPTIONS,
+  isPhotoFile,
   RETURNABLE_PURPOSE_OPTIONS,
 } from '../../constants/returnable.constants';
 import {
@@ -49,6 +50,9 @@ interface ReturnableFormProps {
   onSaved: (passId: number) => void;
   onCancel: () => void;
 }
+
+const PHOTO_REQUIRED =
+  'Attach at least one photo of the material. The gate identifies what is leaving by it.';
 
 const EMPTY_LINE = {
   item_code: '',
@@ -180,6 +184,7 @@ export function ReturnableForm({
   const createMutation = useCreateReturnableGatePass();
   const updateMutation = useUpdateReturnableGatePass();
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
+  const [photoError, setPhotoError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const isPending = createMutation.isPending || updateMutation.isPending || isUploading;
 
@@ -202,13 +207,26 @@ export function ReturnableForm({
   const typeSwitched = isEdit && isReturnable !== gatePass!.is_returnable;
   const { fields, append, remove } = useFieldArray({ control, name: 'items_input' });
 
+  // The gate cannot tell one motor from another by its name, so a pass needs a
+  // photo of the material. One already on the pass counts as much as a new one.
+  const savedFiles = gatePass?.attachments ?? [];
+  const savedPhotoCount = savedFiles.filter((attachment) => isPhotoFile(attachment.file)).length;
+  const hasPhoto = savedPhotoCount > 0 || attachments.some((item) => isPhotoFile(item.file.name));
+
   // Re-seed once the pass being edited actually arrives from the server.
   useEffect(() => {
     reset(toFormValues(gatePass));
     setAttachments([]);
+    setPhotoError('');
   }, [gatePass, reset]);
 
   const submit = handleSubmit(async (values) => {
+    if (!hasPhoto) {
+      setPhotoError(PHOTO_REQUIRED);
+      toast.error(PHOTO_REQUIRED);
+      return;
+    }
+
     const payload: ReturnableGatePassPayload = {
       ...values,
       // Never send the half of the form the user could not see.
@@ -626,18 +644,32 @@ export function ReturnableForm({
         </div>
       </Section>
 
-      {/* 4 — supporting documents */}
+      {/* 4 — photos and supporting documents */}
       <Section
         step={4}
-        title="Attachments"
-        hint="Delivery challan, photos of the item before it leaves, vendor quotation."
+        title="Photos & Attachments"
+        hint="A photo of the material is required. Add the delivery challan or vendor quotation here too."
         action={<Paperclip className="h-4 w-4 text-muted-foreground" />}
       >
+        {savedFiles.length > 0 ? (
+          <p className="mb-3 text-xs text-muted-foreground">
+            Already on {gatePass!.pass_no}: {savedPhotoCount} photo
+            {savedPhotoCount === 1 ? '' : 's'}
+            {savedFiles.length > savedPhotoCount
+              ? ` and ${savedFiles.length - savedPhotoCount} other file${savedFiles.length - savedPhotoCount === 1 ? '' : 's'}`
+              : ''}
+            . Anything added here is uploaded alongside.
+          </p>
+        ) : null}
         <ReturnableAttachmentsField
           value={attachments}
-          onChange={setAttachments}
+          onChange={(next) => {
+            setAttachments(next);
+            setPhotoError('');
+          }}
           disabled={isPending}
         />
+        {photoError ? <p className="mt-2 text-sm text-destructive">{photoError}</p> : null}
       </Section>
 
       {/* The form is tall — keep the actions reachable without scrolling back. */}

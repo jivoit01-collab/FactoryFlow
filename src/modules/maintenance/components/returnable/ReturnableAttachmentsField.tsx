@@ -3,7 +3,7 @@ import { useRef } from 'react';
 
 import { Button, Input, Label, NativeSelect, SelectOption } from '@/shared/components/ui';
 
-import { ATTACHMENT_DOC_TYPE_OPTIONS } from '../../constants/returnable.constants';
+import { ATTACHMENT_DOC_TYPE_OPTIONS, isPhotoFile } from '../../constants/returnable.constants';
 import type { AttachmentDocType, StagedAttachment } from '../../types';
 
 interface ReturnableAttachmentsFieldProps {
@@ -34,7 +34,7 @@ export function ReturnableAttachmentsField({
     if (!files?.length) return;
     const staged: StagedAttachment[] = Array.from(files).map((file) => ({
       file,
-      doc_type: 'CHALLAN',
+      doc_type: isPhotoFile(file.name) ? 'PHOTO' : 'CHALLAN',
       caption: '',
     }));
     onChange([...value, ...staged]);

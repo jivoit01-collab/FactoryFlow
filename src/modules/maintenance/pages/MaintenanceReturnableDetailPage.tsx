@@ -40,6 +40,7 @@ import {
   ReturnableStatusBadge,
   ReturnableTimeline,
   ReturnableTypeBadge,
+  ReturnTripPhotos,
 } from '../components/returnable';
 import { OUTSTANDING_STATUSES, RETURN_CONDITION_STYLES } from '../constants/returnable.constants';
 
@@ -484,6 +485,7 @@ export default function MaintenanceReturnableDetailPage() {
                         </li>
                       ))}
                     </ul>
+                    <ReturnTripPhotos photos={event.attachments ?? []} />
                   </div>
                 ))}
               </CardContent>

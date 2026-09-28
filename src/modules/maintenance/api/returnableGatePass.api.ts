@@ -102,12 +102,22 @@ export const returnableGatePassApi = {
     return response.data;
   },
 
-  /** Stage 3 — gate accepts a return trip. Partial and repeated returns are allowed. */
+  /**
+   * Stage 3 — gate accepts a return trip. Partial and repeated returns are allowed.
+   * The gate's photos of what came back ride in the same request, so the backend
+   * never records a trip without them.
+   */
   async recordReturn(
     passId: number,
     payload: ReturnableRecordReturnPayload,
+    photos: File[],
   ): Promise<ReturnableGatePass> {
-    const response = await apiClient.post<ReturnableGatePass>(EP.RECORD_RETURN(passId), payload);
+    const formData = new FormData();
+    formData.append('data', JSON.stringify(payload));
+    photos.forEach((photo) => formData.append('attachments', photo));
+    const response = await apiClient.post<ReturnableGatePass>(EP.RECORD_RETURN(passId), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 

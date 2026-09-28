@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowLeft, History, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Camera, History, Undo2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -7,8 +7,10 @@ import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
   ReturnablePassDetails,
+  ReturnablePhotoPicker,
   ReturnableStatusBadge,
   ReturnableTimeline,
+  ReturnTripPhotos,
 } from '@/modules/maintenance/components/returnable';
 import {
   RETURN_CONDITION_OPTIONS,
@@ -39,6 +41,8 @@ import {
   type ReturnableVehicleFormData,
 } from '../../components/returnable/returnableVehicleForm';
 
+const PHOTO_REQUIRED = 'Take at least one photo of the material that came back.';
+
 interface LineDraft {
   include: boolean;
   quantity: string;
@@ -65,6 +69,10 @@ export default function ReturnInFormPage() {
   const [vehicle, setVehicle] = useState<ReturnableVehicleFormData>(EMPTY_VEHICLE_FORM);
   const [remarks, setRemarks] = useState('');
   const [drafts, setDrafts] = useState<Record<number, LineDraft>>({});
+  // What actually came back, as the gate saw it. The department checks the
+  // returned material against these.
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoError, setPhotoError] = useState('');
 
   // Only lines with something still outstanding can come back.
   const pendingItems = useMemo(
@@ -114,9 +122,16 @@ export default function ReturnInFormPage() {
       return;
     }
 
+    if (!photos.length) {
+      setPhotoError(PHOTO_REQUIRED);
+      toast.error(PHOTO_REQUIRED);
+      return;
+    }
+
     try {
       await recordReturnMutation.mutateAsync({
         passId: id,
+        photos,
         payload: {
           vehicle: vehicle.vehicleId || null,
           driver: vehicle.driverId || null,
@@ -285,6 +300,30 @@ export default function ReturnInFormPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Camera className="h-4 w-4" />
+            Photos of What Came Back
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Required. Photograph the material at the gate. Compare it with the department&apos;s
+            photos above before you accept it.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ReturnablePhotoPicker
+            value={photos}
+            onChange={(next) => {
+              setPhotos(next);
+              setPhotoError('');
+            }}
+            disabled={recordReturnMutation.isPending}
+            error={photoError}
+          />
+        </CardContent>
+      </Card>
+
       <ReturnableVehicleFields
         title="Returning Vehicle"
         description="This need not be the vehicle that took the items out — vendors usually send their own."
@@ -351,6 +390,7 @@ export default function ReturnInFormPage() {
                     </li>
                   ))}
                 </ul>
+                <ReturnTripPhotos photos={event.attachments ?? []} />
               </div>
             ))}
           </CardContent>

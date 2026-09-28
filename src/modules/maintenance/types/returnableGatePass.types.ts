@@ -126,7 +126,21 @@ export interface ReturnableReturnEvent {
   is_acknowledged: boolean;
   remarks: string;
   lines: ReturnableReturnEventItem[];
+  /**
+   * The gate's photos of what came back on this trip. Optional because a
+   * backend that predates return photos does not send it.
+   */
+  attachments?: ReturnableReturnEventAttachment[];
   created_at: string;
+}
+
+export interface ReturnableReturnEventAttachment {
+  id: number;
+  event: number;
+  file: string;
+  caption: string;
+  created_at: string;
+  created_by_name: string;
 }
 
 export interface ReturnableGatePassAttachment {

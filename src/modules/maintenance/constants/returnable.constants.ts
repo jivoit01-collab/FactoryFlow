@@ -86,3 +86,15 @@ export const ATTACHMENT_DOC_TYPE_OPTIONS = [
 
 /** Statuses where material is physically outside the gate. Mirrors the backend. */
 export const OUTSTANDING_STATUSES: ReturnableStatus[] = ['OUT', 'PARTIALLY_RETURNED'];
+
+/**
+ * The file types the backend counts as a photo of the material — kept in step
+ * with `PHOTO_EXTENSIONS` in returnable_items. Judged by the file, never the
+ * doc type: most photos on record were filed as "Delivery Challan".
+ */
+const PHOTO_FILE = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i;
+
+/** Whether a file name or file url is a photo. A url's query string is ignored. */
+export function isPhotoFile(nameOrUrl: string) {
+  return PHOTO_FILE.test(nameOrUrl.split('?')[0]);
+}
