@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
+import type { DocumentDetail } from '@/modules/sap-documents/api';
 
 import type { ARInvoicePrintPayload } from '../../ar-invoice/types';
 import type {
@@ -99,6 +100,15 @@ export const creditNoteApprovalApi = {
       sapPassword ? { sap_password: sapPassword } : {},
     );
     return res.data;
+  },
+
+  /** The credit note in full: its draft as the document browser shapes it. */
+  async document(wddCode: number): Promise<DocumentDetail> {
+    const res = await apiClient.get<{ document: DocumentDetail }>(
+      `${E.CREDIT_NOTE_APPROVALS}${wddCode}/document/`,
+      { suppressErrorToast: true },
+    );
+    return res.data.document;
   },
 
   /** The files of this credit note and of the documents it was copied from. */

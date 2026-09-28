@@ -53,6 +53,7 @@ import type {
 } from '../types';
 import { CreditNoteAttachments } from './CreditNoteAttachments';
 import { CreditNoteDecisionPanel } from './CreditNoteDecisionPanel';
+import { CreditNoteDocument } from './CreditNoteDocument';
 import { CreditNoteExtras } from './CreditNoteExtras';
 import { CreditNotePrintButton } from './CreditNotePrintButton';
 
@@ -400,7 +401,10 @@ function DetailPanel({ row, extras }: { row: CreditNoteApproval; extras?: ReactN
         <CreditNotePrintButton docEntry={printableEntry} docNum={row.posted_doc_num} />
       )}
 
-      <CreditNoteAttachments wddCode={row.id} />
+      <div className="flex flex-wrap items-start gap-2">
+        <CreditNoteDocument wddCode={row.id} />
+        <CreditNoteAttachments wddCode={row.id} />
+      </div>
 
       {extras}
 

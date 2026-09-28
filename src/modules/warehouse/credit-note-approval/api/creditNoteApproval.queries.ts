@@ -22,6 +22,7 @@ export const CREDIT_NOTE_APPROVAL_QUERY_KEYS = {
   ) => [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'list', status, family, filters] as const,
   attachments: (wddCode: number) =>
     [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'attachments', wddCode] as const,
+  document: (wddCode: number) => [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'document', wddCode] as const,
   pendingCount: () => [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'pending-count'] as const,
   print: (docEntry: number) =>
     [...CREDIT_NOTE_APPROVAL_QUERY_KEYS.all, 'print', docEntry] as const,
@@ -148,5 +149,16 @@ export function useOpenCreditNoteAttachment(wddCode: number) {
     onError: async (error) => {
       toast.error(await attachmentErrorMessage(error));
     },
+  });
+}
+
+/** The credit note in full, read only when asked for. */
+export function useCreditNoteDocument(wddCode: number, enabled: boolean) {
+  return useQuery({
+    queryKey: CREDIT_NOTE_APPROVAL_QUERY_KEYS.document(wddCode),
+    queryFn: () => creditNoteApprovalApi.document(wddCode),
+    enabled,
+    staleTime: 60 * 1000,
+    retry: false,
   });
 }
