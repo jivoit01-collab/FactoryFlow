@@ -572,6 +572,42 @@ function Journals({ doc }: { doc: DocumentDetail }) {
 }
 
 // ---------------------------------------------------------------------------
+// The document, for the dialog here and for the approvals inbox
+// ---------------------------------------------------------------------------
+
+/**
+ * Every section of one shaped document. `attachments` replaces the
+ * attachments section: the approvals inbox serves a request's files through
+ * its own endpoints, on its own right, rather than the document browser's.
+ */
+export function DocumentDetailBody({ doc, attachments }: { doc: DocumentDetail; attachments: ReactNode }) {
+  return (
+    <>
+      {doc.warnings.length > 0 && (
+        <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <ul>
+            {doc.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {doc.kind !== 'journal' && <Hero doc={doc} />}
+      <DocumentFacts doc={doc} />
+      <Remarks doc={doc} />
+      <Lines doc={doc} />
+      <Payment doc={doc} />
+      <Amounts doc={doc} />
+      <Withholding doc={doc} />
+      <BaseDocuments doc={doc} />
+      <Journals doc={doc} />
+      {attachments}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The dialog
 // ---------------------------------------------------------------------------
 
@@ -607,28 +643,7 @@ export function DocumentDetailDialog({
               {(query.error as { message?: string } | null)?.message || 'The document could not be read from SAP.'}
             </p>
           ) : (
-            <>
-              {doc.warnings.length > 0 && (
-                <div className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                  <ul>
-                    {doc.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {doc.kind !== 'journal' && <Hero doc={doc} />}
-              <DocumentFacts doc={doc} />
-              <Remarks doc={doc} />
-              <Lines doc={doc} />
-              <Payment doc={doc} />
-              <Amounts doc={doc} />
-              <Withholding doc={doc} />
-              <BaseDocuments doc={doc} />
-              <Journals doc={doc} />
-              <Attachments doc={doc} canDownload={canDownload} />
-            </>
+            <DocumentDetailBody doc={doc} attachments={<Attachments doc={doc} canDownload={canDownload} />} />
           )}
         </DialogBody>
       </DialogContent>

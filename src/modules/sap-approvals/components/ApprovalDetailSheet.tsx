@@ -27,6 +27,7 @@ import {
 import { useSapApprovalRequest } from '../api/sap-approvals.queries';
 import type { SapApprovalDetail, SapApprovalRequest, SapApprovalStage } from '../types';
 import { dateTime, money, person, shortDate, STATUS_LABELS } from '../utils/format';
+import { ApprovalDocument } from './ApprovalDocument';
 import type { SapActionMode } from './SapActionDialog';
 import { StatusChip } from './StatusChip';
 
@@ -151,7 +152,7 @@ function Lines({ detail }: { detail: SapApprovalDetail }) {
   if (!detail.lines_available) {
     return (
       <p className="text-sm text-muted-foreground">
-        A payment draft&apos;s lines are not shown here — open it in SAP.
+        A payment draft&apos;s accounts, invoices and cheques are in the full document below.
       </p>
     );
   }
@@ -221,7 +222,7 @@ export function ApprovalDetailSheet({
 
   return (
     <Sheet open={wddCode !== null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-4xl">
         <SheetHeader>
           <SheetTitle>
             {detail
@@ -335,6 +336,16 @@ export function ApprovalDetailSheet({
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">Lines</h3>
               <Lines detail={detail} />
+            </section>
+
+            <Separator />
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">The document</h3>
+              <p className="text-xs text-muted-foreground">
+                Every line with its details, tax deducted, the journal SAP will post, what it was
+                copied from, and the attached scans.
+              </p>
+              <ApprovalDocument key={detail.wdd_code} wddCode={detail.wdd_code} />
             </section>
           </div>
         )}

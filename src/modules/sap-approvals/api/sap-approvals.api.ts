@@ -1,5 +1,6 @@
 import { API_ENDPOINTS } from '@/config/constants/api.constants';
 import { apiClient } from '@/core/api';
+import type { AttachmentLine as SapAttachmentLine, DocumentDetail } from '@/modules/sap-documents/api';
 
 import type {
   SapActionResult,
@@ -79,6 +80,35 @@ export const sapApprovalsApi = {
     return data;
   },
 
+  /**
+   * The request's draft as the document browser shows it — every line, TDS,
+   * the journal preview, base documents — on the inbox's own right. Read only
+   * when the approver asks for it.
+   */
+  async document(wddCode: number): Promise<SapApprovalDraftDocument> {
+    const res = await apiClient.get<SapApprovalDraftDocument>(API_ENDPOINTS.SAP_APPROVALS.DOCUMENT(wddCode), {
+      suppressErrorToast: true,
+    });
+    return res.data;
+  },
+
+  async attachmentLines(wddCode: number, absEntry: number): Promise<SapAttachmentLine[]> {
+    const res = await apiClient.get<{ lines: SapAttachmentLine[] }>(
+      API_ENDPOINTS.SAP_APPROVALS.ATTACHMENT_LINES(wddCode, absEntry),
+      { suppressErrorToast: true },
+    );
+    return res.data.lines;
+  },
+
+  /** One file as a blob; the error body is a blob too (read with attachmentErrorMessage). */
+  async downloadAttachment(wddCode: number, absEntry: number, line: number): Promise<Blob> {
+    const res = await apiClient.get<Blob>(API_ENDPOINTS.SAP_APPROVALS.ATTACHMENT_DOWNLOAD(wddCode, absEntry, line), {
+      responseType: 'blob',
+      suppressErrorToast: true,
+    });
+    return res.data;
+  },
+
   async pendingCount(): Promise<SapPendingCount> {
     // Background poll behind the sidebar badge, mounted on every page: a HANA
     // blip must not toast app-wide — the badge simply renders nothing.
@@ -88,3 +118,10 @@ export const sapApprovalsApi = {
     return data;
   },
 };
+
+/** GET requests/<wdd>/document/. */
+export interface SapApprovalDraftDocument {
+  type: { key: string; label: string };
+  document: DocumentDetail;
+  attachment_sources: { label: string; abs_entry: number }[];
+}

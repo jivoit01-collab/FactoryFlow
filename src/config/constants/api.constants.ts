@@ -1482,6 +1482,12 @@ export const API_ENDPOINTS = {
     REQUEST: (wddCode: number) => `/sap-approvals/requests/${wddCode}/`,
     DECISION: (wddCode: number) => `/sap-approvals/requests/${wddCode}/decision/`,
     WITHDRAW: (wddCode: number) => `/sap-approvals/requests/${wddCode}/withdraw/`,
+    // The request's draft in full, and its attachments, for someone on it.
+    DOCUMENT: (wddCode: number) => `/sap-approvals/requests/${wddCode}/document/`,
+    ATTACHMENT_LINES: (wddCode: number, absEntry: number) =>
+      `/sap-approvals/requests/${wddCode}/attachments/${absEntry}/`,
+    ATTACHMENT_DOWNLOAD: (wddCode: number, absEntry: number, line: number) =>
+      `/sap-approvals/requests/${wddCode}/attachments/${absEntry}/${line}/download/`,
     PENDING_COUNT: '/sap-approvals/pending-count/',
   },
 

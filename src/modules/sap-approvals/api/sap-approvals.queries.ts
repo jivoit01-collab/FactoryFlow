@@ -1,5 +1,9 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
+
+import { attachmentErrorMessage } from '@/modules/sap-documents/api';
+import { openOrSave } from '@/modules/sap-documents/utils/attachments';
 
 import type { SapApprovalFilters, SapDecisionInput } from '../types';
 import { sapApprovalsApi } from './sap-approvals.api';
@@ -10,6 +14,9 @@ export const SAP_APPROVALS_QUERY_KEYS = {
   list: (filters: SapApprovalFilters) =>
     [...SAP_APPROVALS_QUERY_KEYS.all, 'list', filters] as const,
   detail: (wddCode: number) => [...SAP_APPROVALS_QUERY_KEYS.all, 'detail', wddCode] as const,
+  document: (wddCode: number) => [...SAP_APPROVALS_QUERY_KEYS.all, 'document', wddCode] as const,
+  attachmentLines: (wddCode: number, absEntry: number) =>
+    [...SAP_APPROVALS_QUERY_KEYS.all, 'attachment-lines', wddCode, absEntry] as const,
   pendingCount: () => [...SAP_APPROVALS_QUERY_KEYS.all, 'pending-count'] as const,
 };
 
@@ -80,4 +87,40 @@ export function useSapApprovalActions() {
       return result;
     },
   };
+}
+
+/** The request's draft in full, read only once the approver asks for it. */
+export function useSapApprovalDocument(wddCode: number, enabled: boolean) {
+  return useQuery({
+    queryKey: SAP_APPROVALS_QUERY_KEYS.document(wddCode),
+    queryFn: () => sapApprovalsApi.document(wddCode),
+    enabled,
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useSapApprovalAttachmentLines(wddCode: number, absEntry: number) {
+  return useQuery({
+    queryKey: SAP_APPROVALS_QUERY_KEYS.attachmentLines(wddCode, absEntry),
+    queryFn: () => sapApprovalsApi.attachmentLines(wddCode, absEntry),
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+}
+
+/** Fetch one of the request's attachments through the inbox and open or save it. */
+export function useOpenSapApprovalAttachment(wddCode: number) {
+  return useMutation({
+    mutationFn: async ({ absEntry, line, fileName }: { absEntry: number; line: number; fileName: string }) => ({
+      blob: await sapApprovalsApi.downloadAttachment(wddCode, absEntry, line),
+      fileName,
+    }),
+    onSuccess: ({ blob, fileName }) => {
+      openOrSave(blob, fileName);
+    },
+    onError: async (error) => {
+      toast.error(await attachmentErrorMessage(error));
+    },
+  });
 }
