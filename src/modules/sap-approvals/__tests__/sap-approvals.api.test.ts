@@ -24,6 +24,15 @@ describe('sapApprovalsApi', () => {
     post.mockClear();
   });
 
+  it('asks for the next page by offset, and for the first without one', async () => {
+    get.mockResolvedValue({ data: { results: [] } });
+    const filters = { scope: 'all', status: 'PENDING', object_type: '', date_from: '', date_to: '', search: '' } as never;
+    await sapApprovalsApi.list(filters, 200);
+    expect(get.mock.calls[0][1].params.offset).toBe(200);
+    await sapApprovalsApi.list(filters);
+    expect(get.mock.calls[1][1].params).not.toHaveProperty('offset');
+  });
+
   it('lists requests without the filters left blank', async () => {
     get.mockResolvedValue({ data: { results: [] } });
     await sapApprovalsApi.list({

@@ -45,9 +45,10 @@ export function buildWithdrawPayload(sapPassword?: string): Record<string, unkno
 }
 
 export const sapApprovalsApi = {
-  async list(filters: SapApprovalFilters): Promise<SapApprovalListResponse> {
+  /** One page of requests; `offset` pages past the server's limit. */
+  async list(filters: SapApprovalFilters, offset = 0): Promise<SapApprovalListResponse> {
     const { data } = await apiClient.get<SapApprovalListResponse>(E.REQUESTS, {
-      params: listParams(filters),
+      params: offset ? { ...listParams(filters), offset } : listParams(filters),
     });
     return data;
   },

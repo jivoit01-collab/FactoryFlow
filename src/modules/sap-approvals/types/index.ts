@@ -141,7 +141,9 @@ export interface SapApprovalListResponse {
   results: SapApprovalRequest[];
   count: number;
   limit: number;
-  /** A full page: there may be more — narrow the filters. */
+  /** Where this page starts. */
+  offset?: number;
+  /** A full page: there may be more — ask for the next offset. */
   truncated: boolean;
   /** Null when the caller is not mapped to a SAP user in this company. */
   identity: SapApprovalIdentity | null;

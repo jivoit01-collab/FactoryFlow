@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -33,10 +33,13 @@ export function pendingCountPollMs(pathname: string): number {
     : PENDING_COUNT_POLL_OFF_PAGE_MS;
 }
 
+/** The inbox a page at a time: a full page means there may be more ("Load more"). */
 export function useSapApprovalRequests(filters: SapApprovalFilters) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: SAP_APPROVALS_QUERY_KEYS.list(filters),
-    queryFn: () => sapApprovalsApi.list(filters),
+    queryFn: ({ pageParam }) => sapApprovalsApi.list(filters, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last) => (last.truncated ? (last.offset ?? 0) + last.limit : undefined),
     staleTime: 30 * 1000,
   });
 }

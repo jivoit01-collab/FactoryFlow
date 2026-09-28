@@ -101,8 +101,9 @@ export default function SapApprovalsPage() {
     [draft, debounced],
   );
   const query = useSapApprovalRequests(filters);
-  const data = query.data;
-  const rows = data?.results ?? [];
+  // The first page carries the identity and the type list; the rows are every page's.
+  const data = query.data?.pages[0];
+  const rows = useMemo(() => (query.data?.pages ?? []).flatMap((page) => page.results), [query.data]);
   const objectTypes = data?.object_types ?? [];
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
@@ -250,11 +251,6 @@ export default function SapApprovalsPage() {
           {done}
         </div>
       )}
-      {data?.truncated && (
-        <p className="text-sm text-muted-foreground">
-          Showing the newest {data.limit}. Narrow the filters to see older requests.
-        </p>
-      )}
 
       <TableCard summary={`${rows.length} ${rows.length === 1 ? 'request' : 'requests'}`}>
         <table className={TABLE_CLASSES}>
@@ -393,6 +389,14 @@ export default function SapApprovalsPage() {
           </tbody>
         </table>
       </TableCard>
+
+      {query.hasNextPage && (
+        <div className="flex justify-center">
+          <Button variant="outline" onClick={() => query.fetchNextPage()} disabled={query.isFetchingNextPage}>
+            {query.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
+      )}
 
       <ApprovalDetailSheet
         wddCode={openCode}
