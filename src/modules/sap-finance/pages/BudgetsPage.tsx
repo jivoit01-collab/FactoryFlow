@@ -32,7 +32,7 @@ import {
 import { Button } from '@/shared/components/ui';
 import { formatDateTimeShort } from '@/shared/utils';
 
-import { type Budget, useBudgetChanges, useBudgets, useDeleteBudget } from '../api';
+import { type Budget, useBudgetChanges, useBudgets, useDeleteBudget, useFetchBudget } from '../api';
 import { BudgetEditorDialog } from '../components/BudgetEditorDialog';
 import { BudgetViewDialog } from '../components/BudgetViewDialog';
 import { money, monthLabel, sapDate } from '../utils/format';
@@ -57,6 +57,7 @@ export default function BudgetsPage() {
   const budgets = useBudgets();
   const changes = useBudgetChanges();
   const remove = useDeleteBudget();
+  const fetchBudget = useFetchBudget();
   const [editing, setEditing] = useState<Budget | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const rows = budgets.data ?? [];
@@ -66,7 +67,15 @@ export default function BudgetsPage() {
     setDialogOpen(true);
   };
 
-  const confirmDelete = async (budget: Budget) => {
+  const confirmDelete = async (row: Budget) => {
+    // The list row has no lines; read them so the confirmation shows what goes.
+    let budget: Budget;
+    try {
+      budget = await fetchBudget(row.doc_entry);
+    } catch {
+      toast.error(`Budget ${row.doc_num ?? row.doc_entry} could not be read from SAP, so it was not deleted.`);
+      return;
+    }
     const ok = await confirmSapPost({
       title: `Delete budget ${budget.doc_num ?? budget.doc_entry} from SAP?`,
       description: 'The budget and all its month lines are removed from SAP. This cannot be undone from here.',
@@ -106,25 +115,21 @@ export default function BudgetsPage() {
               <Th>No.</Th>
               <Th>Budget head</Th>
               <Th>Sub-budget</Th>
-              <Th>Months</Th>
-              <Th align="right">Total</Th>
               <Th>Created</Th>
               <Th align="right">Actions</Th>
             </tr>
           </thead>
           <tbody>
             {budgets.isLoading ? (
-              <TableLoading colSpan={7} />
+              <TableLoading colSpan={5} />
             ) : rows.length === 0 ? (
-              <TableEmpty colSpan={7} message={budgets.isError ? 'SAP could not be read' : 'No budgets in SAP yet'} />
+              <TableEmpty colSpan={5} message={budgets.isError ? 'SAP could not be read' : 'No budgets in SAP yet'} />
             ) : (
               rows.map((budget) => (
                 <tr key={budget.doc_entry} className={ROW_CLASSES}>
                   <Td numeric>{budget.doc_num ?? budget.doc_entry}</Td>
                   <Td className="font-medium">{budget.budget}</Td>
                   <Td>{budget.sub_budget || '-'}</Td>
-                  <Td>{monthsCovered(budget)}</Td>
-                  <Td numeric>{money(total(budget))}</Td>
                   <Td>{sapDate(budget.created_at)}</Td>
                   <Td align="right">
                     <div className="flex justify-end gap-1">

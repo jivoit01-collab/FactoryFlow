@@ -59,12 +59,30 @@ export function useBudgets(enabled = true) {
   return useQuery({ queryKey: KEYS.budgets, queryFn: sapFinanceApi.budgets, enabled });
 }
 
+/**
+ * One budget WITH its month lines. The list above carries only the header
+ * fields (SAP Portal's list `$select`), so anything that shows or rewrites the
+ * lines must read them from here first — the editor saves with
+ * `B1S-ReplaceCollectionsOnPatch`, so a form built from a list row would delete
+ * every month in SAP.
+ */
 export function useBudget(docEntry: number | null) {
   return useQuery({
     queryKey: KEYS.budget(docEntry ?? 0),
     queryFn: () => sapFinanceApi.budget(docEntry as number),
     enabled: docEntry !== null,
   });
+}
+
+/** Reads one budget fresh from SAP, for a confirmation that must show its real lines. */
+export function useFetchBudget() {
+  const queryClient = useQueryClient();
+  return (docEntry: number) =>
+    queryClient.fetchQuery({
+      queryKey: KEYS.budget(docEntry),
+      queryFn: () => sapFinanceApi.budget(docEntry),
+      staleTime: 0,
+    });
 }
 
 export function useBudgetChanges(docEntry?: number) {

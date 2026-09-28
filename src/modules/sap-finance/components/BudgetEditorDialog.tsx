@@ -9,6 +9,10 @@
  * The form lives in its own component inside `DialogContent`, which unmounts
  * while the dialog is closed, so each opening starts from the budget it was
  * opened on instead of whatever was typed last time.
+ *
+ * An existing budget is read afresh from SAP (`useBudget`) before the form is
+ * built: the list row the page holds has no lines, and because saving replaces
+ * every line, a form built from it would delete all the budget's months.
  */
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -30,7 +34,7 @@ import {
   SelectOption,
 } from '@/shared/components/ui';
 
-import { type Budget, useCostingCodes, useCreateBudget, useUpdateBudget } from '../api';
+import { type Budget, useBudget, useCostingCodes, useCreateBudget, useUpdateBudget } from '../api';
 import {
   blankLine,
   budgetDraftError,
@@ -55,9 +59,44 @@ export function BudgetEditorDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="grid max-h-[90vh] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
-        <BudgetEditorForm budget={budget} onDone={() => onOpenChange(false)} />
+        {budget ? (
+          <ExistingBudgetEditor docEntry={budget.doc_entry} onDone={() => onOpenChange(false)} />
+        ) : (
+          <BudgetEditorForm budget={null} onDone={() => onOpenChange(false)} />
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Waits for SAP's copy of the budget, lines included, then builds the form from it. */
+function ExistingBudgetEditor({ docEntry, onDone }: { docEntry: number; onDone: () => void }) {
+  const detail = useBudget(docEntry);
+  // `isFetchedAfterMount`, not just `data`: a copy cached from an earlier
+  // opening may be out of date, and the form keeps whatever it starts from.
+  if (detail.data && detail.isFetchedAfterMount) {
+    return <BudgetEditorForm budget={detail.data} onDone={onDone} />;
+  }
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Budget {docEntry}</DialogTitle>
+        <DialogDescription>
+          {detail.isError ? 'SAP could not be read, so this budget cannot be edited now.' : 'Reading the budget from SAP…'}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody />
+      <DialogFooter className="gap-2 border-t pt-4">
+        {detail.isError && (
+          <Button variant="outline" onClick={() => detail.refetch()}>
+            Try again
+          </Button>
+        )}
+        <Button variant="outline" onClick={onDone}>
+          Cancel
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 

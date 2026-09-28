@@ -1,6 +1,7 @@
 /**
  * One SAP budget, read-only — what someone with only the view right sees when
- * they open a budget from the list.
+ * they open a budget from the list. The list row has no lines, so the budget is
+ * read from SAP (`useBudget`) when the dialog opens.
  */
 import {
   Dialog,
@@ -11,7 +12,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui';
 
-import type { Budget } from '../api';
+import { type Budget, useBudget } from '../api';
 import { money, monthLabel } from '../utils/format';
 
 export function BudgetViewDialog({
@@ -27,14 +28,30 @@ export function BudgetViewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="grid max-h-[90vh] max-w-2xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle>Budget {budget.doc_num ?? budget.doc_entry}</DialogTitle>
-          <DialogDescription>
-            {budget.budget}
-            {budget.sub_budget && ` · sub-budget ${budget.sub_budget}`}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
+        <BudgetLines row={budget} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BudgetLines({ row }: { row: Budget }) {
+  const detail = useBudget(row.doc_entry);
+  const budget = detail.data ?? row;
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Budget {budget.doc_num ?? budget.doc_entry}</DialogTitle>
+        <DialogDescription>
+          {budget.budget}
+          {budget.sub_budget && ` · sub-budget ${budget.sub_budget}`}
+        </DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        {!detail.data ? (
+          <p className="text-sm text-muted-foreground">
+            {detail.isError ? 'SAP could not be read.' : 'Reading the months from SAP…'}
+          </p>
+        ) : (
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground">
               <tr>
@@ -55,8 +72,8 @@ export function BudgetViewDialog({
               ))}
             </tbody>
           </table>
-        </DialogBody>
-      </DialogContent>
-    </Dialog>
+        )}
+      </DialogBody>
+    </>
   );
 }
