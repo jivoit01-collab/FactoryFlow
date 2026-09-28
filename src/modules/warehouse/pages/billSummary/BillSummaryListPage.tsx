@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Plus } from 'lucide-react';
+import { AlertTriangle, FileText, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ import {
   Label,
   Switch,
 } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks';
 import { getErrorMessage } from '@/shared/utils';
 
 import {
@@ -23,6 +24,7 @@ import {
   useBillSummaries,
   useSapBillSummaries,
 } from '../../api';
+import { matchesBillSummary } from './billSummarySearch';
 
 /** Matches the smallest option PaginationControls offers. */
 const DEFAULT_PAGE_SIZE = 25;
@@ -56,6 +58,8 @@ export default function BillSummaryListPage() {
   const [includeSap, setIncludeSap] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState('');
+  const needle = useDebounce(search.trim().toLowerCase(), 150);
 
   const params = {
     ...(dateFrom ? { date_from: dateFrom } : {}),
@@ -83,11 +87,13 @@ export default function BillSummaryListPage() {
 
   const allRows = useMemo(() => {
     const merged: BillSummary[] = includeSap && !sapHidden ? [...rows, ...sapRows] : [...rows];
-    return merged.sort((a, b) => {
-      const byDate = String(b.dispatch_date ?? '').localeCompare(String(a.dispatch_date ?? ''));
-      return byDate !== 0 ? byDate : b.entry_no.localeCompare(a.entry_no);
-    });
-  }, [rows, sapRows, includeSap, sapHidden]);
+    return merged
+      .filter((row) => matchesBillSummary(row, needle))
+      .sort((a, b) => {
+        const byDate = String(b.dispatch_date ?? '').localeCompare(String(a.dispatch_date ?? ''));
+        return byDate !== 0 ? byDate : b.entry_no.localeCompare(a.entry_no);
+      });
+  }, [rows, sapRows, includeSap, sapHidden, needle]);
 
   /* Paged in the browser, not on the server. The list on screen is two feeds
      sorted into one — the app's own sheets and the dispatches stamped straight
@@ -124,6 +130,35 @@ export default function BillSummaryListPage() {
 
       <Card>
         <CardContent className="space-y-3 p-4">
+          {/* Over the rows already loaded — both feeds, inside the filters
+              below — so it answers as fast as it is typed. */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              aria-label="Search bill summaries"
+              placeholder="Search bill no., sheet no., party, vehicle, transporter or bilty"
+              className="pl-9 pr-9"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setPage(1);
+                }}
+                aria-label="Clear the search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_160px]">
             <div className="space-y-1">
               <Label htmlFor="bs-status">Status</Label>
@@ -207,7 +242,19 @@ export default function BillSummaryListPage() {
         <p className="text-sm text-muted-foreground">Loading bill summaries…</p>
       ) : allRows.length === 0 ? (
         <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          {sapLoading ? 'Reading SAP…' : 'No bill summaries yet.'}
+          {sapLoading
+            ? 'Reading SAP…'
+            : needle
+              ? `Nothing matches “${search.trim()}”.`
+              : 'No bill summaries yet.'}
+          {/* The bill may well exist and just not be loaded: a dispatch stamped
+              straight into SAP is only read with the toggle on. */}
+          {!sapLoading && needle && !includeSap && (
+            <span className="mt-1 block">
+              A bill dispatched straight in SAP shows up only with “Also show dispatches stamped in
+              SAP” on.
+            </span>
+          )}
         </p>
       ) : (
         <div className="space-y-2">
