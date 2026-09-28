@@ -5,6 +5,7 @@ import { AUTH_ROUTES } from '@/config/constants';
 import { useAppSelector } from '@/core/store';
 
 import { usePermission } from '../hooks/usePermission';
+import { ForcedPasswordChange } from './ForcedPasswordChange';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -41,7 +42,7 @@ export function ProtectedRoute({
   requireAll = false,
 }: ProtectedRouteProps) {
   const location = useLocation();
-  const { isAuthenticated, isLoading, currentCompany } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isLoading, currentCompany, user } = useAppSelector((state) => state.auth);
   const { hasAnyPermission, hasAllPermissions, hasAnyCompanyRole, permissionsLoaded } =
     usePermission();
 
@@ -66,6 +67,12 @@ export function ProtectedRoute({
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  // A temporary password issued by an administrator is replaced before
+  // anything else is shown.
+  if (user?.must_change_password) {
+    return <ForcedPasswordChange />;
   }
 
   // Check company unit access (module restricted to specific company units)

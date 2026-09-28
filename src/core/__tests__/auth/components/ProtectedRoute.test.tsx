@@ -210,3 +210,18 @@ describe('ProtectedRoute — Children Rendering', () => {
     expect(content).toContain('<>{children}</>');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Temporary passwords
+// ═══════════════════════════════════════════════════════════════
+
+describe('ProtectedRoute — temporary password', () => {
+  it('shows the forced password change, after permissions load and before any page', () => {
+    const content = readSource();
+    expect(content).toContain("import { ForcedPasswordChange } from './ForcedPasswordChange'");
+    const check = content.indexOf('user?.must_change_password');
+    expect(check).toBeGreaterThan(content.indexOf('if (!permissionsLoaded)'));
+    expect(check).toBeLessThan(content.indexOf('// Check company unit access'));
+    expect(content).toContain('return <ForcedPasswordChange />;');
+  });
+});

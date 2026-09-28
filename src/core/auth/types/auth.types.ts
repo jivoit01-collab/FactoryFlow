@@ -22,11 +22,13 @@ export interface User {
   is_active: boolean;
   is_staff: boolean;
   date_joined: string;
+  /** An administrator issued a temporary password; the app asks for a new one first. */
+  must_change_password?: boolean;
   companies: UserCompany[];
   permissions: string[];
 }
 
-export type UserLogin = Pick<User, 'id' | 'email' | 'full_name' | 'companies'>;
+export type UserLogin = Pick<User, 'id' | 'email' | 'full_name' | 'companies' | 'must_change_password'>;
 
 export interface AuthState {
   user: User | null;
