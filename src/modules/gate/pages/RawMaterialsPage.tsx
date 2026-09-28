@@ -1,9 +1,11 @@
-import { ChevronRight, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronRight, Download, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 import { ENTRY_STATUS, ENTRY_TYPES } from '@/config/constants';
+import { useAppSelector } from '@/core/store';
 import { useGlobalDateRange } from '@/core/store/hooks';
 import {
   useEmptyVehicleEligibleEntries,
@@ -23,7 +25,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { formatDateToISOString, getErrorMessage } from '@/shared/utils';
 
 import type { MaterialTypeCode, VehicleEntry } from '../api/vehicle/vehicleEntry.api';
 import {
@@ -31,6 +33,7 @@ import {
   useVehicleEntries,
 } from '../api/vehicle/vehicleEntry.queries';
 import { DateRangePicker } from '../components/DateRangePicker';
+import { buildRawMaterialsWorkbook, rawMaterialsExportFileName } from '../utils/rawMaterialsExport';
 
 // Gate-phase statuses — an entry is still "in progress" and safe to delete
 // before it reaches QC. The backend enforces the same guard.
@@ -66,6 +69,7 @@ export default function RawMaterialsPage() {
   const [search, setSearch] = useState('');
   const [materialFilter, setMaterialFilter] = useState<MaterialFilter>('ALL');
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
+  const currentCompany = useAppSelector((state) => state.auth.currentCompany);
 
   // Get status filter from URL
   const statusFilter = searchParams.get('status') || undefined;
@@ -87,17 +91,22 @@ export default function RawMaterialsPage() {
   const { data: eligibleEntries = [] } = useEmptyVehicleEligibleEntries({
     entry_type: ENTRY_TYPES.RAW_MATERIAL,
   });
-  const { data: emptyOuts = [] } = useEmptyVehicleGateOutEntries({
+  // The range picks entries by the day they came in, and a tanker in on the last day
+  // can leave the next -- so outs are bounded below only, never at the range's end.
+  const { data: emptyOuts = [], isLoading: isLoadingOuts } = useEmptyVehicleGateOutEntries({
     entry_type: ENTRY_TYPES.RAW_MATERIAL,
     from_date: dateRange.from,
-    to_date: dateRange.to,
   });
   const eligibleByEntryId = useMemo(
     () => new Map(eligibleEntries.map((eligible) => [eligible.id, eligible])),
     [eligibleEntries],
   );
+  // A cancelled out is not an exit; an entry marked out again keeps only the out that stands.
   const outByEntryId = useMemo(
-    () => new Map(emptyOuts.map((out) => [out.vehicle_entry, out])),
+    () =>
+      new Map(
+        emptyOuts.filter((out) => out.status === 'COMPLETED').map((out) => [out.vehicle_entry, out]),
+      ),
     [emptyOuts],
   );
 
@@ -141,6 +150,24 @@ export default function RawMaterialsPage() {
     return filtered;
   }, [entries, materialFilter, search]);
 
+  // The vehicles as listed -- whatever the filters leave -- with when each came in and went out.
+  const exportExcel = () => {
+    const workbook = buildRawMaterialsWorkbook(filteredData, outByEntryId, {
+      dateFrom: dateRange.from,
+      dateTo: dateRange.to,
+      materialLabel: MATERIAL_FILTERS.find((option) => option.value === materialFilter)?.label,
+      status: statusFilter,
+      search,
+      companyName: currentCompany?.company_name,
+    });
+    const today = formatDateToISOString(new Date());
+    XLSX.writeFile(
+      workbook,
+      rawMaterialsExportFileName(currentCompany?.company_code, dateRange.from, dateRange.to, today),
+    );
+    toast.success('Export downloaded');
+  };
+
   // Format date/time for display
   const formatDateTime = (dateTime?: string) => {
     if (!dateTime) return '-';
@@ -167,10 +194,21 @@ export default function RawMaterialsPage() {
             Manage raw materials, packing materials, and assets gate entries
           </p>
         </div>
-        <Button onClick={() => navigate('/gate/raw-materials/new')} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Entry
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="outline"
+            onClick={exportExcel}
+            disabled={isLoading || isLoadingOuts || filteredData.length === 0}
+            className="w-full sm:w-auto"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
+          <Button onClick={() => navigate('/gate/raw-materials/new')} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Entry
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

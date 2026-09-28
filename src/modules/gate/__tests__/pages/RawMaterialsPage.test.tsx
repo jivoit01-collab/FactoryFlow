@@ -49,4 +49,18 @@ describe('RawMaterialsPage', () => {
     expect(content).toContain("{ value: 'BOTH', label: 'RM + PM' }");
     expect(content).toContain('entry.material_type?.code === materialFilter');
   });
+
+  it('exports the listed vehicles, with their in and out times, to Excel', () => {
+    expect(content).toContain('Export Excel');
+    expect(content).toContain('buildRawMaterialsWorkbook(filteredData, outByEntryId');
+  });
+
+  it('finds the out of a vehicle that left after the range ends', () => {
+    const outsQuery = content.slice(content.indexOf('useEmptyVehicleGateOutEntries({'));
+    expect(outsQuery.slice(0, outsQuery.indexOf('});'))).not.toContain('to_date');
+  });
+
+  it('never shows a cancelled out as the exit', () => {
+    expect(content).toContain("out.status === 'COMPLETED'");
+  });
 });
