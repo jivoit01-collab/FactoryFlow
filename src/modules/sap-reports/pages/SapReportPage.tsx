@@ -240,6 +240,7 @@ export default function SapReportPage() {
           rows={result.rows}
           wasTruncated={result.meta.was_truncated}
           rowLimit={result.meta.row_limit}
+          title={report.title}
         />
       )}
 

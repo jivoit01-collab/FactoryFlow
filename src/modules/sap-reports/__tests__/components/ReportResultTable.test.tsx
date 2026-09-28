@@ -11,8 +11,15 @@ vi.mock('../../api/sapReports.api', async (importOriginal) => {
   return { ...actual, sapReportsApi: { resolveReferences: vi.fn(async () => ({})) } };
 });
 
+// The file itself is proved in the download utility's own suite; here it is
+// only which rows reach it.
+vi.mock('../../utils/download', () => ({ downloadReportRows: vi.fn() }));
+
+import { toast } from 'sonner';
+
 import type { SapReportCell, SapReportColumn } from '../../api';
 import { ReportResultTable } from '../../components/ReportResultTable';
+import { downloadReportRows } from '../../utils/download';
 
 const columns: SapReportColumn[] = [
   { key: 'DocNum', label: 'Doc No.', type: 'number' },
@@ -242,5 +249,138 @@ describe('ReportResultTable column filters', () => {
     // a report's own ORDER BY is an answer in itself.
     fireEvent.click(heading());
     expect(bodyRows()).toEqual(['1,001', '1,002', '1,003']);
+  });
+});
+
+describe('ReportResultTable as a sheet', () => {
+  beforeEach(() => {
+    writeText.mockClear();
+    vi.mocked(toast.success).mockClear();
+    vi.mocked(downloadReportRows).mockClear();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+  });
+
+  /** One body cell, by its row on screen and its column in the report. */
+  function cell(row: number, column: number): HTMLElement {
+    // td 0 is the tick; the report's own columns follow it.
+    return document.querySelectorAll('tbody tr')[row].querySelectorAll('td')[column + 1];
+  }
+
+  /** The status bar under the grid. */
+  function statusBar(): string {
+    return screen.getByText(/^Count /).parentElement?.textContent ?? '';
+  }
+
+  it('letters the columns and numbers the rows, as a sheet does', () => {
+    renderTable();
+
+    expect(screen.getByTitle('Select column Doc No.')).toHaveTextContent('A');
+    expect(screen.getByTitle('Select column Total')).toHaveTextContent('C');
+    expect(screen.getByTitle('Pick row 3')).toHaveTextContent('3');
+  });
+
+  it('picks a column from its letter and adds it up at the foot', () => {
+    renderTable();
+
+    fireEvent.click(screen.getByTitle('Select column Total'));
+
+    expect(statusBar()).toContain('C1:C3');
+    expect(statusBar()).toContain('3 rows × 1 column');
+    expect(statusBar()).toContain('Sum 1,331.50');
+  });
+
+  it('picks a row from its number', () => {
+    renderTable();
+
+    fireEvent.click(screen.getByTitle('Pick row 2'));
+
+    // 1002 and 90: the customer's name is counted as a cell, not a number.
+    expect(statusBar()).toContain('A2:C2');
+    expect(statusBar()).toContain('Count 3');
+    expect(statusBar()).toContain('Numbers 2');
+    expect(statusBar()).toContain('Sum 1,092');
+  });
+
+  it('drags a block, and shift-click grows it', () => {
+    renderTable();
+
+    fireEvent.mouseDown(cell(0, 1));
+    fireEvent.mouseEnter(cell(1, 2));
+    fireEvent.mouseUp(window);
+    expect(statusBar()).toContain('B1:C2');
+    expect(statusBar()).toContain('Sum 1,324.50');
+
+    fireEvent.mouseDown(cell(2, 2), { shiftKey: true });
+    expect(statusBar()).toContain('B1:C3');
+    expect(statusBar()).toContain('Sum 1,331.50');
+  });
+
+  it('copies the picked block as cells on Ctrl+C', async () => {
+    renderTable();
+
+    fireEvent.click(screen.getByTitle('Select column Total'));
+    fireEvent.keyDown(cell(0, 0), { key: 'c', ctrlKey: true });
+
+    // The raw figures, not "1,234.50": a grouped number pastes as text.
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('1234.5\n90\n7'));
+    expect(toast.success).toHaveBeenCalledWith('Copied C1:C3');
+  });
+
+  it('copies the cell under the cursor when nothing is picked', async () => {
+    renderTable();
+
+    fireEvent.keyDown(cell(1, 1), { key: 'c', ctrlKey: true });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('BHARAT OIL'));
+  });
+
+  it('lets the block go when the search makes it different rows', async () => {
+    renderTable();
+
+    fireEvent.click(screen.getByTitle('Select column Total'));
+    expect(statusBar()).toContain('C1:C3');
+
+    fireEvent.change(screen.getByPlaceholderText(/search these rows/i), {
+      target: { value: 'BHARAT' },
+    });
+
+    await waitFor(() => expect(screen.queryByText(/^Count /)).not.toBeInTheDocument());
+  });
+
+  it('downloads the rows on screen, in the order they are sorted', () => {
+    renderTable({ title: 'Pending Dispatch' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sort by Total' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+    expect(downloadReportRows).toHaveBeenCalledWith({
+      columns,
+      rows: [rows[2], rows[1], rows[0]],
+      title: 'Pending Dispatch',
+    });
+  });
+
+  it('downloads only the ticked rows once any are ticked', () => {
+    renderTable({ title: 'Pending Dispatch' });
+
+    fireEvent.click(screen.getByLabelText('Select row 2'));
+    fireEvent.click(screen.getByRole('button', { name: 'Download 1 selected' }));
+
+    expect(downloadReportRows).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: [rows[1]] }),
+    );
+  });
+
+  it('says which columns are filtered, by their headings', async () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filter Customer' }));
+    const dropdown = await screen.findByRole('dialog');
+    fireEvent.click(within(dropdown).getByText('BHARAT OIL'));
+
+    expect(screen.getByText(/Filtered by Customer/)).toBeInTheDocument();
   });
 });

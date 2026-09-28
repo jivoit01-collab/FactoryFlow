@@ -1,16 +1,25 @@
-import { Copy, Search } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { Copy, Download, Search } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ColumnFilter, type ColumnSpec, useLocalColumns } from '@/shared/components/sheetGrid';
+import {
+  ColumnFilter,
+  columnLetter,
+  type ColumnSpec,
+  copyBlock,
+  useLocalColumns,
+  useSheetSelection,
+  useSpreadsheetKeys,
+} from '@/shared/components/sheetGrid';
 import { Badge, Button, Checkbox, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
-import { cn } from '@/shared/utils';
+import { cn, formatNumber, toClipboardCell } from '@/shared/utils';
 
 import type { SapReportCell, SapReportColumn, SapReportReferenceMatch } from '../api';
 import { useSapReportReferences } from '../api';
 import { cellNumber, cellText } from '../utils/cells';
 import { buildClipboardText, copyToClipboard } from '../utils/clipboard';
+import { downloadReportRows } from '../utils/download';
 import { findReferenceColumn } from '../utils/references';
 import { sumNumericColumns } from '../utils/totals';
 import { ReferenceRecordDialog } from './ReferenceRecordDialog';
@@ -33,6 +42,8 @@ interface Props {
   rows: SapReportCell[][];
   wasTruncated: boolean;
   rowLimit: number;
+  /** The report's name, for the file the Download button hands over. */
+  title?: string;
 }
 
 /** A row kept beside its place in the original result, which is what selection is keyed on. */
@@ -59,7 +70,7 @@ function emptySelection(rows: SapReportCell[][]): Selection {
  * already here, and re-running the query on the shared SAP box just to sort a
  * column would be far more expensive than sorting in the browser.
  */
-export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Props) {
+export function ReportResultTable({ columns, rows, wasTruncated, rowLimit, title }: Props) {
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounce(searchInput, 250);
   const [page, setPage] = useState(0);
@@ -122,6 +133,71 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
       activeColumn: openColumn,
     },
   );
+
+  // Where each column sits in a row, by key — the sheet selection speaks in
+  // column keys, and a report's cells are positional.
+  const columnKeys = useMemo(() => columns.map((column) => column.key), [columns]);
+  const columnIndex = useMemo(
+    () => new Map(columns.map((column, index) => [column.key, index])),
+    [columns],
+  );
+
+  // A new run, a new search or a different set of filtered columns is a
+  // different set of lines, so "rows 3 to 10" no longer means anything and the
+  // picked block goes. Paging does not move it: its rows are positions in the
+  // whole sorted result, the numbers down the margin, not on one page.
+  const filterKey = filteredColumns.join('\u0000');
+  const sheetReset = useMemo(() => ({ rows, search, filterKey }), [rows, search, filterKey]);
+
+  /**
+   * Cells picked the way a sheet picks them — a dragged block, a row number,
+   * a column letter or the corner — with Excel's status-bar figures for it.
+   *
+   * This is not the tick column. A tick says which rows the totals, Copy and
+   * Download work on, and can be any rows at all; a picked block is one
+   * rectangle, there to be read off at the foot and copied as cells.
+   */
+  const sheet = useSheetSelection({
+    rows: sorted,
+    columnKeys,
+    numberAt: ({ row }, key) => {
+      const index = columnIndex.get(key);
+      return index === undefined || columns[index].type !== 'number'
+        ? null
+        : cellNumber(row[index]);
+    },
+    // The raw value, not the grouped spelling on screen: "1,23,456.00" pastes
+    // into a sheet as text rather than a number, as the Copy button knows.
+    textAt: ({ row }, key) => {
+      const index = columnIndex.get(key);
+      return index === undefined ? '' : toClipboardCell(row[index]);
+    },
+    reset: sheetReset,
+  });
+
+  /**
+   * Copy the picked block the way Excel copies one: on the clipboard in every
+   * form at once, so a spreadsheet pastes cells, a chat window pastes a
+   * readable picture of the table, and a plain text box pastes the text.
+   */
+  const copyPicked = useCallback(() => {
+    const grid = sheet.selectionGrid();
+    if (!grid) return false;
+    const picked = grid.columns.map((key) => columns[columnIndex.get(key) ?? -1]);
+    void copyBlock({
+      rows: grid.cells,
+      headers: picked.map((column) => column?.label ?? ''),
+      alignRight: picked.map((column) => column?.type === 'number'),
+    }).then((done) =>
+      done
+        ? toast.success(`Copied ${sheet.address}`)
+        : toast.error('That block could not be copied.'),
+    );
+    return true;
+  }, [sheet, columns, columnIndex]);
+
+  // Nothing picked falls back to the cell under the cursor.
+  const { gridProps } = useSpreadsheetKeys({ copySelection: copyPicked });
 
   const docNumIndex = useMemo(
     () => columns.findIndex((column) => column.key.toLowerCase() === 'docnum'),
@@ -218,6 +294,12 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
     setSelection({ rows, ids: next, anchor: null });
   }
 
+  /** An Excel file of the same rows the totals cover: ticked, or else everything shown. */
+  function handleDownload() {
+    if (!totalledRows.length) return;
+    downloadReportRows({ columns, rows: totalledRows, title: title ?? 'SAP report' });
+  }
+
   async function handleCopy() {
     // Nothing ticked means "what I am looking at" — the rows the search left,
     // in the order the sort put them.
@@ -264,6 +346,14 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
           {uniqueDocNums !== null && <span>· {uniqueDocNums.toLocaleString()} unique DocNums</span>}
           {selected.size > 0 && <span>· {selected.size.toLocaleString()} selected</span>}
           {filteredColumns.length > 0 && (
+            <span>
+              · Filtered by{' '}
+              {filteredColumns
+                .map((key) => columns[columnIndex.get(key) ?? -1]?.label ?? key)
+                .join(', ')}
+            </span>
+          )}
+          {filteredColumns.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -295,6 +385,16 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
               ? `Copy ${selected.size.toLocaleString()} selected`
               : `Copy ${sorted.length.toLocaleString()} rows`}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleDownload}
+            disabled={!sorted.length}
+            title="An Excel file of the rows on screen, searched, filtered and sorted as they are. The Excel button above runs the report on SAP again for the whole result."
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            {selected.size ? `Download ${selected.size.toLocaleString()} selected` : 'Download'}
+          </Button>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -310,109 +410,199 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
         </div>
       </div>
 
-      <div className="max-h-[65vh] overflow-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="sticky top-0 z-10 bg-muted">
-            <ReportTotalsRow
-              columns={columns}
-              totals={totals}
-              rowCount={totalledRows.length}
-              isSelection={selected.size > 0}
-              isFiltered={totalledRows.length < rows.length}
-            />
-            <tr>
-              <th className="w-9 px-3 py-2">
-                <Checkbox
-                  checked={allShownSelected}
-                  onCheckedChange={toggleAllShown}
-                  aria-label="Select every row shown"
-                />
-              </th>
-              {columns.map((column) => {
-                const props = columnProps(
-                  column.key,
-                  column.label,
-                  column.type === 'number' ? 'right' : 'left',
-                );
-                // Sorting or filtering makes page 7 a different seven hundred
-                // rows, so the reader goes back to the first page rather than
-                // into the middle of a result they have not seen yet.
-                return (
-                  <ColumnFilter
+      <div className="rounded-md border">
+        <div className="max-h-[65vh] overflow-auto">
+          {/* `select-none` always, not only mid-drag: dragging picks cells, as
+              it does in a sheet, and the browser's own text highlight would
+              fight it. Nothing is lost — copying is what Copy and Ctrl+C are
+              for. */}
+          <table {...gridProps} className={cn('w-full select-none text-sm', gridProps.className)}>
+            <thead className="sticky top-0 z-10 bg-muted">
+              <ReportTotalsRow
+                columns={columns}
+                totals={totals}
+                rowCount={totalledRows.length}
+                isSelection={selected.size > 0}
+                isFiltered={totalledRows.length < rows.length}
+              />
+              {/* The letters across the top of a sheet. Clicking one picks the
+                  column, the whole of it and not only this page; the corner
+                  picks everything. A row of their own, so clicking a heading
+                  still sorts it. */}
+              <tr className="border-b text-[10px] text-muted-foreground">
+                <th
+                  className="w-10 cursor-pointer border-r bg-muted px-1 py-0.5 text-center hover:bg-primary/20"
+                  onClick={sheet.pickAll}
+                  title="Select the whole sheet"
+                >
+                  ◤
+                </th>
+                <th className="w-9 border-r" />
+                {columns.map((column, index) => (
+                  <th
                     key={column.key}
-                    {...props}
-                    onSort={(next) => {
-                      setPage(0);
-                      handleSort(column.key, next);
-                    }}
-                    onSelect={(picked) => {
-                      setPage(0);
-                      props.onSelect(picked);
-                    }}
-                    onOpen={() => setOpenColumn(column.key)}
+                    className={cn(
+                      'cursor-pointer border-r px-1 py-0.5 text-center font-normal hover:bg-primary/20',
+                      sheet.isColumnPicked(index)
+                        ? 'bg-primary/30'
+                        : sheet.isColumnTouched(index) && 'bg-primary/10',
+                    )}
+                    onClick={(event) => sheet.pickColumn(index, event.shiftKey)}
+                    title={`Select column ${column.label}`}
+                  >
+                    {columnLetter(index)}
+                  </th>
+                ))}
+              </tr>
+              <tr>
+                <th className="w-10 border-r bg-muted" />
+                <th className="w-9 px-3 py-2">
+                  <Checkbox
+                    checked={allShownSelected}
+                    onCheckedChange={toggleAllShown}
+                    aria-label="Select every row shown"
                   />
+                </th>
+                {columns.map((column) => {
+                  const props = columnProps(
+                    column.key,
+                    column.label,
+                    column.type === 'number' ? 'right' : 'left',
+                  );
+                  // Sorting or filtering makes page 7 a different seven hundred
+                  // rows, so the reader goes back to the first page rather than
+                  // into the middle of a result they have not seen yet.
+                  return (
+                    <ColumnFilter
+                      key={column.key}
+                      {...props}
+                      onSort={(next) => {
+                        setPage(0);
+                        handleSort(column.key, next);
+                      }}
+                      onSelect={(picked) => {
+                        setPage(0);
+                        props.onSelect(picked);
+                      }}
+                      onOpen={() => setOpenColumn(column.key)}
+                    />
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(({ row, index: rowIndex }, offset) => {
+                const positionInSorted = currentPage * PAGE_SIZE + offset;
+                const isSelected = selected.has(rowIndex);
+                return (
+                  <tr
+                    key={rowIndex}
+                    className={cn('border-t hover:bg-muted/40', isSelected && 'bg-primary/5')}
+                  >
+                    {/* The numbers down the left, counted through the whole
+                        sorted result so page 2 starts at 101. Clicking one
+                        picks the row. */}
+                    <th
+                      scope="row"
+                      className={cn(
+                        'w-10 cursor-pointer border-r bg-muted/60 px-1 py-1 text-center text-[10px] font-normal text-muted-foreground hover:bg-primary/20',
+                        sheet.isRowPicked(positionInSorted)
+                          ? 'bg-primary/30'
+                          : sheet.isRowTouched(positionInSorted) && 'bg-primary/10',
+                      )}
+                      onClick={(event) => sheet.pickRow(positionInSorted, event.shiftKey)}
+                      title={`Pick row ${positionInSorted + 1}`}
+                    >
+                      {positionInSorted + 1}
+                    </th>
+                    <td
+                      className="px-3 py-1.5 align-middle"
+                      onMouseDown={(event) => {
+                        shiftHeld.current = event.shiftKey;
+                      }}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => toggleRow(positionInSorted, checked)}
+                        aria-label={`Select row ${positionInSorted + 1}`}
+                      />
+                    </td>
+                    {columns.map((column, index) => {
+                      const cell = row[index];
+                      // A reference this app knows a record for becomes the way
+                      // into it. Everything else stays plain text — most document
+                      // numbers in SAP predate this app and match nothing.
+                      const matches =
+                        index === referenceIndex && cell !== null && cell !== undefined && cell !== ''
+                          ? referenceMatches?.[String(cell)]
+                          : undefined;
+                      return (
+                        <td
+                          key={column.key}
+                          className={cn(
+                            'whitespace-nowrap px-3 py-1.5',
+                            column.type === 'number' && 'text-right tabular-nums',
+                            sheet.cellClass(positionInSorted, index),
+                          )}
+                          onMouseDown={(event) => {
+                            // Whatever the browser had highlighted elsewhere on
+                            // the page is let go, so there is one selection on
+                            // screen and it is this one.
+                            window.getSelection()?.removeAllRanges();
+                            sheet.startCell(positionInSorted, index, event.shiftKey);
+                          }}
+                          onMouseEnter={() => sheet.extendCell(positionInSorted, index)}
+                        >
+                          {matches?.length ? (
+                            <button
+                              type="button"
+                              className="text-primary underline underline-offset-2 hover:no-underline"
+                              title={matches.map((m) => `${m.entry_no} — ${m.summary}`).join(' · ')}
+                              onClick={() => setOpenReference(String(cell))}
+                            >
+                              {renderCell(cell, column)}
+                            </button>
+                          ) : (
+                            renderCell(cell, column)
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map(({ row, index: rowIndex }, offset) => {
-              const positionInSorted = currentPage * PAGE_SIZE + offset;
-              const isSelected = selected.has(rowIndex);
-              return (
-                <tr
-                  key={rowIndex}
-                  className={cn('border-t hover:bg-muted/40', isSelected && 'bg-primary/5')}
-                >
-                  <td
-                    className="px-3 py-1.5 align-middle"
-                    onMouseDown={(event) => {
-                      shiftHeld.current = event.shiftKey;
-                    }}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => toggleRow(positionInSorted, checked)}
-                      aria-label={`Select row ${positionInSorted + 1}`}
-                    />
-                  </td>
-                  {columns.map((column, index) => {
-                    const cell = row[index];
-                    // A reference this app knows a record for becomes the way
-                    // into it. Everything else stays plain text — most document
-                    // numbers in SAP predate this app and match nothing.
-                    const matches =
-                      index === referenceIndex && cell !== null && cell !== undefined && cell !== ''
-                        ? referenceMatches?.[String(cell)]
-                        : undefined;
-                    return (
-                      <td
-                        key={column.key}
-                        className={cn(
-                          'whitespace-nowrap px-3 py-1.5',
-                          column.type === 'number' && 'text-right tabular-nums',
-                        )}
-                      >
-                        {matches?.length ? (
-                          <button
-                            type="button"
-                            className="text-primary underline underline-offset-2 hover:no-underline"
-                            title={matches.map((m) => `${m.entry_no} — ${m.summary}`).join(' · ')}
-                            onClick={() => setOpenReference(String(cell))}
-                          >
-                            {renderCell(cell, column)}
-                          </button>
-                        ) : (
-                          renderCell(cell, column)
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Excel's status bar: what is picked, and what it adds up to. */}
+        <div className="flex flex-wrap items-center gap-4 border-t bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          {sheet.figures ? (
+            <>
+              {/* The address first, as a sheet's name box has it. */}
+              <span className="font-mono text-foreground">{sheet.address}</span>
+              <span>{sheet.describe()}</span>
+              <span>Count {sheet.figures.cells.toLocaleString('en-IN')}</span>
+              <span>Numbers {sheet.figures.numbers.toLocaleString('en-IN')}</span>
+              <span className="font-medium text-foreground">Sum {figure(sheet.figures.sum)}</span>
+              {sheet.figures.average !== null && (
+                <span>Average {figure(sheet.figures.average)}</span>
+              )}
+              <Button variant="ghost" size="sm" className="h-6" onClick={copyPicked}>
+                <Copy className="mr-1 h-3 w-3" /> Copy
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6" onClick={sheet.clear}>
+                Clear selection
+              </Button>
+            </>
+          ) : (
+            <span>
+              Drag across cells to pick a block — or a row number, a column letter or the corner
+              for the whole of one. Shift extends it; Ctrl+C copies it as cells for Excel and as a
+              picture for chat; the arrow keys walk the sheet.
+            </span>
+          )}
+        </div>
       </div>
 
       {openReference && openMatches.length > 0 && (
@@ -451,6 +641,18 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit }: Pro
       )}
     </div>
   );
+}
+
+/**
+ * Whole figures stay whole; the rest carry two decimals. Grouped the Indian
+ * way throughout, as `formatNumber` is, so one status bar never reads
+ * "7,10,934.55" beside "126,594".
+ */
+function figure(value: number): string {
+  // Adding floats drifts — 0.1 + 0.2 is 0.30000000000000004 — and that drift
+  // is what decides whether the figure prints as whole.
+  const rounded = Math.round(value * 1e6) / 1e6;
+  return Number.isInteger(rounded) ? rounded.toLocaleString('en-IN') : formatNumber(rounded);
 }
 
 function renderCell(cell: SapReportCell | undefined, column: SapReportColumn) {

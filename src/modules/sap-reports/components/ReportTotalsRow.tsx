@@ -40,6 +40,8 @@ export function ReportTotalsRow({ columns, totals, rowCount, isSelection, isFilt
 
   return (
     <tr className={cn(TOTALS_ROW_CLASS, 'bg-muted')} aria-label="Column totals">
+      {/* Over the row numbers down the left margin. */}
+      <th className="w-10 border-r bg-muted" />
       <td className="whitespace-nowrap" title={rows}>
         {!labelInFirstColumn && <span className={labelClass}>{label}</span>}
       </td>
