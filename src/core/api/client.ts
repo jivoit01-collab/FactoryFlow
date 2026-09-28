@@ -8,6 +8,7 @@ import {
   refreshAccessToken,
   shouldRefreshToken as shouldProactivelyRefresh,
 } from '@/core/auth/utils/tokenRefresh.util';
+import { SAP_UNAVAILABLE_EVENT } from '@/core/sapHealth/events';
 
 import type { ApiError } from './types';
 
@@ -19,6 +20,11 @@ declare module 'axios' {
     suppressErrorToast?: boolean;
   }
 }
+
+const GATEWAY_TIMEOUT = 504;
+export const NO_ANSWER_MESSAGE =
+  'The server did not answer in time. It may still finish — refresh and check ' +
+  'before trying again.';
 
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
@@ -351,13 +357,28 @@ function createApiClient(): AxiosInstance {
 
       // Transform error to ApiError format
       const responseData = error.response?.data as Record<string, unknown> | undefined;
-      const errorMessage = extractErrorMessage(responseData, error.message);
+      // No answer in time is not a refusal. The server may still be working
+      // through it -- an SAP posting can outlast the browser's wait, or nginx's
+      // -- so the operator is told to look before pressing again, rather than
+      // handed axios' "timeout of 30000ms exceeded" and a retry that doubles it.
+      const timedOut =
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ETIMEDOUT' ||
+        error.response?.status === GATEWAY_TIMEOUT;
+      const errorMessage = timedOut
+        ? NO_ANSWER_MESSAGE
+        : extractErrorMessage(responseData, error.message);
+
+      // The backend answered "SAP is not responding": let the banner say so now.
+      if (responseData?.code === 'SAP_UNAVAILABLE') {
+        window.dispatchEvent(new Event(SAP_UNAVAILABLE_EVENT));
+      }
 
       const apiError: ApiError = {
         message: errorMessage,
         code: error.code,
         errors: extractFieldErrors(responseData),
-        status: error.response?.status || 500,
+        status: error.response?.status || (timedOut ? GATEWAY_TIMEOUT : 500),
         response: {
           data: responseData,
           status: error.response?.status,

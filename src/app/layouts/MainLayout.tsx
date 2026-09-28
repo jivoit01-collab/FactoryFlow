@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
 import { SIDEBAR_CONFIG } from '@/config/constants';
+import { SapHealthBanner } from '@/core/sapHealth';
 import { AiAssistantWidget } from '@/modules/ai/components';
 import { TooltipProvider } from '@/shared/components/ui';
 import { useSettings } from '@/shared/contexts';
@@ -68,6 +69,9 @@ export function MainLayout() {
                 fullWidth ? 'w-full px-4 py-4' : 'container mx-auto p-6',
               )}
             >
+              {/* Only while SAP is down; on every page, since any page may be
+                  the one that posts. */}
+              <SapHealthBanner />
               <Breadcrumbs />
               <Outlet />
             </div>

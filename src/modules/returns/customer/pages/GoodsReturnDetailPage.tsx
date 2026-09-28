@@ -320,8 +320,12 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
             : 'Goods return received',
       );
     } catch (err) {
-      const message = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(message || 'Could not receive the goods return.');
+      // `detail` is the server's own words (SAP refused, or SAP unreachable);
+      // without one -- a timeout -- the client's message says what is known.
+      const failure = err as { message?: string; response?: { data?: { detail?: string } } };
+      toast.error(
+        failure?.response?.data?.detail || failure?.message || 'Could not receive the goods return.',
+      );
     }
   }
 

@@ -1,6 +1,9 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+/** Receive posts to SAP per note; see `receive`. */
+const RECEIVE_TIMEOUT_MS = 120_000;
+
 /**
  * An item this customer has actually been invoiced.
  *
@@ -486,6 +489,10 @@ export const goodsReturnApi = {
     const response = await apiClient.post<GoodsReturnReceiveResult>(
       API_ENDPOINTS.GOODS_RETURN.RECEIVE(id),
       { warehouse_code: warehouseCode ?? '', ...(groups ? { groups } : {}) },
+      // One SAP A/R Return per note, each a login and a post: a three-bill
+      // return outlasts the default 30s while SAP is only slow, not down. The
+      // page reports the failure itself, so the global toast would say it twice.
+      { timeout: RECEIVE_TIMEOUT_MS, suppressErrorToast: true },
     );
     return response.data;
   },
