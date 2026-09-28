@@ -8,10 +8,16 @@ import { useGlobalDateRange } from '@/core/store/hooks';
 import { DateRangePicker } from '@/modules/gate/components';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
 import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
-import type { InspectionDecisionInfo, InspectionListItem, InspectionListWorkflowStatus } from '../types';
+import type {
+  InspectionDecisionInfo,
+  InspectionListItem,
+  InspectionListParams,
+  InspectionListWorkflowStatus,
+} from '../types';
 
 // Tab metadata
 const TAB_CONFIG = {
@@ -54,6 +60,11 @@ const TAB_CONFIG = {
 
 type StatusFilterKey = keyof typeof TAB_CONFIG;
 const TAB_KEYS = Object.keys(TAB_CONFIG) as StatusFilterKey[];
+
+// Tabs of unfinished work. The server lists these on every date -- a slip still
+// waiting on QC must not drop off once it is older than the picked range -- so
+// the page does not send the range for them either.
+const UNDATED_TABS: StatusFilterKey[] = ['actionable', 'pending', 'draft'];
 
 // Material-class toggle — derived from the SAP material code prefix (RM.../PM...)
 const MATERIAL_FILTERS = [
@@ -102,6 +113,7 @@ export default function PendingInspectionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim());
   const [materialFilter, setMaterialFilter] = useState<MaterialFilterKey>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -118,44 +130,38 @@ export default function PendingInspectionsPage() {
   // Get status filter from URL
   const statusFilter = (searchParams.get('status') as StatusFilterKey) || 'all';
   const currentTab = TAB_CONFIG[statusFilter] || TAB_CONFIG.all;
+  const isUndatedTab = UNDATED_TABS.includes(statusFilter);
+
+  // The search runs on the server, across every date: QC look an item up by its
+  // entry, lot or report number because they do not know when it came in.
+  const listParams = useMemo<InspectionListParams>(() => {
+    if (debouncedSearch) return { search: debouncedSearch };
+    if (isUndatedTab) return {};
+    return dateParams;
+  }, [debouncedSearch, isUndatedTab, dateParams]);
+  const ignoresDateRange = !('from_date' in listParams);
 
   // Single hook — fetches the correct endpoint based on active tab
   const {
     data: items = [],
     isLoading,
+    isFetching,
     error,
     refetch,
-  } = useInspectionsByTab(statusFilter, dateParams);
+  } = useInspectionsByTab(statusFilter, listParams);
 
-  // Filter items based on material class (RM/PM prefix) and search query
+  // Filter items based on material class (RM/PM prefix)
   const filteredItems = useMemo(() => {
     const prefix = MATERIAL_FILTERS.find((m) => m.key === materialFilter)?.prefix;
-    const byMaterial = prefix
+    return prefix
       ? items.filter((item) => item.po_item_code?.toUpperCase().startsWith(prefix))
       : items;
-
-    if (!search.trim()) return byMaterial;
-    const searchLower = search.toLowerCase();
-    return byMaterial.filter(
-      (item) =>
-        item.entry_no?.toLowerCase().includes(searchLower) ||
-        item.vehicle_no?.toLowerCase().includes(searchLower) ||
-        item.party_name?.toLowerCase().includes(searchLower) ||
-        item.po_item_code?.toLowerCase().includes(searchLower) ||
-        item.item_name?.toLowerCase().includes(searchLower) ||
-        item.report_no?.toLowerCase().includes(searchLower) ||
-        item.internal_lot_no?.toLowerCase().includes(searchLower) ||
-        item.material_type_name?.toLowerCase().includes(searchLower) ||
-        item.chemist_decision?.label?.toLowerCase().includes(searchLower) ||
-        item.manager_decision?.label?.toLowerCase().includes(searchLower) ||
-        getEffectiveStatusBadge(item).label.toLowerCase().includes(searchLower),
-    );
-  }, [items, search, materialFilter]);
+  }, [items, materialFilter]);
 
   // Reset to the first page whenever the active filter set changes
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, materialFilter, search, dateRange.from, dateRange.to, pageSize]);
+  }, [statusFilter, materialFilter, debouncedSearch, dateRange.from, dateRange.to, pageSize]);
 
   // Client-side pagination over the already filtered items
   const totalItems = filteredItems.length;
@@ -198,6 +204,7 @@ export default function PendingInspectionsPage() {
       'Date/Time':
         item.submitted_at || item.created_at
           ? new Date(item.submitted_at || item.created_at).toLocaleString('en-US', {
+              year: 'numeric',
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
@@ -221,9 +228,12 @@ export default function PendingInspectionsPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Inspections');
 
-    const fileName = `Inspections_${currentTab.label}_${dateRange.from || 'all'}_to_${dateRange.to || 'all'}.xlsx`;
+    const rangeLabel = ignoresDateRange
+      ? 'all_dates'
+      : `${dateRange.from || 'all'}_to_${dateRange.to || 'all'}`;
+    const fileName = `Inspections_${currentTab.label}_${rangeLabel}.xlsx`;
     XLSX.writeFile(wb, fileName);
-  }, [filteredItems, currentTab.label, dateRange]);
+  }, [filteredItems, currentTab.label, dateRange, ignoresDateRange]);
 
   // Format date/time - consistent with Gate module
   const formatDateTime = (dateTime?: string | null) => {
@@ -231,6 +241,7 @@ export default function PendingInspectionsPage() {
     try {
       const date = new Date(dateTime);
       return date.toLocaleString('en-US', {
+        year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
@@ -286,21 +297,30 @@ export default function PendingInspectionsPage() {
             onClick={() => refetch()}
             className="w-full sm:w-auto"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
       {/* Search Field */}
-      <div className="relative max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search entry, vehicle, vendor, SAP material, report, lot, or status..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      <div className="space-y-1.5">
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search entry, vehicle, vendor, SAP material, report, lot, or material type..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {ignoresDateRange && (
+          <p className="text-xs text-muted-foreground">
+            {debouncedSearch
+              ? 'Searching every date — the date range does not apply to a search.'
+              : 'Showing every unfinished slip, whatever its date.'}
+          </p>
+        )}
       </div>
 
       {/* Filter Tabs + Material toggle */}
@@ -375,9 +395,11 @@ export default function PendingInspectionsPage() {
       {/* Empty State */}
       {!isLoading && !error && filteredItems.length === 0 && (
         <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-          {items.length === 0
-            ? `No ${currentTab.label.toLowerCase()} inspections`
-            : 'No inspections match your search'}
+          {debouncedSearch
+            ? `No ${currentTab.label.toLowerCase()} inspections match "${debouncedSearch}" on any date`
+            : items.length === 0
+              ? `No ${currentTab.label.toLowerCase()} inspections`
+              : 'No inspections match the RM/PM filter'}
         </div>
       )}
 

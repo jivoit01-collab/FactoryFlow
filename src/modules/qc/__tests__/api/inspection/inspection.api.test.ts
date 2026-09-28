@@ -72,6 +72,11 @@ describe('inspectionApi', () => {
     expect(result).toEqual([{ id: 1 }]);
   });
 
+  it('getPendingList passes the search to the server', async () => {
+    await inspectionApi.getPendingList({ search: 'LOT 42' });
+    expect(mockGet).toHaveBeenCalledWith('/api/v2/qc/pending-inspections/?search=LOT+42');
+  });
+
   // ─── getById ──────────────────────────────────────────────────
 
   it('getById calls apiClient.get with inspection id', async () => {

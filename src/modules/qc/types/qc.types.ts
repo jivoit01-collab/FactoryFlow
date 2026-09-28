@@ -39,6 +39,8 @@ export interface InspectionDecisionInfo {
 export interface InspectionListParams {
   from_date?: string;
   to_date?: string;
+  /** Matches entry, vehicle, vendor, SAP material, report, lot, material type — on any date. */
+  search?: string;
   workflow_status?: InspectionWorkflowStatus;
   final_status?: InspectionFinalStatus;
 }

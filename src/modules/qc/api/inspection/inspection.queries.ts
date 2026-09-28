@@ -74,11 +74,17 @@ const TAB_API_MAP: Record<
  */
 export function useInspectionsByTab(tab: string, params?: InspectionListParams) {
   const { key, fn } = TAB_API_MAP[tab as TabKey] || TAB_API_MAP.all;
+  const queryKey = key(params);
 
   return useQuery({
-    queryKey: key(params),
+    queryKey,
     queryFn: () => fn(params),
     staleTime: 30 * 1000,
+    // Keep the rows on screen while a new search loads, so typing does not blank
+    // the table on every keystroke -- but only within the same tab, so another
+    // tab's rows never show up under this tab's title.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === queryKey[1] ? previous : undefined,
   });
 }
 

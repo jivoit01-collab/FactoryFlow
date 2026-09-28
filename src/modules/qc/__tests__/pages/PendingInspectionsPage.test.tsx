@@ -105,23 +105,50 @@ describe('PendingInspectionsPage — States', () => {
     expect(content).toContain('/qc/inspections/');
   });
 
-  it('shows and searches vendor and SAP material details', () => {
+  it('shows vendor and SAP material details', () => {
     const content = readSource();
     expect(content).toContain('Vendor');
     expect(content).toContain('SAP Material');
     expect(content).toContain('SAP Material Code');
-    expect(content).toContain('item.party_name?.toLowerCase().includes(searchLower)');
-    expect(content).toContain('item.po_item_code?.toLowerCase().includes(searchLower)');
-    expect(content).toContain('item.item_name?.toLowerCase().includes(searchLower)');
     expect(content).toContain(
-      'Search entry, vehicle, vendor, SAP material, report, lot, or status...',
+      'Search entry, vehicle, vendor, SAP material, report, lot, or material type...',
     );
   });
 
-  it('shows and searches the gate entry vehicle number', () => {
+  it('shows the gate entry vehicle number', () => {
     const content = readSource();
     expect(content).toContain('Vehicle No.');
     expect(content).toContain('item.vehicle_no');
-    expect(content).toContain('item.vehicle_no?.toLowerCase().includes(searchLower)');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Search & date range (issue #28: items outside the range could not be found)
+// ═══════════════════════════════════════════════════════════════
+
+describe('PendingInspectionsPage — Search and date range', () => {
+  it('sends the debounced search to the server instead of filtering loaded rows', () => {
+    const content = readSource();
+    expect(content).toContain('useDebounce(search.trim())');
+    expect(content).toContain('if (debouncedSearch) return { search: debouncedSearch };');
+    expect(content).toContain('useInspectionsByTab(statusFilter, listParams)');
+    expect(content).not.toContain('searchLower');
+  });
+
+  it('does not send the date range for the unfinished-work tabs', () => {
+    const content = readSource();
+    expect(content).toContain("const UNDATED_TABS: StatusFilterKey[] = ['actionable', 'pending', 'draft'];");
+    expect(content).toContain('if (isUndatedTab) return {};');
+  });
+
+  it('says when the date range does not apply', () => {
+    const content = readSource();
+    expect(content).toContain('Searching every date');
+    expect(content).toContain('Showing every unfinished slip, whatever its date.');
+  });
+
+  it('shows the year on dates, since a search can span any date', () => {
+    const content = readSource();
+    expect(content).toContain("year: 'numeric'");
   });
 });
