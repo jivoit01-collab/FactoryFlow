@@ -197,6 +197,9 @@ export function validateUserResponse(data: unknown): User {
     is_active: Boolean(user.is_active),
     is_staff: Boolean(user.is_staff),
     date_joined: (user.date_joined as string) || '',
+    // A temporary password issued by an administrator: ProtectedRoute asks for
+    // a new one before any page. Dropped here, the forced change never showed.
+    must_change_password: user.must_change_password === true,
     companies: user.companies as User['companies'],
     permissions: user.permissions as string[],
   };

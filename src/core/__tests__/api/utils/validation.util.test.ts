@@ -211,6 +211,13 @@ describe('Validation Utils', () => {
       expect(result.employee_code).toBe('');
     });
 
+    it('keeps must_change_password, so a temporary password forces a new one', () => {
+      expect(validateUserResponse({ ...validData, must_change_password: true }).must_change_password).toBe(true);
+      expect(validateUserResponse(validData).must_change_password).toBe(false);
+      // Only a real true forces the change.
+      expect(validateUserResponse({ ...validData, must_change_password: 'yes' }).must_change_password).toBe(false);
+    });
+
     it('converts is_active to boolean', () => {
       const data = { ...validData, is_active: 0 };
       const result = validateUserResponse(data);
