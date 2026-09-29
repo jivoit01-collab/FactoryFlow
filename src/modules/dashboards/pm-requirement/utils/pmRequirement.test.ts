@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DEFAULT_SORT,
-  DEFAULT_SORT_FOR_FILTER,
   formatDay,
   formatWindow,
   planShortLabel,
 } from '../constants/pm-requirement.constants';
-import type { PmReqRow } from '../types';
+import type { PmReqResponse, PmReqRow } from '../types';
 import {
   csvFilename,
   distinctUnits,
@@ -17,9 +16,7 @@ import {
   formatQtyWithUom,
   formatSigned,
   formatSignedWithUom,
-  isAtRisk,
   nextSort,
-  overPurchaseKind,
   rowStatus,
   searchRows,
   sharedUnit,
@@ -27,6 +24,7 @@ import {
   toCsv,
   unitLabel,
   visibleTotals,
+  withBenchmarkDefaults,
 } from './pmRequirement';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +48,10 @@ function row(overrides: Partial<PmReqRow> = {}): PmReqRow {
     rest_planning_qty: 0,
     on_hand_qty: 0,
     req_qty: 0,
+    benchmark_qty: 0,
+    req_after_benchmark_qty: 0,
+    short_after_benchmark_qty: 0,
+    short_after_benchmark_value: 0,
     open_po_qty: 0,
     req_after_po_qty: 0,
     issued_transfer_qty: 0,
@@ -76,7 +78,7 @@ function row(overrides: Partial<PmReqRow> = {}): PmReqRow {
   };
 }
 
-/** CAPS 1 LTR WHITE AND YELLOW SMALL PLAIN — short even after 70,000 on order. */
+/** CAPS 1 LTR WHITE AND YELLOW SMALL PLAIN — short for the plan, no benchmark set. */
 const SMALL_CAPS = row({
   item_code: 'PM0000235',
   item_name: 'CAPS 1 LTR WHITE AND YELLOW SMALL PLAIN',
@@ -87,6 +89,9 @@ const SMALL_CAPS = row({
   rest_planning_qty: 947500,
   on_hand_qty: 405000,
   req_qty: -542500,
+  req_after_benchmark_qty: -542500,
+  short_after_benchmark_qty: 542500,
+  short_after_benchmark_value: 244125,
   open_po_qty: 70000,
   req_after_po_qty: -472500,
   short_qty: 472500,
@@ -106,10 +111,14 @@ const GREEN_CAPS = row({
   rest_planning_qty: 43315,
   on_hand_qty: 45583,
   req_qty: 2268,
+  req_after_benchmark_qty: 2268,
   req_after_po_qty: 2268,
 });
 
-/** CAPS 5 LTR BROWN — short, but an open order closes it. */
+/**
+ * CAPS 5 LTR BROWN — short for the plan. It has 116,164 on order, which this
+ * board no longer nets off: an order is not stock.
+ */
 const BROWN_CAPS = row({
   item_code: 'PM0000469',
   item_name: 'CAPS 5 LTR BROWN',
@@ -120,18 +129,14 @@ const BROWN_CAPS = row({
   rest_planning_qty: 61005,
   on_hand_qty: 9741,
   req_qty: -51264,
+  req_after_benchmark_qty: -51264,
+  short_after_benchmark_qty: 51264,
+  short_after_benchmark_value: 107654.4,
   open_po_qty: 116164,
   req_after_po_qty: 64900,
   po_covers_shortage: true,
   po_lines: 4,
   po_earliest_due: '2026-09-12',
-});
-
-/** The same, with the order already past due — the live case on Oil. */
-const BROWN_CAPS_LATE = row({
-  ...BROWN_CAPS,
-  po_overdue: true,
-  po_earliest_due: '2026-08-20',
 });
 
 /** PET BOTTLE 1 LTR 40 GMS — blown in-house, well past the plan. */
@@ -146,8 +151,49 @@ const BOTTLE = row({
   rest_planning_qty: -37085,
   on_hand_qty: 0,
   req_qty: 37085,
+  req_after_benchmark_qty: 37085,
   req_after_po_qty: 37085,
   over_issued: true,
+});
+
+// The benchmark cases, off the live 29 September 2026 read of SEP PLANNING 26.
+
+/**
+ * TIN 5 LTR POMACE OLIVE PRINTED — the plan is covered with 1,432 to spare,
+ * but SAP's benchmark in BH-PM is 10,000, so making the plan leaves the
+ * stores 8,568 under it.
+ */
+const TIN_5 = row({
+  item_code: 'PM0000080',
+  item_name: 'TIN 5 LTR POMACE OLIVE PRINTED',
+  sub_group: 'TIN',
+  unit_price: 76.5,
+  planning_qty: 31000,
+  issued_pc_qty: 21273,
+  rest_planning_qty: 9727,
+  on_hand_qty: 11159,
+  req_qty: 1432,
+  benchmark_qty: 10000,
+  req_after_benchmark_qty: -8568,
+  short_after_benchmark_qty: 8568,
+  short_after_benchmark_value: 655452,
+});
+
+/** TIN 15 LTR — short for the plan, and 10,000 more once its benchmark counts. */
+const TIN_15 = row({
+  item_code: 'PM0000076',
+  item_name: 'TIN 15 LTR',
+  sub_group: 'TIN',
+  unit_price: 93,
+  planning_qty: 25140,
+  issued_pc_qty: 3672,
+  rest_planning_qty: 21468,
+  on_hand_qty: 3760,
+  req_qty: -17708,
+  benchmark_qty: 10000,
+  req_after_benchmark_qty: -27708,
+  short_after_benchmark_qty: 27708,
+  short_after_benchmark_value: 2576844,
 });
 
 const ROWS = [SMALL_CAPS, GREEN_CAPS, BROWN_CAPS, BOTTLE];
@@ -155,22 +201,18 @@ const ROWS = [SMALL_CAPS, GREEN_CAPS, BROWN_CAPS, BOTTLE];
 // ---------------------------------------------------------------------------
 
 describe('rowStatus', () => {
-  it('calls a row still short after open orders short', () => {
+  it('calls a row the stores cannot make the plan with short', () => {
     expect(rowStatus(SMALL_CAPS)).toBe('short');
+    expect(rowStatus(TIN_15)).toBe('short');
   });
 
-  it('calls a closed gap on order', () => {
-    expect(rowStatus(BROWN_CAPS)).toBe('po-covered');
+  it('calls a covered plan that leaves the stores under benchmark what it is', () => {
+    expect(rowStatus(TIN_5)).toBe('benchmark');
   });
 
-  it('never reads a late order as a closed gap', () => {
-    // The dominant case on the live book: every open packing-material line on
-    // Oil was past due. "On order" would tell the buyer to stop looking.
-    expect(rowStatus(BROWN_CAPS_LATE)).toBe('po-risk');
-  });
-
-  it('flags an order that lands after the plan closes', () => {
-    expect(rowStatus(row({ ...BROWN_CAPS, po_due_after_plan: true }))).toBe('po-risk');
+  it('ignores open orders — an order is not stock', () => {
+    // 116,164 on order against 51,264 short: the old board said "On order".
+    expect(rowStatus(BROWN_CAPS)).toBe('short');
   });
 
   it('calls an over-issued row over-issued rather than covered', () => {
@@ -183,40 +225,46 @@ describe('rowStatus', () => {
 
   it('prefers short over every other label', () => {
     // Over-issued AND still short: the shortfall is what matters.
-    const both = row({ over_issued: true, req_after_po_qty: -10, short_qty: 10 });
+    const both = row({ over_issued: true, req_qty: -10, req_after_benchmark_qty: -10 });
     expect(rowStatus(both)).toBe('short');
   });
-});
 
-describe('isAtRisk', () => {
-  it('includes anything still short', () => {
-    expect(isAtRisk(SMALL_CAPS)).toBe(true);
-  });
-
-  it('includes a shortage covered only by a late order', () => {
-    expect(isAtRisk(BROWN_CAPS_LATE)).toBe(true);
-  });
-
-  it('excludes a shortage covered by an order due in time', () => {
-    expect(isAtRisk(BROWN_CAPS)).toBe(false);
-  });
-
-  it('excludes an over-issued row, which needs nothing', () => {
-    expect(isAtRisk(BOTTLE)).toBe(false);
+  it('prefers under benchmark over over-issued', () => {
+    const both = row({ over_issued: true, req_qty: 50, req_after_benchmark_qty: -10 });
+    expect(rowStatus(both)).toBe('benchmark');
   });
 });
 
 describe('filterRows', () => {
-  it('short is the buying list', () => {
-    expect(filterRows(ROWS, 'short').map((r) => r.item_code)).toEqual(['PM0000235']);
-  });
+  const WITH_BENCHMARK = [...ROWS, TIN_5, TIN_15];
 
-  it('at risk adds shortages leaning on a late order', () => {
-    const withLate = [SMALL_CAPS, BROWN_CAPS_LATE, GREEN_CAPS];
-    expect(filterRows(withLate, 'at-risk').map((r) => r.item_code)).toEqual([
+  it('short is the buying list, benchmark included', () => {
+    expect(filterRows(WITH_BENCHMARK, 'short').map((r) => r.item_code)).toEqual([
       'PM0000235',
       'PM0000469',
+      'PM0000080',
+      'PM0000076',
     ]);
+  });
+
+  it('short for the plan leaves out rows short only of the benchmark', () => {
+    expect(filterRows(WITH_BENCHMARK, 'plan-short').map((r) => r.item_code)).toEqual([
+      'PM0000235',
+      'PM0000469',
+      'PM0000076',
+    ]);
+  });
+
+  it('under benchmark is the rows the plan is covered for', () => {
+    // TIN 15 is under its benchmark too, but it is short for the plan first.
+    expect(filterRows(WITH_BENCHMARK, 'benchmark').map((r) => r.item_code)).toEqual(['PM0000080']);
+  });
+
+  it('splits short exactly in two', () => {
+    const short = filterRows(WITH_BENCHMARK, 'short').length;
+    const plan = filterRows(WITH_BENCHMARK, 'plan-short').length;
+    const benchmark = filterRows(WITH_BENCHMARK, 'benchmark').length;
+    expect(plan + benchmark).toBe(short);
   });
 
   it('over-issued finds the rows the floor overdrew', () => {
@@ -226,7 +274,7 @@ describe('filterRows', () => {
   it('surplus excludes over-issued rows so the two do not double up', () => {
     // The bottle is in surplus arithmetically, but it belongs under
     // over-issued: reporting it as comfortably covered hides the real fact.
-    expect(filterRows(ROWS, 'surplus').map((r) => r.item_code)).toEqual(['PM0000468', 'PM0000469']);
+    expect(filterRows(WITH_BENCHMARK, 'surplus').map((r) => r.item_code)).toEqual(['PM0000468']);
   });
 
   it('all keeps every component on the plan', () => {
@@ -283,12 +331,13 @@ describe('families', () => {
 
 describe('sortRows', () => {
   it('puts the costliest gap first by default', () => {
-    const sorted = sortRows(ROWS, { key: 'short_value', dir: 'desc' });
-    expect(sorted[0].item_code).toBe('PM0000235');
+    // TIN 15 is fewer pieces short than the small caps and far more rupees.
+    const sorted = sortRows([...ROWS, TIN_15], DEFAULT_SORT);
+    expect(sorted[0].item_code).toBe('PM0000076');
   });
 
   it('sorts a signed column so the worst shortage leads', () => {
-    const sorted = sortRows(ROWS, { key: 'req_qty', dir: 'asc' });
+    const sorted = sortRows(ROWS, { key: 'req_after_benchmark_qty', dir: 'asc' });
     expect(sorted[0].item_code).toBe('PM0000235');
   });
 
@@ -299,10 +348,10 @@ describe('sortRows', () => {
 
   it('breaks ties on item code so the order is stable', () => {
     const tied = [
-      row({ item_code: 'PM0000002', short_value: 5 }),
-      row({ item_code: 'PM0000001', short_value: 5 }),
+      row({ item_code: 'PM0000002', short_after_benchmark_value: 5 }),
+      row({ item_code: 'PM0000001', short_after_benchmark_value: 5 }),
     ];
-    expect(sortRows(tied, { key: 'short_value', dir: 'desc' }).map((r) => r.item_code)).toEqual([
+    expect(sortRows(tied, DEFAULT_SORT).map((r) => r.item_code)).toEqual([
       'PM0000001',
       'PM0000002',
     ]);
@@ -317,223 +366,73 @@ describe('sortRows', () => {
 
 describe('nextSort', () => {
   it('starts a number column descending — biggest problem first', () => {
-    expect(nextSort({ key: 'item_code', dir: 'asc' }, 'req_qty')).toEqual({
-      key: 'req_qty',
+    expect(nextSort({ key: 'item_code', dir: 'asc' }, 'benchmark_qty')).toEqual({
+      key: 'benchmark_qty',
       dir: 'desc',
     });
   });
 
   it('starts a text column ascending — the list from A', () => {
-    expect(nextSort({ key: 'req_qty', dir: 'desc' }, 'item_name')).toEqual({
+    expect(nextSort({ key: 'benchmark_qty', dir: 'desc' }, 'item_name')).toEqual({
       key: 'item_name',
       dir: 'asc',
     });
   });
 
   it('flips the direction when the same column is clicked again', () => {
-    expect(nextSort({ key: 'req_qty', dir: 'desc' }, 'req_qty')).toEqual({
-      key: 'req_qty',
+    expect(nextSort({ key: 'benchmark_qty', dir: 'desc' }, 'benchmark_qty')).toEqual({
+      key: 'benchmark_qty',
       dir: 'asc',
     });
   });
 });
 
-describe('the over-purchased filter', () => {
-  // The buyer's own test: 1,000 needed against 800 on hand needs 200 bought,
-  // so a 400 order is 200 over. The backend does the arithmetic; these check
-  // that the board reads the flag rather than re-deriving it, and that the
-  // row lands under the right chip.
-  const overPurchased = row({
-    item_code: 'PM0000469',
-    planning_qty: 1000,
-    on_hand_qty: 800,
-    req_qty: -200,
-    open_po_qty: 400,
-    req_after_po_qty: 200,
-    to_buy_qty: 200,
-    over_purchase_qty: 200,
-    over_purchase_value: 420,
-    over_purchased: true,
-    po_covers_shortage: true,
-    po_lines: 1,
-  });
-
-  const exact = row({
-    item_code: 'PM0000235',
-    req_qty: -200,
-    open_po_qty: 200,
-    req_after_po_qty: 0,
-    to_buy_qty: 200,
-    po_covers_shortage: true,
-  });
-
-  const stillShort = row({
-    item_code: 'PM0000003',
-    req_qty: -200,
-    open_po_qty: 150,
-    req_after_po_qty: -50,
-    short_qty: 50,
-    to_buy_qty: 200,
-  });
-
-  it('shows only the rows the backend flagged', () => {
-    const rows = [overPurchased, exact, stillShort];
-    expect(filterRows(rows, 'over-purchased').map((r) => r.item_code)).toEqual(['PM0000469']);
-  });
-
-  it('leaves a row that is still short off it', () => {
-    // Under-buying is the Still short chip's problem, not this one's.
-    expect(filterRows([stillShort], 'over-purchased')).toEqual([]);
-  });
-
-  it('does not change what the other chips show', () => {
-    // The row is over-purchased AND covered by its order. Both readings are
-    // true, and adding this filter must not have taken it off the old ones.
-    const rows = [overPurchased, exact, stillShort];
-    expect(filterRows(rows, 'short').map((r) => r.item_code)).toEqual(['PM0000003']);
-    expect(filterRows(rows, 'all')).toHaveLength(3);
-  });
-
-  it('keeps the status column answering "can I make the plan"', () => {
-    // Over-purchasing is a magnitude, not a state that replaces "on order":
-    // the buyer still needs to know the gap is covered.
-    expect(rowStatus(overPurchased)).toBe('po-covered');
-  });
-
-  it('sums only the flagged rows', () => {
-    // A row over by a thousandth of a carton is rounding in a BOM written
-    // per-bottle, and must not appear in a figure anybody is going to act on.
-    const noise = row({ over_purchase_qty: 0.004, over_purchase_value: 0.01 });
-    const totals = visibleTotals([overPurchased, noise, stillShort]);
-    expect(totals.over_purchased_count).toBe(1);
-    expect(totals.over_purchase_qty).toBe(200);
-    expect(totals.over_purchase_value).toBe(420);
-  });
-
-  it('is zero when nothing is over-purchased', () => {
-    const totals = visibleTotals([exact, stillShort]);
-    expect(totals.over_purchased_count).toBe(0);
-    expect(totals.over_purchase_qty).toBe(0);
-  });
-
-  it('carries the excess into the export', () => {
-    const csv = toCsv([overPurchased]);
-    const [header, line] = csv.split('\r\n');
-    expect(header).toContain('Over-purchased');
-    expect(header).toContain('To buy');
-    expect(line).toContain('200');
-    expect(line).toContain('420');
-  });
-});
-
-describe('what "worst first" means per chip', () => {
-  it('sorts the over-purchased chip on the excess, not on the shortfall', () => {
-    // Every over-purchased row has a shortfall of zero -- a row cannot be
-    // short after its order and over-bought on it -- so the shortfall column
-    // would order them alphabetically.
-    expect(DEFAULT_SORT_FOR_FILTER['over-purchased']).toEqual({
-      key: 'over_purchase_value',
-      dir: 'desc',
-    });
-  });
-
-  it('leaves every other chip on the shortfall', () => {
-    for (const filter of ['all', 'short', 'at-risk', 'surplus', 'over-issued'] as const) {
-      expect(DEFAULT_SORT_FOR_FILTER[filter]).toEqual(DEFAULT_SORT);
-    }
-  });
-
-  it('puts the biggest over-buy at the top', () => {
-    // The live September case: a Rs 71 L over-buy of 5 litre HDPE bottles sat
-    // behind 56 alphabetically luckier rows before this.
-    const rows = [
-      row({ item_code: 'PM0000851', over_purchase_value: 1609397, over_purchased: true }),
-      row({ item_code: 'PM0000053', over_purchase_value: 7133738, over_purchased: true }),
-      row({ item_code: 'PM0000080', over_purchase_value: 993240, over_purchased: true }),
-    ];
-    const sorted = sortRows(rows, DEFAULT_SORT_FOR_FILTER['over-purchased']);
-    expect(sorted.map((r) => r.item_code)).toEqual(['PM0000053', 'PM0000851', 'PM0000080']);
-  });
-});
-
 describe('the footer shortfall', () => {
-  // The cell under REQ after PO is the SHORTFALL of the rows on screen, not a
-  // sum of the column. Under the Over-purchased chip the column is full of
-  // positive numbers and this is zero, which is correct and needs saying.
-  const overBought = row({
-    item_code: 'PM0000385',
-    req_after_po_qty: 84000,
-    short_qty: 0,
-    over_purchase_qty: 56500,
-    over_purchase_value: 16950,
-    over_purchased: true,
-  });
+  // The cell under Req is the SHORTFALL of the rows on screen as well as the
+  // column's sum, because the sum nets and the shortfall must not.
+  const spare = row({ item_code: 'PM0000385', req_after_benchmark_qty: 84000 });
 
   const short = row({
     item_code: 'PM0000003',
-    req_after_po_qty: -50,
-    short_qty: 50,
-    short_value: 400,
+    req_qty: -50,
+    req_after_benchmark_qty: -50,
+    short_after_benchmark_qty: 50,
+    short_after_benchmark_value: 400,
   });
 
   it('is zero when every row on screen is covered', () => {
-    const totals = visibleTotals([overBought, overBought]);
+    const totals = visibleTotals([spare, spare]);
     expect(totals.short_qty).toBe(0);
     expect(totals.short_count).toBe(0);
   });
 
   it('counts the components the shortfall is spread across', () => {
-    const totals = visibleTotals([overBought, short, short]);
+    const totals = visibleTotals([spare, short, short]);
     expect(totals.short_qty).toBe(100);
     expect(totals.short_count).toBe(2);
-  });
-
-  it('adds the REQ after PO column straight down', () => {
-    const totals = visibleTotals([overBought, short]);
-    expect(totals.req_after_po_qty).toBe(83950);
+    expect(totals.short_value).toBe(800);
   });
 
   it('keeps the shortfall as a magnitude beside the netted sum', () => {
     // Both figures on one row, and they disagree on purpose: the column nets
     // to a comfortable +83,950 while 50 cartons are still missing, and nobody
-    // makes the plan on 84,000 spare labels. The sum answers "where does the
-    // plan land", the shortfall answers "what has to be bought".
-    const totals = visibleTotals([overBought, short]);
-    expect(totals.req_after_po_qty).toBe(83950);
+    // makes the plan on 84,000 spare labels.
+    const totals = visibleTotals([spare, short]);
+    expect(totals.req_qty).toBe(83950);
     expect(totals.short_qty).toBe(50);
   });
 
   it('sums to a negative when the shown set is short overall', () => {
     const totals = visibleTotals([short, short]);
-    expect(totals.req_after_po_qty).toBe(-100);
+    expect(totals.req_qty).toBe(-100);
     expect(totals.short_qty).toBe(100);
   });
-});
 
-describe('overPurchaseKind', () => {
-  // An excess on an order landing after the plan closes is usually next
-  // month's stock bought early. Calling that the same thing as an excess
-  // arriving this month would make the chip untrustworthy.
-  it('calls an order due after the plan a forward buy', () => {
-    expect(overPurchaseKind(row({ over_purchased: true, po_due_after_plan: true }))).toBe(
-      'forward',
-    );
-  });
-
-  it('calls an order already past due what it is', () => {
-    expect(overPurchaseKind(row({ over_purchased: true, po_overdue: true }))).toBe('overdue');
-  });
-
-  it('says nothing special about an order due inside the plan', () => {
-    expect(overPurchaseKind(row({ over_purchased: true }))).toBe('now');
-  });
-
-  it('prefers the forward reading when an order is both', () => {
-    // A line due after the plan and another already late: the excess is the
-    // one arriving late, and "may be next month's" is the softer claim.
-    expect(
-      overPurchaseKind(row({ over_purchased: true, po_due_after_plan: true, po_overdue: true })),
-    ).toBe('forward');
+  it('counts a row short of its benchmark alone as short', () => {
+    const totals = visibleTotals([TIN_5]);
+    expect(totals.short_count).toBe(1);
+    expect(totals.short_qty).toBe(8568);
+    expect(totals.benchmark_qty).toBe(10000);
   });
 });
 
@@ -602,9 +501,9 @@ describe('visibleTotals', () => {
   });
 
   it('never lets a surplus cancel a shortage', () => {
-    // 472,500 short and 2,268 + 37,085 spare. Summing the signed figure would
-    // report the factory better off than it is.
-    expect(visibleTotals(ROWS).short_qty).toBe(472500);
+    // 542,500 + 51,264 short and 2,268 + 37,085 spare. Summing the signed
+    // figure would report the factory better off than it is.
+    expect(visibleTotals(ROWS).short_qty).toBe(593764);
   });
 
   it('an empty view totals zero rather than NaN', () => {
@@ -638,13 +537,26 @@ describe('formatSigned', () => {
 });
 
 describe('toCsv', () => {
-  it('writes the buyer’s own nine columns first, in their order', () => {
+  it('writes the buyer’s own columns first, in their order', () => {
     const header = toCsv([SMALL_CAPS]).split('\r\n')[0];
     expect(
       header.startsWith(
-        'Item Code,Item Description,Planning,Issue (PC),Rest Planning,On hand,Req,PO,REQ after PO',
+        'Item Code,Item Description,Planning,Issue (PC),Rest Planning,On hand,Benchmark,Req,',
       ),
     ).toBe(true);
+  });
+
+  it('drops the PO columns the board dropped', () => {
+    const header = toCsv([SMALL_CAPS]).split('\r\n')[0];
+    expect(header.split(',')).not.toContain('PO');
+    expect(header).not.toContain('REQ after PO');
+  });
+
+  it('keeps the plan-only Req so the export checks against the old sheet', () => {
+    const [header, line] = toCsv([TIN_5]).split('\r\n');
+    expect(header).toContain('Req (plan only)');
+    expect(line).toContain(',10000,-8568,');
+    expect(line).toContain(',1432,');
   });
 
   it('writes quantities unrounded so Excel totals agree with ours', () => {
@@ -654,7 +566,7 @@ describe('toCsv', () => {
 
   it('keeps the sign on a shortfall', () => {
     const line = toCsv([SMALL_CAPS]).split('\r\n')[1];
-    expect(line).toContain('-472500');
+    expect(line).toContain('-542500');
   });
 
   it('quotes a description containing a comma', () => {
@@ -664,6 +576,49 @@ describe('toCsv', () => {
 
   it('exports only the rows it was given', () => {
     expect(toCsv([SMALL_CAPS]).split('\r\n')).toHaveLength(2);
+  });
+});
+
+describe('withBenchmarkDefaults', () => {
+  // A backend one release behind sends no benchmark fields at all.
+  function response(rows: PmReqRow[], totals: Record<string, unknown>): PmReqResponse {
+    return { data: rows, totals } as unknown as PmReqResponse;
+  }
+
+  const BENCHMARK_FIELDS = [
+    'benchmark_qty',
+    'req_after_benchmark_qty',
+    'short_after_benchmark_qty',
+    'short_after_benchmark_value',
+  ];
+
+  function stripBenchmark(r: PmReqRow): PmReqRow {
+    return Object.fromEntries(
+      Object.entries(r).filter(([key]) => !BENCHMARK_FIELDS.includes(key)),
+    ) as unknown as PmReqRow;
+  }
+
+  it('reads an old backend as "no benchmark", Req being the plan alone', () => {
+    const old = response([stripBenchmark(SMALL_CAPS), stripBenchmark(GREEN_CAPS)], {
+      short_before_po_count: 1,
+      short_before_po_qty: 542500,
+    });
+    const filled = withBenchmarkDefaults(old);
+    expect(filled.data[0].benchmark_qty).toBe(0);
+    expect(filled.data[0].req_after_benchmark_qty).toBe(-542500);
+    expect(filled.data[0].short_after_benchmark_value).toBe(244125);
+    expect(filled.data[1].short_after_benchmark_qty).toBe(0);
+    expect(filled.totals.short_after_benchmark_count).toBe(1);
+    expect(filled.totals.short_after_benchmark_value).toBe(244125);
+    expect(filled.totals.short_before_po_value).toBe(244125);
+    expect(filled.totals.benchmark_gap_count).toBe(0);
+  });
+
+  it('leaves a current backend’s figures alone', () => {
+    const current = response([TIN_5], { short_after_benchmark_count: 1 });
+    const filled = withBenchmarkDefaults(current);
+    expect(filled.data[0]).toBe(TIN_5);
+    expect(filled.totals).toBe(current.totals);
   });
 });
 

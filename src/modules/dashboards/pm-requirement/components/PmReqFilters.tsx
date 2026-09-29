@@ -22,7 +22,7 @@ export interface PmReqFiltersProps {
  * Which of the 196 components the table shows.
  *
  * The counts sit on the chips rather than being left to discover by clicking.
- * "Still short 14" and "Everything 196" is the shape of the month at a
+ * "Short 14" and "Everything 196" is the shape of the month at a
  * glance, and it stops the default view from looking like the whole plan.
  */
 export function PmReqFilters({

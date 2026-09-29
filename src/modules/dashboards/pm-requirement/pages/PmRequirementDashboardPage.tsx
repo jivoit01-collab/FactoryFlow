@@ -13,7 +13,7 @@ import {
   PmReqRowDialog,
   PmReqTable,
 } from '../components';
-import { DEFAULT_FILTER, DEFAULT_SORT, DEFAULT_SORT_FOR_FILTER } from '../constants';
+import { DEFAULT_FILTER, DEFAULT_SORT } from '../constants';
 import type { PmReqFilter, PmReqRow, PmReqSortKey } from '../types';
 import {
   csvFilename,
@@ -40,8 +40,8 @@ function isMissingPlan(error: unknown): boolean {
  *
  * The month's production plan exploded through its bills of material, netted
  * against what the floor has already taken, what the stores still hold and
- * what is already on order — the nine columns the packaging buyer kept by
- * hand in a spreadsheet, read live from SAP instead.
+ * the benchmark SAP says they should keep — the columns the packaging buyer
+ * kept by hand in a spreadsheet, read live from SAP instead.
  *
  * Two requests. The plan list fills the picker and changes when a planner
  * authors a month; the requirement is seven HANA reads and is re-read only when
@@ -97,10 +97,10 @@ export default function PmRequirementDashboardPage() {
       ({
         all: searched.length,
         short: filterRows(searched, 'short').length,
-        'at-risk': filterRows(searched, 'at-risk').length,
+        'plan-short': filterRows(searched, 'plan-short').length,
+        benchmark: filterRows(searched, 'benchmark').length,
         surplus: filterRows(searched, 'surplus').length,
         'over-issued': filterRows(searched, 'over-issued').length,
-        'over-purchased': filterRows(searched, 'over-purchased').length,
       }) as Record<PmReqFilter, number>,
     [searched],
   );
@@ -115,16 +115,10 @@ export default function PmRequirementDashboardPage() {
     [],
   );
 
-  /**
-   * Choosing a chip also chooses what "worst first" means under it.
-   *
-   * Over-purchased rows all have a shortfall of zero — a row cannot be short
-   * after its order and over-bought on it — so leaving the sort on the
-   * shortfall column would list them alphabetically. See the constant.
-   */
+  /** Choosing a chip puts the table back on worst first. */
   const handleFilterChange = useCallback((next: PmReqFilter) => {
     setFilter(next);
-    setSort(DEFAULT_SORT_FOR_FILTER[next] ?? DEFAULT_SORT);
+    setSort(DEFAULT_SORT);
   }, []);
 
   const refreshAll = useCallback(() => {
@@ -171,7 +165,7 @@ export default function PmRequirementDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="PM Requirement"
-        description="The month's packing material plan against what the floor has taken, the stores hold, and purchasing has on order"
+        description="The month's packing material plan against what the floor has taken, what the stores hold, and the benchmark they should keep"
       />
 
       <PmReqPlanBar
@@ -236,10 +230,12 @@ export default function PmRequirementDashboardPage() {
               : allRows.length === 0
                 ? 'This plan explodes to no packing material. Check that its products have bills of material in SAP.'
                 : filter === 'short'
-                  ? 'Nothing is short once open orders are counted. Switch to Everything to see the whole plan.'
-                  : filter === 'over-purchased'
-                    ? 'Nothing is on order beyond what the plan still needs. Every open order is sized against the requirement less stock.'
-                    : 'No component matches these filters.'
+                  ? 'Nothing is short: the stores cover the rest of the plan and still hold their benchmark. Switch to Everything to see the whole plan.'
+                  : filter === 'plan-short'
+                    ? 'The stores cover the rest of the plan for every component shown.'
+                    : filter === 'benchmark'
+                      ? 'No component is short of its benchmark alone.'
+                      : 'No component matches these filters.'
           }
         />
       </div>

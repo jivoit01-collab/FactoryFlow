@@ -61,7 +61,7 @@ function Line({
  * Why one row says what it says.
  *
  * The arithmetic restated as a sum somebody can follow down the page, then
- * the open orders behind `PO`, then the products that drive the requirement.
+ * the open orders for the item, then the products that drive the requirement.
  * This exists because the figure it replaces was hand-typed into a
  * spreadsheet: for the first month or two the buyer will and should want to
  * check the number rather than believe it, and "1,102,500 caps" is only
@@ -146,52 +146,45 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                     hint={meta ? meta.supply_warehouses.join(', ') : undefined}
                   />
                   <Line
-                    label="Req"
+                    label="Left after the plan"
                     value={formatSignedWithUom(row.req_qty, row.uom)}
-                    tone={row.req_qty < 0 ? 'short' : 'good'}
+                    tone={row.req_qty < 0 ? 'short' : undefined}
                     hint="On hand less the rest of the plan"
                   />
                   <Line
-                    label="On open purchase orders"
-                    value={row.open_po_qty ? formatQtyWithUom(row.open_po_qty, row.uom) : '—'}
+                    label="Less the benchmark"
+                    value={
+                      row.benchmark_qty > 0 ? formatQtyWithUom(row.benchmark_qty, row.uom) : '—'
+                    }
                     hint={
-                      row.open_po_qty
-                        ? `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}${
-                            row.po_earliest_due
-                              ? `, due ${formatDay(row.po_earliest_due, true)}${
-                                  row.po_latest_due && row.po_latest_due !== row.po_earliest_due
-                                    ? ` to ${formatDay(row.po_latest_due, true)}`
-                                    : ''
-                                }`
-                              : ', no due date on SAP'
+                      row.benchmark_qty > 0
+                        ? `The minimum SAP holds for it${
+                            meta ? ` in ${meta.supply_warehouses.join(', ')}` : ''
                           }`
-                        : 'Nothing on order'
+                        : 'SAP holds no benchmark for this item'
                     }
                   />
                   <Line
-                    label="REQ after PO"
-                    value={formatSignedWithUom(row.req_after_po_qty, row.uom)}
-                    tone={row.req_after_po_qty < 0 ? 'short' : 'good'}
+                    label="Req"
+                    value={formatSignedWithUom(row.req_after_benchmark_qty, row.uom)}
+                    tone={row.req_after_benchmark_qty < 0 ? 'short' : 'good'}
                     hint={
-                      row.short_value > 0
-                        ? `${formatInr(row.short_value)} at the last cost SAP holds`
+                      row.short_after_benchmark_value > 0
+                        ? `${formatInr(row.short_after_benchmark_value)} at the last cost SAP holds`
                         : undefined
                     }
                   />
                 </section>
 
-                {/* The orders themselves.
-                  `PO` is the one column on this board that names something
-                  outside the factory, and until now it was a quantity with a
-                  hover on it. A buyer who has to close a shortage cannot do
-                  anything with "166,544 across 2 lines" -- what they need is
-                  the order number to quote and the supplier to ring. The
-                  lines add up to the column above, so this is the same figure
-                  broken out rather than a second one to reconcile. */}
+                {/* The orders themselves, NOT netted off `Req` above -- the
+                  board dropped its PO columns and answers what stock has to
+                  cover. They stay here so a buyer about to raise an order
+                  can see the one already placed, and has the order number to
+                  quote and the supplier to ring. */}
                 {poDetails.length > 0 && (
                   <section>
                     <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      What is on order
+                      Already on order · not counted in Req
                       {row.po_lines > poDetails.length &&
                         ` · soonest ${poDetails.length} of ${row.po_lines}`}
                     </h4>
@@ -288,94 +281,23 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
                       {row.po_lines > poDetails.length
-                        ? `The ${poDetails.length} soonest due are listed; PO is the sum of all ${row.po_lines} open lines. Open one for the order itself.`
-                        : 'Still open is what has yet to arrive, and adds up to the PO column. Open one for the order itself.'}
+                        ? `The ${poDetails.length} soonest due of ${row.po_lines} open lines, ${formatQtyWithUom(row.open_po_qty, row.uom)} still to arrive across all of them. Open one for the order itself.`
+                        : 'Still open is what has yet to arrive. Open one for the order itself.'}
                     </p>
                   </section>
                 )}
 
-                {/* The same three numbers read as a buying question rather than
-                  as a coverage question. Only where there is an excess: on a
-                  row that is short, "what was over-bought" is a sum of zero
-                  and printing it would bury the shortage under it. */}
-                {row.over_purchased && (
-                  <section>
-                    <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      What was over-purchased
-                    </h4>
-                    <Line
-                      label="Still to buy"
-                      value={formatQtyWithUom(row.to_buy_qty, row.uom)}
-                      hint={
-                        row.to_buy_qty > 0
-                          ? 'The rest of the plan, less what the stores already hold'
-                          : 'The stores already cover the rest of the plan, so nothing had to be bought'
-                      }
-                    />
-                    <Line
-                      label="Less on open orders"
-                      value={formatQtyWithUom(row.open_po_qty, row.uom)}
-                      hint={`${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}`}
-                    />
-                    <Line
-                      label="Over-purchased"
-                      value={formatQtyWithUom(row.over_purchase_qty, row.uom)}
-                      tone="short"
-                      hint={`${formatInr(
-                        row.over_purchase_value,
-                      )} at the last cost SAP holds — on order beyond what this plan needs`}
-                    />
-                  </section>
-                )}
-
-                {/* The caveats that change what the arithmetic means. */}
-                {(row.po_overdue ||
-                  row.po_due_after_plan ||
-                  row.issued_produced_qty > 0 ||
-                  row.over_purchased) && (
-                  <section className="space-y-2">
-                    {row.po_overdue && (
-                      <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
-                        The earliest open order for this was due{' '}
-                        {formatDay(row.po_earliest_due, true)} and has not arrived. Treating it as
-                        cover means assuming a delivery that is already late.
-                      </p>
-                    )}
-                    {row.po_due_after_plan && (
-                      <p className="rounded-lg border border-orange-300/60 bg-orange-50 px-3 py-2 text-xs text-orange-900 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300">
-                        Nothing on order is due until after this plan ends, so it does not cover
-                        this month&rsquo;s production even though the quantity is on the way.
-                      </p>
-                    )}
-                    {/* The one reading that would turn this row from a finding
-                      into a non-finding, said where somebody will see it. */}
-                    {row.over_purchased && row.po_due_after_plan && (
-                      <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-                        The excess is on an order that is not due until after this plan ends, so it
-                        may be next month&rsquo;s stock bought early rather than an over-buy. Check
-                        it against next month&rsquo;s plan before treating it as one.
-                      </p>
-                    )}
-                    {row.over_purchased && row.over_issued && (
-                      <p className="rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-                        The floor has already drawn more of this than the plan called for, so the
-                        plan needs nothing further and the whole open order counts as excess against
-                        it. That is as likely to be a plan that is out of date as an order that is
-                        wrong.
-                      </p>
-                    )}
-                    {row.issued_produced_qty > 0 && (
-                      <p className="rounded-lg border border-violet-300/60 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
-                        {formatQtyWithUom(row.issued_produced_qty, row.uom)} of the issued figure
-                        was made in-house straight onto the floor rather than drawn from the stores
-                        {row.issued_transfer_qty > 0
-                          ? `, and ${formatQtyWithUom(row.issued_transfer_qty, row.uom)} was transferred up`
-                          : ''}
-                        . Both count as plan produced, but the in-house part never depleted the
-                        stores — so this is not a component to buy, it is one to make.
-                      </p>
-                    )}
-                  </section>
+                {/* The caveat that changes what the arithmetic means. */}
+                {row.issued_produced_qty > 0 && (
+                  <p className="rounded-lg border border-violet-300/60 bg-violet-50 px-3 py-2 text-xs text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+                    {formatQtyWithUom(row.issued_produced_qty, row.uom)} of the issued figure was
+                    made in-house straight onto the floor rather than drawn from the stores
+                    {row.issued_transfer_qty > 0
+                      ? `, and ${formatQtyWithUom(row.issued_transfer_qty, row.uom)} was transferred up`
+                      : ''}
+                    . Both count as plan produced, but the in-house part never depleted the stores —
+                    so this is not a component to buy, it is one to make.
+                  </p>
                 )}
 
                 {/* What drives the requirement. */}
@@ -438,7 +360,7 @@ export function PmReqRowDialog({ row, meta, onClose }: PmReqRowDialogProps) {
                   </section>
                 )}
 
-                {meta && !meta.nets_committed && row.req_qty < 0 && (
+                {meta && !meta.nets_committed && row.req_after_benchmark_qty < 0 && (
                   <p className="text-xs text-muted-foreground">
                     Stock committed to production orders is not subtracted here. On a packing
                     material that commitment is mostly this plan&rsquo;s own orders, so netting it

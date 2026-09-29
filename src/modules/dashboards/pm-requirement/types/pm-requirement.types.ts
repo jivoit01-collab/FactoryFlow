@@ -69,20 +69,23 @@ export interface PmReqPoLine {
 /**
  * One packing-material component the plan needs.
  *
- * The seven figures the buyer reads across, in order:
+ * The figures the buyer reads across, in order:
  *
- *   planning_qty      → Planning
- *   issued_pc_qty     → Issue (PC)
- *   rest_planning_qty → Rest Planning   (planning − issued)
- *   on_hand_qty       → On hand         (the feeding stores only)
- *   req_qty           → Req             (on hand − rest planning)
- *   open_po_qty       → PO
- *   req_after_po_qty  → REQ after PO    (req + PO)
+ *   planning_qty            → Planning
+ *   issued_pc_qty           → Issue (PC)
+ *   rest_planning_qty       → Rest Planning   (planning − issued)
+ *   on_hand_qty             → On hand         (the feeding stores only)
+ *   benchmark_qty           → Benchmark       (SAP's minimum, same stores)
+ *   req_after_benchmark_qty → Req             (on hand − rest planning − benchmark)
  *
- * `req_qty` and `req_after_po_qty` are NEGATIVE when short — the sheet this
- * replaces reads that way and so does this board. `short_qty` is the same
- * shortfall as a positive magnitude, which is what totals and sorting use so
- * a surplus on one row can never cancel a shortage on another.
+ * `Req` is NEGATIVE when short — the sheet this replaces reads that way and
+ * so does this board. `short_after_benchmark_qty` is the same shortfall as a
+ * positive magnitude, which is what totals and sorting use so a surplus on
+ * one row can never cancel a shortage on another.
+ *
+ * `req_qty` is the plan alone (no benchmark), and the PO figures below it are
+ * still sent: the Plant Control board reads them, and the row dialog lists the
+ * open orders. This page no longer nets orders off anything.
  */
 export interface PmReqRow {
   item_code: string;
@@ -95,7 +98,14 @@ export interface PmReqRow {
   issued_pc_qty: number;
   rest_planning_qty: number;
   on_hand_qty: number;
+  /** On hand less the rest of the plan — the plan alone, benchmark aside. */
   req_qty: number;
+  /** `OITW.MinStock` over the same stores as On hand; 0 where SAP has none set. */
+  benchmark_qty: number;
+  /** What this page calls `Req`: `req_qty` less the benchmark. */
+  req_after_benchmark_qty: number;
+  short_after_benchmark_qty: number;
+  short_after_benchmark_value: number;
   open_po_qty: number;
   req_after_po_qty: number;
 
@@ -158,8 +168,19 @@ export interface PmReqTotals {
   rest_planning_qty: number;
   on_hand_qty: number;
   open_po_qty: number;
+  /** Short for the plan alone: `req_qty` below zero. */
   short_before_po_count: number;
   short_before_po_qty: number;
+  short_before_po_value: number;
+  /** Short once the benchmark is netted off too — the page's buying list. */
+  short_after_benchmark_count: number;
+  short_after_benchmark_qty: number;
+  short_after_benchmark_value: number;
+  /** Covered for the plan, short only of the benchmark. */
+  benchmark_gap_count: number;
+  /** Components SAP holds a benchmark for at all. */
+  benchmark_count: number;
+  benchmark_qty: number;
   short_after_po_count: number;
   short_after_po_qty: number;
   short_after_po_value: number;
@@ -247,11 +268,9 @@ export type PmReqSortKey =
   | 'issued_pc_qty'
   | 'rest_planning_qty'
   | 'on_hand_qty'
-  | 'req_qty'
-  | 'open_po_qty'
-  | 'req_after_po_qty'
-  | 'short_value'
-  | 'over_purchase_value';
+  | 'benchmark_qty'
+  | 'req_after_benchmark_qty'
+  | 'short_after_benchmark_value';
 
 export type PmReqSortDir = 'asc' | 'desc';
 
@@ -263,17 +282,12 @@ export interface PmReqSort {
 /**
  * Which rows the table shows.
  *
- * `short` is the buying list — anything still short once open orders are
- * netted off. `at-risk` is narrower and is the one worth acting on today:
- * short, or leaning on an order that is late or lands after the plan closes.
+ * `short` is the buying list — anything short once the rest of the plan AND
+ * the benchmark are counted. It splits exactly in two: `plan-short`, where the
+ * stores cannot make the plan at all, and `benchmark`, where they can but
+ * would be left under their minimum.
  */
-export type PmReqFilter =
-  | 'all'
-  | 'short'
-  | 'at-risk'
-  | 'surplus'
-  | 'over-issued'
-  | 'over-purchased';
+export type PmReqFilter = 'all' | 'short' | 'plan-short' | 'benchmark' | 'surplus' | 'over-issued';
 
 /** What one row is, in a word, for the status column. */
-export type PmReqStatus = 'short' | 'po-covered' | 'po-risk' | 'over-issued' | 'covered';
+export type PmReqStatus = 'short' | 'benchmark' | 'over-issued' | 'covered';

@@ -1,5 +1,12 @@
 import { PM_REQ_COLUMNS } from '../constants';
-import type { PmReqFilter, PmReqRow, PmReqSort, PmReqSortKey, PmReqStatus } from '../types';
+import type {
+  PmReqFilter,
+  PmReqResponse,
+  PmReqRow,
+  PmReqSort,
+  PmReqSortKey,
+  PmReqStatus,
+} from '../types';
 
 // ============================================================================
 // Formatting
@@ -114,7 +121,7 @@ export function distinctUnits(rows: PmReqRow[]): string[] {
 /**
  * A signed quantity, with the sign kept.
  *
- * `Req` and `REQ after PO` are negative when short, and that minus sign is
+ * `Req` is negative when short, and that minus sign is
  * the single most important character on the board. `Intl` renders it, but a
  * value that rounds to zero from below would print "-0", so a magnitude under
  * half a unit is shown as a plain zero.
@@ -161,30 +168,58 @@ export function formatPct(value: number | null | undefined, digits = 1): string 
 /**
  * One row in a word.
  *
- * Order matters, and the first test is deliberately the shortfall: a row that
- * is still short after everything on order arrives is short, whatever else is
- * also true of it. `po-risk` sits above `po-covered` for the same reason —
- * an order that is late or lands after the plan closes should never be read
- * as a gap that is closed.
+ * Order matters. Short for the plan comes first because it is the one that
+ * stops production; under benchmark is a restock, still worth buying but not
+ * this month's emergency. Both outrank over-issued: a row that is short of
+ * something is short, whatever else is also true of it.
  */
 export function rowStatus(row: PmReqRow): PmReqStatus {
-  if (row.req_after_po_qty < 0) return 'short';
-  if (row.po_covers_shortage && (row.po_overdue || row.po_due_after_plan)) return 'po-risk';
-  if (row.po_covers_shortage) return 'po-covered';
+  if (row.req_qty < 0) return 'short';
+  if (row.req_after_benchmark_qty < 0) return 'benchmark';
   if (row.over_issued) return 'over-issued';
   return 'covered';
 }
 
 /**
- * Is this a row somebody should act on today?
+ * The response with the benchmark figures filled in where they are missing.
  *
- * Wider than "still short": a shortage covered only by an order that is
- * already late, or not due until after the plan is over, is a shortage that
- * needs chasing even though the arithmetic says it is covered.
+ * The two repos deploy separately, and a backend one release behind sends no
+ * benchmark. Read that as "no benchmark" — `Req` falls back to the plan alone,
+ * which is exactly what that backend computed — rather than letting every
+ * figure on the board read `NaN` until the other deploy lands.
  */
-export function isAtRisk(row: PmReqRow): boolean {
-  if (row.req_after_po_qty < 0) return true;
-  return row.req_qty < 0 && (row.po_overdue || row.po_due_after_plan);
+export function withBenchmarkDefaults(response: PmReqResponse): PmReqResponse {
+  const rows = response.data.map((row) => {
+    if (typeof row.req_after_benchmark_qty === 'number') return row;
+    const short = Math.max(0, -row.req_qty);
+    return {
+      ...row,
+      benchmark_qty: 0,
+      req_after_benchmark_qty: row.req_qty,
+      short_after_benchmark_qty: short,
+      short_after_benchmark_value: short * (row.unit_price || 0),
+    };
+  });
+  const totals = response.totals;
+  if (typeof totals.short_after_benchmark_count === 'number') {
+    return { ...response, data: rows };
+  }
+  // With no benchmark, short for the plan and short overall are one set.
+  const shortValue = rows.reduce((sum, row) => sum + row.short_after_benchmark_value, 0);
+  return {
+    ...response,
+    data: rows,
+    totals: {
+      ...totals,
+      short_before_po_value: shortValue,
+      short_after_benchmark_count: totals.short_before_po_count,
+      short_after_benchmark_qty: totals.short_before_po_qty,
+      short_after_benchmark_value: shortValue,
+      benchmark_gap_count: 0,
+      benchmark_count: 0,
+      benchmark_qty: 0,
+    },
+  };
 }
 
 // ============================================================================
@@ -194,15 +229,15 @@ export function isAtRisk(row: PmReqRow): boolean {
 export function filterRows(rows: PmReqRow[], filter: PmReqFilter): PmReqRow[] {
   switch (filter) {
     case 'short':
-      return rows.filter((row) => row.req_after_po_qty < 0);
-    case 'at-risk':
-      return rows.filter(isAtRisk);
+      return rows.filter((row) => row.req_after_benchmark_qty < 0);
+    case 'plan-short':
+      return rows.filter((row) => row.req_qty < 0);
+    case 'benchmark':
+      return rows.filter((row) => row.req_qty >= 0 && row.req_after_benchmark_qty < 0);
     case 'surplus':
-      return rows.filter((row) => row.req_after_po_qty >= 0 && !row.over_issued);
+      return rows.filter((row) => row.req_after_benchmark_qty >= 0 && !row.over_issued);
     case 'over-issued':
       return rows.filter((row) => row.over_issued);
-    case 'over-purchased':
-      return rows.filter((row) => row.over_purchased);
     case 'all':
     default:
       return rows;
@@ -310,8 +345,8 @@ export function nextSort(current: PmReqSort, key: PmReqSortKey): PmReqSort {
  * Separate from the API's own totals on purpose: those describe the whole
  * plan, these describe the filtered view, and a footer that showed the whole
  * plan under a filtered table would not add up to the column above it.
- * Shortfall is summed from `short_qty` — the positive magnitude — so a
- * surplus row can never cancel a short one.
+ * Shortfall is summed from `short_after_benchmark_qty` — the positive
+ * magnitude — so a surplus row can never cancel a short one.
  */
 export function visibleTotals(rows: PmReqRow[]) {
   const sum = (pick: (row: PmReqRow) => number) =>
@@ -327,41 +362,20 @@ export function visibleTotals(rows: PmReqRow[]) {
     issued_pc_qty: sum((row) => row.issued_pc_qty),
     rest_planning_qty: sum((row) => row.rest_planning_qty),
     on_hand_qty: sum((row) => row.on_hand_qty),
-    open_po_qty: sum((row) => row.open_po_qty),
-    // The REQ after PO column, added straight down. A NET figure: a surplus
-    // on one component does offset a shortage on another in it, which is why
+    benchmark_qty: sum((row) => row.benchmark_qty),
+    // The Req column, added straight down. A NET figure: a surplus on one
+    // component does offset a shortage on another in it, which is why
     // `short_qty` is carried beside it rather than replaced by it. The two
     // answer different questions -- "where does the plan land overall" and
     // "how much has to be bought" -- and the footer shows both.
-    req_after_po_qty: sum((row) => row.req_after_po_qty),
-    short_qty: sum((row) => row.short_qty),
-    short_value: sum((row) => row.short_value),
+    req_qty: sum((row) => row.req_after_benchmark_qty),
+    short_qty: sum((row) => row.short_after_benchmark_qty),
+    short_value: sum((row) => row.short_after_benchmark_value),
     // How many of the rows on screen the shortfall is spread across, so the
     // footer can say "X short across Y components" rather than leaving a
     // lone figure to be read as a sum of the column above it.
-    short_count: rows.filter((row) => row.req_after_po_qty < 0).length,
-    // Summed over the FLAGGED rows only, matching what the backend totals do:
-    // a row over by a thousandth of a carton is not part of an excess anybody
-    // is going to act on, so it must not appear in the figure either.
-    over_purchase_qty: sum((row) => (row.over_purchased ? row.over_purchase_qty : 0)),
-    over_purchase_value: sum((row) => (row.over_purchased ? row.over_purchase_value : 0)),
-    over_purchased_count: rows.filter((row) => row.over_purchased).length,
+    short_count: rows.filter((row) => row.req_after_benchmark_qty < 0).length,
   };
-}
-
-/**
- * Which kind of over-purchase a row is.
- *
- * An excess on an order that lands after the plan closes is usually next
- * month's stock bought early; an excess on an order already past due is money
- * committed to a delivery nobody has chased. Neither is the same as an excess
- * arriving inside the plan, and the row says which rather than lumping all
- * three together as "over-purchased".
- */
-export function overPurchaseKind(row: PmReqRow): 'overdue' | 'forward' | 'now' {
-  if (row.po_due_after_plan) return 'forward';
-  if (row.po_overdue) return 'overdue';
-  return 'now';
 }
 
 // ============================================================================
@@ -389,17 +403,10 @@ function csvCell(value: string | number): string {
  */
 export function toCsv(rows: PmReqRow[]): string {
   const header = PM_REQ_COLUMNS.map((column) => column.csv);
-  const extra = [
-    'Family',
-    'UoM',
-    'Status',
-    'Shortfall',
-    'Shortfall value',
-    'To buy',
-    'Over-purchased',
-    'Over-purchased value',
-    'PO due',
-  ];
+  // `Req (plan only)` is the old Req, before the benchmark: the buyer's
+  // spreadsheet has that column, and without it the export cannot be checked
+  // against it.
+  const extra = ['Family', 'UoM', 'Status', 'Req (plan only)', 'Shortfall', 'Shortfall value'];
 
   const lines = [
     [...header, ...extra].map(csvCell).join(','),
@@ -411,18 +418,14 @@ export function toCsv(rows: PmReqRow[]): string {
         row.issued_pc_qty,
         row.rest_planning_qty,
         row.on_hand_qty,
-        row.req_qty,
-        row.open_po_qty,
-        row.req_after_po_qty,
+        row.benchmark_qty,
+        row.req_after_benchmark_qty,
         row.sub_group,
         row.uom,
         rowStatus(row),
-        row.short_qty,
-        row.short_value,
-        row.to_buy_qty,
-        row.over_purchase_qty,
-        row.over_purchase_value,
-        row.po_earliest_due ?? '',
+        row.req_qty,
+        row.short_after_benchmark_qty,
+        row.short_after_benchmark_value,
       ]
         .map(csvCell)
         .join(','),

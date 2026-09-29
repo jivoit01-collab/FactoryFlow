@@ -24,9 +24,10 @@ export const PM_PLAN_LIST_STALE_TIME = 30 * 60 * 1000; // 30 minutes
  *
  * 500,000 caps short and 500 tins short are not the same problem, and a board
  * sorted on pieces puts caps and labels at the top every month regardless.
- * The buyer can still read it down any column.
+ * The buyer can still read it down any column. Every chip opens on this too:
+ * each is a subset of the same buying list, so "worst" means the same thing.
  */
-export const DEFAULT_SORT: PmReqSort = { key: 'short_value', dir: 'desc' };
+export const DEFAULT_SORT: PmReqSort = { key: 'short_after_benchmark_value', dir: 'desc' };
 
 /**
  * The board opens on the buying list, not on all 196 components.
@@ -38,53 +39,43 @@ export const DEFAULT_SORT: PmReqSort = { key: 'short_value', dir: 'desc' };
  */
 export const DEFAULT_FILTER: PmReqFilter = 'short';
 
-/**
- * Worst first means a different column on a different chip.
- *
- * `short_value` is the right answer on four of the five chips and is exactly
- * the wrong one on Over-purchased: a row cannot be both short after its order
- * and over-purchased on it, so every row under that chip has a `short_value`
- * of zero and the table falls back to item-code order. On the live September
- * plan that put a Rs 71,000 over-buy of 5 litre HDPE bottles behind
- * fifty-six alphabetically luckier rows.
- *
- * Switching chips therefore resets the sort. Each chip is a different
- * question and "worst" means something different in each; the buyer can still
- * read any of them down any column afterwards.
- */
-export const DEFAULT_SORT_FOR_FILTER: Record<PmReqFilter, PmReqSort> = {
-  all: DEFAULT_SORT,
-  short: DEFAULT_SORT,
-  'at-risk': DEFAULT_SORT,
-  surplus: DEFAULT_SORT,
-  'over-issued': DEFAULT_SORT,
-  'over-purchased': { key: 'over_purchase_value', dir: 'desc' },
-};
-
 export const PM_REQ_FILTERS: { value: PmReqFilter; label: string; hint: string }[] = [
-  { value: 'short', label: 'Still short', hint: 'Short after open orders are netted off' },
   {
-    value: 'at-risk',
-    label: 'At risk',
-    hint: 'Short, or covered only by an order that is late or lands after the plan',
+    value: 'short',
+    label: 'Short',
+    hint: 'Short once the rest of the plan and the stock benchmark are both counted',
+  },
+  {
+    value: 'plan-short',
+    label: 'Short for the plan',
+    hint: 'The stores cannot cover the rest of the plan, benchmark aside',
+  },
+  {
+    value: 'benchmark',
+    label: 'Under benchmark',
+    hint: 'The plan is covered, but making it would leave the stores under their benchmark',
   },
   { value: 'all', label: 'Everything', hint: 'Every component on the plan' },
-  { value: 'surplus', label: 'Covered', hint: 'Stock and orders cover what is left of the plan' },
+  {
+    value: 'surplus',
+    label: 'Covered',
+    hint: 'The stores cover the rest of the plan and still hold their benchmark',
+  },
   {
     value: 'over-issued',
     label: 'Over-issued',
     hint: 'The floor drew more than the plan called for',
   },
-  {
-    value: 'over-purchased',
-    label: 'Over-purchased',
-    hint: 'More on order than the plan still needs once stock is counted',
-  },
 ];
 
 /**
- * The nine columns of the buyer's sheet, in the order the sheet reads them,
- * plus the two the sheet works out in its head.
+ * The buyer's sheet, in the order the sheet reads it.
+ *
+ * `PO` and `REQ after PO` were dropped at the buyer's request: the sheet
+ * answers what the plan and the benchmark need from stock, and an open order
+ * is not stock. The orders are still listed in the row dialog, so nobody
+ * raises a second PO against one already placed. `Req` is the benchmark
+ * figure, not `req_qty` — see the row type.
  *
  * `csv` is what the column is called in the export. The export exists because
  * this board replaces a spreadsheet, and the buyer who kept that spreadsheet
@@ -98,9 +89,8 @@ export const PM_REQ_COLUMNS = [
   { key: 'issued_pc_qty', label: 'Issue (PC)', csv: 'Issue (PC)', numeric: true },
   { key: 'rest_planning_qty', label: 'Rest Planning', csv: 'Rest Planning', numeric: true },
   { key: 'on_hand_qty', label: 'On hand', csv: 'On hand', numeric: true },
-  { key: 'req_qty', label: 'Req', csv: 'Req', numeric: true },
-  { key: 'open_po_qty', label: 'PO', csv: 'PO', numeric: true },
-  { key: 'req_after_po_qty', label: 'REQ after PO', csv: 'REQ after PO', numeric: true },
+  { key: 'benchmark_qty', label: 'Benchmark', csv: 'Benchmark', numeric: true },
+  { key: 'req_after_benchmark_qty', label: 'Req', csv: 'Req', numeric: true },
 ] as const;
 
 // ============================================================================
@@ -123,33 +113,15 @@ export const COLUMN_HELP: Record<string, string> = {
     'Planning less what the floor has taken. Goes negative where more was drawn than the plan called for, which is shown rather than hidden.',
   on_hand_qty:
     'Stock in the stores that feed the floor. The floor’s own store is deliberately excluded — it is already counted as plan produced.',
-  req_qty:
-    'On hand less the rest of the plan. Negative means short by that much. Stock committed to production orders is NOT subtracted — that would count this plan’s own demand twice.',
-  open_po_qty:
-    'Quantity on purchase orders still open, whenever they were raised and wherever they are due.',
-  req_after_po_qty:
-    'Req plus what is on order. Still negative means the factory is short even after everything already bought arrives.',
-  over_purchase_qty:
-    'What is on order beyond what the plan still needs once stock is counted. 1,000 needed with 800 on hand is 200 to buy, so a 400 order is 200 over. An order due after the plan ends may be next month’s stock rather than a mistake — the row says which.',
+  benchmark_qty:
+    'The minimum SAP holds for this item in the same stores — the Stock Benchmark board’s figure. The stores should still hold this much once the plan is made. A dash means SAP has none set.',
+  req_after_benchmark_qty:
+    'On hand less the rest of the plan, less the benchmark. Negative means that much has to be bought to make the plan and leave the stores at their benchmark. Open purchase orders are not counted. Stock committed to production orders is NOT subtracted — that would count this plan’s own demand twice.',
 };
-
-/**
- * What the over-purchase footnote on a row says, in a word.
- *
- * An excess on an order that lands after the plan closes is very often next
- * month's stock bought early rather than a mistake, and the board must not
- * call the two the same thing. It has the flag, so it says which.
- */
-export const OVER_PURCHASE_NOTE = {
-  overdue: 'excess on an order already past due',
-  forward: 'excess on an order due after the plan ends — may be next month’s',
-  now: 'excess on an order due inside the plan',
-} as const;
 
 export const STATUS_LABELS: Record<string, string> = {
   short: 'Short',
-  'po-covered': 'On order',
-  'po-risk': 'Order at risk',
+  benchmark: 'Under benchmark',
   'over-issued': 'Over-issued',
   covered: 'Covered',
 };

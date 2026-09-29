@@ -1,21 +1,14 @@
-import { ChevronDown, ChevronsUpDown, ChevronUp, Clock, TriangleAlert } from 'lucide-react';
+import { ChevronDown, ChevronsUpDown, ChevronUp, TriangleAlert } from 'lucide-react';
 
 import { Badge } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import {
-  COLUMN_HELP,
-  formatDay,
-  OVER_PURCHASE_NOTE,
-  PM_REQ_COLUMNS,
-  STATUS_LABELS,
-} from '../constants';
+import { COLUMN_HELP, PM_REQ_COLUMNS, STATUS_LABELS } from '../constants';
 import type { PmReqRow, PmReqSort, PmReqSortKey } from '../types';
 import {
   formatInrCompact,
   formatQty,
   formatSigned,
-  overPurchaseKind,
   rowStatus,
   unitLabel,
   visibleTotals,
@@ -34,10 +27,8 @@ export interface PmReqTableProps {
 const STATUS_STYLES: Record<string, string> = {
   short:
     'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300',
-  'po-risk':
+  benchmark:
     'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300',
-  'po-covered':
-    'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300',
   'over-issued':
     'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300',
   covered:
@@ -58,8 +49,8 @@ function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
 /**
  * A signed figure, coloured only where the sign carries a decision.
  *
- * `Req` and `REQ after PO` go red when negative because that is a shortage
- * somebody has to close. The other columns are never coloured: a big
+ * `Req` goes red when negative because that is a shortage somebody has to
+ * close. The other columns are never coloured: a big
  * `Planning` is not good or bad, and colouring every number leaves nothing
  * standing out.
  */
@@ -142,12 +133,12 @@ export function PmReqTable({
 
   return (
     <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
-      {/* The table is nine numeric columns wide and scrolls sideways on its
+      {/* The table is eight columns wide and scrolls sideways on its
           own rather than pushing the page out. The first two columns are
           sticky, because a code and a description scrolled out of view make
           the numbers unreadable. */}
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] border-collapse text-sm">
+        <table className="w-full min-w-[1000px] border-collapse text-sm">
           <thead>
             <tr className="border-b bg-muted/40">
               {PM_REQ_COLUMNS.map((column, index) => (
@@ -240,50 +231,26 @@ export function PmReqTable({
                       {formatQty(row.on_hand_qty)}
                       <UnitTag uom={row.uom} />
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      <SignedCell value={row.req_qty} uom={row.uom} />
-                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
-                      {row.open_po_qty ? (
-                        <span
-                          className="inline-flex items-center gap-1"
-                          title={
-                            row.po_earliest_due
-                              ? `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, earliest due ${formatDay(row.po_earliest_due, true)} — open the row for the orders`
-                              : `${row.po_lines} open line${row.po_lines === 1 ? '' : 's'}, no due date — open the row for the orders`
-                          }
-                        >
-                          {(row.po_overdue || row.po_due_after_plan) && (
-                            <Clock className="h-3 w-3 shrink-0 text-orange-500" />
-                          )}
-                          {formatQty(row.open_po_qty)}
+                      {row.benchmark_qty > 0 ? (
+                        <>
+                          {formatQty(row.benchmark_qty)}
                           <UnitTag uom={row.uom} />
-                        </span>
+                        </>
                       ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                      {/* The excess sits under the order it is part of, not in
-                          a column of its own: it is a reading of THIS number
-                          against the requirement, and a tenth column would
-                          push the table wider for a figure that is zero on
-                          most rows. */}
-                      {row.over_purchased && (
                         <span
-                          className="block text-[11px] tabular-nums text-amber-600 dark:text-amber-400"
-                          title={`${formatQty(row.to_buy_qty)} still to buy against a ${formatQty(
-                            row.open_po_qty,
-                          )} order — ${OVER_PURCHASE_NOTE[overPurchaseKind(row)]}`}
+                          className="text-muted-foreground"
+                          title="SAP holds no benchmark for this item in these stores"
                         >
-                          +{formatQty(row.over_purchase_qty)}
-                          <UnitTag uom={row.uom} /> over
+                          —
                         </span>
                       )}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <SignedCell value={row.req_after_po_qty} uom={row.uom} emphasise />
-                      {row.short_value > 0 && (
+                      <SignedCell value={row.req_after_benchmark_qty} uom={row.uom} emphasise />
+                      {row.short_after_benchmark_value > 0 && (
                         <span className="block text-[11px] tabular-nums text-muted-foreground">
-                          {formatInrCompact(row.short_value)}
+                          {formatInrCompact(row.short_after_benchmark_value)}
                         </span>
                       )}
                     </td>
@@ -311,7 +278,7 @@ export function PmReqTable({
                 <td className="sticky left-[112px] z-10 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
                   {totals.item_count} {totals.item_count === 1 ? 'component' : 'components'}
                 </td>
-                {/* Four straight sums, and they are only sums while every
+                {/* Five straight sums, and they are only sums while every
                     row on screen is in the same unit. Six of this plan's 197
                     components are metres or kilograms, so the unfiltered
                     table is exactly the case that must not add. */}
@@ -347,35 +314,12 @@ export function PmReqTable({
                     <UnitTag uom={totals.uom} />
                   </td>
                 )}
-                {/* Deliberately not a sum: adding signed requirements across
-                    items is meaningless, because spare caps are not missing
-                    cartons. The hover says so, so it does not read as a
-                    figure that failed to calculate. */}
-                <td
-                  className="px-3 py-2.5 text-right text-xs text-muted-foreground"
-                  title="Deliberately not totalled: adding signed requirements across components is meaningless, because spare caps are not missing cartons."
-                >
-                  —
-                </td>
                 {totals.uom === null ? (
                   <MixedUnitsCell units={totals.units} />
                 ) : (
                   <td className="px-3 py-2.5 text-right tabular-nums">
-                    {formatQty(totals.open_po_qty)}
+                    {formatQty(totals.benchmark_qty)}
                     <UnitTag uom={totals.uom} />
-                    {totals.over_purchased_count > 0 && (
-                      <span
-                        className="block text-[11px] tabular-nums text-amber-600 dark:text-amber-400"
-                        title={`${formatInrCompact(
-                          totals.over_purchase_value,
-                        )} on order beyond what the plan needs, across ${
-                          totals.over_purchased_count
-                        } component${totals.over_purchased_count === 1 ? '' : 's'}`}
-                      >
-                        +{formatQty(totals.over_purchase_qty)}
-                        <UnitTag uom={totals.uom} /> over
-                      </span>
-                    )}
                   </td>
                 )}
                 {/* The column added straight down, which is what somebody
@@ -412,11 +356,11 @@ export function PmReqTable({
                     className="px-3 py-2.5 text-right"
                     title={
                       totals.short_qty > 0
-                        ? `The column added up: ${formatQty(totals.req_after_po_qty)}. It nets, so a surplus on one component offsets a shortage on another — ${formatQty(totals.short_count)} of the ${totals.item_count} components shown are short by ${formatQty(totals.short_qty)} in total, and that is the figure to buy against.`
-                        : `The column added up: ${formatQty(totals.req_after_po_qty)}. None of the components shown is short once its open orders are counted.`
+                        ? `The column added up: ${formatQty(totals.req_qty)}. It nets, so a surplus on one component offsets a shortage on another — ${formatQty(totals.short_count)} of the ${totals.item_count} components shown are short by ${formatQty(totals.short_qty)} in total, and that is the figure to buy against.`
+                        : `The column added up: ${formatQty(totals.req_qty)}. None of the components shown is short of the plan or its benchmark.`
                     }
                   >
-                    <SignedCell value={totals.req_after_po_qty} uom={totals.uom} emphasise />
+                    <SignedCell value={totals.req_qty} uom={totals.uom} emphasise />
                     {totals.short_qty > 0 ? (
                       <span className="block text-[11px] tabular-nums text-rose-600 dark:text-rose-400">
                         {formatQty(totals.short_qty)}

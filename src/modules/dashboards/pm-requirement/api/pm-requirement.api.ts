@@ -3,6 +3,7 @@ import { apiClient } from '@/core/api';
 import type { POPrintPayload } from '@/modules/warehouse/grpo/types';
 
 import type { PmReqPlanListResponse, PmReqResponse } from '../types';
+import { withBenchmarkDefaults } from '../utils';
 
 const EP = API_ENDPOINTS.PACKING_MATERIAL;
 
@@ -14,15 +15,15 @@ export const pmRequirementApi = {
   },
 
   /**
-   * One plan exploded through its bills of material, against stock and open
-   * orders. Omitting `absId` lets the API pick the plan covering today, which
-   * is what the board opens on.
+   * One plan exploded through its bills of material, against stock and the
+   * stock benchmark. Omitting `absId` lets the API pick the plan covering
+   * today, which is what the board opens on.
    */
   async getRequirement(absId?: number | null): Promise<PmReqResponse> {
     const response = await apiClient.get<PmReqResponse>(EP.REQUIREMENT, {
       params: absId ? { abs_id: absId } : undefined,
     });
-    return response.data;
+    return withBenchmarkDefaults(response.data);
   },
 
   /**
