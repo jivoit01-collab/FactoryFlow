@@ -243,7 +243,12 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
   const [warehouseCode, setWarehouseCode] = useState(
     retry ? detail.sap_return_warehouse : '',
   );
-  const owed = detail.invoice_refs.filter((ref) => ref.sap_gr_doc_entry === null);
+  // A bill nothing came back against gets no note: it was named on the return,
+  // but no line was keyed against it, so there are no goods to post for it.
+  const returning = returningRefIds(detail);
+  const unposted = detail.invoice_refs.filter((ref) => ref.sap_gr_doc_entry === null);
+  const owed = unposted.filter((ref) => returning.has(ref.id));
+  const nothingReturned = unposted.filter((ref) => !returning.has(ref.id));
   // Which return note each bill goes on, keyed by invoice-ref id. One per bill to
   // begin with, which is what every return posted before the choice existed; the
   // operator combines them by pointing two bills at the same note.
@@ -287,7 +292,7 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
         {
           label: 'Creates',
           value:
-            notes.length === 1
+            notes.length <= 1
               ? 'One A/R Return'
               : `${notes.length} A/R Returns, one per return note`,
         },
@@ -297,6 +302,14 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           label: `Note ${index + 1}`,
           value: note.map((ref) => ref.sap_invoice_doc_num).join(' + '),
         })),
+        ...(nothingReturned.length > 0
+          ? [
+              {
+                label: 'No note',
+                value: `${nothingReturned.map((ref) => ref.sap_invoice_doc_num).join(', ')} (nothing returned)`,
+              },
+            ]
+          : []),
         { label: 'Goods go back into', value: warehouseCode },
       ],
       confirmLabel: 'Receive and post',
@@ -405,6 +418,13 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           </div>
         )}
 
+        {nothingReturned.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            No return note for {nothingReturned.map((ref) => ref.sap_invoice_doc_num).join(', ')}{' '}
+            — nothing is being returned off {nothingReturned.length > 1 ? 'those bills' : 'that bill'}.
+          </p>
+        )}
+
         <div className="space-y-2 sm:max-w-sm">
           <Label>Goods-Return Warehouse *</Label>
           <select
@@ -449,7 +469,13 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
  *  refused. Only shown once something has been posted or refused: before that
  *  there is nothing to say that the summary above does not. */
 function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
-  const refs = detail.invoice_refs;
+  // A bill nothing came back against never gets a document, so it is named
+  // under the table rather than listed in it as "Not posted".
+  const returning = returningRefIds(detail);
+  const refs = detail.invoice_refs.filter(
+    (ref) => ref.sap_gr_doc_entry !== null || returning.has(ref.id),
+  );
+  const nothingReturned = detail.invoice_refs.filter((ref) => !refs.includes(ref));
   const anything = refs.some((ref) => ref.sap_gr_doc_entry !== null || ref.sap_post_error);
   if (refs.length === 0 || !anything) return null;
   // Each document is raised on its own bill's customer, so name them when they
@@ -508,9 +534,24 @@ function SapDocumentsCard({ detail }: { detail: GoodsReturnDetail }) {
             </tbody>
           </table>
         </div>
+        {nothingReturned.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            No return for {nothingReturned.map((ref) => ref.sap_invoice_doc_num).join(', ')} —
+            nothing was returned off {nothingReturned.length > 1 ? 'those bills' : 'that bill'}.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+/** The invoice refs at least one of the return's lines came off. */
+function returningRefIds(detail: GoodsReturnDetail): Set<number> {
+  const ids = new Set<number>();
+  for (const line of detail.lines) {
+    if (line.invoice_ref !== null) ids.add(line.invoice_ref);
+  }
+  return ids;
 }
 
 /** The return's printable documents, one per posted invoice.
