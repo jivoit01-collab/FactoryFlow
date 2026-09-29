@@ -127,6 +127,25 @@ describe('Meter tree — who pays', () => {
     });
   });
 
+  it('saves a change dated the same day as a version as its correction', () => {
+    calls.versions = [{ ...LAB.tree?.setup, note: 'Lab metered on its own' }];
+    renderTree();
+    const dialog = openWhoPays(2);
+    fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: '2026-09-01' } });
+    expect(within(dialog).getByText(/There is already a version from 1 Sept 2026/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'All Oil' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: /save the correction/i }));
+    expect(calls.create).not.toHaveBeenCalled();
+    expect(calls.update).toHaveBeenCalledWith({
+      setupId: LAB.tree?.setup?.id,
+      payload: expect.objectContaining({
+        effective_from: '2026-09-01',
+        shares: [{ company: 'JIVO_OIL', percent: '100' }],
+        note: 'Lab metered on its own',
+      }),
+    });
+  });
+
   it('splits by run hours only once a line or machine is picked', () => {
     renderTree();
     const dialog = openWhoPays(2);

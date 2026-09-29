@@ -213,6 +213,12 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
     [meters, meter],
   );
 
+  // A meter keeps one version per day, so a change dated the same day as one
+  // it already has is that version rewritten: it is saved as its correction.
+  const sameDay =
+    target === 'new' ? versions.find((version) => version.effective_from === form.effective_from) : undefined;
+  const editing = sameDay ? sameDay.id : target;
+
   const shareTotal = form.shares.reduce((sum, row) => sum + toNumber(row.percent), 0);
   const blocker = problem(form);
   const saving = createSetup.isPending || updateSetup.isPending;
@@ -228,12 +234,14 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
       return;
     }
     const payload = toPayload(form);
+    // A blank "why" on a same-day change keeps the version's own note.
+    if (sameDay && !payload.note) payload.note = sameDay.note;
     try {
-      if (target === 'new') {
+      if (editing === 'new') {
         await createSetup.mutateAsync({ ...payload, meter: meter.id });
         toast.success(`${meter.name}: change saved from ${fmtDate(form.effective_from)}`);
       } else {
-        await updateSetup.mutateAsync({ setupId: target, payload });
+        await updateSetup.mutateAsync({ setupId: editing, payload });
         toast.success(`${meter.name}: version corrected — the days it covers are split again`);
       }
       onClose();
@@ -283,7 +291,7 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
                   <li
                     key={version.id}
                     className={`flex items-start justify-between gap-3 px-3 py-2 ${
-                      target === version.id ? 'bg-sky-50 dark:bg-sky-950/30' : ''
+                      editing === version.id ? 'bg-sky-50 dark:bg-sky-950/30' : ''
                     }`}
                   >
                     <div className="min-w-0">
@@ -335,9 +343,11 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
             <section className="space-y-4 rounded-md border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium">
-                  {target === 'new'
-                    ? 'A change from a date — earlier days keep the old split'
-                    : `Correcting the version from ${fmtDate(versions.find((v) => v.id === target)?.effective_from)} — every day it covers is split again`}
+                  {sameDay
+                    ? `There is already a version from ${fmtDate(sameDay.effective_from)} — saving corrects it, and every day it covers is split again`
+                    : target === 'new'
+                      ? 'A change from a date — earlier days keep the old split'
+                      : `Correcting the version from ${fmtDate(versions.find((v) => v.id === target)?.effective_from)} — every day it covers is split again`}
                 </p>
                 {target !== 'new' && (
                   <Button variant="outline" size="sm" onClick={startChange}>
@@ -634,7 +644,7 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
           {canEdit && (
             <Button onClick={save} disabled={saving || Boolean(blocker)}>
               {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-              {target === 'new' ? 'Save the change' : 'Save the correction'}
+              {editing === 'new' ? 'Save the change' : 'Save the correction'}
             </Button>
           )}
         </DialogFooter>
