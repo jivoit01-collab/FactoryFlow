@@ -19,6 +19,17 @@ vi.mock('@/shared/components', async (importOriginal) => ({
   confirmSapPost: vi.fn().mockResolvedValue(true),
 }));
 
+const toast = vi.hoisted(() => ({
+  success: vi.fn(),
+  info: vi.fn(),
+  warning: vi.fn(),
+  error: vi.fn(),
+}));
+vi.mock('sonner', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('sonner')>()),
+  toast,
+}));
+
 const lookupInvoice = vi.fn();
 const create = vi.fn();
 const listWarehouses = vi.fn();
@@ -107,6 +118,7 @@ function shortQtyInput(index: number) {
 
 beforeEach(() => {
   navigate.mockReset();
+  Object.values(toast).forEach((fn) => fn.mockReset());
   lookupInvoice.mockReset().mockResolvedValue(INVOICE);
   create.mockReset();
   listWarehouses.mockReset().mockResolvedValue([
@@ -190,7 +202,15 @@ describe('ShortDispatchNewPage', () => {
           id: 4,
           entry_no: 'SD-20260901-0002',
           sap_return_doc_num: '169980',
+          status: 'POSTED',
           created_at: '2026-09-01T10:00:00Z',
+        },
+        {
+          id: 5,
+          entry_no: 'SD-20260902-0001',
+          sap_return_doc_num: '',
+          status: 'QUEUED',
+          created_at: '2026-09-02T10:00:00Z',
         },
       ],
     });
@@ -199,6 +219,31 @@ describe('ShortDispatchNewPage', () => {
 
     expect(screen.getByText(/already been short once/i)).toBeInTheDocument();
     expect(screen.getByText(/SD-20260901-0002 \(SAP Return 169980\)/)).toBeInTheDocument();
+    expect(screen.getByText(/SD-20260902-0001 \(waiting for SAP\)/)).toBeInTheDocument();
+  });
+
+  it('says a return note waiting for SAP is saved, not failed, and opens it', async () => {
+    create.mockResolvedValue({
+      id: 13,
+      entry_no: 'SD-20260914-0002',
+      sap_return_doc_num: '',
+      status: 'QUEUED',
+      code: 'SAP_QUEUED',
+      detail: 'Saved. SAP is not answering, so the return note is waiting.',
+    });
+    render(<ShortDispatchNewPage />, { wrapper });
+
+    await findBill();
+    enterShortQty(0, '6');
+    post();
+
+    await waitFor(() =>
+      expect(toast.info).toHaveBeenCalledWith(
+        'Saved. SAP is not answering, so the return note is waiting.',
+      ),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith('/warehouse/short-dispatch/13');
   });
 
   it('surfaces SAP refusing the document, and does not navigate away', async () => {

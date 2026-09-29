@@ -50,7 +50,8 @@ export function useShortDispatchInvoiceLookup() {
   });
 }
 
-/** Submitting the form posts the SAP Return. A success means it is already there. */
+/** Submitting the form posts the SAP Return. A success means it is there, or --
+ *  with `code: 'SAP_QUEUED'` -- that it is waiting for SAP to come back. */
 export function useCreateShortDispatch() {
   const qc = useQueryClient();
   return useMutation({

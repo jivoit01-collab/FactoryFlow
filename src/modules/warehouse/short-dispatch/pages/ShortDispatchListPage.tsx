@@ -8,14 +8,15 @@ import { Badge, Button, Card, CardContent, Input } from '@/shared/components/ui'
 import { cn } from '@/shared/utils';
 
 import { useShortDispatches } from '../api';
-import { formatDateTime, formatQty } from '../utils';
+import { formatDateTime, formatQty, STATUS_BADGE } from '../utils';
 
 /**
  * Short Dispatch — what came back off bills that were already posted.
  *
- * Every row here is a document that exists in SAP: the form posts on submit, so
- * there is nothing in this list that is only half-done. The bill number leads,
- * because that is what anybody looking for one of these has in front of them.
+ * The form posts on submit, so a row is a document SAP holds -- unless SAP was
+ * not answering, when it is "Waiting for SAP" and posts by itself once SAP is
+ * back (or, turned down then, "Refused by SAP"). The bill number leads, because
+ * that is what anybody looking for one of these has in front of them.
  */
 export default function ShortDispatchListPage() {
   const navigate = useNavigate();
@@ -82,7 +83,11 @@ export default function ShortDispatchListPage() {
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard label="Total" value={counts.total} />
         <StatCard label="Today" value={counts.today} tone="text-amber-600" />
-        <StatCard label="Bills Affected" value={counts.bills} tone="text-slate-600 dark:text-muted-foreground" />
+        <StatCard
+          label="Bills Affected"
+          value={counts.bills}
+          tone="text-slate-600 dark:text-muted-foreground"
+        />
       </div>
 
       <div className="relative w-full lg:max-w-sm">
@@ -139,8 +144,15 @@ export default function ShortDispatchListPage() {
                       <td className="px-4 py-3 text-muted-foreground">{entry.warehouse_code}</td>
                       <td className="px-4 py-3">
                         {entry.sap_return_doc_num ? (
-                          <Badge className="border-0 bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400">
+                          <Badge className={cn('border-0', STATUS_BADGE.POSTED)}>
                             {entry.sap_return_doc_num}
+                          </Badge>
+                        ) : entry.status !== 'POSTED' ? (
+                          <Badge
+                            className={cn('border-0', STATUS_BADGE[entry.status])}
+                            title={entry.sap_error || undefined}
+                          >
+                            {entry.status_label}
                           </Badge>
                         ) : (
                           '-'

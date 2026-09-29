@@ -4,6 +4,14 @@ import { apiClient } from '@/core/api';
 /** Why a line did not go. Reported, not enforced — all of them end in one document. */
 export type ShortDispatchReason = 'SHORT' | 'NOT_LOADED' | 'DAMAGED' | 'CUSTOMER_REFUSED' | 'OTHER';
 
+/**
+ * Where the entry's A/R Return stands. `QUEUED`: SAP was not answering, so the
+ * entry is kept and the SAP posting queue posts it once SAP is back. `REFUSED`:
+ * SAP turned the queued one down; it put nothing back and does not count
+ * against the bill.
+ */
+export type ShortDispatchStatus = 'POSTED' | 'QUEUED' | 'REFUSED';
+
 /** One line of the invoice being corrected, as the form needs it. */
 export interface ShortDispatchInvoiceLine {
   line_num: number;
@@ -32,6 +40,7 @@ export interface ShortDispatchInvoiceExistingEntry {
   id: number;
   entry_no: string;
   sap_return_doc_num: string;
+  status: ShortDispatchStatus;
   created_at: string;
 }
 
@@ -63,6 +72,10 @@ export interface ShortDispatchListItem {
   customer_name: string;
   /** Where the stock went back in. */
   warehouse_code: string;
+  status: ShortDispatchStatus;
+  status_label: string;
+  /** Why it is waiting or was refused; empty once posted. */
+  sap_error: string;
   sap_return_doc_entry: number | null;
   sap_return_doc_num: string;
   posted_at: string | null;
@@ -94,13 +107,21 @@ export interface ShortDispatchDetail extends ShortDispatchListItem {
   lines: ShortDispatchLine[];
 }
 
+/** What submitting the form returns: a 202 carries `code` and `detail`. */
+export interface ShortDispatchCreated extends ShortDispatchDetail {
+  /** `SAP_QUEUED` when SAP did not answer and the return note is waiting for it. */
+  code?: 'SAP_QUEUED';
+  detail?: string;
+}
+
 /**
  * The single form.
  *
  * Only the line number, the quantity and the reason are sent: everything else
  * about a line is read off the invoice server-side, so a stale form cannot put an
  * item on a return that was never sold. A 201 means SAP already holds the
- * document — there is no draft, and a refusal leaves no record at all.
+ * document — there is no draft, and a refusal leaves no record at all. A 202
+ * means SAP was not answering: the entry is kept and posts by itself later.
  */
 export interface CreateShortDispatchPayload {
   invoice_number: string;
@@ -190,8 +211,8 @@ export const shortDispatchApi = {
   },
 
   /** Records the shortfall *and* posts the SAP Return, in one call. */
-  async create(payload: CreateShortDispatchPayload): Promise<ShortDispatchDetail> {
-    const response = await apiClient.post<ShortDispatchDetail>(
+  async create(payload: CreateShortDispatchPayload): Promise<ShortDispatchCreated> {
+    const response = await apiClient.post<ShortDispatchCreated>(
       API_ENDPOINTS.SHORT_DISPATCH.CREATE,
       payload,
     );

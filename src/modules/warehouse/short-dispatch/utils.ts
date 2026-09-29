@@ -1,4 +1,10 @@
-import type { ShortDispatchReason } from './api';
+import type { ShortDispatchReason, ShortDispatchStatus } from './api';
+
+export const STATUS_BADGE: Record<ShortDispatchStatus, string> = {
+  POSTED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
+  QUEUED: 'bg-violet-100 dark:bg-violet-500/15 text-violet-800 dark:text-violet-400',
+  REFUSED: 'bg-red-100 dark:bg-red-500/15 text-red-800 dark:text-red-400',
+};
 
 export const REASON_OPTIONS: { value: ShortDispatchReason; label: string }[] = [
   { value: 'SHORT', label: 'Short in stock' },

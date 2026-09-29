@@ -165,11 +165,16 @@ export default function ShortDispatchNewPage() {
           remarks: line.remarks.trim(),
         })),
       });
-      toast.success(
-        entry.sap_return_doc_num
-          ? `${entry.entry_no} posted — SAP Return ${entry.sap_return_doc_num}`
-          : `${entry.entry_no} posted`,
-      );
+      // Waiting for SAP is not a failure: the entry is saved and posts by itself.
+      if (entry.code === 'SAP_QUEUED') {
+        toast.info(entry.detail || `${entry.entry_no} saved — waiting for SAP to post it.`);
+      } else {
+        toast.success(
+          entry.sap_return_doc_num
+            ? `${entry.entry_no} posted — SAP Return ${entry.sap_return_doc_num}`
+            : `${entry.entry_no} posted`,
+        );
+      }
       navigate(`/warehouse/short-dispatch/${entry.id}`);
     } catch (err) {
       setError(getErrorMessage(err, 'SAP would not take the return note.'));
@@ -242,7 +247,9 @@ export default function ShortDispatchNewPage() {
                           `${entry.entry_no}${
                             entry.sap_return_doc_num
                               ? ` (SAP Return ${entry.sap_return_doc_num})`
-                              : ''
+                              : entry.status === 'QUEUED'
+                                ? ' (waiting for SAP)'
+                                : ''
                           }`,
                       )
                       .join(', ')}
