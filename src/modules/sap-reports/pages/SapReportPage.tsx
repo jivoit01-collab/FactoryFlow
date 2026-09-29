@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  CalendarCheck,
   Clock,
   Code2,
   Download,
@@ -7,14 +8,14 @@ import {
   Play,
   Settings2,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { SAP_REPORTS_PERMISSIONS } from '@/config/permissions';
 import { useHasPermission } from '@/core/auth/hooks/usePermission';
 import { Badge, Button } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { formatDateToISOString, getErrorMessage } from '@/shared/utils';
 
 import type { SapReportDetail, SapReportParameterValues } from '../api';
 import { useExportSapReport, useRunSapReport, useSapReport } from '../api';
@@ -66,6 +67,11 @@ export default function SapReportPage() {
   const missing = useMemo(() => missingRequired(report, values), [report, values]);
   const canRun = Boolean(report?.is_runnable && report?.is_enabled && !report?.is_missing_in_sap);
   const hasFilters = (report?.parameters.length ?? 0) > 0;
+  // The Today button sits right after the last date filter, so it reads as
+  // belonging to the dates rather than to the run buttons.
+  const lastDateIndex = report
+    ? report.parameters.map((parameter) => parameter.kind).lastIndexOf('DATE')
+    : -1;
 
   // A filterless report has one possible answer — fetch it without a click.
   const hasAutoRun = run.isPending || run.isSuccess || run.isError;
@@ -74,6 +80,19 @@ export default function SapReportPage() {
     run.mutate({ parameters: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report, hasFilters, canRun, hasAutoRun]);
+
+  // Most runs are an audit of today; one click sets every date filter to it.
+  function handleToday() {
+    const today = formatDateToISOString(new Date());
+    setValues((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        (report?.parameters ?? [])
+          .filter((parameter) => parameter.kind === 'DATE')
+          .map((parameter) => [String(parameter.position), today]),
+      ),
+    }));
+  }
 
   function handleRun() {
     if (missing.length) {
@@ -171,20 +190,33 @@ export default function SapReportPage() {
       <div className="rounded-lg border bg-card p-3">
         <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
           {hasFilters ? (
-            report.parameters.map((parameter) => (
-              <ReportFilterField
-                key={parameter.position}
-                slug={report.slug}
-                parameter={parameter}
-                value={values[String(parameter.position)] ?? ''}
-                disabled={!canRun}
-                onChange={(value) =>
-                  setValues((current) => ({
-                    ...current,
-                    [String(parameter.position)]: value,
-                  }))
-                }
-              />
+            report.parameters.map((parameter, index) => (
+              <Fragment key={parameter.position}>
+                <ReportFilterField
+                  slug={report.slug}
+                  parameter={parameter}
+                  value={values[String(parameter.position)] ?? ''}
+                  disabled={!canRun}
+                  onChange={(value) =>
+                    setValues((current) => ({
+                      ...current,
+                      [String(parameter.position)]: value,
+                    }))
+                  }
+                />
+                {index === lastDateIndex && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9"
+                    onClick={handleToday}
+                    disabled={!canRun}
+                  >
+                    <CalendarCheck className="mr-1.5 h-4 w-4" />
+                    Today
+                  </Button>
+                )}
+              </Fragment>
             ))
           ) : (
             <span className="pb-2 text-xs text-muted-foreground">
