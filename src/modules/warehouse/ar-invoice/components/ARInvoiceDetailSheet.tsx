@@ -42,6 +42,10 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
  * the SAP post (PENDING/FAILED), re-read the approval state
  * (PENDING_APPROVAL/APPROVED), and — once approved on the warehouse Invoice
  * Approval page — allocate batches and add the draft as the real invoice.
+ *
+ * A bill raised from a warehouse its raiser does not manage shows who it is
+ * waiting on (AWAITING_MANAGER); it can be cancelled until then, and posts
+ * itself to SAP when the last of those managers approves it.
  */
 export function ARInvoiceDetailSheet({
   posting,
@@ -209,6 +213,41 @@ export function ARInvoiceDetailSheet({
               </div>
             ) : null}
 
+            {posting.warehouse_approvals.length > 0 ? (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Warehouse approval</h3>
+                <ul className="space-y-2">
+                  {posting.warehouse_approvals.map((approval) => (
+                    <li
+                      key={approval.id}
+                      className="flex items-start justify-between gap-2 text-sm"
+                    >
+                      <span className="min-w-0">
+                        <span className="font-medium">{approval.warehouse_code}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {approval.status === 'PENDING'
+                            ? approval.approvers.length > 0
+                              ? `Waiting on ${approval.approvers.join(', ')}`
+                              : 'No manager who can approve is set for this warehouse — ask an administrator'
+                            : `${approval.status_display} by ${approval.decided_by_name ?? 'unknown'}${
+                                approval.decided_at
+                                  ? ` · ${formatDateTimeShort(approval.decided_at)}`
+                                  : ''
+                              }`}
+                        </span>
+                        {approval.remarks ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {approval.remarks}
+                          </span>
+                        ) : null}
+                      </span>
+                      <ARInvoiceStatusBadge status={approval.status} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <div>
               <h3 className="mb-2 text-sm font-semibold">Sales Order lines</h3>
               <div className="overflow-x-auto rounded-md border">
@@ -355,7 +394,7 @@ export function ARInvoiceDetailSheet({
                       <Send className="mr-1 h-4 w-4" /> Post approved draft
                     </Button>
                   ) : null}
-                  {['PENDING', 'FAILED'].includes(posting.status) ? (
+                  {['PENDING', 'AWAITING_MANAGER', 'FAILED'].includes(posting.status) ? (
                     <Button
                       variant="destructive"
                       className="flex-1"

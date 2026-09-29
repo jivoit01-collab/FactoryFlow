@@ -1,7 +1,7 @@
 /**
  * Types for the Factory Invoice Approval feature.
  *
- * The page serves two sources, both through `/invoice-approvals/…`:
+ * The page serves three sources, all through `/invoice-approvals/…`:
  *
  * - **OMS** (the default): entries head-office billing logged in the external
  *   OMS service, proxied by our backend (`oms-invoices/`). `InvoiceLog.id` is
@@ -9,16 +9,24 @@
  * - **SAP** (behind a toggle): A/R invoice drafts held by SAP's own approval
  *   procedure, read from HANA and decided through the Service Layer
  *   (`invoices/`). `InvoiceLog.id` is the approval-request code (OWDD.WddCode).
+ * - **APP** (always shown, beside whichever of the two is toggled on): bills
+ *   raised on this app's A/R Invoices screen from a warehouse the raiser does
+ *   not manage, held until the warehouse's manager decides them
+ *   (`app-invoices/`). `InvoiceLog.id` is that warehouse's approval row; the
+ *   bill is created in SAP when its last approval lands.
  *
- * The two id-spaces are unrelated, so an invoice is only ever identified by
+ * The id-spaces are unrelated, so an invoice is only ever identified by
  * `(source, id)` — never by id alone.
  */
 
 /** Which backend a listed invoice came from, and where a decision is recorded. */
-export type InvoiceSource = 'OMS' | 'SAP';
+export type InvoiceSource = 'OMS' | 'SAP' | 'APP';
+
+/** The two sources the page's toggle switches between; APP rows show under both. */
+export type ToggleSource = Exclude<InvoiceSource, 'APP'>;
 
 /** The source shown when the page first loads. */
-export const DEFAULT_INVOICE_SOURCE: InvoiceSource = 'OMS';
+export const DEFAULT_INVOICE_SOURCE: ToggleSource = 'OMS';
 
 /**
  * An approval request is pending, approved, or rejected — also the page tabs.
@@ -80,9 +88,23 @@ export interface FgStock {
 export interface InvoiceLog {
   /**
    * What approve/reject acts on: the SAP approval-request code (OWDD.WddCode)
-   * for SAP rows, or the OMS invoice-log id for OMS rows.
+   * for SAP rows, the OMS invoice-log id for OMS rows, or the warehouse
+   * approval row for APP rows.
    */
   id: number;
+  /** Set by the backend on APP rows; the page tags the OMS/SAP rows itself. */
+  source?: InvoiceSource;
+  /** APP rows: the factory app's A/R record, and where it stands. */
+  posting_id?: number;
+  posting_status?: string;
+  posting_status_display?: string;
+  /** APP rows: a cash sale, with no Sales Order behind it. */
+  is_counter_sale?: boolean;
+  /** APP rows: `total_amount` is before tax — SAP works the GST out on posting. */
+  amount_is_pre_tax?: boolean;
+  /** APP rows: who decided this warehouse's approval, and when. */
+  decided_by?: string | null;
+  decided_at?: string | null;
   /** The underlying SAP draft document (ODRF). Absent on OMS rows. */
   doc_entry?: number;
   doc_num?: number | null;
@@ -124,6 +146,19 @@ export interface InvoiceLog {
 }
 
 /**
+ * How a row names itself: by its Sales Order for OMS and SAP rows, by the
+ * factory app's own bill number for APP rows — a cash sale has no SO at all.
+ */
+export function invoiceLabel(invoice: InvoiceLog): string {
+  if (invoice.source === 'APP') {
+    const bill = `Factory bill #${invoice.posting_id ?? invoice.id}`;
+    if (invoice.is_counter_sale) return `${bill} (cash sale)`;
+    return invoice.so_number ? `${bill} · SO ${invoice.so_number}` : bill;
+  }
+  return invoice.so_number;
+}
+
+/**
  * One step of the approval trail — a SAP approval step (raised / decided), or
  * an OMS status-change entry. `remarks` is SAP-only.
  */
@@ -156,6 +191,22 @@ export interface InvoiceApprovalAudit {
 export interface PendingCount {
   pending: number;
   total: number;
+  /**
+   * APP only: held bills across every warehouse the caller may decide, not just
+   * the selected one, so a manager of several sees a bill waiting elsewhere.
+   */
+  all_warehouses?: number;
+  by_warehouse?: Record<string, number>;
+}
+
+/** What an approve/reject PATCH answers. APP decisions say what became of the bill. */
+export interface StatusUpdateResponse {
+  message: string;
+  posting_id?: number;
+  posting_status?: string;
+  sap_doc_num?: number | null;
+  /** The approval stood but creating the bill in SAP failed. */
+  warning?: string;
 }
 
 /** Body sent to PATCH /invoice-approvals/{oms-,}invoices/<id>/status/. */

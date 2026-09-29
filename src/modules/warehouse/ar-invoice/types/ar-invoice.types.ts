@@ -2,15 +2,18 @@
  * Types for the A/R Invoice feature.
  *
  * A billing operator raises a sales invoice against a customer's open Sales
- * Order lines; the backend posts it to SAP where the approval procedure
- * usually holds it as an ObjType-13 draft — the same drafts the warehouse
- * Invoice Approval page decides. `ARInvoicePosting` is our local record
- * tracking that lifecycle.
+ * Order lines, or as a free cash sale. Anyone may bill from any warehouse, but
+ * a line from a warehouse the operator does not manage holds the bill in the
+ * app (`AWAITING_MANAGER`) until that warehouse's manager approves it on the
+ * Invoice Approval page; only then does the backend post it to SAP.
+ * `ARInvoicePosting` is our local record tracking that lifecycle.
  */
 
 /** Lifecycle of a locally raised A/R invoice. */
 export type ARInvoiceStatus =
   | 'PENDING'
+  /** Held in the app for a warehouse manager — nothing is in SAP yet. */
+  | 'AWAITING_MANAGER'
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'POSTED'
@@ -151,6 +154,23 @@ export interface MarkARPaymentRequest {
   remarks?: string;
 }
 
+/**
+ * One warehouse's say on a bill raised by someone who does not manage it. A
+ * bill spanning two such warehouses carries two, and goes to SAP when both
+ * are approved.
+ */
+export interface ARInvoiceWarehouseApproval {
+  id: number;
+  warehouse_code: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status_display: string;
+  decided_by_name: string | null;
+  decided_at: string | null;
+  remarks: string;
+  /** Who can approve a still-pending one — the warehouse's approving managers. */
+  approvers: string[];
+}
+
 export interface ARInvoicePosting {
   id: number;
   customer_code: string;
@@ -182,6 +202,8 @@ export interface ARInvoicePosting {
   attachments: ARInvoiceAttachment[];
   /** The payment mark, or null while the bill is untracked. */
   payment: ARInvoicePayment | null;
+  /** Empty unless the bill was raised from a warehouse its raiser does not manage. */
+  warehouse_approvals: ARInvoiceWarehouseApproval[];
 }
 
 /** An item held in one warehouse — the direct-sale item picker's rows. */

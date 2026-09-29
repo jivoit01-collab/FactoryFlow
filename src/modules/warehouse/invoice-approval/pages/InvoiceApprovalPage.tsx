@@ -20,10 +20,20 @@ import {
 } from '@/shared/components/ui';
 import { formatCurrency, getErrorMessage } from '@/shared/utils';
 
-import { INVOICE_APPROVAL_QUERY_KEYS, useInvoiceList } from '../api/invoice-approval.queries';
+import {
+  INVOICE_APPROVAL_QUERY_KEYS,
+  useInvoiceList,
+  usePendingCount,
+} from '../api/invoice-approval.queries';
 import { InvoiceDetailSheet } from '../components/InvoiceDetailSheet';
 import { InvoiceStatusBadge } from '../components/InvoiceStatusBadge';
-import { INVOICE_TABS, type InvoiceLog, type InvoiceSource, type InvoiceTab } from '../types';
+import {
+  INVOICE_TABS,
+  invoiceLabel,
+  type InvoiceLog,
+  type InvoiceTab,
+  type ToggleSource,
+} from '../types';
 import { useSelectedSource } from '../useSelectedSource';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
@@ -61,13 +71,31 @@ function InvoiceRow({
     >
       <CardContent className="flex items-center justify-between gap-3 p-4">
         <div className="min-w-0">
-          <p className="truncate font-medium">{invoice.party_name}</p>
+          <p className="flex items-center gap-2 font-medium">
+            <span className="truncate">{invoice.party_name}</span>
+            {invoice.source === 'APP' ? (
+              <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800 dark:bg-sky-500/15 dark:text-sky-300">
+                Factory app
+              </span>
+            ) : null}
+          </p>
           <p className="text-sm text-muted-foreground">
-            SO {invoice.so_number} · {invoice.warehouse || '—'}
+            {invoice.source === 'APP'
+              ? `${invoiceLabel(invoice)} · ${invoice.warehouse || '—'}${
+                  invoice.created_by ? ` · by ${invoice.created_by}` : ''
+                }`
+              : `SO ${invoice.so_number} · ${invoice.warehouse || '—'}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-sm font-semibold tabular-nums">{amount(invoice.total_amount)}</span>
+          <span className="text-right text-sm font-semibold tabular-nums">
+            {amount(invoice.total_amount)}
+            {invoice.amount_is_pre_tax ? (
+              <span className="block text-[10px] font-normal text-muted-foreground">
+                before tax
+              </span>
+            ) : null}
+          </span>
           <InvoiceStatusBadge status={invoice.status} />
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -76,6 +104,11 @@ function InvoiceRow({
   );
 }
 
+/**
+ * One tab's rows: the factory app's held bills for this warehouse first — they
+ * have a customer waiting at the counter — then whichever of OMS / SAP the
+ * toggle shows. Each row carries its source, because the ids are unrelated.
+ */
 function InvoiceList({
   source,
   warehouse,
@@ -83,54 +116,101 @@ function InvoiceList({
   search,
   onSelect,
 }: {
-  source: InvoiceSource;
+  source: ToggleSource;
   warehouse: string;
   status: InvoiceTab;
   search: string;
   onSelect: (invoice: InvoiceLog) => void;
 }) {
-  const { data, isLoading, isError, error } = useInvoiceList(source, warehouse, status);
+  const main = useInvoiceList(source, warehouse, status);
+  const held = useInvoiceList('APP', warehouse, status);
 
   const filtered = useMemo(() => {
-    const rows = data ?? [];
+    const rows: InvoiceLog[] = [
+      ...(held.data ?? []).map((row) => ({ ...row, source: 'APP' as const })),
+      ...(main.data ?? []).map((row) => ({ ...row, source })),
+    ];
     const query = search.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((row) =>
-      [row.so_number, row.party_name, row.warehouse, row.branch].some((value) =>
+      [
+        row.so_number,
+        row.party_name,
+        row.warehouse,
+        row.branch,
+        row.created_by,
+        row.posting_id,
+      ].some((value) =>
         String(value || '')
           .toLowerCase()
           .includes(query),
       ),
     );
-  }, [data, search]);
+  }, [held.data, main.data, source, search]);
 
-  if (isLoading) {
+  if (main.isLoading || held.isLoading) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Loading invoices…</p>;
   }
-  if (isError) {
-    // Show what the backend said — "the OMS module is not enabled" is a config
-    // problem an admin can fix, and reads nothing like a transient outage.
-    return (
-      <p className="py-8 text-center text-sm text-red-600">
-        {getErrorMessage(error, `Could not load invoices from ${source}. Please try again.`)}
-      </p>
-    );
-  }
-  if (filtered.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
-        <FileCheck2 className="h-8 w-8" />
-        <p className="text-sm">
-          No {TAB_LABELS[status].toLowerCase()} invoices in {source}.
-        </p>
-      </div>
-    );
-  }
+
+  // Show what the backend said — "the OMS module is not enabled" is a config
+  // problem an admin can fix, and reads nothing like a transient outage. One
+  // source failing never hides the other's rows.
+  const errors = [
+    main.isError
+      ? getErrorMessage(main.error, `Could not load invoices from ${source}. Please try again.`)
+      : null,
+    held.isError
+      ? getErrorMessage(held.error, 'Could not load the factory app bills. Please try again.')
+      : null,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="space-y-2">
+      {errors.map((message) => (
+        <p key={message} className="py-2 text-center text-sm text-red-600">
+          {message}
+        </p>
+      ))}
+      {filtered.length === 0 && errors.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
+          <FileCheck2 className="h-8 w-8" />
+          <p className="text-sm">
+            No {TAB_LABELS[status].toLowerCase()} invoices in {source} or the factory app.
+          </p>
+        </div>
+      ) : null}
       {filtered.map((invoice) => (
-        <InvoiceRow key={invoice.id} invoice={invoice} onSelect={onSelect} />
+        <InvoiceRow key={`${invoice.source}:${invoice.id}`} invoice={invoice} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Factory bills waiting in the approver's OTHER warehouses. A manager of four
+ * warehouses has one selected at a time, and a counter bill held for another
+ * of them would otherwise sit unseen while the customer waits.
+ */
+function HeldElsewhere({
+  warehouse,
+  onPick,
+}: {
+  warehouse: string;
+  onPick: (code: string) => void;
+}) {
+  const { data } = usePendingCount('APP', warehouse);
+  const elsewhere = Object.entries(data?.by_warehouse ?? {})
+    .filter(([code, count]) => count > 0 && code !== warehouse.toUpperCase())
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (elsewhere.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+      <span>Factory app bills waiting for you in:</span>
+      {elsewhere.map(([code, count]) => (
+        <Button key={code} size="sm" variant="outline" className="h-7" onClick={() => onPick(code)}>
+          {code} ({count})
+        </Button>
       ))}
     </div>
   );
@@ -139,10 +219,13 @@ function InvoiceList({
 /**
  * Factory Invoice Approval — the approver reviews A/R invoices awaiting approval,
  * checks them against physical stock at the warehouse, and approves or rejects
- * each one in the system it came from. Two sources: OMS invoice logs (the default
- * view) and, behind the "Show SAP approvals" toggle, the drafts held by SAP's own
- * approval procedure. Three tabs mirror the approval states; Pending is
- * actionable, Approved/Rejected are read-only.
+ * each one in the system it came from. Two toggled sources: OMS invoice logs
+ * (the default view) and, behind the "Show SAP approvals" toggle, the drafts
+ * held by SAP's own approval procedure. Under either, the factory app's own
+ * bills raised from this warehouse by someone who does not manage it are
+ * listed first; approving the last warehouse on one creates it in SAP. Three
+ * tabs mirror the approval states; Pending is actionable, Approved/Rejected are
+ * read-only.
  */
 export default function InvoiceApprovalPage() {
   const { hasPermission } = usePermission();
@@ -179,8 +262,8 @@ export default function InvoiceApprovalPage() {
         title="Invoice Approval"
         description={
           source === 'OMS'
-            ? 'Verify invoices awaiting approval in OMS against physical stock, then approve or reject.'
-            : 'Verify invoices awaiting approval in SAP against physical stock, then approve or reject.'
+            ? 'Verify invoices awaiting approval in OMS and the factory app against physical stock, then approve or reject.'
+            : 'Verify invoices awaiting approval in SAP and the factory app against physical stock, then approve or reject.'
         }
       >
         <Button
@@ -243,6 +326,15 @@ export default function InvoiceApprovalPage() {
         </div>
       </div>
 
+      <HeldElsewhere
+        warehouse={warehouse}
+        onPick={(code) => {
+          setSelected(null);
+          setTab('PENDING');
+          setWarehouse(code);
+        }}
+      />
+
       {!warehouse ? (
         <div className="flex flex-col items-center gap-2 py-16 text-center text-muted-foreground">
           <FileCheck2 className="h-8 w-8" />
@@ -275,7 +367,7 @@ export default function InvoiceApprovalPage() {
 
       <InvoiceDetailSheet
         invoice={selected}
-        source={source}
+        source={selected?.source ?? source}
         open={selected !== null}
         onOpenChange={(open) => {
           if (!open) setSelected(null);

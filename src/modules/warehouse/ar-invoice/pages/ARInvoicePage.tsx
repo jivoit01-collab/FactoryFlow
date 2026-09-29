@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
+import { useWarehouseScope } from '@/modules/warehouse/api';
 import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -40,6 +41,7 @@ import { SapCashSaleList } from '../components/SapCashSaleList';
 import type { ARInvoicePosting, OpenSOLine, PaymentBucket } from '../types';
 import { exportArInvoices, toClipboardRows } from '../utils/arInvoiceExport';
 import { countPaymentBuckets, paymentBucket } from '../utils/payment';
+import { heldForApprovalMessage, warehousesNeedingApproval } from '../utils/warehouseApproval';
 
 const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
 
@@ -71,6 +73,11 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
     [selectedKeys, byKey],
   );
   const selectedTotal = selected.reduce((sum, l) => sum + (l.open_total || 0), 0);
+  const scope = useWarehouseScope();
+  const needsApproval = warehousesNeedingApproval(
+    selected.map((l) => l.warehouse_code),
+    scope.manages,
+  );
 
   // One invoice carries one SAP branch — once something is ticked, rows from
   // other branches are disabled.
@@ -101,13 +108,22 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
     if (selected.length === 0) return toast.error('Select at least one Sales Order line.');
 
     const confirmed = await confirmSapPost({
-      title: 'Raise this invoice in SAP?',
+      title:
+        needsApproval.length > 0 ? 'Send this invoice for approval?' : 'Raise this invoice in SAP?',
       details: [
         { label: 'Creates', value: 'A/R invoice' },
         { label: 'Customer', value: customerCode },
         { label: 'Sales Order lines', value: selected.length },
+        ...(needsApproval.length > 0
+          ? [
+              {
+                label: 'Approval first',
+                value: `Manager of ${needsApproval.join(', ')} — nothing goes to SAP until then`,
+              },
+            ]
+          : []),
       ],
-      confirmLabel: 'Raise the invoice',
+      confirmLabel: needsApproval.length > 0 ? 'Send for approval' : 'Raise the invoice',
     });
     if (!confirmed) return;
 
@@ -123,7 +139,9 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
         },
         files,
       });
-      if (posting.status === 'PENDING_APPROVAL') {
+      if (posting.status === 'AWAITING_MANAGER') {
+        toast.success(heldForApprovalMessage(posting), { duration: 10000 });
+      } else if (posting.status === 'PENDING_APPROVAL') {
         toast.success(
           `Invoice sent to SAP — awaiting approval (draft ${posting.sap_draft_entry}). ` +
             'It will appear on the Invoice Approval page.',
@@ -330,7 +348,11 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
               </div>
               <Button onClick={submit} disabled={createInvoice.isPending}>
                 <Upload className="mr-2 h-4 w-4" />
-                {createInvoice.isPending ? 'Posting…' : 'Create & send to SAP'}
+                {createInvoice.isPending
+                  ? 'Posting…'
+                  : needsApproval.length > 0
+                    ? 'Send for approval'
+                    : 'Create & send to SAP'}
               </Button>
             </CardContent>
           </Card>

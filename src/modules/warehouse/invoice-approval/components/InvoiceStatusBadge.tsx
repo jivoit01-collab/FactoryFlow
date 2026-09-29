@@ -7,6 +7,10 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
+  // Steps only a factory app bill's history carries.
+  RAISED: 'Raised',
+  POSTED: 'Created in SAP',
+  FAILED: 'SAP refused',
 };
 
 /**

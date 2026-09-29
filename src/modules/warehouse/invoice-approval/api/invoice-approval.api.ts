@@ -9,9 +9,24 @@ import type {
   InvoiceStatus,
   PendingCount,
   StatusUpdateRequest,
+  StatusUpdateResponse,
 } from '../types';
 
 const E = API_ENDPOINTS.INVOICE_APPROVAL;
+
+/**
+ * Bills held in the factory app for a warehouse manager. Kept beside the
+ * routes that use them rather than in the shared endpoint constants — they
+ * belong to this page alone.
+ */
+const APP_BASE = '/invoice-approvals/app-invoices/';
+const APP = {
+  list: APP_BASE,
+  pendingCount: `${APP_BASE}pending-count/`,
+  status: (id: number) => `${APP_BASE}${id}/status/`,
+  history: (id: number) => `${APP_BASE}${id}/history/`,
+  audit: (id: number) => `${APP_BASE}${id}/audit/`,
+};
 
 /**
  * The same five operations exist against both backends and differ only in the
@@ -41,6 +56,7 @@ const ROUTES: Record<
     history: E.INVOICE_HISTORY,
     audit: E.INVOICE_AUDIT,
   },
+  APP,
 };
 
 export const invoiceApprovalApi = {
@@ -59,8 +75,8 @@ export const invoiceApprovalApi = {
     source: InvoiceSource,
     id: number,
     data: StatusUpdateRequest,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.patch<{ message: string }>(ROUTES[source].status(id), data);
+  ): Promise<StatusUpdateResponse> {
+    const response = await apiClient.patch<StatusUpdateResponse>(ROUTES[source].status(id), data);
     return response.data;
   },
 
@@ -72,9 +88,10 @@ export const invoiceApprovalApi = {
   async getPendingCount(source: InvoiceSource, warehouse: string): Promise<PendingCount> {
     // Background poll driving the sidebar badge — mounted on every page. Suppress
     // the global error toast so an OMS/SAP outage doesn't spam a toast app-wide;
-    // the badge simply renders nothing when the count can't be fetched.
+    // the badge simply renders nothing when the count can't be fetched. APP
+    // counts across every managed warehouse, so it is asked with or without one.
     const response = await apiClient.get<PendingCount>(ROUTES[source].pendingCount, {
-      params: { whs: warehouse },
+      params: warehouse ? { whs: warehouse } : {},
       suppressErrorToast: true,
     });
     return response.data;

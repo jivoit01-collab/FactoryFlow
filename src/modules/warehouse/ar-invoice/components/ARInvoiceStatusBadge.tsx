@@ -3,6 +3,7 @@ import { cn } from '@/shared/utils';
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: 'Pending',
+  AWAITING_MANAGER: 'Awaiting manager',
   PENDING_APPROVAL: 'Awaiting approval',
   APPROVED: 'Approved',
   POSTED: 'Posted',
@@ -15,6 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
 // A/R lifecycle statuses onto those three.
 const STATUS_COLOR_KEY: Record<string, string> = {
   PENDING: 'PENDING',
+  AWAITING_MANAGER: 'PENDING',
   PENDING_APPROVAL: 'PENDING',
   APPROVED: 'APPROVED',
   POSTED: 'APPROVED',

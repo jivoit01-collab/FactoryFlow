@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
 
+import { AR_INVOICE_QUERY_KEYS } from '@/modules/warehouse/ar-invoice/api';
+
 import type { InvoiceSource, InvoiceStatus, StatusUpdateRequest } from '../types';
 import { invoiceApprovalApi } from './invoice-approval.api';
 
@@ -77,7 +79,9 @@ export function usePendingCount(source: InvoiceSource, warehouse: string) {
   return useQuery({
     queryKey: INVOICE_APPROVAL_QUERY_KEYS.pendingCount(source, warehouse),
     queryFn: () => invoiceApprovalApi.getPendingCount(source, warehouse),
-    enabled: !!warehouse,
+    // Factory bills are counted across every warehouse the approver runs, so
+    // they are asked for even before a warehouse is picked.
+    enabled: !!warehouse || source === 'APP',
     staleTime: 60 * 1000,
     refetchInterval: pendingCountPollMs(pathname),
   });
@@ -93,6 +97,9 @@ export function useUpdateInvoiceStatus(source: InvoiceSource) {
       // nav badge (pending-count) and this invoice's audit.
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.source(source) });
       queryClient.invalidateQueries({ queryKey: INVOICE_APPROVAL_QUERY_KEYS.audit(source, id) });
+      // An approved factory bill has just been created in SAP (or rejected), so
+      // the raiser's A/R Invoices list is stale too.
+      if (source === 'APP') queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.all });
     },
   });
 }

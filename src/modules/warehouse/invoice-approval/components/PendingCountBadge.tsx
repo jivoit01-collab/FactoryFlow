@@ -5,17 +5,19 @@ import { useSelectedSource } from '../useSelectedSource';
 import { useSelectedWarehouse } from '../useSelectedWarehouse';
 
 /**
- * Live count of invoices awaiting approval for the approver's selected
- * warehouse, rendered next to the "Invoice Approval" sidebar item. Counts the
- * source the page is currently showing (OMS by default), so the badge and the
- * list never disagree. Renders nothing until a warehouse is chosen or when
- * there is nothing to show.
+ * Live count of invoices awaiting approval, rendered next to the "Invoice
+ * Approval" sidebar item: the source the page is showing (OMS by default) for
+ * the selected warehouse, plus the factory app's held bills across EVERY
+ * warehouse the approver runs — a counter bill waiting at a warehouse they
+ * don't have selected must still show up here. Renders nothing when there is
+ * nothing to show.
  */
 export function PendingCountBadge({ className }: { className?: string }) {
   const [warehouse] = useSelectedWarehouse();
   const [source] = useSelectedSource();
   const { data } = usePendingCount(source, warehouse);
-  const total = data?.total ?? 0;
+  const { data: held } = usePendingCount('APP', warehouse);
+  const total = (data?.total ?? 0) + (held?.all_warehouses ?? 0);
   if (!total) return null;
 
   return (

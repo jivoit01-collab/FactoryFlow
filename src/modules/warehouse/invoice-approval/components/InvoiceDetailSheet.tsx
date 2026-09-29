@@ -29,7 +29,13 @@ import {
   type RejectInvoiceFormData,
   rejectInvoiceSchema,
 } from '../schemas/invoice-approval.schema';
-import { ACTIONABLE_TABS, type InvoiceLog, type InvoiceSource, type InvoiceTab } from '../types';
+import {
+  ACTIONABLE_TABS,
+  type InvoiceLog,
+  type InvoiceSource,
+  type InvoiceTab,
+  invoiceLabel,
+} from '../types';
 import { DocumentLinesTable } from './DocumentLinesTable';
 import { InvoiceStatusBadge } from './InvoiceStatusBadge';
 
@@ -38,6 +44,19 @@ function amount(value?: string | null) {
   const n = Number(value);
   return Number.isNaN(n) ? value : formatCurrency(n);
 }
+
+/** Where a decision lands, as the confirm dialog words it. */
+const RECORDED: Record<InvoiceSource, string> = {
+  OMS: 'Through OMS',
+  SAP: 'With your own SAP user',
+  APP: 'In the factory app — the bill is created in SAP once every warehouse on it approves',
+};
+
+const HISTORY_LABEL: Record<InvoiceSource, string> = {
+  OMS: 'OMS',
+  SAP: 'SAP',
+  APP: 'factory app',
+};
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -79,6 +98,7 @@ function InvoiceDetailBody({
 
   const isActionable = ACTIONABLE_TABS.includes(invoice.status as InvoiceTab);
   const busy = updateStatus.isPending;
+  const label = invoiceLabel(invoice);
   // Display context stored on the local audit row, plus the warehouse an OMS
   // decision is scope-checked against (SAP resolves its own and ignores it).
   const auditContext = {
@@ -90,21 +110,25 @@ function InvoiceDetailBody({
 
   const approve = async () => {
     const confirmed = await confirmSapPost({
-      title: `Approve invoice ${invoice.so_number}?`,
+      title: `Approve ${source === 'APP' ? label : `invoice ${label}`}?`,
       details: [
-        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Invoice', value: label },
         { label: 'Decision', value: 'Approve' },
-        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+        { label: 'Recorded', value: RECORDED[source] },
       ],
       confirmLabel: 'Approve',
     });
     if (!confirmed) return;
     try {
-      await updateStatus.mutateAsync({
+      const result = await updateStatus.mutateAsync({
         id: invoice.id,
         data: { status: 'APPROVED', ...auditContext },
       });
-      toast.success(`Invoice ${invoice.so_number} approved`);
+      // A factory bill says what became of it: created in SAP, still waiting on
+      // another warehouse, or approved but refused by SAP.
+      if (result.warning) toast.warning(result.warning, { duration: 10000 });
+      else if (source === 'APP') toast.success(result.message);
+      else toast.success(`Invoice ${label} approved`);
       onClose();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to approve the invoice'));
@@ -113,11 +137,11 @@ function InvoiceDetailBody({
 
   const reject = async (data: RejectInvoiceFormData) => {
     const confirmed = await confirmSapPost({
-      title: `Reject invoice ${invoice.so_number}?`,
+      title: `Reject ${source === 'APP' ? label : `invoice ${label}`}?`,
       details: [
-        { label: 'Invoice', value: invoice.so_number },
+        { label: 'Invoice', value: label },
         { label: 'Decision', value: 'Reject' },
-        { label: 'Recorded', value: source === 'OMS' ? 'Through OMS' : 'With your own SAP user' },
+        { label: 'Recorded', value: RECORDED[source] },
       ],
       confirmLabel: 'Reject',
       destructive: true,
@@ -128,7 +152,7 @@ function InvoiceDetailBody({
         id: invoice.id,
         data: { status: 'REJECTED', rejection_reason: data.rejection_reason, ...auditContext },
       });
-      toast.success(`Invoice ${invoice.so_number} rejected`);
+      toast.success(`${source === 'APP' ? label : `Invoice ${label}`} rejected`);
       onClose();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to reject the invoice'));
@@ -143,17 +167,39 @@ function InvoiceDetailBody({
           <InvoiceStatusBadge status={invoice.status} />
         </SheetTitle>
         <SheetDescription>
-          SO {invoice.so_number}
+          {source === 'APP' ? label : `SO ${invoice.so_number}`}
           {invoice.created_at ? ` · raised ${formatDateTimeShort(invoice.created_at)}` : ''}
           {invoice.created_by ? ` by ${invoice.created_by}` : ''}
+          {source === 'APP' ? ' in the factory app' : ''}
         </SheetDescription>
       </SheetHeader>
 
+      {source === 'APP' && isActionable ? (
+        <p className="rounded-md border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
+          {invoice.created_by || 'Someone'} billed this from {invoice.warehouse}, which they do not
+          manage, so it is waiting for you. Nothing is in SAP yet — approving creates the bill
+          there.
+        </p>
+      ) : null}
+
       <dl className="grid grid-cols-2 gap-4">
-        <Field label="SO Number" value={invoice.so_number} />
-        <Field label="Amount" value={amount(invoice.total_amount)} />
+        <Field
+          label={source === 'APP' ? 'Sales order' : 'SO Number'}
+          value={source === 'APP' ? invoice.so_number || 'None — cash sale' : invoice.so_number}
+        />
+        <Field
+          label={invoice.amount_is_pre_tax ? 'Amount (before tax)' : 'Amount'}
+          value={amount(invoice.total_amount)}
+        />
         <Field label="Warehouse" value={invoice.warehouse || '-'} />
-        <Field label="Branch" value={invoice.branch || '-'} />
+        {source === 'APP' ? (
+          <Field
+            label="SAP bill"
+            value={invoice.doc_num ?? invoice.posting_status_display ?? '-'}
+          />
+        ) : (
+          <Field label="Branch" value={invoice.branch || '-'} />
+        )}
       </dl>
 
       {invoice.rejection_reason ? (
@@ -181,7 +227,7 @@ function InvoiceDetailBody({
       <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
         <CollapsibleTrigger className="flex w-full items-center justify-between text-sm font-semibold">
           <span className="flex items-center gap-2">
-            <History className="h-4 w-4" /> Approval history ({source})
+            <History className="h-4 w-4" /> Approval history ({HISTORY_LABEL[source]})
           </span>
           <ChevronDown
             className={cn('h-4 w-4 transition-transform', historyOpen && 'rotate-180')}

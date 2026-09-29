@@ -2,6 +2,7 @@ import { FileText, Plus, ReceiptText, Trash2, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { useWarehouseScope } from '@/modules/warehouse/api';
 import { WarehouseSelect } from '@/modules/warehouse/grpo/components';
 import { confirmSapPost, SearchableSelect } from '@/shared/components';
 import { Button, Card, CardContent, Input, Label, Textarea } from '@/shared/components/ui';
@@ -11,6 +12,7 @@ import { toastSuccessMark } from '@/shared/utils/toasts';
 import { arInvoiceApi } from '../api/ar-invoice.api';
 import { useCreateArInvoice, useWarehouseItems } from '../api/ar-invoice.queries';
 import type { DirectSaleLine, WarehouseStockItem } from '../types';
+import { heldForApprovalMessage, warehousesNeedingApproval } from '../utils/warehouseApproval';
 import { CustomerCreditPanel } from './CustomerCreditPanel';
 import { CustomerSelect } from './CustomerSelect';
 
@@ -30,9 +32,9 @@ function lineGross(line: DirectSaleLine): number {
 /**
  * Direct (cash/counter) sale: no Sales Order — the operator builds the lines
  * by hand against a warehouse's stock. Price and tax prefill from what the
- * customer last paid for the item; both stay editable. The SAP journey after
- * submit is identical to the SO flow (approval draft → Invoice Approval page
- * → batch allocation → posted invoice).
+ * customer last paid for the item; both stay editable. Any warehouse may be
+ * billed from; one the operator does not manage sends the bill to its manager
+ * on the Invoice Approval page first, and it is created in SAP once approved.
  */
 export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
   const [customerCode, setCustomerCode] = useState('');
@@ -61,6 +63,11 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
 
   const items = useWarehouseItems(warehouse, itemSearch, itemPickerOpen);
   const createInvoice = useCreateArInvoice();
+  const scope = useWarehouseScope();
+  const needsApproval = warehousesNeedingApproval(
+    cart.map((line) => line.warehouse_code),
+    scope.manages,
+  );
 
   const cartTotal = cart.reduce(
     (sum, line) => sum + Number(line.quantity) * Number(line.unit_price),
@@ -131,14 +138,25 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
     if (cart.length === 0) return toast.error('Add at least one line.');
 
     const confirmed = await confirmSapPost({
-      title: 'Raise this cash sale in SAP?',
+      title:
+        needsApproval.length > 0
+          ? 'Send this cash sale for approval?'
+          : 'Raise this cash sale in SAP?',
       details: [
         { label: 'Creates', value: 'A/R invoice + bill summary' },
         { label: 'Customer', value: customerCode },
         { label: 'Lines', value: cart.length },
         { label: 'Dispatch date', value: dispatchDate || 'today' },
+        ...(needsApproval.length > 0
+          ? [
+              {
+                label: 'Approval first',
+                value: `Manager of ${needsApproval.join(', ')} — nothing goes to SAP until then`,
+              },
+            ]
+          : []),
       ],
-      confirmLabel: 'Raise the invoice',
+      confirmLabel: needsApproval.length > 0 ? 'Send for approval' : 'Raise the invoice',
     });
     if (!confirmed) return;
 
@@ -155,7 +173,9 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
         },
         files,
       });
-      if (posting.status === 'PENDING_APPROVAL') {
+      if (posting.status === 'AWAITING_MANAGER') {
+        toast.success(heldForApprovalMessage(posting), { duration: 10000 });
+      } else if (posting.status === 'PENDING_APPROVAL') {
         toast.success(
           `Cash sale sent to SAP — awaiting approval (draft ${posting.sap_draft_entry}).`,
         );
@@ -199,6 +219,13 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
           is projected, matching how the SO tab counts a selected line. */}
       {customerCode ? (
         <CustomerCreditPanel customerCode={customerCode} invoiceAmount={cartTotal} />
+      ) : null}
+
+      {warehouse && !scope.manages(warehouse) ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          You do not manage {warehouse}. You can still bill from it: the bill goes to its manager on
+          the Invoice Approval page, and is created in SAP once they approve it.
+        </p>
       ) : null}
 
       {!customerCode || !warehouse ? (
@@ -435,7 +462,11 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
               </div>
               <Button onClick={submit} disabled={createInvoice.isPending || cart.length === 0}>
                 <Upload className="mr-2 h-4 w-4" />
-                {createInvoice.isPending ? 'Posting…' : 'Create & send to SAP'}
+                {createInvoice.isPending
+                  ? 'Posting…'
+                  : needsApproval.length > 0
+                    ? 'Send for approval'
+                    : 'Create & send to SAP'}
               </Button>
             </CardContent>
           </Card>
