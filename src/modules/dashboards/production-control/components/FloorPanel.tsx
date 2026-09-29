@@ -122,7 +122,7 @@ export function FloorPanel({
       icon={Warehouse}
       accent={PANEL_ACCENT.occupancy}
       isFetching={isFetching && !loading}
-      action={{ label: 'Stock', to: '/dashboards/stock-level' }}
+      action={{ label: 'Stock', to: '/planning-purchase/stock-benchmark' }}
     >
       {error ? (
         <ControlError

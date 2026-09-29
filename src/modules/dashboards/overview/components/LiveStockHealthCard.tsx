@@ -19,7 +19,7 @@ export function LiveStockHealthCard() {
   const query = useStockLevels(filters);
   const meta = query.data?.meta;
 
-  const goToStock = () => navigate('/dashboards/stock-levels');
+  const goToStock = () => navigate('/planning-purchase/stock-benchmark');
 
   return (
     <section className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both rounded-3xl border border-border/60 bg-card/40 p-5 shadow-sm backdrop-blur-sm duration-500 [animation-delay:100ms]">

@@ -14,6 +14,13 @@
  *   Purchase   that plan exploded through its bill of materials, netted against
  *              stock and open purchase orders, and turned into purchase orders
  *
+ * Three read-only boards moved in from Dashboards because planners and buyers
+ * are who read them: Sales Plan vs Req., PM Requirement and Stock Benchmark.
+ * Their code still lives under `modules/dashboards/` (as Dispatch Plans does
+ * under Dispatch), they keep their own rights, and their old `/dashboards/...`
+ * addresses forward here -- the stock alert notifications still open the old
+ * one with `?search=` on it.
+ *
  * The plan is READ from SAP (`OFCT`/`FCT1`, which this factory uses as its
  * monthly production plan). There is no create or edit route for it on purpose:
  * planners author it in SAP, and a second place to change it would mean two
@@ -25,8 +32,8 @@
 import { ClipboardList } from 'lucide-react';
 
 import {
+  DASHBOARDS_PERMISSIONS,
   PLANNING_PURCHASE_ACCESS,
-  PLANNING_PURCHASE_MODULE_PREFIX,
   PLANNING_PURCHASE_PERMISSIONS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -39,6 +46,32 @@ const WhatCanRunPage = lazy(() => import('./pages/WhatCanRunPage'));
 const PurchaseFromPlanPage = lazy(() => import('./pages/PurchaseFromPlanPage'));
 const PurchaseOrderListPage = lazy(() => import('./pages/PurchaseOrderListPage'));
 const PurchaseOrderDetailPage = lazy(() => import('./pages/PurchaseOrderDetailPage'));
+const SalesPlanningRequirementDashboardPage = lazy(
+  () =>
+    import('@/modules/dashboards/sales-planning-requirement/pages/SalesPlanningRequirementDashboardPage'),
+);
+const PmRequirementDashboardPage = lazy(
+  () => import('@/modules/dashboards/pm-requirement/pages/PmRequirementDashboardPage'),
+);
+const StockLevelDashboardPage = lazy(
+  () => import('@/modules/dashboards/stock-level/pages/StockLevelDashboardPage'),
+);
+
+/**
+ * Who sees the Planning & Purchase menu at all.
+ *
+ * An explicit list rather than `modulePrefix`, because the sidebar reads a
+ * prefix INSTEAD of the list: with `planning_purchase` as the prefix, somebody
+ * granted only Stock Benchmark would never see the menu it now sits in. The
+ * four `planning_purchase` rights are the whole of that app, so listing them
+ * loses nobody who saw the menu before.
+ */
+const PLANNING_PURCHASE_MENU_PERMISSIONS: string[] = [
+  ...PLANNING_PURCHASE_ACCESS,
+  DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
+  DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL,
+  DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
+];
 
 export const planningPurchaseModuleConfig: ModuleConfig = {
   name: 'planning-purchase',
@@ -88,6 +121,30 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Purchase from BOM' },
     },
     {
+      path: '/planning-purchase/sales-plan-vs-requirement',
+      element: <SalesPlanningRequirementDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
+      breadcrumb: { label: 'Sales Planning vs Requirement' },
+    },
+    {
+      // The buyer's list: the month's plan exploded through its bills of
+      // material, against what the floor has taken, what the stores hold and
+      // the stock benchmark they should keep.
+      path: '/planning-purchase/pm-requirement',
+      element: <PmRequirementDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+      breadcrumb: { label: 'PM Requirement' },
+    },
+    {
+      path: '/planning-purchase/stock-benchmark',
+      element: <StockLevelDashboardPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
+      breadcrumb: { label: 'Stock Benchmark' },
+    },
+    {
       path: '/planning-purchase/purchase-orders',
       element: <PurchaseOrderListPage />,
       layout: 'main',
@@ -108,8 +165,7 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
       title: 'Planning & Purchase',
       icon: ClipboardList,
       showInSidebar: true,
-      modulePrefix: PLANNING_PURCHASE_MODULE_PREFIX,
-      permissions: PLANNING_PURCHASE_ACCESS,
+      permissions: PLANNING_PURCHASE_MENU_PERMISSIONS,
       hasSubmenu: true,
       children: [
         {
@@ -121,6 +177,21 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
           path: '/planning-purchase/what-can-run',
           title: 'What Can We Run',
           permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
+        },
+        {
+          path: '/planning-purchase/sales-plan-vs-requirement',
+          title: 'Sales Plan vs Req.',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
+        },
+        {
+          path: '/planning-purchase/pm-requirement',
+          title: 'PM Requirement',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+        },
+        {
+          path: '/planning-purchase/stock-benchmark',
+          title: 'Stock Benchmark',
+          permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
         },
         {
           path: '/planning-purchase/purchase-orders',

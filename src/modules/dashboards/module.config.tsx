@@ -20,6 +20,7 @@ import {
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from './carousel/constants';
 import { CIVIL_BOARD_VIEW_PERMISSIONS } from './civil-control/constants';
 import { COMPANY_EXPENSE_VIEW_PERMISSIONS } from './company-expense/constants';
+import { RedirectWithSearch } from './components/RedirectWithSearch';
 import { CUSTOMER_RETURNS_VIEW_PERMISSIONS } from './customer-returns/constants';
 import {
   ELECTRICITY_BOARD_COMPANIES,
@@ -47,19 +48,12 @@ const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboard
 const ElectricityDashboardPage = lazy(
   () => import('./electricity/pages/ElectricityDashboardPage'),
 );
-const StockLevelDashboardPage = lazy(() => import('./stock-level/pages/StockLevelDashboardPage'));
 const NonMovingDashboardPage = lazy(() => import('./non-moving/pages/NonMovingDashboardPage'));
-const SalesPlanningRequirementDashboardPage = lazy(
-  () => import('./sales-planning-requirement/pages/SalesPlanningRequirementDashboardPage'),
-);
 const ProductionMovementDashboardPage = lazy(
   () => import('./production-movement/pages/ProductionMovementDashboardPage'),
 );
 const PackingMaterialDashboardPage = lazy(
   () => import('./packing-material/pages/PackingMaterialDashboardPage'),
-);
-const PmRequirementDashboardPage = lazy(
-  () => import('./pm-requirement/pages/PmRequirementDashboardPage'),
 );
 const TomorrowRunPage = lazy(() => import('./tomorrow-run/pages/TomorrowRunPage'));
 const DispatchDayDashboardPage = lazy(() => import('./dispatch/pages/DispatchDayDashboardPage'));
@@ -126,7 +120,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
-        DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE,
         DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PLANS,
@@ -423,17 +416,14 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Packing Material' },
     },
     {
-      // The buyer's question rather than management's: the month's plan
-      // exploded through its bills of material, against what the floor has
-      // taken, what the stores hold and what is on order. Its own page and
-      // not a fourth panel on the board above -- that one reports what
-      // HAPPENED to packaging, this one is a 196-row buying list, and they
-      // are read by different people for different reasons.
+      // PM Requirement, Sales Plan vs Req. and Stock Benchmark moved to
+      // Planning & Purchase -- planners and buyers read them. These three
+      // only forward, so bookmarks, wall screens and notification links
+      // still land on the board.
       path: '/dashboards/pm-requirement',
-      element: <PmRequirementDashboardPage />,
+      element: <RedirectWithSearch to="/planning-purchase/pm-requirement" />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
-      breadcrumb: { label: 'PM Requirement' },
     },
     {
       // Oil's machine plan for the next working day, read at 7 pm from the
@@ -480,10 +470,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
     },
     {
       path: '/dashboards/stock-levels',
-      element: <StockLevelDashboardPage />,
+      element: <RedirectWithSearch to="/planning-purchase/stock-benchmark" />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
-      breadcrumb: { label: 'Stock Benchmark' },
     },
     {
       path: '/dashboards/non-moving',
@@ -494,10 +483,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
     },
     {
       path: '/dashboards/sales-planning-requirement',
-      element: <SalesPlanningRequirementDashboardPage />,
+      element: <RedirectWithSearch to="/planning-purchase/sales-plan-vs-requirement" />,
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
-      breadcrumb: { label: 'Sales Planning vs Requirement' },
     },
     {
       path: '/dashboards/production-movement',
@@ -615,7 +603,6 @@ export const dashboardsModuleConfig: ModuleConfig = {
       permissions: [
         DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
         DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM,
-        DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
         // Production reports permission — lets production staff reach the
         // Dashboards menu for the company-aware Production dashboard.
         DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT,
@@ -797,28 +784,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
           companies: ELECTRICITY_BOARD_COMPANIES,
         },
         {
-          path: '/dashboards/stock-levels',
-          title: 'Stock Benchmark',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD],
-        },
-        {
           path: '/dashboards/non-moving',
           title: 'Non-Moving RM & PM',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM],
         },
         {
-          path: '/dashboards/sales-planning-requirement',
-          title: 'Sales Plan vs Req.',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT],
-        },
-        {
           path: '/dashboards/packing-material',
           title: 'Packing Material',
-          permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
-        },
-        {
-          path: '/dashboards/pm-requirement',
-          title: 'PM Requirement',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
         },
         {
