@@ -38,7 +38,7 @@ export const PLANT_BOARD_MAX_ROWS = 8;
 /**
  * Colour is NOT configured here, on purpose.
  *
- * Each band's hue comes from its domain class in `styles/plant-board.css`, and
+ * Each band's hue comes from its domain class in the shared `ops-board.css`, and
  * every bar inside a band is a tint of that same hue, chosen by a fill class
  * rather than by an inline value. That is rule one of the operations colour
  * system: a hex in a component is how a second palette gets in.

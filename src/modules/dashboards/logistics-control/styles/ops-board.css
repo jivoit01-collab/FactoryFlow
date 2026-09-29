@@ -529,6 +529,78 @@
   --glow: rgba(139, 92, 246, 0.26);
 }
 
+/*
+ * The Plant board's four stages: bought, stored, made, shifted — a cool
+ * progression, one spectral step apart, and deliberately no green (reserved
+ * for condition).
+ *
+ * Defined here rather than in `plant-board.css` because they are not the Plant
+ * board's alone. The HR board paints its bands in Production and Purchase, and
+ * the dashboard builder offers all four; neither loads `plant-board.css`. With
+ * the hues over there, those boards rendered with every `--d*` undefined — no
+ * rail, no stripe, no bars, and the rail's white label on a white ground —
+ * unless the Plant board had happened to be opened earlier in the same tab.
+ */
+/* Purchase — cyan */
+.ops-b-purchase {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #0e7490;
+  --d2: #06b6d4;
+  --d3: #67e8f9;
+  --d4: #cffafe;
+  --ga: rgba(6, 182, 212, 0.3);
+  --gb: rgba(6, 182, 212, 0.2);
+  --soft: rgba(6, 182, 212, 0.07);
+  --tint1: rgba(6, 182, 212, 0.2);
+  --tint2: rgba(6, 182, 212, 0.09);
+  --glow: rgba(6, 182, 212, 0.26);
+}
+
+/* Store — blue */
+.ops-b-store {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #1e40af;
+  --d2: #3b82f6;
+  --d3: #93c5fd;
+  --d4: #dbeafe;
+  --ga: rgba(59, 130, 246, 0.28);
+  --gb: rgba(59, 130, 246, 0.18);
+  --soft: rgba(59, 130, 246, 0.07);
+  --tint1: rgba(59, 130, 246, 0.2);
+  --tint2: rgba(59, 130, 246, 0.09);
+  --glow: rgba(59, 130, 246, 0.26);
+}
+
+/* Production — indigo */
+.ops-b-production {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #3730a3;
+  --d2: #6366f1;
+  --d3: #a5b4fc;
+  --d4: #e0e7ff;
+  --ga: rgba(99, 102, 241, 0.28);
+  --gb: rgba(99, 102, 241, 0.18);
+  --soft: rgba(99, 102, 241, 0.07);
+  --tint1: rgba(99, 102, 241, 0.2);
+  --tint2: rgba(99, 102, 241, 0.09);
+  --glow: rgba(99, 102, 241, 0.26);
+}
+
+/* Shifting — violet */
+.ops-b-shifting {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #5b21b6;
+  --d2: #8b5cf6;
+  --d3: #c4b5fd;
+  --d4: #ede9fe;
+  --ga: rgba(139, 92, 246, 0.28);
+  --gb: rgba(139, 92, 246, 0.18);
+  --soft: rgba(139, 92, 246, 0.07);
+  --tint1: rgba(139, 92, 246, 0.2);
+  --tint2: rgba(139, 92, 246, 0.09);
+  --glow: rgba(139, 92, 246, 0.26);
+}
+
 .ops-rail {
   display: flex;
   align-items: center;
