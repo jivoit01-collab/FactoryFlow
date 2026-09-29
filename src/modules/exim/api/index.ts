@@ -12,3 +12,5 @@ export {
   useUpdateLicence,
   useUpdateLine,
 } from './exim.queries';
+export { FARM_ENDPOINTS, farmApi } from './farm.api';
+export * from './farm.queries';

@@ -1,15 +1,15 @@
 import { Navigate } from 'react-router-dom';
 
-import { EXIM_LICENCE_ACCESS } from '@/config/permissions/exim.permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 
-/** `/exim` itself: the licence register, or the rates for somebody who holds only those. */
+import { eximModuleConfig } from '../module.config';
+
+/** `/exim` itself: the first screen in the menu the reader may open. */
 export default function EximHome() {
   const { hasAnyPermission } = usePermission();
-  return (
-    <Navigate
-      to={hasAnyPermission(EXIM_LICENCE_ACCESS) ? '/exim/licences' : '/exim/customs-rates'}
-      replace
-    />
-  );
+  const screens = eximModuleConfig.navigation?.[0]?.children ?? [];
+  const first = screens.find((screen) => hasAnyPermission([...(screen.permissions ?? [])]));
+  // The route is gated on EXIM_ACCESS, which is every screen's rights, so one
+  // of them is always open; the rates page is the smallest fallback.
+  return <Navigate to={first?.path ?? '/exim/customs-rates'} replace />;
 }

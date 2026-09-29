@@ -46,3 +46,18 @@ export function usdPreview(inr: string, rate: string): string | null {
   if (!(value > 0) || !(perDollar > 0)) return null;
   return fmtMoney(value / perDollar);
 }
+
+/** Kilograms, whole: `20,000`. */
+export function fmtKg(value?: string | number | null): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+/** Litres, whole: `10,989`. */
+export function fmtLitres(value?: string | number | null): string {
+  if (value === null || value === undefined || value === '') return '—';
+  return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+}
+
+/** Litres in a kilogram of oil, EXIM's figure. */
+export const LITRES_PER_KG = 1.0989;
