@@ -29,6 +29,9 @@ export type GoodsReturnStatus =
   // Goods in and the return closed, but no SAP document — only invoice-basis
   // returns post today.
   | 'RECEIVED'
+  // Goods in, and the A/R Returns waiting for SAP: SAP was not answering when the
+  // receipt was confirmed, and the SAP posting queue sends them once it is back.
+  | 'SAP_QUEUED'
   // One A/R Return is posted per source invoice, and SAP can take some and
   // refuse others. Receiving again retries only the refused ones.
   | 'PARTIALLY_POSTED'
@@ -180,7 +183,12 @@ export interface GoodsReturnDetail {
 
 /** The return as it stands after a receive, plus `detail` when SAP refused some
  *  of its invoices (HTTP 207) — the rest posted and are recorded here. */
-export type GoodsReturnReceiveResult = GoodsReturnDetail & { detail?: string };
+export type GoodsReturnReceiveResult = GoodsReturnDetail & {
+  detail?: string;
+  /** `SAP_QUEUED` when SAP did not answer and the return is waiting for it. */
+  code?: string;
+  sap_posting_id?: number;
+};
 
 /** One line of SAP's own Return layout. Amounts arrive as strings — JSON floats
  *  would round money. */

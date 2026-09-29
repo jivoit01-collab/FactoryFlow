@@ -141,9 +141,9 @@ export default function GoodsReturnDetailPage() {
         </CardContent>
       </Card>
 
-      {(detail.status === 'ARRIVED' || detail.status === 'PARTIALLY_POSTED') && (
-        <ReceivePanel id={id} detail={detail} />
-      )}
+      {(detail.status === 'ARRIVED' ||
+        detail.status === 'PARTIALLY_POSTED' ||
+        detail.status === 'SAP_QUEUED') && <ReceivePanel id={id} detail={detail} />}
 
       <SapDocumentsCard detail={detail} />
 
@@ -237,7 +237,9 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
     useReturnWarehouses(!blocked);
   // A retry has to use the warehouse the first run posted into — the stock
   // already in SAP went there — so it is fixed rather than asked for again.
-  const retry = detail.status === 'PARTIALLY_POSTED';
+  // Waiting for SAP is the same: the warehouse was chosen when it was received.
+  const waiting = detail.status === 'SAP_QUEUED';
+  const retry = detail.status === 'PARTIALLY_POSTED' || waiting;
   const [warehouseCode, setWarehouseCode] = useState(
     retry ? detail.sap_return_warehouse : '',
   );
@@ -307,6 +309,11 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
       });
       // `detail` is only set when SAP refused some of the return's invoices; the
       // rest posted and stand, so this is a warning, not a failure.
+      // Queued is not a failure: the receipt stands and SAP catches up by itself.
+      if (updated.code === 'SAP_QUEUED' && updated.detail) {
+        toast.info(updated.detail);
+        return;
+      }
       if (updated.detail) {
         toast.warning(updated.detail);
         return;
@@ -334,10 +341,14 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
       <CardContent className="space-y-4 p-6">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <PackageCheck className="h-4 w-4 text-primary" />{' '}
-          {retry ? 'Post the Remaining Invoices' : 'Confirm Receipt'}
+          {waiting ? 'Waiting for SAP' : retry ? 'Post the Remaining Invoices' : 'Confirm Receipt'}
         </div>
         <p className="text-sm text-muted-foreground">
-          {retry
+          {waiting
+            ? `The goods are received. SAP was not answering, so the A/R Return is queued and
+               posts by itself once SAP is back — you will get a notification. Post now to try
+               straight away.`
+            : retry
             ? `SAP refused ${owed.length} of this return's invoices${
                 owed.length ? ` (${owed.map((ref) => ref.sap_invoice_doc_num).join(', ')})` : ''
               }. The documents it accepted stand — a posted return cannot be withdrawn — so this
@@ -423,7 +434,11 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
           ) : (
             <PackageCheck className="mr-2 h-4 w-4" />
           )}
-          {retry ? 'Retry the Refused Invoices' : 'Confirm Receipt & Post to SAP'}
+          {waiting
+            ? 'Post to SAP Now'
+            : retry
+              ? 'Retry the Refused Invoices'
+              : 'Confirm Receipt & Post to SAP'}
         </Button>
       </CardContent>
     </Card>

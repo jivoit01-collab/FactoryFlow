@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Coins,
   PackageCheck,
+  Send,
   ShieldCheck,
   Truck,
   Undo2,
@@ -17,6 +18,7 @@ import {
   RETURNABLE_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
+import { SAP_POSTINGS_PERMISSIONS } from '@/config/permissions/sap-postings.permissions';
 import { usePermission } from '@/core/auth';
 import { ModuleTile, ModuleTileGrid, tileAccent } from '@/shared/components/navigation';
 import { Card, CardContent } from '@/shared/components/ui';
@@ -80,6 +82,13 @@ const adminModuleCards: AdminModuleCard[] = [
     icon: <Undo2 className="h-5 w-5" />,
     color: 'text-rose-700 dark:text-rose-400',
     permissions: [GOODS_RETURN_PERMISSIONS.APPROVE],
+  },
+  {
+    title: 'SAP Postings',
+    route: '/admin/sap-postings',
+    icon: <Send className="h-5 w-5" />,
+    color: 'text-sky-700 dark:text-sky-400',
+    permissions: [SAP_POSTINGS_PERMISSIONS.VIEW],
   },
   {
     title: 'Cost Master',

@@ -28,6 +28,7 @@ export const STATUS_LABELS: Record<GoodsReturnStatus, string> = {
   AWAITING_ARRIVAL: 'Awaiting Arrival',
   ARRIVED: 'Arrived',
   RECEIVED: 'Received (not in SAP)',
+  SAP_QUEUED: 'Received (waiting for SAP)',
   PARTIALLY_POSTED: 'Partly posted to SAP',
   POSTED: 'Posted to SAP',
   CANCELLED: 'Cancelled',
@@ -40,6 +41,8 @@ export const STATUS_BADGE_CLASS: Record<GoodsReturnStatus, string> = {
   // Deliberately not the same green as POSTED: the goods are in, but there is
   // no SAP document behind it yet.
   RECEIVED: 'bg-teal-100 dark:bg-teal-500/15 text-teal-800 dark:text-teal-400',
+  // In, and on its way to SAP: nothing for anyone to do, so not a warning colour.
+  SAP_QUEUED: 'bg-violet-100 dark:bg-violet-500/15 text-violet-800 dark:text-violet-400',
   // Some of its invoices are in SAP and some are not — read as unfinished, not
   // as a failure: the documents SAP took are real.
   PARTIALLY_POSTED: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-400',

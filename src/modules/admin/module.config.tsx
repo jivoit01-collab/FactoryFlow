@@ -11,6 +11,7 @@ import {
   SAP_REPORTS_PERMISSIONS,
   WAREHOUSE_PERMISSIONS,
 } from '@/config/permissions';
+import { SAP_POSTINGS_PERMISSIONS } from '@/config/permissions/sap-postings.permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
@@ -21,6 +22,7 @@ import { LateDispatchApprovalsBadge } from './components/LateDispatchApprovalsBa
 import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
 import { PartialApprovalsBadge } from './components/PartialApprovalsBadge';
 import { ReturnableApprovalsBadge } from './components/ReturnableApprovalsBadge';
+import { SapPostingsBadge } from './components/SapPostingsBadge';
 
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const DockingScanApprovalsPage = lazy(() => import('./pages/DockingScanApprovalsPage'));
@@ -37,6 +39,7 @@ const ElectricityMeterManagersPage = lazy(
 );
 const SapReportAccessPage = lazy(() => import('./pages/SapReportAccessPage'));
 const SapIdentitiesPage = lazy(() => import('./pages/SapIdentitiesPage'));
+const SapPostingsPage = lazy(() => import('./pages/SapPostingsPage'));
 const CostMasterPage = lazy(() => import('./pages/CostMasterPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
 // mirrored here so approvers find every queue in one place. One page, two routes.
@@ -99,11 +102,16 @@ const sapReportAccessPermissions = [SAP_REPORTS_PERMISSIONS.MANAGE] as const;
 // managers: it decides who may sign a SAP approval, not who may see one.
 const sapIdentityPermissions = [SAP_IDENTITY_PERMISSIONS.MANAGE] as const;
 
+// The SAP posting log: what was posted, what waits for SAP, what SAP refused.
+// Django's own view permission, so every superuser has it.
+const sapPostingsPermissions = [SAP_POSTINGS_PERMISSIONS.VIEW] as const;
+
 const adminPermissions = [
   ...warehouseManagerPermissions,
   ...electricityMeterManagerPermissions,
   ...sapReportAccessPermissions,
   ...sapIdentityPermissions,
+  ...sapPostingsPermissions,
   ...costMasterPermissions,
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
@@ -202,6 +210,13 @@ export const adminModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Identities' },
     },
     {
+      path: '/admin/sap-postings',
+      element: <SapPostingsPage />,
+      layout: 'main',
+      permissions: sapPostingsPermissions,
+      breadcrumb: { label: 'SAP Postings' },
+    },
+    {
       path: '/admin/cost-master',
       element: <CostMasterPage />,
       layout: 'main',
@@ -280,6 +295,12 @@ export const adminModuleConfig: ModuleConfig = {
           path: '/admin/sap-identities',
           title: 'SAP Identities',
           permissions: sapIdentityPermissions,
+        },
+        {
+          path: '/admin/sap-postings',
+          title: 'SAP Postings',
+          permissions: sapPostingsPermissions,
+          badge: SapPostingsBadge,
         },
         {
           path: '/admin/cost-master',

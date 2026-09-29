@@ -12,3 +12,5 @@ export * from './partialScanApproval.api';
 export * from './partialScanApproval.queries';
 export * from './sapIdentity.api';
 export * from './sapIdentity.queries';
+export * from './sapPostings.api';
+export * from './sapPostings.queries';

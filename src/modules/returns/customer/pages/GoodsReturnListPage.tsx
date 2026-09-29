@@ -21,6 +21,7 @@ const STATUS_FILTERS: { value: '' | GoodsReturnStatus; label: string }[] = [
   { value: 'AWAITING_ARRIVAL', label: 'Awaiting Arrival' },
   { value: 'ARRIVED', label: 'Arrived' },
   { value: 'RECEIVED', label: 'Received (not in SAP)' },
+  { value: 'SAP_QUEUED', label: 'Waiting for SAP' },
   { value: 'PARTIALLY_POSTED', label: 'Partly posted' },
   { value: 'POSTED', label: 'Posted' },
   { value: 'CANCELLED', label: 'Cancelled' },

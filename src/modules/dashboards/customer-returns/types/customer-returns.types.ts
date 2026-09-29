@@ -34,6 +34,7 @@ export type ReturnStatus =
   | 'AWAITING_ARRIVAL'
   | 'ARRIVED'
   | 'RECEIVED'
+  | 'SAP_QUEUED'
   | 'PARTIALLY_POSTED'
   | 'POSTED'
   | 'CANCELLED';
