@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Loader2, Lock, RotateCcw, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Lock, Moon, RotateCcw, Save, Sun } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -6,8 +6,13 @@ import { Button, Card, CardContent, Checkbox, Input, Label } from '@/shared/comp
 import { cn } from '@/shared/utils';
 
 import { useElectricityDaySheet, useSaveElectricityDaySheet } from '../../api';
-import type { DaySheet, DaySheetEntryPayload, DaySheetRow } from '../../types';
-import { fmtDate, fmtUnits, shiftISO, todayISO, toNumber, trimFactor } from './electricityFormat';
+import type { DaySheet, DaySheetEntryPayload, DaySheetRow, ReadingShift } from '../../types';
+import { fmtDate, fmtRound, fmtUnits, shiftISO, todayISO, toNumber, trimFactor } from './electricityFormat';
+
+const SHIFTS: { value: ReadingShift; label: string; Icon: typeof Sun }[] = [
+  { value: 'DAY', label: 'Day', Icon: Sun },
+  { value: 'NIGHT', label: 'Night', Icon: Moon },
+];
 
 interface Entry {
   closing: string;
@@ -31,7 +36,12 @@ function entryFor(row: DaySheetRow): Entry {
   };
 }
 
-/** Where the day's reading starts: the chain's previous closing unless reset. */
+/** The round a reading normally opens on: a night on its day, a day on the night before. */
+function roundBefore(date: string, shift: ReadingShift): { date: string; shift: ReadingShift } {
+  return shift === 'NIGHT' ? { date, shift: 'DAY' } : { date: shiftISO(date, -1), shift: 'NIGHT' };
+}
+
+/** Where the round's reading starts: the chain's previous closing unless reset. */
 function openingOf(row: DaySheetRow, entry: Entry): string | null {
   if (entry.reset || (!row.previous && !row.reading)) return entry.opening === '' ? null : entry.opening;
   if (row.reading) return row.reading.opening_reading;
@@ -51,14 +61,17 @@ function errorText(value: unknown): string {
 }
 
 /**
- * One day's round, every meter at once, in tree order. The opening is the
- * previous closing — the chain the split depends on — so the operator types
- * only the closing, and each parent shows at once whether its sub-meters fit
- * inside it.
+ * One round of a day, every meter at once, in tree order. A day is read twice:
+ * the day round, then the night round, which opens on the day's closing; the
+ * next day opens on the night's closing, or on the day's when the night was not
+ * read. The opening is always the previous closing — the chain the split
+ * depends on — so the operator types only the closing, and each parent shows at
+ * once whether its sub-meters fit inside it.
  */
 export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
   const [date, setDate] = useState(todayISO());
-  const { data: sheet, isLoading } = useElectricityDaySheet(date);
+  const [shift, setShift] = useState<ReadingShift>('DAY');
+  const { data: sheet, isLoading } = useElectricityDaySheet(date, shift);
   const save = useSaveElectricityDaySheet();
   const [entries, setEntries] = useState<Record<number, Entry>>(() => entriesFrom(sheet));
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
@@ -138,9 +151,9 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
       };
     });
     try {
-      const result = await save.mutateAsync({ date, entries: payload });
+      const result = await save.mutateAsync({ date, shift, entries: payload });
       toast.success(
-        `Saved ${fmtDate(date)} — ${result.created} new, ${result.updated} corrected`,
+        `Saved ${fmtRound(date, shift)} — ${result.created} new, ${result.updated} corrected`,
       );
     } catch (error) {
       const body = (error as { response?: { data?: { errors?: Record<string, unknown> } } })?.response?.data;
@@ -153,6 +166,9 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
   };
 
   const isToday = date === todayISO();
+  // Judged against the round the rows belong to, which is the one asked for.
+  const sheetShift = sheet?.shift ?? shift;
+  const before = roundBefore(sheet?.date ?? date, sheetShift);
 
   return (
     <Card className="border-slate-200/80 shadow-sm dark:border-border">
@@ -163,7 +179,7 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <div>
-              <Label htmlFor="sheet-date">Day</Label>
+              <Label htmlFor="sheet-date">Date</Label>
               <Input id="sheet-date" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
             </div>
             <Button
@@ -175,6 +191,38 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
+            <div className="ml-2">
+              <Label id="sheet-shift">Shift</Label>
+              <div
+                role="group"
+                aria-labelledby="sheet-shift"
+                className="flex h-9 items-center rounded-lg bg-muted p-1 text-muted-foreground"
+              >
+                {SHIFTS.map(({ value, label, Icon }) => {
+                  const read = sheet?.read?.[value];
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={shift === value}
+                      onClick={() => setShift(value)}
+                      className={cn(
+                        'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        shift === value && 'bg-background text-foreground shadow',
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                      {read != null && rows.length > 0 && (
+                        <span className="text-xs tabular-nums opacity-70">
+                          {read}/{rows.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <div className="text-sm text-muted-foreground">
             {readCount} of {rows.length} meters read · supply {fmtUnits(supply)} units
@@ -187,8 +235,9 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          The day the units were used. Each opening is the meter's previous closing, so only the closing is typed; a
-          reading after skipped days covers all of them and is spread across them on the split.
+          The date the units were used, read twice: the day shift, then the night shift, which opens on the day's
+          closing. The next day opens on the night's closing — or on the day's, when the night was not read. Only the
+          closing is typed; a reading after skipped days covers all of them and is spread across them on the split.
         </p>
 
         {isLoading ? (
@@ -220,6 +269,16 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
                   const unreadKids = kids.filter((kid) => units.get(kid.meter) == null).length;
                   const backwards = rowUnits != null && rowUnits < 0;
                   const overRead = rowUnits != null && kids.length > 0 && kidUnits > rowUnits + 0.5;
+                  const previous = row.previous;
+                  const opensOnGap =
+                    previous != null &&
+                    !needsOpening &&
+                    !row.reading &&
+                    (previous.date !== before.date || previous.shift !== before.shift);
+                  // A day opening on the previous day's closing: that night was
+                  // not read, which is allowed — the day takes the night's units.
+                  const nightSkipped =
+                    opensOnGap && sheetShift === 'DAY' && previous.date === before.date && previous.shift === 'DAY';
                   return (
                     <tr
                       key={row.meter}
@@ -261,15 +320,18 @@ export function DaySheetTab({ canAdd, canEdit }: DaySheetTabProps) {
                             onChange={(e) => setEntry(row.meter, { opening: e.target.value })}
                           />
                         ) : (
-                          <span title={row.previous ? `Closing on ${fmtDate(row.previous.date)}` : undefined}>
+                          <span title={previous ? `Closing of ${fmtRound(previous.date, previous.shift)}` : undefined}>
                             {opening ?? '—'}
                           </span>
                         )}
-                        {row.previous && !needsOpening && row.previous.date !== shiftISO(date, -1) && !row.reading && (
-                          <div className="text-xs text-amber-700 dark:text-amber-300">
-                            last read {fmtDate(row.previous.date)}
-                          </div>
-                        )}
+                        {opensOnGap &&
+                          (nightSkipped ? (
+                            <div className="text-xs text-muted-foreground">night not read</div>
+                          ) : (
+                            <div className="text-xs text-amber-700 dark:text-amber-300">
+                              last read {fmtRound(previous.date, previous.shift)}
+                            </div>
+                          ))}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">

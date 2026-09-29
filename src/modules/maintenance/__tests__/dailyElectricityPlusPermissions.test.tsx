@@ -15,6 +15,7 @@ const READING = {
   meter_name: 'KWH',
   meter_reset: false,
   date: '2026-08-20',
+  shift: 'DAY',
   reading_time: null,
   opening_reading: '1400.00',
   closing_reading: '1500.00',

@@ -1,28 +1,46 @@
 /**
- * The day sheet: one day's round, every meter at once, in tree order.
+ * The day sheet: one round of a day, every meter at once, in tree order.
  *
- * The opening is the previous closing (the chain the split depends on), so only
- * the closing is typed; units are the dial difference times the meter's MF; and
- * each parent says at once whether its sub-meters fit inside it.
+ * A day is read twice, by day and then by night. The opening is the previous
+ * closing (the chain the split depends on), so only the closing is typed; units
+ * are the dial difference times the meter's MF; and each parent says at once
+ * whether its sub-meters fit inside it.
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DaySheetTab } from '../components/electricity/DaySheetTab';
+import type { DaySheetRow } from '../types';
 import { DAY_SHEET } from './electricityTreeFixtures';
 
 const save = vi.hoisted(() => ({ mutateAsync: vi.fn() }));
+const asked = vi.hoisted(() => ({ shifts: [] as string[] }));
 
 vi.mock('../api', () => ({
-  useElectricityDaySheet: () => ({ data: DAY_SHEET, isLoading: false }),
+  useElectricityDaySheet: (_date: string, shift: string) => {
+    asked.shifts.push(shift);
+    return { data: DAY_SHEET, isLoading: false };
+  },
   useSaveElectricityDaySheet: () => ({ mutateAsync: save.mutateAsync, isPending: false }),
 }));
+
+/** Render with the first row's previous reading swapped for ``previous``. */
+function renderOpeningOn(previous: DaySheetRow['previous']) {
+  const was = DAY_SHEET.rows[0];
+  DAY_SHEET.rows[0] = { ...was, previous };
+  try {
+    render(<DaySheetTab canAdd canEdit />);
+  } finally {
+    DAY_SHEET.rows[0] = was;
+  }
+}
 
 const closing = (name: string) => screen.getByLabelText(`Closing for ${name}`) as HTMLInputElement;
 
 describe('Day sheet', () => {
   beforeEach(() => {
+    asked.shifts = [];
     save.mutateAsync.mockReset();
     save.mutateAsync.mockResolvedValue({ created: 1, updated: 0, sheet: DAY_SHEET });
   });
@@ -87,8 +105,49 @@ describe('Day sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /save 1 reading/i }));
     expect(save.mutateAsync).toHaveBeenCalledWith({
       date: expect.any(String),
+      shift: 'DAY',
       entries: [{ meter: 1, closing_reading: '1100', meter_reset: false, remarks: '' }],
     });
+  });
+
+  it('starts on the day shift and switches to the night', () => {
+    render(<DaySheetTab canAdd canEdit />);
+    const day = screen.getByRole('button', { name: /^day/i });
+    const night = screen.getByRole('button', { name: /^night/i });
+    expect(day).toHaveAttribute('aria-pressed', 'true');
+    expect(asked.shifts.at(-1)).toBe('DAY');
+    fireEvent.click(night);
+    expect(night).toHaveAttribute('aria-pressed', 'true');
+    expect(asked.shifts.at(-1)).toBe('NIGHT');
+  });
+
+  it('saves the night shift as the night', () => {
+    render(<DaySheetTab canAdd canEdit />);
+    fireEvent.click(screen.getByRole('button', { name: /^night/i }));
+    fireEvent.change(closing('KWH'), { target: { value: '1100' } });
+    fireEvent.click(screen.getByRole('button', { name: /save 1 reading/i }));
+    expect(save.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ shift: 'NIGHT' }));
+  });
+
+  it('shows how many meters each shift has read', () => {
+    render(<DaySheetTab canAdd canEdit />);
+    expect(screen.getByRole('button', { name: /^day/i })).toHaveTextContent('1/3');
+    expect(screen.getByRole('button', { name: /^night/i })).toHaveTextContent('0/3');
+  });
+
+  it('says nothing when a day opens on the night before', () => {
+    render(<DaySheetTab canAdd canEdit />);
+    expect(screen.queryByText(/night not read|last read/)).not.toBeInTheDocument();
+  });
+
+  it('says so when a day opens on the day before because the night was not read', () => {
+    renderOpeningOn({ date: '2026-09-22', shift: 'DAY', closing_reading: '1000.00' });
+    expect(screen.getByText('night not read')).toBeInTheDocument();
+  });
+
+  it('warns when the opening comes from further back', () => {
+    renderOpeningOn({ date: '2026-09-20', shift: 'NIGHT', closing_reading: '1000.00' });
+    expect(screen.getByText(/^last read 20 Sept? 2026, night$/)).toBeInTheDocument();
   });
 
   it('asks for an opening on a reset, and sends it', () => {
@@ -101,6 +160,7 @@ describe('Day sheet', () => {
     fireEvent.click(screen.getByRole('button', { name: /save 1 reading/i }));
     expect(save.mutateAsync).toHaveBeenCalledWith({
       date: expect.any(String),
+      shift: 'DAY',
       entries: [{ meter: 1, closing_reading: '50', opening_reading: '0', meter_reset: true, remarks: '' }],
     });
   });

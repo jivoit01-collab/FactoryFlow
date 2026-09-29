@@ -128,6 +128,8 @@ export const METERS = [KWH, GROUND, LAB];
 
 export const DAY_SHEET: DaySheet = {
   date: '2026-09-23',
+  shift: 'DAY',
+  read: { DAY: 1, NIGHT: 0 },
   rows: [
     {
       meter: 1,
@@ -142,7 +144,7 @@ export const DAY_SHEET: DaySheet = {
       rate_per_unit: '9.0000',
       keeps: true,
       split: 'Not decided yet',
-      previous: { date: '2026-09-22', closing_reading: '1000.00' },
+      previous: { date: '2026-09-22', shift: 'NIGHT', closing_reading: '1000.00' },
       reading: null,
       next: null,
     },
@@ -159,7 +161,7 @@ export const DAY_SHEET: DaySheet = {
       rate_per_unit: '9.0000',
       keeps: true,
       split: 'Jivo Beverages 100%',
-      previous: { date: '2026-09-22', closing_reading: '5000.00' },
+      previous: { date: '2026-09-22', shift: 'NIGHT', closing_reading: '5000.00' },
       reading: null,
       next: null,
     },
@@ -176,7 +178,7 @@ export const DAY_SHEET: DaySheet = {
       rate_per_unit: '9.0000',
       keeps: false,
       split: 'Jivo Oil 50% · Jivo Beverages 50%',
-      previous: { date: '2026-09-22', closing_reading: '300.00' },
+      previous: { date: '2026-09-22', shift: 'NIGHT', closing_reading: '300.00' },
       reading: { id: 90, opening_reading: '300.00', closing_reading: '340.00', units_consumed: '40.00', meter_reset: false, reading_time: null, remarks: '' },
       next: null,
     },

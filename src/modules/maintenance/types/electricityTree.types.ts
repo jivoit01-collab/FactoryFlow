@@ -132,6 +132,13 @@ export interface RunSource {
 // The day sheet
 // ---------------------------------------------------------------------------
 
+/**
+ * A day's two rounds. The night opens on the day's closing, and the next day
+ * on the night's — or on the day's, when the night was not read. Both belong
+ * to the reading's date.
+ */
+export type ReadingShift = 'DAY' | 'NIGHT';
+
 export interface DaySheetRow {
   meter: number;
   name: string;
@@ -147,7 +154,8 @@ export interface DaySheetRow {
   /** Whether this user keeps the meter (may record on it). */
   keeps: boolean;
   split: string | null;
-  previous: { date: string; closing_reading: string } | null;
+  /** The reading this round opens on: the round before, or the last one read. */
+  previous: { date: string; shift: ReadingShift; closing_reading: string } | null;
   reading: {
     id: number;
     opening_reading: string;
@@ -157,11 +165,14 @@ export interface DaySheetRow {
     reading_time: string | null;
     remarks: string;
   } | null;
-  next: { date: string; opening_reading: string } | null;
+  next: { date: string; shift: ReadingShift; opening_reading: string } | null;
 }
 
 export interface DaySheet {
   date: string;
+  shift: ReadingShift;
+  /** How many meters each round of the day has read. */
+  read: Record<ReadingShift, number>;
   rows: DaySheetRow[];
 }
 
@@ -327,6 +338,8 @@ export interface TreeMeterFilters extends ElectricityMeterFilters {
 }
 
 export interface TreeReading extends DailyElectricityReading {
+  // The day or the night round of `date`.
+  shift: ReadingShift;
   // Set when the meter is a second register (KVAH) of that meter.
   meter_register_of: number | null;
   // The meter was replaced or its dial reset, so the opening does not follow
@@ -337,6 +350,8 @@ export interface TreeReading extends DailyElectricityReading {
 export interface TreeReadingPayload {
   meter: number;
   date: string;
+  // The day round when omitted.
+  shift?: ReadingShift;
   // "HH:MM" or "HH:MM:SS"; omit and the backend stamps the current time.
   reading_time?: string;
   // Omit to carry forward the meter's previous closing reading. A different

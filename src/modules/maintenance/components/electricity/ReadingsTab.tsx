@@ -1,4 +1,4 @@
-import { Loader2, Pencil, RotateCcw, Trash2, Zap } from 'lucide-react';
+import { Loader2, Moon, Pencil, RotateCcw, Sun, Trash2, Zap } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -23,7 +23,17 @@ import {
 
 import { useDeleteTreeReading, useTreeReadings, useUpdateTreeReading } from '../../api';
 import type { TreeMeter, TreeReading } from '../../types';
-import { firstOfMonthISO, fmtDate, fmtMoney, fmtUnits, todayISO, toNumber, trimFactor, trimSeconds } from './electricityFormat';
+import {
+  firstOfMonthISO,
+  fmtDate,
+  fmtMoney,
+  fmtRound,
+  fmtUnits,
+  todayISO,
+  toNumber,
+  trimFactor,
+  trimSeconds,
+} from './electricityFormat';
 
 interface ReadingsTabProps {
   meters: TreeMeter[];
@@ -88,7 +98,7 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
           remarks: form.remarks,
         },
       });
-      toast.success('Reading corrected — the next day follows on from it');
+      toast.success('Reading corrected — the next reading follows on from it');
       setEditing(null);
     } catch {
       // The API client has already said why.
@@ -98,7 +108,7 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
   const remove = async (reading: TreeReading) => {
     const ok = await confirmDialog({
       title: 'Delete this reading?',
-      description: `${reading.meter_name} on ${fmtDate(reading.date)}. The next reading takes over its days, so no unit drops out of the register.`,
+      description: `${reading.meter_name} on ${fmtRound(reading.date, reading.shift)}. The next reading takes over its units, so none drops out of the register.`,
       confirmLabel: 'Delete',
       destructive: true,
     });
@@ -155,6 +165,7 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
               <thead>
                 <tr className="border-b bg-muted/50 text-left">
                   <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Shift</th>
                   <th className="px-3 py-2 font-medium">Time</th>
                   <th className="px-3 py-2 font-medium">Meter</th>
                   <th className="px-3 py-2 text-right font-medium">Opening</th>
@@ -171,6 +182,17 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
                 {readings.map((reading) => (
                   <tr key={reading.id} className="border-b border-slate-100 last:border-0 hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
                     <td className="whitespace-nowrap px-3 py-2">{fmtDate(reading.date)}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {reading.shift === 'NIGHT' ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Moon className="h-3.5 w-3.5 text-muted-foreground" /> Night
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1">
+                          <Sun className="h-3.5 w-3.5 text-muted-foreground" /> Day
+                        </span>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2">{trimSeconds(reading.reading_time) || '—'}</td>
                     <td className="px-3 py-2">
                       {reading.meter_name}
@@ -196,12 +218,12 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
                     {(canEdit || canDelete) && (
                       <td className="whitespace-nowrap px-3 py-2 text-right">
                         {canEdit && keeps(reading.meter) && (
-                          <Button variant="ghost" size="sm" aria-label={`Correct ${reading.date} reading for ${reading.meter_name}`} onClick={() => openCorrection(reading)}>
+                          <Button variant="ghost" size="sm" aria-label={`Correct ${reading.date}${reading.shift === 'NIGHT' ? ' night' : ''} reading for ${reading.meter_name}`} onClick={() => openCorrection(reading)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
                         {canDelete && keeps(reading.meter) && (
-                          <Button variant="ghost" size="sm" aria-label={`Delete ${reading.date} reading for ${reading.meter_name}`} onClick={() => remove(reading)} disabled={deleteReading.isPending}>
+                          <Button variant="ghost" size="sm" aria-label={`Delete ${reading.date}${reading.shift === 'NIGHT' ? ' night' : ''} reading for ${reading.meter_name}`} onClick={() => remove(reading)} disabled={deleteReading.isPending}>
                             <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
@@ -219,7 +241,7 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
         <DialogContent className="grid max-h-[90vh] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
             <DialogTitle>
-              Correct {editing?.meter_name} on {fmtDate(editing?.date)}
+              Correct {editing?.meter_name} on {fmtRound(editing?.date, editing?.shift)}
             </DialogTitle>
           </DialogHeader>
           {form && (
@@ -253,7 +275,7 @@ export function ReadingsTab({ meters, canEdit, canDelete, keeps }: ReadingsTabPr
                   checked={form.meter_reset}
                   onCheckedChange={(checked) => setForm((f) => (f ? { ...f, meter_reset: checked } : f))}
                 />
-                The meter was replaced or its dial reset on this day
+                The meter was replaced or its dial reset on this shift
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>

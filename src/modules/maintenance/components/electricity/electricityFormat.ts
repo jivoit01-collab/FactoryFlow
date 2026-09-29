@@ -1,6 +1,6 @@
 // Small helpers shared by the Daily Electricity++ tabs.
 
-import type { TreeMeter } from '../../types';
+import type { ReadingShift, TreeMeter } from '../../types';
 
 /**
  * The factory's calendar day, not UTC's. `toISOString()` answers in UTC, which
@@ -37,6 +37,11 @@ export function fmtDate(iso: string | null | undefined): string {
     month: 'short',
     year: 'numeric',
   });
+}
+
+/** "24 Sep 2026" for the day round, "24 Sep 2026, night" for the night round. */
+export function fmtRound(iso: string | null | undefined, shift: ReadingShift | null | undefined): string {
+  return shift === 'NIGHT' ? `${fmtDate(iso)}, night` : fmtDate(iso);
 }
 
 export function toNumber(value: string | number | null | undefined): number {

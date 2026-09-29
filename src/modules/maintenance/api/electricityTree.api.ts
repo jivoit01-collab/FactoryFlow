@@ -7,6 +7,7 @@ import type {
   DaySheetSaveResult,
   MeterSetup,
   MeterSetupPayload,
+  ReadingShift,
   RunSource,
   SplitReport,
   TreeMeter,
@@ -113,16 +114,16 @@ export const electricityTreeApi = {
     await apiClient.delete(EP.SETUP_DETAIL(setupId));
   },
 
-  // ---- the day sheet: every meter's reading for one day ----
+  // ---- the day sheet: every meter's reading for one round of a day ----
 
-  async getDaySheet(date: string): Promise<DaySheet> {
-    const response = await apiClient.get<DaySheet>(EP.DAY_SHEET, { params: { date } });
+  async getDaySheet(date: string, shift: ReadingShift): Promise<DaySheet> {
+    const response = await apiClient.get<DaySheet>(EP.DAY_SHEET, { params: { date, shift } });
     return response.data;
   },
 
   /** All of them or none — a half-saved round leaves parents and sub-meters out of step. */
-  async saveDaySheet(date: string, entries: DaySheetEntryPayload[]): Promise<DaySheetSaveResult> {
-    const response = await apiClient.post<DaySheetSaveResult>(EP.DAY_SHEET, { date, entries });
+  async saveDaySheet(date: string, shift: ReadingShift, entries: DaySheetEntryPayload[]): Promise<DaySheetSaveResult> {
+    const response = await apiClient.post<DaySheetSaveResult>(EP.DAY_SHEET, { date, shift, entries });
     return response.data;
   },
 

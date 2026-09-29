@@ -4,6 +4,7 @@ import type {
   DailyElectricityReadingFilters,
   DaySheetEntryPayload,
   MeterSetupPayload,
+  ReadingShift,
   TreeMeterFilters,
   TreeMeterPayload,
   TreeReadingPayload,
@@ -16,7 +17,8 @@ export const ELECTRICITY_TREE_QUERY_KEYS = {
   readings: (filters?: DailyElectricityReadingFilters) =>
     ['maintenance', 'electricity-tree-readings', filters ?? {}] as const,
   setups: (meterId: number) => ['maintenance', 'electricity-meter-setups', meterId] as const,
-  daySheet: (date: string) => ['maintenance', 'electricity-day-sheet', date] as const,
+  daySheet: (date: string, shift: ReadingShift) =>
+    ['maintenance', 'electricity-day-sheet', date, shift] as const,
   allocation: (dateFrom: string, dateTo: string) =>
     ['maintenance', 'electricity-allocation', dateFrom, dateTo] as const,
   runSources: () => ['maintenance', 'electricity-run-sources'] as const,
@@ -147,10 +149,10 @@ export function useDeleteMeterSetup() {
   });
 }
 
-export function useElectricityDaySheet(date: string, enabled = true) {
+export function useElectricityDaySheet(date: string, shift: ReadingShift, enabled = true) {
   return useQuery({
-    queryKey: ELECTRICITY_TREE_QUERY_KEYS.daySheet(date),
-    queryFn: () => electricityTreeApi.getDaySheet(date),
+    queryKey: ELECTRICITY_TREE_QUERY_KEYS.daySheet(date, shift),
+    queryFn: () => electricityTreeApi.getDaySheet(date, shift),
     enabled: enabled && Boolean(date),
   });
 }
@@ -158,8 +160,8 @@ export function useElectricityDaySheet(date: string, enabled = true) {
 export function useSaveElectricityDaySheet() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ date, entries }: { date: string; entries: DaySheetEntryPayload[] }) =>
-      electricityTreeApi.saveDaySheet(date, entries),
+    mutationFn: ({ date, shift, entries }: { date: string; shift: ReadingShift; entries: DaySheetEntryPayload[] }) =>
+      electricityTreeApi.saveDaySheet(date, shift, entries),
     onSuccess: () => invalidateElectricityTree(queryClient),
   });
 }
