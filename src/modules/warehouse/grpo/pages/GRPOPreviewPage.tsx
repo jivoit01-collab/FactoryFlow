@@ -36,6 +36,7 @@ import {
   Input,
   Label,
 } from '@/shared/components/ui';
+import { resolveFileUrl } from '@/shared/utils';
 
 import {
   useDeleteGRPOAttachment,
@@ -556,6 +557,22 @@ export default function GRPOPreviewPage() {
       if (!prev) return prev;
       return { ...prev, attachments: prev.attachments.filter((_, i) => i !== index) };
     });
+  };
+
+  // A staged file isn't on the server yet, so open the browser's own copy of it.
+  // Images and PDFs open in a new tab; DOC/XLS can't be shown, so they download.
+  const openStagedAttachment = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+      a.target = '_blank';
+    } else {
+      a.download = file.name;
+    }
+    a.click();
+    // The new tab needs the url while it loads, so don't revoke it straight away.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   // Extract GST percentage from tax code (e.g. "CG+SG@18" → 18)
@@ -1499,7 +1516,14 @@ export default function GRPOPreviewPage() {
                       className="flex items-center gap-2 text-sm p-1.5 rounded bg-muted/40 border"
                     >
                       <Paperclip className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate flex-1">{att.original_filename}</span>
+                      <a
+                        href={resolveFileUrl(att.file)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate flex-1 hover:underline"
+                      >
+                        {att.original_filename}
+                      </a>
                       <span className="text-[10px] font-medium text-green-600 flex-shrink-0">
                         Saved
                       </span>
@@ -1524,7 +1548,13 @@ export default function GRPOPreviewPage() {
                       className="flex items-center gap-2 text-sm p-1.5 rounded bg-muted/40 border"
                     >
                       <Paperclip className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate flex-1">{file.name}</span>
+                      <button
+                        type="button"
+                        className="truncate flex-1 text-left hover:underline"
+                        onClick={() => openStagedAttachment(file)}
+                      >
+                        {file.name}
+                      </button>
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {(file.size / 1024).toFixed(0)} KB
                       </span>
