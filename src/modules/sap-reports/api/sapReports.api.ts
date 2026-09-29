@@ -69,6 +69,8 @@ export interface SapReportListResponse {
     total: number;
     categories: string[];
     can_manage: boolean;
+    /** Sync from SAP — true for managers too. Optional for an older backend. */
+    can_sync?: boolean;
     /**
      * True when the per-user assignment rule applies to this user — their
      * list holds only the reports assigned to them. Optional so a frontend

@@ -30,6 +30,8 @@ import { ReportErrorNotice } from '../components/ReportErrorNotice';
  */
 export default function SapReportsListPage() {
   const canManage = useHasPermission(SAP_REPORTS_PERMISSIONS.MANAGE);
+  // Its own right, because MANAGE would also show every unassigned report.
+  const canSync = useHasPermission(SAP_REPORTS_PERMISSIONS.SYNC) || canManage;
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounce(searchInput, 300);
   const [category, setCategory] = useState('');
@@ -86,16 +88,18 @@ export default function SapReportsListPage() {
             The saved queries from SAP&apos;s Query Manager, run against live SAP data.
           </p>
         </div>
-        {canManage && (
+        {canSync && (
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIncludeHidden((current) => !current)}
-            >
-              <EyeOff className="mr-1.5 h-4 w-4" />
-              {includeHidden ? 'Hide unavailable' : 'Show unavailable'}
-            </Button>
+            {canManage && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIncludeHidden((current) => !current)}
+              >
+                <EyeOff className="mr-1.5 h-4 w-4" />
+                {includeHidden ? 'Hide unavailable' : 'Show unavailable'}
+              </Button>
+            )}
             <Button size="sm" onClick={handleSync} disabled={sync.isPending}>
               <RefreshCw className={cn('mr-1.5 h-4 w-4', sync.isPending && 'animate-spin')} />
               {sync.isPending ? 'Syncing…' : 'Sync from SAP'}
