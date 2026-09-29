@@ -537,6 +537,7 @@ export const API_ENDPOINTS = {
   // payload cannot reach different conclusions from identical numbers.
   ADMIN_BOARD: {
     BOARD: '/dashboards/admin-board/board/',
+    DISPATCH_BILLS: '/dashboards/admin-board/dispatch-bills/',
   },
   // HR Control Board -- who is on the rolls, and how many contract labourers
   // came through the gate today. One endpoint like its neighbours.

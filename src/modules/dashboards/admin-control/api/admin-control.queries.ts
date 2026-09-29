@@ -8,6 +8,8 @@ import { adminBoardApi } from './admin-control.api';
 export const ADMIN_BOARD_QUERY_KEYS = {
   all: ['admin-board'] as const,
   board: (companyId?: number | string) => ['admin-board', 'board', companyId] as const,
+  dispatchBills: (companyId: number | string | undefined, companyCode: string) =>
+    ['admin-board', 'dispatch-bills', companyId, companyCode] as const,
 };
 
 /**
@@ -44,5 +46,24 @@ export function useAdminBoard(enabled = true) {
     refetchIntervalInBackground: true,
     placeholderData: (previous) => previous,
     retry: 1,
+  });
+}
+
+/**
+ * One company's dispatched bills, read when its row is opened.
+ *
+ * Not polled: the list is read to be scanned, and rows reshuffling under the
+ * reader every minute would cost them their place. Reopening reads it afresh.
+ * A refusal is not retried — "you are not a member of Jivo Mart" is not going
+ * to change on the second attempt.
+ */
+export function useAdminDispatchBills(companyCode: string) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: ADMIN_BOARD_QUERY_KEYS.dispatchBills(currentCompany?.company_id, companyCode),
+    queryFn: () => adminBoardApi.getDispatchBills(companyCode),
+    staleTime: ADMIN_BOARD_REFRESH_MS,
+    retry: false,
   });
 }

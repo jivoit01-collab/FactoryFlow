@@ -1,8 +1,19 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AdminDispatch } from '../types';
 import { AdminDispatchDrill, companyName } from './AdminDispatchDrill';
+
+// The bill list reads its own endpoint once a company is opened. Still reading,
+// here: what is under test is that the click reaches it, not the list itself.
+const useAdminDispatchBills = vi.fn<(code: string) => unknown>(() => ({
+  data: undefined,
+  isLoading: true,
+  error: null,
+}));
+vi.mock('../api', () => ({
+  useAdminDispatchBills: (code: string) => useAdminDispatchBills(code),
+}));
 
 function dispatch(over: Partial<AdminDispatch> = {}): AdminDispatch {
   return {
@@ -105,6 +116,36 @@ describe('AdminDispatchDrill', () => {
     expect(
       within(cut()).getByText(/SAP could not be read, so what was billed this month is unknown/),
     ).toBeInTheDocument();
+  });
+
+  it('opens a company onto its bills, and comes back', () => {
+    render(<AdminDispatchDrill dispatch={dispatch()} period="1–24 Sept" onClose={vi.fn()} />);
+
+    fireEvent.click(row('Jivo Oil'));
+
+    expect(useAdminDispatchBills).toHaveBeenCalledWith('JIVO_OIL');
+    expect(
+      screen.getByRole('heading', { name: 'Jivo Oil · bills dispatched' }),
+    ).toBeInTheDocument();
+    expect(within(stats()).getByText('76 bills · 76 trucks')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Total dispatch' }));
+
+    expect(screen.getByRole('heading', { name: 'Total dispatch' })).toBeInTheDocument();
+  });
+
+  it('does not offer a list for a company that shipped nothing', () => {
+    render(
+      <AdminDispatchDrill
+        dispatch={dispatch({
+          companies: [{ company_code: 'JIVO_OIL', tons: 0, trucks: 0, bills: 0 }],
+        })}
+        period=""
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(row('Jivo Oil')).not.toHaveAttribute('tabindex');
   });
 
   it('states a month that shipped nothing rather than drawing a blank table', () => {

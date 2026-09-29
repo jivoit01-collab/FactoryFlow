@@ -1,6 +1,9 @@
+import { useState } from 'react';
+
 import { OpsDrill } from '../../logistics-control/components';
 import type { AdminDispatch, AdminDispatchCompany } from '../types';
 import { NO_VALUE, num, pctRough, tons, whole } from '../utils';
+import { AdminDispatchBillsPanel } from './AdminDispatchBillsDrill';
 
 /**
  * 'JIVO_OIL' -> 'Jivo Oil'.
@@ -37,10 +40,26 @@ export interface AdminDispatchDrillProps {
  * table rather than a column in it, because it does not divide by company.
  */
 export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchDrillProps) {
+  // By code, and looked up in the current payload: the board re-reads every
+  // minute, and a row held from the click would go stale under the reader.
+  const [openCode, setOpenCode] = useState<string | null>(null);
   const total = dispatch.mtd_tons;
   const invoiced = num(dispatch.invoiced_tons);
 
   const share = (value: number) => (total > 0 ? (value / total) * 100 : null);
+
+  const opened = dispatch.companies.find((company) => company.company_code === openCode);
+  if (opened) {
+    return (
+      <AdminDispatchBillsPanel
+        company={opened}
+        name={companyName(opened.company_code)}
+        period={period}
+        onBack={() => setOpenCode(null)}
+        onClose={onClose}
+      />
+    );
+  }
 
   return (
     <OpsDrill
@@ -106,6 +125,10 @@ export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchD
       rows={dispatch.companies}
       rowKey={(company: AdminDispatchCompany) => company.company_code}
       empty="No truck left the gate this month."
+      // A company opens onto its bills, one row per bill per truck. One that
+      // shipped nothing has no list to open.
+      onRowClick={(company: AdminDispatchCompany) => setOpenCode(company.company_code)}
+      canOpenRow={(company: AdminDispatchCompany) => company.trucks > 0}
       columns={[
         {
           label: 'Company',

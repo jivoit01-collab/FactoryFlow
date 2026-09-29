@@ -1,7 +1,7 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
-import type { AdminBoardResponse } from '../types';
+import type { AdminBoardResponse, AdminDispatchBills } from '../types';
 
 export const adminBoardApi = {
   /**
@@ -19,6 +19,21 @@ export const adminBoardApi = {
    */
   async getBoard(): Promise<AdminBoardResponse> {
     const response = await apiClient.get<AdminBoardResponse>(API_ENDPOINTS.ADMIN_BOARD.BOARD);
+    return response.data;
+  },
+
+  /**
+   * The bills behind one company's row on the Total dispatch panel.
+   *
+   * Its own read, and only on a click: a month is several hundred bills, and
+   * carrying them on a board that re-reads every minute would be paying for a
+   * list almost nobody opens.
+   */
+  async getDispatchBills(companyCode: string): Promise<AdminDispatchBills> {
+    const response = await apiClient.get<AdminDispatchBills>(
+      API_ENDPOINTS.ADMIN_BOARD.DISPATCH_BILLS,
+      { params: { company: companyCode } },
+    );
     return response.data;
   },
 };

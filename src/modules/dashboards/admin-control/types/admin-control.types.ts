@@ -64,7 +64,66 @@ export interface AdminDispatchCompany {
   tons: number;
   /** Trucks that left the gate. */
   trucks: number;
+  /** SAP bills on those trucks — counted from the invoices, so a truck carrying seven is seven. */
   bills: number;
+}
+
+/**
+ * One bill on one truck, from `/dashboards/admin-board/dispatch-bills/`.
+ *
+ * A row per bill PER TRUCK: a bill split across two trucks is two rows, each
+ * with that truck's share of the weight, and both say so in `trucks_for_bill`.
+ */
+export interface AdminDispatchBill {
+  key: string;
+  document_type: string;
+  sap_doc_entry: number;
+  bill_no: string;
+  /** The SAP bill's own date. */
+  bill_date: string | null;
+  /** The day the truck left the gate. */
+  dispatch_date: string | null;
+  /** "HH:MM", as the gate recorded it. */
+  out_time: string | null;
+  /** Days from the bill to the gate. Zero is the same day. */
+  days_to_dispatch: number | null;
+  /** Raised before the month this list covers. */
+  billed_before_month: boolean;
+  customer_code: string;
+  customer_name: string;
+  place_of_supply: string;
+  tons: number;
+  /** False where the register holds no weight — a real dispatch missing from the tonnes. */
+  weighed: boolean;
+  boxes: number;
+  /** The bill's value in rupees. Null where SAP sent none. */
+  amount: number | null;
+  eway_bill: string;
+  vehicle_no: string;
+  transporter_name: string;
+  driver_name: string;
+  driver_mobile_no: string;
+  gatepass_no: string;
+  /** Bills on this row's truck, this one included. */
+  bills_on_truck: number;
+  /** Trucks this bill left on. More than one is a split bill. */
+  trucks_for_bill: number;
+}
+
+/** Every bill one company dispatched this month, adding up to its row on the panel. */
+export interface AdminDispatchBills {
+  company_code: string;
+  from: string;
+  to: string;
+  bills: number;
+  trucks: number;
+  tons: number;
+  amount: number;
+  earlier_bills: { bills: number; tons: number };
+  unweighed_bills: number;
+  split_bills: number;
+  avg_days_to_dispatch: number | null;
+  rows: AdminDispatchBill[];
 }
 
 /**
