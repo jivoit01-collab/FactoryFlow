@@ -115,6 +115,25 @@ export const authService = {
   },
 
   /**
+   * Change the signed-in user's own name
+   *
+   * The name is the only field a user may change about themselves; the
+   * backend ignores anything else. Answers with the full /me payload, so the
+   * caller can put it straight into the store.
+   *
+   * @param fullName - The new name
+   * @returns Promise resolving to the updated User
+   * @throws Error if the request fails or the response is invalid
+   */
+  async updateFullName(fullName: string): Promise<User> {
+    const response = await apiClient.patch<MeResponse>(API_ENDPOINTS.AUTH.ME, {
+      full_name: fullName,
+    });
+
+    return validateUserResponse(response.data);
+  },
+
+  /**
    * Get cached permissions from IndexedDB
    */
   async getCachedPermissions(): Promise<string[]> {

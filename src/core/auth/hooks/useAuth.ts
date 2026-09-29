@@ -152,6 +152,18 @@ export function useAuth() {
   );
 
   /**
+   * Change the signed-in user's own name.
+   * updateUser also persists it to IndexedDB via authSyncMiddleware.
+   */
+  const updateFullName = useCallback(
+    async (fullName: string) => {
+      const userData = await authService.updateFullName(fullName);
+      dispatch(updateUser(userData));
+    },
+    [dispatch],
+  );
+
+  /**
    * Start periodic permission refresh.
    * Uses refreshPermissionsRef so the interval always calls the latest
    * version of refreshPermissions without needing to be recreated.
@@ -202,6 +214,7 @@ export function useAuth() {
     refreshPermissions,
     initializeFromCache,
     switchCompany,
+    updateFullName,
     startPermissionRefresh,
     stopPermissionRefresh,
   };

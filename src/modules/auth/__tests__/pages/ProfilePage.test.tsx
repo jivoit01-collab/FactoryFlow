@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 // ═══════════════════════════════════════════════════════════════
 // Mock all heavy dependencies
@@ -107,6 +107,13 @@ vi.mock('@/shared/components/ui/label', () => ({
   Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
+// The dialogs import the ui barrel, whose real modules pull in env.config.
+vi.mock('@/shared/components/ui', () => ({
+  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Input: (props: any) => <input {...props} />,
+  Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
+}));
+
 vi.mock('@/config/constants', () => ({
   VALIDATION_LIMITS: { email: { max: 255 }, password: { min: 8, max: 128 } },
   VALIDATION_MESSAGES: {
@@ -198,6 +205,20 @@ describe('ProfilePage', () => {
   // ═══════════════════════════════════════════════════════════════
   // Action Buttons
   // ═══════════════════════════════════════════════════════════════
+
+  it('renders Edit Name button', () => {
+    render(<ProfilePage />);
+    expect(screen.getByRole('button', { name: /edit name/i })).toBeInTheDocument();
+  });
+
+  it('opens the Edit Name dialog on the current name', () => {
+    render(<ProfilePage />);
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /edit name/i }));
+
+    expect(screen.getByLabelText('Name')).toHaveValue('John Doe');
+  });
 
   it('renders Change Password button', () => {
     render(<ProfilePage />);

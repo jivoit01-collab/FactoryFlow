@@ -219,6 +219,18 @@ describe('useAuth — Return Shape', () => {
     expect(content).toMatch(/return\s*\{[\s\S]*\bswitchCompany\b[\s\S]*\}/);
   });
 
+  it('returns updateFullName action', () => {
+    const content = readSource();
+    expect(content).toMatch(/return\s*\{[\s\S]*\bupdateFullName\b[\s\S]*\}/);
+  });
+
+  it('updateFullName puts the saved user into the store', () => {
+    const content = readSource();
+    expect(content).toMatch(
+      /const updateFullName[\s\S]*?authService\.updateFullName\(fullName\)[\s\S]*?dispatch\(updateUser\(userData\)\)/,
+    );
+  });
+
   it('returns startPermissionRefresh action', () => {
     const content = readSource();
     expect(content).toMatch(/return\s*\{[\s\S]*\bstartPermissionRefresh\b[\s\S]*\}/);

@@ -7,6 +7,7 @@ import { getAllNavigation } from '@/app/registry';
 import { ROUTES } from '@/config/routes.config';
 import { useAuth } from '@/core/auth';
 import { ChangePasswordDialog } from '@/modules/auth/components/ChangePasswordDialog';
+import { EditNameDialog } from '@/modules/auth/components/EditNameDialog';
 import {
   formatDate,
   getInitials,
@@ -81,6 +82,7 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
   const { aiEnabled, setAiEnabled } = useSettings();
 
   const activeTab = searchParams.get('tab') || 'profile';
@@ -206,6 +208,13 @@ export default function SettingsPage() {
                 <div className="flex w-full flex-col gap-2 sm:w-auto">
                   <Button
                     variant="outline"
+                    onClick={() => setIsEditNameOpen(true)}
+                    className="w-full sm:w-auto"
+                  >
+                    Edit Name
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={() => setIsChangePasswordOpen(true)}
                     className="w-full sm:w-auto"
                   >
@@ -305,6 +314,11 @@ export default function SettingsPage() {
 
       {/* Change Password Dialog */}
       <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+      <EditNameDialog
+        open={isEditNameOpen}
+        onOpenChange={setIsEditNameOpen}
+        currentName={user.full_name}
+      />
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Separator } from '@/shared/components/ui/separator';
 
 import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
+import { EditNameDialog } from '../components/EditNameDialog';
 import {
   formatDate,
   formatPermissionName,
@@ -25,6 +26,7 @@ export default function ProfilePage() {
   const { user, permissions, logout, currentCompany, switchCompany } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isEditNameOpen, setIsEditNameOpen] = useState(false);
 
   if (!user) {
     return (
@@ -103,6 +105,13 @@ export default function ProfilePage() {
 
             {/* Action Buttons */}
             <div className="flex w-full flex-col gap-2 sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditNameOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                Edit Name
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setIsChangePasswordOpen(true)}
@@ -186,6 +195,11 @@ export default function ProfilePage() {
 
       {/* Change Password Dialog */}
       <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+      <EditNameDialog
+        open={isEditNameOpen}
+        onOpenChange={setIsEditNameOpen}
+        currentName={user.full_name}
+      />
     </div>
   );
 }

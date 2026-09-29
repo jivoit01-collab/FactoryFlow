@@ -194,4 +194,17 @@ describe('auth/services/auth.service.ts', () => {
     const content = readSource();
     expect(content).toContain('application/x-www-form-urlencoded');
   });
+
+  // ─── updateFullName ────────────────────────────────────────
+
+  it('updateFullName patches the name onto AUTH.ME', () => {
+    const content = readSource();
+    expect(content).toContain('async updateFullName(fullName: string): Promise<User>');
+    expect(content).toMatch(/apiClient\.patch<MeResponse>\(API_ENDPOINTS\.AUTH\.ME,\s*\{\s*full_name: fullName/);
+  });
+
+  it('updateFullName validates the /me payload it gets back', () => {
+    const content = readSource();
+    expect(content).toMatch(/async updateFullName[\s\S]*?return validateUserResponse\(response\.data\)/);
+  });
 });
