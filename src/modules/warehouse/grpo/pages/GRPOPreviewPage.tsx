@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Clock,
   Layers,
   Package,
   Paperclip,
@@ -1846,27 +1847,43 @@ export default function GRPOPreviewPage() {
       <Dialog open={!!successResult} onOpenChange={() => setSuccessResult(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              Success
-            </DialogTitle>
-            <DialogDescription>GRPO posted successfully to SAP.</DialogDescription>
+            {successResult?.queued ? (
+              <DialogTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-violet-600" />
+                Waiting for SAP
+              </DialogTitle>
+            ) : (
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                Success
+              </DialogTitle>
+            )}
+            <DialogDescription>
+              {successResult?.queued
+                ? successResult.message
+                : 'GRPO posted successfully to SAP.'}
+            </DialogDescription>
           </DialogHeader>
           {successResult && (
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">SAP Document Number</span>
-                <span className="font-semibold">{successResult.sap_doc_num}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Value</span>
-                <span className="font-semibold">
-                  {successResult.sap_doc_total?.toLocaleString('en-IN', {
-                    style: 'currency',
-                    currency: 'INR',
-                  })}
-                </span>
-              </div>
+              {/* Queued: nothing is in SAP yet, so there is no number to show. */}
+              {!successResult.queued && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">SAP Document Number</span>
+                    <span className="font-semibold">{successResult.sap_doc_num}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Value</span>
+                    <span className="font-semibold">
+                      {successResult.sap_doc_total?.toLocaleString('en-IN', {
+                        style: 'currency',
+                        currency: 'INR',
+                      })}
+                    </span>
+                  </div>
+                </>
+              )}
               {successResult.attachments &&
                 successResult.attachments.length > 0 &&
                 (() => {

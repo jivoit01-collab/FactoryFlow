@@ -46,6 +46,9 @@ export const GRPO_STATUS = {
   POSTED: 'POSTED',
   FAILED: 'FAILED',
   PARTIALLY_POSTED: 'PARTIALLY_POSTED',
+  // Saved and sent while SAP was not answering: the SAP posting queue posts it
+  // once SAP is back (factory_app sap_postings).
+  QUEUED: 'QUEUED',
 } as const;
 
 export type GRPOStatus = (typeof GRPO_STATUS)[keyof typeof GRPO_STATUS];
@@ -249,6 +252,12 @@ export const GRPO_STATUS_CONFIG: Record<GRPOStatus, StatusConfigWithIcon> = {
     color: 'text-orange-600',
     bgColor: 'bg-orange-50 dark:bg-orange-500/10',
     icon: AlertTriangle,
+  },
+  QUEUED: {
+    label: 'Waiting for SAP',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50 dark:bg-violet-500/10',
+    icon: Clock,
   },
 };
 

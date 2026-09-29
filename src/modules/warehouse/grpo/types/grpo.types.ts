@@ -50,7 +50,14 @@ export interface GRPOListParams {
 }
 
 // GRPO Status
-export type GRPOStatus = 'DRAFT' | 'PENDING' | 'POSTED' | 'FAILED' | 'PARTIALLY_POSTED';
+export type GRPOStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'POSTED'
+  | 'FAILED'
+  | 'PARTIALLY_POSTED'
+  // Waiting for SAP: posts by itself once SAP answers again.
+  | 'QUEUED';
 
 // QC Status (used in preview items)
 export type QCStatus =
@@ -331,6 +338,11 @@ export interface PostGRPOResponse {
   sap_doc_total: number;
   message: string;
   attachments: PostGRPOAttachmentResult[];
+  /** SAP was not answering: the GRPO waits and posts by itself (HTTP 202). No
+   *  SAP number, total or attachment results exist yet. */
+  queued?: boolean;
+  code?: string;
+  sap_posting_id?: number;
 }
 
 // History line item

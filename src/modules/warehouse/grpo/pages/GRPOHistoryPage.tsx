@@ -19,6 +19,7 @@ const STATUS_FILTERS = {
   drafts: { label: 'Drafts', status: GRPO_STATUS.DRAFT as GRPOStatus },
   posted: { label: 'Posted', status: GRPO_STATUS.POSTED as GRPOStatus },
   failed: { label: 'Failed', status: GRPO_STATUS.FAILED as GRPOStatus },
+  waiting: { label: 'Waiting for SAP', status: GRPO_STATUS.QUEUED as GRPOStatus },
 } as const;
 
 type StatusFilterKey = keyof typeof STATUS_FILTERS;
@@ -34,6 +35,9 @@ const getStatusBadgeClass = (status: GRPOStatus) => {
       return 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-400';
     case GRPO_STATUS.DRAFT:
       return 'bg-slate-100 text-slate-700 dark:bg-muted/40 dark:text-muted-foreground';
+    // On its way to SAP by itself: nothing wrong, so not a warning colour.
+    case GRPO_STATUS.QUEUED:
+      return 'bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-400';
     case GRPO_STATUS.PENDING:
     default:
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-400';
@@ -272,7 +276,8 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                         )}
                         {(entry.status === GRPO_STATUS.FAILED ||
                           entry.status === GRPO_STATUS.PARTIALLY_POSTED ||
-                          entry.status === GRPO_STATUS.DRAFT) &&
+                          entry.status === GRPO_STATUS.DRAFT ||
+                          entry.status === GRPO_STATUS.QUEUED) &&
                           !entry.is_superseded && (
                             <Button
                               variant="outline"
@@ -288,7 +293,11 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                               }}
                             >
                               <RefreshCw className="h-3 w-3" />
-                              {entry.status === GRPO_STATUS.DRAFT ? 'Resume' : 'Retry'}
+                              {entry.status === GRPO_STATUS.DRAFT
+                                ? 'Resume'
+                                : entry.status === GRPO_STATUS.QUEUED
+                                  ? 'Post now'
+                                  : 'Retry'}
                             </Button>
                           )}
                         <span className="text-xs text-muted-foreground">
