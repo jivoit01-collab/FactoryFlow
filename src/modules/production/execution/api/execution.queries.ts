@@ -31,6 +31,7 @@ import type {
   CreateWasteLogRequest,
   CreateWaterRequest,
   FillingCostSheetParams,
+  FillingCostShift,
   ManagerDecisionRequest,
   PlanCheckRequest,
   ResolveBreakdownRequest,
@@ -95,6 +96,8 @@ export const EXECUTION_QUERY_KEYS = {
   // Cost
   fillingCosts: (params?: FillingCostSheetParams) =>
     [...EXECUTION_QUERY_KEYS.all, 'filling-costs', params] as const,
+  fillingCostDefaults: (date: string, lineId: number | 'none', shift: FillingCostShift) =>
+    [...EXECUTION_QUERY_KEYS.all, 'filling-cost-defaults', date, lineId, shift] as const,
   // Settings
   settings: () => [...EXECUTION_QUERY_KEYS.all, 'settings'] as const,
   runCost: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'cost', runId] as const,
@@ -1542,6 +1545,27 @@ export function useFillingCostSheets(params?: FillingCostSheetParams) {
   return useQuery({
     queryKey: EXECUTION_QUERY_KEYS.fillingCosts(params),
     queryFn: () => executionApi.getFillingCostSheets(params),
+  });
+}
+
+/**
+ * What a new sheet for `date`'s `shift` ('' = the whole day) on `lineId` (or
+ * 'none' for every line) opens with: its runs' cases and every head worked out
+ * from them, Electricity++ and the Beverages Cost Master. Only asked for while
+ * the sheet does not exist: a saved sheet shows what was saved.
+ */
+export function useFillingCostDefaults(
+  date: string,
+  lineId: number | 'none',
+  shift: FillingCostShift,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.fillingCostDefaults(date, lineId, shift),
+    queryFn: () => executionApi.getFillingCostDefaults(date, lineId, shift),
+    enabled,
+    // Runs still going keep adding cases; a new day re-reads them when revisited.
+    staleTime: 0,
   });
 }
 

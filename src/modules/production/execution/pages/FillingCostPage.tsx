@@ -26,12 +26,18 @@ import { getErrorMessage } from '@/shared/utils';
 import {
   useCreateFillingCostSheet,
   useDeleteFillingCostSheet,
+  useFillingCostDefaults,
   useFillingCostSheets,
   useLines,
   useUpdateFillingCostSheet,
 } from '../api';
-import { DEFAULT_FILLING_COST_HEADS } from '../constants';
-import type { FillingCostSheet } from '../types';
+import { DEFAULT_FILLING_COST_HEADS, FILLING_COST_SHIFTS } from '../constants';
+import type {
+  FillingCostDefaultEntry,
+  FillingCostDefaults,
+  FillingCostSheet,
+  FillingCostShift,
+} from '../types';
 
 const ALL_LINES = 'all';
 
@@ -77,13 +83,24 @@ const fmt = (value: number, decimals = 2) =>
 const plain = (value: string) =>
   value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
 
+/** Under a head's name: how its opening figure was worked out. */
+function DefaultHint({ entry }: { entry?: FillingCostDefaultEntry }) {
+  if (!entry) return null;
+  return <p className="mt-1 px-1 text-xs text-muted-foreground">{entry.explain}</p>;
+}
+
 interface SheetEditorProps {
   /** The day's sheet, or null when nobody has entered it yet. */
   sheet: FillingCostSheet | null;
   /** The latest other day for this scope — what a blank day starts from. */
   template: FillingCostSheet | null;
+  /** What a new sheet opens with: its runs' cases and each head worked out. */
+  defaults: FillingCostDefaults | null;
   /** The day being entered, YYYY-MM-DD. */
   date: string;
+  /** '' = the whole day. */
+  shift: FillingCostShift;
+  shiftLabel: string;
   /** null = the filling floor as a whole. */
   lineId: number | null;
   lineName: string;
@@ -95,18 +112,51 @@ interface SheetEditorProps {
  * version, so picking another day — or a save coming back — starts it over
  * from what the server holds rather than leaving a half-edited day on screen.
  */
-function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: SheetEditorProps) {
-  // A blank day starts with no case count: the cases are that day's own, and
-  // carrying yesterday's over would price the day on the wrong figure unseen.
-  const [cases, setCases] = useState(() => (sheet ? plain(sheet.cases) : ''));
+function SheetEditor({
+  sheet,
+  template,
+  defaults,
+  date,
+  shift,
+  shiftLabel,
+  lineId,
+  lineName,
+  canEdit,
+}: SheetEditorProps) {
+  // A blank day starts from the cases its own runs produced — never
+  // yesterday's, which would price the day on the wrong figure unseen.
+  const produced = !sheet && defaults ? num(defaults.produced_cases) : 0;
+  const [cases, setCases] = useState(() =>
+    sheet ? plain(sheet.cases) : produced > 0 ? plain(defaults?.produced_cases ?? '') : '',
+  );
+  const workedOut = sheet ? [] : (defaults?.entries ?? []);
   const [notes, setNotes] = useState(() => sheet?.notes ?? '');
   const [rows, setRows] = useState<Row[]>(() => {
     if (sheet) return sheet.entries.map((entry) => newRow(entry.head, plain(entry.amount)));
     const heads = template
       ? template.entries.map((entry) => entry.head)
       : [...DEFAULT_FILLING_COST_HEADS];
-    return heads.map((head) => newRow(head));
+    const blank = heads.map((head) => newRow(head));
+    // A head the server worked out opens at its amount, in its usual place —
+    // taking over a row carried over under an older name ('Salary' for
+    // 'Fixed Manpower'). One the heads no longer list goes on the end.
+    const missing: Row[] = [];
+    workedOut.forEach((entry) => {
+      const names = [entry.head, ...entry.aliases].map((name) => name.toLowerCase());
+      const existing = blank.find((row) => names.includes(row.head.toLowerCase()));
+      const amount = entry.amount === null ? '' : plain(entry.amount);
+      if (existing) {
+        existing.head = entry.head;
+        existing.amount = amount;
+      } else {
+        missing.push(newRow(entry.head, amount));
+      }
+    });
+    return [...blank, ...missing];
   });
+  // How a head's opening figure was worked out, shown under it while the sheet is new.
+  const hintFor = (head: string) =>
+    workedOut.find((entry) => entry.head.toLowerCase() === head.toLowerCase());
 
   const createSheet = useCreateFillingCostSheet();
   const updateSheet = useUpdateFillingCostSheet();
@@ -157,7 +207,7 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
       if (sheet) {
         await updateSheet.mutateAsync({ sheetId: sheet.id, data: { cases, notes, entries } });
       } else {
-        await createSheet.mutateAsync({ line_id: lineId, date, cases, notes, entries });
+        await createSheet.mutateAsync({ line_id: lineId, date, shift, cases, notes, entries });
       }
       toast.success('Filling cost saved');
     } catch (error) {
@@ -188,6 +238,7 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
         <CardTitle className="flex flex-wrap items-center justify-between gap-3">
           <span>
             Filling Cost — {dayLabel(date)}
+            {shift && ` · ${shiftLabel}`}
             {lineName && ` · ${lineName}`}
           </span>
           <span className="flex flex-wrap items-center gap-2">
@@ -203,6 +254,12 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
               disabled={!canEdit}
               onChange={(e) => setCases(e.target.value)}
             />
+            {produced > 0 && defaults && (
+              <span className="text-xs font-normal text-muted-foreground">
+                From Production Execution: {defaults.run_count}{' '}
+                {defaults.run_count === 1 ? 'run' : 'runs'}
+              </span>
+            )}
             {canEdit && (
               <>
                 <Button
@@ -226,6 +283,16 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {!sheet && (defaults?.warnings.length ?? 0) > 0 && (
+          <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+            <p className="font-medium">Not everything could be worked out:</p>
+            <ul className="mt-1 list-disc pl-5">
+              {defaults?.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -248,6 +315,7 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
                       disabled={!canEdit}
                       onChange={(e) => editRow(row.key, 'head', e.target.value)}
                     />
+                    <DefaultHint entry={hintFor(row.head)} />
                   </td>
                   <td className="p-2">
                     <Input
@@ -295,6 +363,14 @@ function SheetEditor({ sheet, template, date, lineId, lineName, canEdit }: Sheet
           </table>
         </div>
 
+        {workedOut.length > 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Figures are worked out from this {shift ? 'shift' : 'day'}’s production runs,
+            Electricity++ and the Beverages Cost Master, as written under each head. Change any of
+            them before saving if the {shift ? 'shift' : 'day'} was different.
+          </p>
+        )}
+
         {/* The sheet's own total row: the day over the cases. Adding up the
             rounded per-case column instead lands a paisa or two out. */}
         <p className="mt-3 text-xs text-muted-foreground">
@@ -335,19 +411,27 @@ function FillingCostPage() {
 
   const [date, setDate] = useState(today);
   const [lineId, setLineId] = useState<number | null>(null);
+  const [shift, setShift] = useState<FillingCostShift>('');
+  const shiftLabel = FILLING_COST_SHIFTS.find((s) => s.value === shift)?.label ?? '';
 
   const scope = lineId ?? 'none';
-  const inScope = (s: FillingCostSheet) => (s.line ?? null) === lineId;
-  const dayQuery = useFillingCostSheets({ line_id: scope, date });
+  const inScope = (s: FillingCostSheet) => (s.line ?? null) === lineId && (s.shift ?? '') === shift;
+  const dayQuery = useFillingCostSheets({ line_id: scope, shift, date });
   // The newest two for this scope, whatever day is picked: one of them is not
   // the picked day, and that is the latest other day. A day nobody has
   // entered opens with the heads it used, so the sheet is typed out once and
   // filled in thereafter.
-  const latestQuery = useFillingCostSheets({ line_id: scope, limit: 2 });
-  const isLoading = dayQuery.isLoading || latestQuery.isLoading;
+  const latestQuery = useFillingCostSheets({ line_id: scope, shift, limit: 2 });
 
   const sheet = (dayQuery.data ?? []).find((s) => s.date === date && inScope(s)) ?? null;
   const template = (latestQuery.data ?? []).find((s) => s.date !== date && inScope(s)) ?? null;
+
+  // Only a day nobody has entered opens from the Cost Master. If it cannot be
+  // reached the sheet still opens, with the Salary blank to be typed in.
+  const defaultsQuery = useFillingCostDefaults(date, scope, shift, !dayQuery.isLoading && !sheet);
+  const defaults = sheet ? null : (defaultsQuery.data ?? null);
+
+  const isLoading = dayQuery.isLoading || latestQuery.isLoading || defaultsQuery.isLoading;
 
   return (
     <div className="space-y-6">
@@ -379,7 +463,7 @@ function FillingCostPage() {
                 value={lineId === null ? ALL_LINES : String(lineId)}
                 onValueChange={(value) => setLineId(value === ALL_LINES ? null : Number(value))}
               >
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="w-[220px]" aria-label="Line">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -387,6 +471,26 @@ function FillingCostPage() {
                   {lines.map((line) => (
                     <SelectItem key={line.id} value={String(line.id)}>
                       {line.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Shift</Label>
+              <Select
+                value={shift || 'WHOLE'}
+                onValueChange={(value) =>
+                  setShift(value === 'WHOLE' ? '' : (value as FillingCostShift))
+                }
+              >
+                <SelectTrigger className="w-[200px]" aria-label="Shift">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FILLING_COST_SHIFTS.map((option) => (
+                    <SelectItem key={option.value || 'WHOLE'} value={option.value || 'WHOLE'}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -411,10 +515,13 @@ function FillingCostPage() {
         </div>
       ) : (
         <SheetEditor
-          key={`${date}|${lineId ?? 'none'}|${sheet?.id ?? 'new'}|${sheet?.updated_at ?? ''}`}
+          key={`${date}|${shift}|${lineId ?? 'none'}|${sheet?.id ?? 'new'}|${sheet?.updated_at ?? ''}`}
           sheet={sheet}
           template={template}
+          defaults={defaults}
           date={date}
+          shift={shift}
+          shiftLabel={shiftLabel}
           lineId={lineId}
           lineName={lineId === null ? '' : (lines.find((l) => l.id === lineId)?.name ?? '')}
           canEdit={canEdit}

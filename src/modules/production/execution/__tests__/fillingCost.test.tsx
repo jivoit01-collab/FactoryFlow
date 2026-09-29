@@ -9,6 +9,7 @@ const SEP_25 = {
   line: null,
   line_name: '',
   date: '2026-09-25',
+  shift: '',
   cases: '160000.00',
   notes: '',
   entries: [
@@ -40,12 +41,54 @@ const createSheet = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 const updateSheet = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 const perms = vi.hoisted(() => ({ canEdit: true }));
 const askedFor = vi.hoisted(() => [] as unknown[]);
+/** What the Cost Master fills a new day with; none unless a test sets it. */
+const costMaster = vi.hoisted(() => ({
+  entries: [] as unknown[],
+  produced_cases: '0.00',
+  run_count: 0,
+  warnings: [] as string[],
+  askedFor: [] as unknown[],
+}));
+/** The night of the 28th, as the defaults endpoint works it out. */
+const worked = (head: string, amount: string | null, explain: string) => ({
+  head,
+  aliases: head === 'Fixed Manpower' ? ['Salary'] : [],
+  amount,
+  explain,
+  source: 'cost_master',
+});
+const COST_MASTER = [
+  worked('Electricity', '32787.00', 'Electricity++: ₹32,787 for Jivo Beverages on 28 Sep'),
+  worked('Fixed Manpower', '46153.85', '₹12,00,000 a month ÷ 26 days'),
+  worked('Maintenance', '9615.38', '₹2,50,000 a month ÷ 26 days'),
+  worked('Batch Coding', '4071.60', '1,35,720 bottles × ₹0.03'),
+  worked('Lubrication', '902.54', '67,860 litres × ₹0.0133 a litre (Rs. 0.2 per 15 litres)'),
+  worked('Lab', '192.31', '₹5,000 a month ÷ 26 days'),
+  worked('Miscellaneous', '384.62', '₹10,000 a month ÷ 26 days'),
+  worked('Scrap Recovering', '-3090.75', '412.100 kg of logged waste × ₹7.5 a kg, deducted'),
+  worked('Wastage', '4121.00', '1 waste log entry × the material’s SAP price on the run'),
+];
 
 vi.mock('../api', () => ({
   useLines: () => ({ data: [{ id: 1, name: 'Line 1' }] }),
   useFillingCostSheets: (params: unknown) => {
     askedFor.push(params);
     return { data: [SEP_25], isLoading: false };
+  },
+  useFillingCostDefaults: (date: string, lineId: unknown, shift: string, enabled: boolean) => {
+    if (enabled) costMaster.askedFor.push({ date, lineId, shift });
+    return {
+      data: enabled
+        ? {
+            date,
+            entries: costMaster.entries,
+            produced_cases: costMaster.produced_cases,
+            run_count: costMaster.run_count,
+            warnings: costMaster.warnings,
+          }
+        : undefined,
+      isLoading: false,
+    };
   },
   useCreateFillingCostSheet: () => ({ mutateAsync: createSheet, isPending: false }),
   useUpdateFillingCostSheet: () => ({ mutateAsync: updateSheet, isPending: false }),
@@ -72,6 +115,11 @@ describe('Filling cost sheet', () => {
     createSheet.mockClear();
     updateSheet.mockClear();
     askedFor.length = 0;
+    costMaster.entries = [];
+    costMaster.produced_cases = '0.00';
+    costMaster.run_count = 0;
+    costMaster.warnings = [];
+    costMaster.askedFor.length = 0;
   });
 
   it('shows the day as it was written, per case', () => {
@@ -97,8 +145,8 @@ describe('Filling cost sheet', () => {
     render(<FillingCostPage />);
     openDay('2026-09-25');
 
-    expect(askedFor).toContainEqual({ line_id: 'none', date: '2026-09-25' });
-    expect(askedFor).toContainEqual({ line_id: 'none', limit: 2 });
+    expect(askedFor).toContainEqual({ line_id: 'none', shift: '', date: '2026-09-25' });
+    expect(askedFor).toContainEqual({ line_id: 'none', shift: '', limit: 2 });
     expect(askedFor).not.toContainEqual(undefined);
   });
 
@@ -171,5 +219,128 @@ describe('Filling cost sheet', () => {
     } finally {
       perms.canEdit = true;
     }
+  });
+
+  it('opens a new day with every head worked out, and says how', () => {
+    costMaster.entries = COST_MASTER;
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    // The 25th's 'Salary' row is carried over under its new name.
+    expect(screen.queryByDisplayValue('Salary')).not.toBeInTheDocument();
+    expect(row('Fixed Manpower').getByPlaceholderText('0')).toHaveValue('46153.85');
+    expect(row('Fixed Manpower').getByText('₹12,00,000 a month ÷ 26 days')).toBeInTheDocument();
+    expect(row('Electricity').getByPlaceholderText('0')).toHaveValue('32787');
+    expect(row('Batch Coding').getByText('1,35,720 bottles × ₹0.03')).toBeInTheDocument();
+    // Heads the 25th did not have go on the end, the credit as a minus.
+    expect(row('Scrap Recovering').getByPlaceholderText('0')).toHaveValue('-3090.75');
+    expect(row('Wastage').getByPlaceholderText('0')).toHaveValue('4121');
+    // Not worked out: typed in as before.
+    expect(row('Briquette').getByPlaceholderText('0')).toHaveValue('');
+  });
+
+  it('adds up with the scrap taken off', () => {
+    costMaster.entries = COST_MASTER;
+    costMaster.produced_cases = '5655.00';
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    const total = screen.getByText('Total').closest('tr') as HTMLElement;
+    // 32,787 + 46,153.85 + 9,615.38 + 4,071.60 + 902.54 + 192.31 + 384.62
+    // + 4,121 − 3,090.75
+    expect(within(total).getByText('95,137.55')).toBeInTheDocument();
+    expect(within(total).getByText('16.82')).toBeInTheDocument();
+  });
+
+  it('says what it could not work out', () => {
+    costMaster.warnings = ['No bottles per case on run #8: its cases are left out.'];
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    expect(screen.getByText('Not everything could be worked out:')).toBeInTheDocument();
+    expect(screen.getByText(/No bottles per case on run #8/)).toBeInTheDocument();
+  });
+
+  it('saves what it opened with, unless it is changed', async () => {
+    costMaster.entries = COST_MASTER;
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    fireEvent.change(screen.getByLabelText('Cases'), { target: { value: '5655' } });
+    fireEvent.change(row('Lab').getByPlaceholderText('0'), { target: { value: '250' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => expect(createSheet).toHaveBeenCalled());
+    const { entries, shift } = createSheet.mock.calls[0][0];
+    expect(shift).toBe('');
+    expect(entries).toContainEqual({ head: 'Fixed Manpower', amount: '46153.85' });
+    expect(entries).toContainEqual({ head: 'Lab', amount: '250' });
+    expect(entries).toContainEqual({ head: 'Scrap Recovering', amount: '-3090.75' });
+  });
+
+  it('keeps a sheet per shift', async () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+    fireEvent.click(screen.getByRole('combobox', { name: 'Shift' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Night (19:00–07:00)' }));
+
+    expect(askedFor).toContainEqual({ line_id: 'none', shift: 'NIGHT', date: '2026-09-26' });
+    expect(costMaster.askedFor).toContainEqual({
+      date: '2026-09-26',
+      lineId: 'none',
+      shift: 'NIGHT',
+    });
+    expect(screen.getByText(/Filling Cost — 26 September 2026 · Night/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Cases'), { target: { value: '5655' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() => expect(createSheet).toHaveBeenCalled());
+    expect(createSheet.mock.calls[0][0].shift).toBe('NIGHT');
+  });
+
+  it('leaves a day already entered as it was saved', () => {
+    costMaster.entries = COST_MASTER;
+    render(<FillingCostPage />);
+    openDay('2026-09-25');
+
+    expect(row('Salary').getByDisplayValue('1200000')).toBeInTheDocument();
+    expect(screen.queryByText(/a month ÷ 26 days/)).not.toBeInTheDocument();
+  });
+
+  it('opens a new day at the cases its runs produced', () => {
+    costMaster.produced_cases = '5450.00';
+    costMaster.run_count = 3;
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    expect(screen.getByLabelText('Cases')).toHaveValue('5450');
+    expect(screen.getByText('From Production Execution: 3 runs')).toBeInTheDocument();
+    expect(screen.getByText(/Per 5,450 Cases/)).toBeInTheDocument();
+    expect(costMaster.askedFor).toContainEqual({ date: '2026-09-26', lineId: 'none', shift: '' });
+  });
+
+  it('asks for the picked line’s runs only', () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+    fireEvent.click(screen.getByRole('combobox', { name: 'Line' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Line 1' }));
+
+    expect(costMaster.askedFor).toContainEqual({ date: '2026-09-26', lineId: 1, shift: '' });
+  });
+
+  it('leaves the cases blank on a day with no production', () => {
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+
+    expect(screen.getByLabelText('Cases')).toHaveValue('');
+    expect(screen.queryByText(/From Production Execution/)).not.toBeInTheDocument();
+  });
+
+  it('keeps a saved day’s own case count', () => {
+    costMaster.produced_cases = '5450.00';
+    render(<FillingCostPage />);
+    openDay('2026-09-25');
+
+    expect(screen.getByLabelText('Cases')).toHaveValue('160000');
   });
 });

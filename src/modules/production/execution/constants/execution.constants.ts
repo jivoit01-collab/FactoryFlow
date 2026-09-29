@@ -358,13 +358,20 @@ export const STANDARD_CLEARANCE_ITEMS = [
  * heads are free text on the page and nothing resolves against these.
  */
 export const DEFAULT_FILLING_COST_HEADS = [
-  'Salary',
   'Electricity',
+  'Fixed Manpower',
   'Maintenance',
   'Batch Coding',
-  'Ground Water Extraction Bill',
-  'Briquette',
   'Lubrication',
   'Lab',
   'Miscellaneous',
+  'Wastage',
+  'Scrap Recovering',
+] as const;
+
+/** The sheet's scopes in time. A night belongs to the date it starts on. */
+export const FILLING_COST_SHIFTS = [
+  { value: '', label: 'Whole day' },
+  { value: 'DAY', label: 'Day (07:00–19:00)' },
+  { value: 'NIGHT', label: 'Night (19:00–07:00)' },
 ] as const;

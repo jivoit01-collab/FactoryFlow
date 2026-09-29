@@ -1217,6 +1217,7 @@ export const API_ENDPOINTS = {
     FILLING_COSTS: '/production-execution/filling-costs/',
     FILLING_COST_DETAIL: (sheetId: number) =>
       `/production-execution/filling-costs/${sheetId}/`,
+    FILLING_COST_DEFAULTS: '/production-execution/filling-costs/defaults/',
     // QC
     RUN_QC_INPROCESS: (runId: number) => `/production-execution/runs/${runId}/qc/inprocess/`,
     RUN_QC_INPROCESS_DETAIL: (runId: number, checkId: number) =>

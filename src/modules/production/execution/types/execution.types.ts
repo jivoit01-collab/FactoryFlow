@@ -1594,6 +1594,7 @@ export interface FillingCostSheet {
   line_name: string;
   /** The day the sheet covers, YYYY-MM-DD */
   date: string;
+  shift: FillingCostShift;
   /** The sheet's 'Per N Cases' divisor */
   cases: string;
   notes: string;
@@ -1617,6 +1618,8 @@ export interface CreateFillingCostSheetPayload {
   line_id?: number | null;
   /** The day the sheet covers, YYYY-MM-DD */
   date: string;
+  /** Omitted or '' = the whole day */
+  shift?: FillingCostShift;
   cases: string;
   notes?: string;
   entries: FillingCostEntryPayload[];
@@ -1625,11 +1628,43 @@ export interface CreateFillingCostSheetPayload {
 /** Sending `entries` replaces the sheet's rows outright. */
 export type UpdateFillingCostSheetPayload = Partial<CreateFillingCostSheetPayload>;
 
+/** The factory's shifts; '' on a sheet is the whole day. */
+export type FillingCostShift = '' | 'DAY' | 'NIGHT';
+
+/** A head a new sheet opens with, worked out by the server. */
+export interface FillingCostDefaultEntry {
+  head: string;
+  /** Older names for the head; a carried-over row by one of these is renamed */
+  aliases: string[];
+  /** The shift's amount, e.g. '46153.85' (negative for a credit such as scrap) */
+  amount: string | null;
+  /** How it was worked out, e.g. '₹12,00,000 a month ÷ 26 days' */
+  explain: string;
+  source: 'cost_master' | 'electricity' | 'waste_logs';
+}
+
+export interface FillingCostDefaults {
+  date: string;
+  shift: FillingCostShift;
+  /** Cases the shift's runs produced, per Production Execution, e.g. '5655.00' */
+  produced_cases: string;
+  /** Runs counted in it (drafts are not) */
+  run_count: number;
+  bottles: string;
+  litres: string;
+  running_hours: string;
+  entries: FillingCostDefaultEntry[];
+  /** What could not be worked out, and why — shown above the sheet */
+  warnings: string[];
+}
+
 export interface FillingCostSheetParams {
   /** A line id, or 'none' for the floor-wide sheet */
   line_id?: number | 'none';
   /** One day, YYYY-MM-DD */
   date?: string;
+  /** One shift, or '' for whole-day sheets */
+  shift?: FillingCostShift;
   /** Only the newest this many sheets */
   limit?: number;
 }

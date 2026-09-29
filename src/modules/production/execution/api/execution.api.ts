@@ -37,7 +37,9 @@ import type {
   CreateWaterRequest,
   DowntimeAnalytics,
   DowntimeParetoReport,
+  FillingCostDefaults,
   FillingCostSheet,
+  FillingCostShift,
   FillingCostSheetParams,
   FinalQCCheck,
   InProcessQCCheck,
@@ -1031,6 +1033,17 @@ export const executionApi = {
 
   async getFillingCostSheets(params?: FillingCostSheetParams): Promise<FillingCostSheet[]> {
     const res = await apiClient.get<FillingCostSheet[]>(EP.FILLING_COSTS, { params });
+    return res.data;
+  },
+
+  async getFillingCostDefaults(
+    date: string,
+    lineId: number | 'none',
+    shift: FillingCostShift,
+  ): Promise<FillingCostDefaults> {
+    const res = await apiClient.get<FillingCostDefaults>(EP.FILLING_COST_DEFAULTS, {
+      params: { date, line_id: lineId, shift },
+    });
     return res.data;
   },
 
