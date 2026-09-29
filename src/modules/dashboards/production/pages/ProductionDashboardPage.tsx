@@ -1,11 +1,14 @@
 import { Boxes, Maximize2, Recycle } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
-import { useAuth } from '@/core/auth';
+import { COMPANY_CODES } from '@/config/constants';
+import { useAuth, usePermission } from '@/core/auth';
 import { useLines } from '@/modules/production/execution/api';
 import { cn } from '@/shared/utils';
 
 import { useFullscreen } from '../../dispatch/hooks';
+import { FillingCostSheetPanel } from '../../filling-cost/components/FillingCostSheetPanel';
+import { FILLING_COST_BOARD_VIEW_PERMISSIONS } from '../../filling-cost/constants';
 import {
   CostBreakdownPanel,
   MaterialWallPanel,
@@ -48,6 +51,42 @@ import { useProductionBoard, useProductionDay } from '../hooks';
  * 11:00 still produced those cases, and the day's total has to include them.
  */
 export default function ProductionDashboardPage() {
+  const { currentCompany } = useAuth();
+  // Beverages reads its production board as the day's filling cost sheet and
+  // nothing else; every other company gets the wall.
+  if (currentCompany?.company_code === COMPANY_CODES.JIVO_BEVERAGES) {
+    return <BeveragesFillingCostBoard />;
+  }
+  return <ProductionWall />;
+}
+
+/** '2026-09-29' → '2026-09-28', in local time. */
+function dayBefore(date: Date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Beverages' board: one day's filling cost sheet and its pie. It opens on
+ * yesterday, because a day's cost is entered the morning after.
+ */
+function BeveragesFillingCostBoard() {
+  const { hasAnyPermission } = usePermission();
+  const [date, setDate] = useState(() => dayBefore(new Date()));
+
+  if (!hasAnyPermission(FILLING_COST_BOARD_VIEW_PERMISSIONS)) {
+    return (
+      <p className="py-16 text-center text-sm text-muted-foreground">
+        The production board for Jivo Beverages is the filling cost sheet, which your account cannot
+        view. Ask for the filling cost view permission.
+      </p>
+    );
+  }
+  return <FillingCostSheetPanel date={date} onDateChange={setDate} />;
+}
+
+function ProductionWall() {
   const { currentCompany } = useAuth();
   const variant = useMemo(() => variantForCompany(currentCompany), [currentCompany]);
   const unitNoun = variant.unitNoun;
