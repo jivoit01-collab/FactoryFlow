@@ -6,6 +6,7 @@ import { useAuth } from '@/core/auth';
 
 import type {
   LineFilters,
+  PostingPreview,
   SapItem,
   SapWarehouse,
   StockAudit,
@@ -54,8 +55,26 @@ export const stockAuditApi = {
   async refresh(id: number) {
     return (await apiClient.post<StockAuditDetail>(EP.REFRESH(id))).data;
   },
-  async close(id: number) {
-    return (await apiClient.post<StockAuditDetail>(EP.CLOSE(id))).data;
+  async complete(id: number) {
+    return (await apiClient.post<StockAuditDetail>(EP.COMPLETE(id))).data;
+  },
+  async approve(id: number) {
+    return (await apiClient.post<StockAuditDetail>(EP.APPROVE(id))).data;
+  },
+  async reject(id: number, reason: string) {
+    return (await apiClient.post<StockAuditDetail>(EP.REJECT(id), { reason })).data;
+  },
+  /** What the Inventory Posting would change in SAP. Reads SAP; changes nothing. */
+  async postingPreview(id: number): Promise<PostingPreview> {
+    return (await apiClient.get<PostingPreview>(EP.SAP_POSTING(id))).data;
+  },
+  /** The one write to SAP: an Inventory Posting of the RM and PM differences. */
+  async postToSap(id: number, confirmUnknown = false) {
+    return (
+      await apiClient.post<StockAuditDetail>(EP.SAP_POSTING(id), {
+        confirm_unknown: confirmUnknown,
+      })
+    ).data;
   },
   /** Fetched through the API so the request carries the auth header. */
   async exportCsv(id: number): Promise<Blob> {
@@ -173,7 +192,37 @@ export function useRefreshFromSap(id: number) {
   return useMutation({ mutationFn: () => stockAuditApi.refresh(id), onSuccess: refresh });
 }
 
-export function useCloseAudit(id: number) {
+export function useCompleteAudit(id: number) {
   const refresh = useRefreshAudit();
-  return useMutation({ mutationFn: () => stockAuditApi.close(id), onSuccess: refresh });
+  return useMutation({ mutationFn: () => stockAuditApi.complete(id), onSuccess: refresh });
+}
+
+export function useApproveAudit(id: number) {
+  const refresh = useRefreshAudit();
+  return useMutation({ mutationFn: () => stockAuditApi.approve(id), onSuccess: refresh });
+}
+
+export function useRejectAudit(id: number) {
+  const refresh = useRefreshAudit();
+  return useMutation({
+    mutationFn: (reason: string) => stockAuditApi.reject(id, reason),
+    onSuccess: refresh,
+  });
+}
+
+export function usePostingPreview(id: number, enabled: boolean) {
+  return useQuery({
+    queryKey: [...STOCK_AUDIT_KEYS.audit(id), 'posting-preview'],
+    queryFn: () => stockAuditApi.postingPreview(id),
+    enabled,
+    staleTime: 0,
+  });
+}
+
+export function usePostToSap(id: number) {
+  const refresh = useRefreshAudit();
+  return useMutation({
+    mutationFn: (confirmUnknown: boolean) => stockAuditApi.postToSap(id, confirmUnknown),
+    onSettled: refresh, // a refusal or no answer is recorded on the audit too
+  });
 }

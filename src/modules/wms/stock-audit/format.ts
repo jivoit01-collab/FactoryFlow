@@ -1,5 +1,17 @@
 import type { ItemCategory } from './types';
 
+/** 'SEMI FINISHED GOODS' → 'Semi Finished Goods'. */
+export function groupLabel(name: string): string {
+  return name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export const STATUS_LABELS = {
+  OPEN: 'Open',
+  SUBMITTED: 'Awaiting approval',
+  APPROVED: 'Approved',
+  CLOSED: 'Closed',
+} as const;
+
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   RM: 'Raw Material',
   PM: 'Packing Material',

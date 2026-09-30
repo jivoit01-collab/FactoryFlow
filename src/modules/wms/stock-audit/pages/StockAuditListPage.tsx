@@ -11,8 +11,15 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/compo
 import { getErrorMessage } from '@/shared/utils';
 
 import { useSapWarehouses, useStartAudit, useStockAudits } from '../api';
-import { when } from '../format';
-import type { SapWarehouse } from '../types';
+import { STATUS_LABELS, when } from '../format';
+import type { AuditStatus, SapWarehouse } from '../types';
+
+const STATUS_TONES: Record<AuditStatus, 'progress' | 'warn' | 'done' | 'neutral'> = {
+  OPEN: 'progress',
+  SUBMITTED: 'warn',
+  APPROVED: 'done',
+  CLOSED: 'neutral',
+};
 
 /**
  * Stock audits of the signed-in company's SAP warehouses: start one, or carry
@@ -142,8 +149,10 @@ export default function StockAuditListPage() {
                         </Link>
                       </td>
                       <td className="py-2">
-                        <StatusPill tone={audit.status === 'OPEN' ? 'progress' : 'done'} dot>
-                          {audit.status === 'OPEN' ? 'Open' : 'Closed'}
+                        <StatusPill tone={STATUS_TONES[audit.status]} dot>
+                          {audit.sap_posting === 'DONE'
+                            ? 'Posted to SAP'
+                            : STATUS_LABELS[audit.status]}
                         </StatusPill>
                       </td>
                       <td className="py-2 tabular-nums">

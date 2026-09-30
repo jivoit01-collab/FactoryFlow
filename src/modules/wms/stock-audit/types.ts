@@ -1,4 +1,6 @@
-export type AuditStatus = 'OPEN' | 'CLOSED';
+/** Open → Completed (SUBMITTED, awaiting approval) → Approved. CLOSED: older audits. */
+export type AuditStatus = 'OPEN' | 'SUBMITTED' | 'APPROVED' | 'CLOSED';
+export type SapPosting = '' | 'POSTING' | 'DONE' | 'FAILED' | 'UNKNOWN';
 export type ItemCategory = 'RM' | 'PM' | 'FG' | 'OTHER';
 export type LineState = '' | 'uncounted' | 'counted' | 'different';
 
@@ -14,6 +16,18 @@ export interface CategoryProgress {
   counted: number;
   /** Only for those who may see SAP's quantity */
   different?: number;
+  /** RM / PM / FG / OTHER, on a group's progress */
+  category?: ItemCategory;
+}
+
+/** What the signed-in user may do to the audit now. */
+export interface AuditActions {
+  count: boolean;
+  refresh: boolean;
+  complete: boolean;
+  approve: boolean;
+  post_to_sap: boolean;
+  void_any: boolean;
 }
 
 export interface StockAudit {
@@ -28,6 +42,18 @@ export interface StockAudit {
   started_at: string;
   closed_by: string;
   closed_at: string | null;
+  completed_by: string;
+  completed_at: string | null;
+  approved_by: string;
+  approved_at: string | null;
+  rejected_by: string;
+  rejected_at: string | null;
+  /** The last rejection, shown on the reopened audit */
+  rejection_reason: string;
+  sap_posting: SapPosting;
+  sap_doc_num: string;
+  sap_posted_at: string | null;
+  sap_posting_error: string;
   /** On the list only */
   lines?: number;
   counted?: number;
@@ -35,11 +61,11 @@ export interface StockAudit {
 
 export interface StockAuditDetail extends StockAudit {
   summary: {
-    by_category: Partial<Record<ItemCategory, CategoryProgress>>;
+    /** By SAP item group name (RAW MATERIAL, TRADING ITEMS…), biggest first */
+    by_group: Record<string, CategoryProgress>;
     total: CategoryProgress;
   };
-  /** SAP can be read again only before the first count */
-  can_refresh: boolean;
+  actions: AuditActions;
 }
 
 export interface StockAuditLine {
@@ -47,6 +73,9 @@ export interface StockAuditLine {
   item_code: string;
   item_name: string;
   category: ItemCategory;
+  /** SAP's item group, e.g. 'SEMI FINISHED GOODS' */
+  item_group_name: string;
+  is_batch: boolean;
   uom: string;
   /** False for an item found on the floor that SAP's copy did not list */
   in_sap: boolean;
@@ -87,7 +116,34 @@ export interface SapItem {
 
 export interface LineFilters {
   search?: string;
-  category?: ItemCategory | '';
+  /** A SAP item group name */
+  group?: string;
   state?: LineState;
   page?: number;
+}
+
+export interface PostingBatch {
+  batch: string;
+  sap_qty: string;
+  counted_qty: string;
+}
+
+export interface PostingLine {
+  line_id: number;
+  item_code: string;
+  item_name: string;
+  category: ItemCategory;
+  uom: string;
+  sap_qty: string;
+  counted_qty: string;
+  difference: string;
+  /** For a batch item, each batch that changes */
+  batches: PostingBatch[];
+  /** On a line that cannot be posted */
+  reason?: string;
+}
+
+export interface PostingPreview {
+  lines: PostingLine[];
+  blocked: PostingLine[];
 }

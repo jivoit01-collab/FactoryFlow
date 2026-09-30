@@ -109,8 +109,12 @@ export const STOCK_AUDIT_PERMISSIONS = {
   COUNT: 'stock_audit.can_count_stock_audit',
   /** See SAP's quantity and the difference; held back from counters by default. */
   SEE_SAP: 'stock_audit.can_view_audit_sap_qty',
-  /** Start, re-read from SAP and close audits; take back anybody's count. */
+  /** Start audits and re-read SAP; take back anybody's count. */
   MANAGE: 'stock_audit.can_manage_stock_audit',
+  /** Approve or reject a completed audit, correcting its counts first if need be. */
+  APPROVE: 'stock_audit.can_approve_stock_audit',
+  /** Post an approved audit's RM and PM differences to SAP. */
+  POST_TO_SAP: 'stock_audit.can_post_stock_audit_to_sap',
 } as const;
 
 /** Anyone who can open the stock audit at all. */

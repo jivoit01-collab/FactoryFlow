@@ -32,7 +32,10 @@ export const API_ENDPOINTS = {
       `/stock-audit/audits/${id}/counts/${countId}/void/`,
     ITEMS: (id: number) => `/stock-audit/audits/${id}/items/`,
     REFRESH: (id: number) => `/stock-audit/audits/${id}/refresh/`,
-    CLOSE: (id: number) => `/stock-audit/audits/${id}/close/`,
+    COMPLETE: (id: number) => `/stock-audit/audits/${id}/complete/`,
+    APPROVE: (id: number) => `/stock-audit/audits/${id}/approve/`,
+    REJECT: (id: number) => `/stock-audit/audits/${id}/reject/`,
+    SAP_POSTING: (id: number) => `/stock-audit/audits/${id}/sap-posting/`,
     EXPORT: (id: number) => `/stock-audit/audits/${id}/export/`,
   },
   // Auth

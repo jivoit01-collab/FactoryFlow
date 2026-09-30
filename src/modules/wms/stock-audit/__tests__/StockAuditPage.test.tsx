@@ -2,14 +2,17 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PostToSapDialog } from '../components/PostToSapDialog';
 import StockAuditPage from '../pages/StockAuditPage';
-import type { StockAuditDetail, StockAuditLine } from '../types';
+import type { AuditActions, PostingPreview, StockAuditDetail, StockAuditLine } from '../types';
 
 const line = (over: Partial<StockAuditLine>): StockAuditLine => ({
   id: 1,
   item_code: 'PM0000010',
   item_name: 'CAPS 28MM RED',
   category: 'PM',
+  item_group_name: 'PACKAGING MATERIAL',
+  is_batch: false,
   uom: 'PCS',
   in_sap: true,
   counted_qty: null,
@@ -23,29 +26,31 @@ const OIL = line({
   item_code: 'RM0000001',
   item_name: 'CANOLA OIL',
   category: 'RM',
+  item_group_name: 'RAW MATERIAL',
+  is_batch: true,
   uom: 'KG',
   sap_qty: '1500.5',
   difference: null,
 });
-const FOUND = line({
+const SF = line({
   id: 3,
-  item_code: 'PM0000099',
-  item_name: 'CAPS 38MM',
-  in_sap: false,
+  item_code: 'SF0000001',
+  item_name: 'BLENDED OIL',
+  category: 'OTHER',
+  item_group_name: 'SEMI FINISHED GOODS',
   counted_qty: '5',
-  count_entries: 1,
   sap_qty: '0',
   difference: '5',
 });
-const MATCH = line({
-  id: 4,
-  item_code: 'FG0000100',
-  category: 'FG',
-  counted_qty: '400',
-  count_entries: 2,
-  sap_qty: '400',
-  difference: '0',
-});
+
+const ACTIONS: AuditActions = {
+  count: true,
+  refresh: false,
+  complete: true,
+  approve: false,
+  post_to_sap: false,
+  void_any: false,
+};
 
 const AUDIT: StockAuditDetail = {
   id: 7,
@@ -58,14 +63,25 @@ const AUDIT: StockAuditDetail = {
   started_at: '2026-09-30T04:00:00Z',
   closed_by: '',
   closed_at: null,
-  can_refresh: false,
+  completed_by: '',
+  completed_at: null,
+  approved_by: '',
+  approved_at: null,
+  rejected_by: '',
+  rejected_at: null,
+  rejection_reason: '',
+  sap_posting: '',
+  sap_doc_num: '',
+  sap_posted_at: null,
+  sap_posting_error: '',
+  actions: ACTIONS,
   summary: {
-    by_category: {
-      PM: { lines: 2, counted: 2, different: 2 },
-      RM: { lines: 1, counted: 0, different: 0 },
-      FG: { lines: 1, counted: 1, different: 0 },
+    by_group: {
+      'PACKAGING MATERIAL': { lines: 1, counted: 1, different: 1, category: 'PM' },
+      'RAW MATERIAL': { lines: 1, counted: 0, different: 0, category: 'RM' },
+      'SEMI FINISHED GOODS': { lines: 1, counted: 1, different: 1, category: 'OTHER' },
     },
-    total: { lines: 4, counted: 3, different: 2 },
+    total: { lines: 3, counted: 2, different: 2 },
   },
 };
 
@@ -73,11 +89,16 @@ const state = vi.hoisted(() => ({
   audit: null as unknown,
   lines: [] as unknown[],
   seesSap: true,
-  perms: [] as string[],
+  preview: null as unknown,
   askedLines: [] as unknown[],
 }));
-const addCount = vi.hoisted(() => vi.fn());
-const closeAudit = vi.hoisted(() => vi.fn());
+const calls = vi.hoisted(() => ({
+  addCount: vi.fn(),
+  complete: vi.fn(),
+  approve: vi.fn(),
+  reject: vi.fn(),
+  post: vi.fn(),
+}));
 
 vi.mock('../api', () => ({
   stockAuditApi: { exportCsv: vi.fn() },
@@ -95,30 +116,28 @@ vi.mock('../api', () => ({
       isLoading: false,
     };
   },
-  useAddCount: () => ({ mutateAsync: addCount, isPending: false }),
-  useCloseAudit: () => ({ mutateAsync: closeAudit, isPending: false }),
+  useAddCount: () => ({ mutateAsync: calls.addCount, isPending: false }),
+  useCompleteAudit: () => ({ mutateAsync: calls.complete, isPending: false }),
+  useApproveAudit: () => ({ mutateAsync: calls.approve, isPending: false }),
+  useRejectAudit: () => ({ mutateAsync: calls.reject, isPending: false }),
   useRefreshFromSap: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useLineCounts: () => ({ data: [], isLoading: false }),
   useVoidCount: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAddItem: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSapItemSearch: () => ({ data: [], isLoading: false }),
+  usePostingPreview: () => ({ data: state.preview, isLoading: false, isError: false }),
+  usePostToSap: () => ({ mutateAsync: calls.post, isPending: false }),
 }));
 
-vi.mock('@/core/auth', () => ({
-  usePermission: () => ({
-    hasPermission: (p: string) => state.perms.includes(p),
-    hasAnyPermission: (ps: string[]) => ps.some((p) => state.perms.includes(p)),
-  }),
+const dialogs = vi.hoisted(() => ({
+  confirm: vi.fn().mockResolvedValue(true),
+  prompt: vi.fn().mockResolvedValue('Count rack C again'),
 }));
-
-const confirm = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 vi.mock('@/shared/components', async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  confirmDialog: confirm,
+  confirmDialog: dialogs.confirm,
+  promptDialog: dialogs.prompt,
 }));
-
-const COUNT = 'stock_audit.can_count_stock_audit';
-const MANAGE = 'stock_audit.can_manage_stock_audit';
 
 const renderAudit = () =>
   render(
@@ -130,41 +149,39 @@ const renderAudit = () =>
   );
 
 const row = (code: string) => within(screen.getByText(code).closest('tr') as HTMLElement);
+const withActions = (over: Partial<AuditActions>, audit: Partial<StockAuditDetail> = {}) => {
+  state.audit = { ...AUDIT, ...audit, actions: { ...ACTIONS, ...over } };
+};
 
-describe('Stock audit', () => {
+describe('Stock audit — counting', () => {
   beforeEach(() => {
     state.audit = AUDIT;
-    state.lines = [CAPS, OIL, FOUND, MATCH];
+    state.lines = [CAPS, OIL, SF];
     state.seesSap = true;
-    state.perms = [COUNT];
     state.askedLines.length = 0;
-    addCount.mockReset();
-    closeAudit.mockReset();
-    confirm.mockClear();
+    Object.values(calls).forEach((fn) => fn.mockReset());
+    dialogs.confirm.mockClear();
+    dialogs.prompt.mockClear();
   });
 
   it('adds what was found to on hand', async () => {
-    addCount.mockResolvedValue({ ...CAPS, counted_qty: '30', count_entries: 2 });
+    calls.addCount.mockResolvedValue({ ...CAPS, counted_qty: '30' });
     renderAudit();
-
     fireEvent.change(row('PM0000010').getByLabelText('Quantity for PM0000010'), {
       target: { value: '20' },
     });
     fireEvent.click(row('PM0000010').getByLabelText('Add to PM0000010'));
-
-    await waitFor(() => expect(addCount).toHaveBeenCalledWith({ lineId: 1, qty: '20' }));
+    await waitFor(() => expect(calls.addCount).toHaveBeenCalledWith({ lineId: 1, qty: '20' }));
   });
 
-  it('removes what was counted by mistake from on hand', async () => {
-    addCount.mockResolvedValue({ ...CAPS, counted_qty: '7', count_entries: 2 });
+  it('removes what was counted by mistake', async () => {
+    calls.addCount.mockResolvedValue({ ...CAPS, counted_qty: '7' });
     renderAudit();
-
     fireEvent.change(row('PM0000010').getByLabelText('Quantity for PM0000010'), {
       target: { value: '3' },
     });
     fireEvent.click(row('PM0000010').getByLabelText('Remove from PM0000010'));
-
-    await waitFor(() => expect(addCount).toHaveBeenCalledWith({ lineId: 1, qty: '-3' }));
+    await waitFor(() => expect(calls.addCount).toHaveBeenCalledWith({ lineId: 1, qty: '-3' }));
   });
 
   it('will not remove more than is on hand', () => {
@@ -173,88 +190,165 @@ describe('Stock audit', () => {
       target: { value: '11' },
     });
     fireEvent.click(row('PM0000010').getByLabelText('Remove from PM0000010'));
-    expect(addCount).not.toHaveBeenCalled();
+    expect(calls.addCount).not.toHaveBeenCalled();
   });
 
-  it('has nothing to remove from before anything is on hand', () => {
+  it('records "none found" as 0 with one press', async () => {
+    calls.addCount.mockResolvedValue({ ...OIL, counted_qty: '0' });
     renderAudit();
-    fireEvent.change(row('RM0000001').getByLabelText('Quantity for RM0000001'), {
-      target: { value: '1' },
-    });
-    expect(row('RM0000001').getByLabelText('Remove from RM0000001')).toBeDisabled();
+    fireEvent.click(row('RM0000001').getByLabelText('None of RM0000001 found'));
+    await waitFor(() => expect(calls.addCount).toHaveBeenCalledWith({ lineId: 2, qty: '0' }));
+    // Only offered while the item is uncounted.
+    expect(row('PM0000010').queryByLabelText('None of PM0000010 found')).not.toBeInTheDocument();
   });
 
-  it('reads SAP, then on hand, then the difference', () => {
+  it('has a tab for every SAP item group, SF and SC included', () => {
     renderAudit();
-    const heads = screen.getAllByRole('columnheader').map((th) => th.textContent);
-    expect(heads).toEqual(['Item', 'Type', 'SAP', 'On Hand', 'Add / Remove', 'Difference']);
+    expect(row('SF0000001').getByText('Semi Finished Goods')).toBeInTheDocument();
+    // The tile, not the Group cell of the canola row.
+    fireEvent.click(screen.getAllByText('Raw Material')[0]);
+    expect(state.askedLines.at(-1)).toMatchObject({ group: 'RAW MATERIAL' });
   });
 
-  it('shows SAP and the difference in words to those who may see them', () => {
+  it('shows SAP and the difference to those who may see them', () => {
     renderAudit();
     expect(row('PM0000010').getByText('32')).toBeInTheDocument();
     expect(row('PM0000010').getByText('-22')).toBeInTheDocument();
-    expect(row('PM0000099').getByText('+5')).toBeInTheDocument();
-    expect(row('FG0000100').getByText('0', { selector: 'td' })).toBeInTheDocument();
-    expect(row('PM0000099').getByText('New')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Differences' })).toBeInTheDocument();
+    expect(row('SF0000001').getByText('+5')).toBeInTheDocument();
   });
 
   it('hides SAP from a counter without the right', () => {
     state.seesSap = false;
-    state.lines = [line({ id: 1, counted_qty: '10', count_entries: 1 })];
+    state.lines = [line({ id: 1, counted_qty: '10' })];
     renderAudit();
     expect(screen.queryByText('SAP', { selector: 'th' })).not.toBeInTheDocument();
     expect(screen.queryByText('Difference', { selector: 'th' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Differences' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Stock audit — complete, approve, post', () => {
+  beforeEach(() => {
+    state.audit = AUDIT;
+    state.lines = [CAPS, OIL, SF];
+    state.seesSap = true;
+    Object.values(calls).forEach((fn) => fn.mockReset());
+    dialogs.confirm.mockClear();
+    dialogs.prompt.mockClear();
   });
 
-  it('searches and filters the lines', async () => {
+  it('lets the auditor complete it, saying what is uncounted', async () => {
+    calls.complete.mockResolvedValue({});
     renderAudit();
-    fireEvent.change(screen.getByLabelText('Search items'), { target: { value: 'caps' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Not counted' }));
-    await waitFor(() =>
-      expect(state.askedLines.at(-1)).toEqual({
-        search: 'caps',
-        category: '',
-        state: 'uncounted',
-        page: 1,
-      }),
+    expect(screen.queryByRole('button', { name: /Close/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Complete/ }));
+    await waitFor(() => expect(calls.complete).toHaveBeenCalled());
+    expect(dialogs.confirm.mock.calls[0][0].description).toBe('1 items are not counted.');
+  });
+
+  it('shows an approver Approve and Reject, and asks a reason to reject', async () => {
+    withActions({ complete: false, approve: true }, { status: 'SUBMITTED' });
+    calls.reject.mockResolvedValue({});
+    renderAudit();
+    expect(screen.getByText('Awaiting approval')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Approve/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Reject/ }));
+    await waitFor(() => expect(calls.reject).toHaveBeenCalledWith('Count rack C again'));
+  });
+
+  it('lets an approver still correct counts while approving', () => {
+    withActions({ complete: false, approve: true }, { status: 'SUBMITTED' });
+    renderAudit();
+    expect(row('PM0000010').getByLabelText('Quantity for PM0000010')).toBeInTheDocument();
+  });
+
+  it('shows the auditors why it came back', () => {
+    withActions({}, { rejection_reason: 'Count rack C again', rejected_by: 'approver' });
+    renderAudit();
+    expect(screen.getByText('Rejected by approver: Count rack C again')).toBeInTheDocument();
+    expect(screen.getByText('Open · rejected')).toBeInTheDocument();
+  });
+
+  it('takes no counts once approved, and offers Post to SAP to whoever may', () => {
+    withActions({ count: false, complete: false, post_to_sap: true }, { status: 'APPROVED' });
+    renderAudit();
+    expect(screen.queryByLabelText('Quantity for PM0000010')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Post to SAP/ })).toBeInTheDocument();
+  });
+
+  it('shows the SAP document once posted', () => {
+    withActions(
+      { count: false, complete: false },
+      { status: 'APPROVED', sap_posting: 'DONE', sap_doc_num: '1234' },
     );
-    fireEvent.click(screen.getByText('Packing Material'));
-    expect(state.askedLines.at(-1)).toMatchObject({ category: 'PM' });
+    renderAudit();
+    expect(screen.getByText('Posted to SAP · 1234')).toBeInTheDocument();
+  });
+});
+
+describe('Post to SAP', () => {
+  const PREVIEW: PostingPreview = {
+    lines: [
+      {
+        line_id: 1,
+        item_code: 'PM0000010',
+        item_name: 'CAPS 28MM RED',
+        category: 'PM',
+        uom: 'PCS',
+        sap_qty: '32',
+        counted_qty: '30',
+        difference: '-2',
+        batches: [],
+      },
+      {
+        line_id: 2,
+        item_code: 'RM0000001',
+        item_name: 'CANOLA OIL',
+        category: 'RM',
+        uom: 'KG',
+        sap_qty: '1500.5',
+        counted_qty: '1400',
+        difference: '-100.5',
+        batches: [{ batch: 'OLD', sap_qty: '1000', counted_qty: '899.5' }],
+      },
+    ],
+    blocked: [],
+  };
+  const approved = { ...AUDIT, status: 'APPROVED' as const };
+  const open = (audit: StockAuditDetail = approved) =>
+    render(<PostToSapDialog audit={audit} open onClose={vi.fn()} />);
+
+  beforeEach(() => {
+    state.preview = PREVIEW;
+    calls.post.mockReset();
   });
 
-  it('shows progress by type', () => {
-    renderAudit();
-    expect(screen.getByText('3 / 4')).toBeInTheDocument();
-    expect(screen.getByText('2 / 2')).toBeInTheDocument();
+  it('shows each change, batches included, before posting', async () => {
+    calls.post.mockResolvedValue({ sap_doc_num: '1234' });
+    open();
+    expect(screen.getByText('-2 PCS')).toBeInTheDocument();
+    expect(screen.getByText('Batch OLD')).toBeInTheDocument();
+    expect(screen.getByText('899.5')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Post 2 items to SAP' }));
+    await waitFor(() => expect(calls.post).toHaveBeenCalledWith(false));
   });
 
-  it('lets only a manager close it', async () => {
-    renderAudit();
-    expect(screen.queryByRole('button', { name: /^Close$/ })).not.toBeInTheDocument();
+  it('will not post while a line cannot be placed', () => {
+    state.preview = {
+      ...PREVIEW,
+      blocked: [{ ...PREVIEW.lines[1], reason: 'SAP holds no batch of it here' }],
+    };
+    open();
+    expect(screen.getByText(/SAP holds no batch of it here/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Post 2 items/ })).toBeDisabled();
   });
 
-  it('asks before closing with items still uncounted', async () => {
-    state.perms = [COUNT, MANAGE];
-    closeAudit.mockResolvedValue({});
-    renderAudit();
-    fireEvent.click(screen.getByRole('button', { name: /^Close$/ }));
-    await waitFor(() => expect(closeAudit).toHaveBeenCalled());
-    expect(confirm.mock.calls[0][0].description).toMatch(/1 items are still not counted/);
-  });
-
-  it('takes no counts once closed', () => {
-    state.audit = { ...AUDIT, status: 'CLOSED', closed_at: '2026-09-30T09:00:00Z', closed_by: 'm' };
-    renderAudit();
-    expect(screen.queryByLabelText('Quantity for PM0000010')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Add item/ })).not.toBeInTheDocument();
-  });
-
-  it('offers no counting to someone who may only look', () => {
-    state.perms = ['stock_audit.can_view_stock_audit'];
-    renderAudit();
-    expect(screen.queryByLabelText('Quantity for PM0000010')).not.toBeInTheDocument();
+  it('after no answer from SAP, asks that SAP was checked first', async () => {
+    calls.post.mockResolvedValue({ sap_doc_num: '1234' });
+    open({ ...approved, sap_posting: 'UNKNOWN' });
+    const post = screen.getByRole('button', { name: /Post 2 items/ });
+    expect(post).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('I checked SAP'));
+    fireEvent.click(post);
+    await waitFor(() => expect(calls.post).toHaveBeenCalledWith(true));
   });
 });

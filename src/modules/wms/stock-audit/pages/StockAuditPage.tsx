@@ -1,28 +1,31 @@
 import {
+  Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Download,
-  Lock,
   Minus,
   PackagePlus,
   Plus,
   RefreshCw,
   Search,
+  Send,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { STOCK_AUDIT_PERMISSIONS } from '@/config/permissions';
-import { usePermission } from '@/core/auth';
 import {
   confirmDialog,
   EmptyPanel,
   PageHeader,
+  promptDialog,
   StatTile,
   StatTileRow,
   StatusPill,
+  type StatusTone,
 } from '@/shared/components';
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
@@ -31,15 +34,18 @@ import { cn, getErrorMessage } from '@/shared/utils';
 import {
   stockAuditApi,
   useAddCount,
-  useCloseAudit,
+  useApproveAudit,
+  useCompleteAudit,
   useRefreshFromSap,
+  useRejectAudit,
   useStockAudit,
   useStockAuditLines,
 } from '../api';
 import { AddItemDialog } from '../components/AddItemDialog';
 import { CountHistoryDialog } from '../components/CountHistoryDialog';
-import { CATEGORY_LABELS, CATEGORY_ORDER, differenceLabel, qty } from '../format';
-import type { ItemCategory, LineState, StockAuditLine } from '../types';
+import { PostToSapDialog } from '../components/PostToSapDialog';
+import { differenceLabel, groupLabel, qty } from '../format';
+import type { CategoryProgress, LineState, StockAuditDetail, StockAuditLine } from '../types';
 
 const STATES: { value: LineState; label: string; needsSap?: boolean }[] = [
   { value: '', label: 'All' },
@@ -92,6 +98,16 @@ function AdjustOnHandCell({ auditId, line }: { auditId: number; line: StockAudit
     }
   };
 
+  // Looked, found none: the line is counted at 0, not left blank.
+  const foundNone = async () => {
+    try {
+      await addCount.mutateAsync({ lineId: line.id, qty: '0' });
+      toast.success(`${line.item_code}: 0 on hand`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'On hand was not saved.'));
+    }
+  };
+
   return (
     <form
       className="flex items-center gap-1"
@@ -131,6 +147,20 @@ function AdjustOnHandCell({ auditId, line }: { auditId: number; line: StockAudit
       >
         <Minus className="h-4 w-4" />
       </Button>
+      {line.counted_qty == null && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 px-2 font-mono"
+          aria-label={`None of ${line.item_code} found`}
+          title="None found"
+          disabled={addCount.isPending}
+          onClick={foundNone}
+        >
+          0
+        </Button>
+      )}
     </form>
   );
 }
@@ -138,74 +168,77 @@ function AdjustOnHandCell({ auditId, line }: { auditId: number; line: StockAudit
 /**
  * One warehouse's audit: every item SAP listed, what has been counted of it,
  * and — for those allowed to see it — SAP's figure and the difference.
+ * Complete → approve (or reject back) → post the RM and PM differences to SAP.
  */
 export default function StockAuditPage() {
   const auditId = Number(useParams().auditId);
-  const { hasPermission, hasAnyPermission } = usePermission();
-  const canManage = hasPermission(STOCK_AUDIT_PERMISSIONS.MANAGE);
-  const canCount = hasAnyPermission([
-    STOCK_AUDIT_PERMISSIONS.COUNT,
-    STOCK_AUDIT_PERMISSIONS.MANAGE,
-  ]);
 
   const [search, setSearch] = useState('');
   const term = useDebounce(search, 300);
-  const [category, setCategory] = useState<ItemCategory | ''>('');
+  const [group, setGroup] = useState('');
   const [state, setState] = useState<LineState>('');
   const [page, setPage] = useState(1);
   const [historyFor, setHistoryFor] = useState<StockAuditLine | null>(null);
   const [addingItem, setAddingItem] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   const audit = useStockAudit(auditId);
-  const lines = useStockAuditLines(auditId, { search: term, category, state, page });
+  const lines = useStockAuditLines(auditId, { search: term, group, state, page });
   const refresh = useRefreshFromSap(auditId);
-  const close = useCloseAudit(auditId);
+  const complete = useCompleteAudit(auditId);
+  const approve = useApproveAudit(auditId);
+  const reject = useRejectAudit(auditId);
 
   const data = audit.data;
+  const actions = data?.actions;
   const seesSap = lines.data?.sees_sap ?? false;
-  const isOpen = data?.status === 'OPEN';
   const pages = lines.data ? Math.max(1, Math.ceil(lines.data.count / lines.data.page_size)) : 1;
 
-  const filterBy = (next: { category?: ItemCategory | ''; state?: LineState }) => {
-    if (next.category !== undefined) setCategory(next.category);
+  const filterBy = (next: { group?: string; state?: LineState }) => {
+    if (next.group !== undefined) setGroup(next.group);
     if (next.state !== undefined) setState(next.state);
     setPage(1);
   };
 
-  const handleRefresh = async () => {
-    const ok = await confirmDialog({
-      title: 'Read SAP again?',
-      description:
-        'Every item’s SAP quantity is copied again. Only possible before counting starts.',
-      confirmLabel: 'Read SAP',
-    });
-    if (!ok) return;
+  const run = async (action: () => Promise<unknown>, done: string, failed: string) => {
     try {
-      await refresh.mutateAsync();
-      toast.success('SAP’s figures read again');
+      await action();
+      toast.success(done);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'SAP was not read.'));
+      toast.error(getErrorMessage(error, failed));
     }
   };
 
-  const handleClose = async () => {
+  const handleRefresh = async () => {
+    const ok = await confirmDialog({ title: 'Read SAP again?', confirmLabel: 'Read SAP' });
+    if (ok) await run(() => refresh.mutateAsync(), 'SAP read again', 'SAP was not read.');
+  };
+
+  const handleComplete = async () => {
     const uncounted = (data?.summary.total.lines ?? 0) - (data?.summary.total.counted ?? 0);
     const ok = await confirmDialog({
-      title: 'Close this audit?',
-      description:
-        uncounted > 0
-          ? `${uncounted} items are still not counted. A closed audit takes no more counts.`
-          : 'A closed audit takes no more counts.',
-      confirmLabel: 'Close audit',
-      destructive: uncounted > 0,
+      title: 'Complete the audit?',
+      description: uncounted > 0 ? `${uncounted} items are not counted.` : undefined,
+      confirmLabel: 'Complete',
     });
-    if (!ok) return;
-    try {
-      await close.mutateAsync();
-      toast.success('Audit closed');
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'The audit was not closed.'));
-    }
+    if (ok) await run(() => complete.mutateAsync(), 'Sent for approval', 'Not completed.');
+  };
+
+  const handleApprove = async () => {
+    const ok = await confirmDialog({ title: 'Approve this audit?', confirmLabel: 'Approve' });
+    if (ok) await run(() => approve.mutateAsync(), 'Audit approved', 'Not approved.');
+  };
+
+  const handleReject = async () => {
+    const reason = await promptDialog({
+      title: 'Reject this audit?',
+      label: 'What should be counted again?',
+      confirmLabel: 'Reject',
+      destructive: true,
+      multiline: true,
+    });
+    if (reason)
+      await run(() => reject.mutateAsync(reason), 'Sent back to the auditors', 'Not rejected.');
   };
 
   const handleExport = async () => {
@@ -222,33 +255,26 @@ export default function StockAuditPage() {
     }
   };
 
-  if (audit.isLoading || !data) {
+  if (audit.isLoading || !data || !actions) {
     return (
       <EmptyPanel
         loading={audit.isLoading}
-        message={
-          audit.isLoading ? 'Loading the audit…' : getErrorMessage(audit.error, 'Audit not found.')
-        }
+        message={audit.isLoading ? 'Loading…' : getErrorMessage(audit.error, 'Audit not found.')}
       />
     );
   }
 
-  const progress = (key: ItemCategory | 'ALL') => {
-    const part = key === 'ALL' ? data.summary.total : data.summary.by_category[key];
-    if (!part) return null;
-    return (
-      <StatTile
-        key={key}
-        label={key === 'ALL' ? 'All' : CATEGORY_LABELS[key]}
-        value={`${part.counted} / ${part.lines}`}
-        accent="teal"
-        onClick={() => filterBy({ category: key === 'ALL' ? '' : key })}
-        className={cn(
-          (key === 'ALL' ? category === '' : category === key) && 'ring-2 ring-primary',
-        )}
-      />
-    );
-  };
+  const status = statusPill(data);
+  const tile = (name: string, part: CategoryProgress) => (
+    <StatTile
+      key={name || 'ALL'}
+      label={name ? groupLabel(name) : 'All'}
+      value={`${part.counted} / ${part.lines}`}
+      accent="teal"
+      onClick={() => filterBy({ group: name })}
+      className={cn(group === name && 'ring-2 ring-primary')}
+    />
+  );
 
   return (
     <div className="space-y-6">
@@ -263,13 +289,13 @@ export default function StockAuditPage() {
         backTo="/warehouse-ops/stock-audit"
         backLabel="Stock Audit"
         meta={
-          <StatusPill tone={isOpen ? 'progress' : 'done'} dot>
-            {isOpen ? 'Open' : 'Closed'}
+          <StatusPill tone={status.tone} dot>
+            {status.text}
           </StatusPill>
         }
       >
         <div className="flex flex-wrap gap-2">
-          {canManage && data.can_refresh && (
+          {actions.refresh && (
             <Button
               variant="outline"
               size="sm"
@@ -282,17 +308,49 @@ export default function StockAuditPage() {
           <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Export
           </Button>
-          {canManage && isOpen && (
-            <Button size="sm" onClick={handleClose} disabled={close.isPending}>
-              <Lock className="mr-2 h-4 w-4" /> Close
+          {actions.complete && (
+            <Button size="sm" onClick={handleComplete} disabled={complete.isPending}>
+              <CheckCheck className="mr-2 h-4 w-4" /> Complete
+            </Button>
+          )}
+          {actions.approve && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReject}
+                disabled={reject.isPending}
+              >
+                <X className="mr-2 h-4 w-4" /> Reject
+              </Button>
+              <Button size="sm" onClick={handleApprove} disabled={approve.isPending}>
+                <Check className="mr-2 h-4 w-4" /> Approve
+              </Button>
+            </>
+          )}
+          {actions.post_to_sap && (
+            <Button size="sm" onClick={() => setPosting(true)}>
+              <Send className="mr-2 h-4 w-4" /> Post to SAP
             </Button>
           )}
         </div>
       </PageHeader>
 
+      {data.status === 'OPEN' && data.rejection_reason && (
+        <Notice tone="warn">
+          Rejected by {data.rejected_by}: {data.rejection_reason}
+        </Notice>
+      )}
+      {(data.sap_posting === 'FAILED' || data.sap_posting === 'UNKNOWN') && (
+        <Notice tone="warn">
+          {data.sap_posting === 'FAILED' ? 'SAP refused the posting' : 'SAP did not answer'}:{' '}
+          {data.sap_posting_error}
+        </Notice>
+      )}
+
       <StatTileRow>
-        {progress('ALL')}
-        {CATEGORY_ORDER.map((key) => progress(key))}
+        {tile('', data.summary.total)}
+        {Object.entries(data.summary.by_group).map(([name, part]) => tile(name, part))}
       </StatTileRow>
 
       <Card>
@@ -329,7 +387,7 @@ export default function StockAuditPage() {
                 </button>
               ))}
             </div>
-            {isOpen && canCount && (
+            {actions.count && (
               <Button variant="outline" size="sm" onClick={() => setAddingItem(true)}>
                 <PackagePlus className="mr-2 h-4 w-4" /> Add item
               </Button>
@@ -347,10 +405,10 @@ export default function StockAuditPage() {
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="py-2 pr-2 font-medium">Item</th>
-                    <th className="py-2 pr-2 font-medium">Type</th>
+                    <th className="py-2 pr-2 font-medium">Group</th>
                     {seesSap && <th className="py-2 pr-2 text-right font-medium">SAP</th>}
                     <th className="py-2 pr-2 text-right font-medium">On Hand</th>
-                    {isOpen && canCount && <th className="py-2 pr-2 font-medium">Add / Remove</th>}
+                    {actions.count && <th className="py-2 pr-2 font-medium">Add / Remove</th>}
                     {seesSap && <th className="py-2 text-right font-medium">Difference</th>}
                   </tr>
                 </thead>
@@ -370,7 +428,7 @@ export default function StockAuditPage() {
                             {line.item_name}
                           </span>
                         </td>
-                        <td className="py-2 pr-2 text-xs">{line.category}</td>
+                        <td className="py-2 pr-2 text-xs">{groupLabel(line.item_group_name)}</td>
                         {seesSap && (
                           <td className="py-2 pr-2 text-right font-mono tabular-nums">
                             {qty(line.sap_qty)}
@@ -379,7 +437,7 @@ export default function StockAuditPage() {
                         <td className="py-2 pr-2 text-right">
                           <button
                             type="button"
-                            className="font-mono font-semibold tabular-nums hover:underline disabled:no-underline"
+                            className="font-mono font-semibold tabular-nums hover:underline"
                             onClick={() => setHistoryFor(line)}
                             aria-label={`On hand history of ${line.item_code}`}
                           >
@@ -387,7 +445,7 @@ export default function StockAuditPage() {
                           </button>
                           <span className="ml-1 text-xs text-muted-foreground">{line.uom}</span>
                         </td>
-                        {isOpen && canCount && (
+                        {actions.count && (
                           <td className="py-2 pr-2">
                             <AdjustOnHandCell auditId={auditId} line={line} />
                           </td>
@@ -413,7 +471,7 @@ export default function StockAuditPage() {
           {lines.data && lines.data.count > lines.data.page_size && (
             <div className="flex items-center justify-end gap-2 text-sm">
               <span className="text-muted-foreground">
-                Page {page} of {pages} · {lines.data.count} items
+                Page {page} of {pages}
               </span>
               <Button
                 variant="outline"
@@ -442,8 +500,8 @@ export default function StockAuditPage() {
         auditId={auditId}
         line={historyFor}
         open={historyFor != null}
-        isOpenAudit={isOpen}
-        canVoidAny={canManage}
+        isOpenAudit={actions.count}
+        canVoidAny={actions.void_any}
         onClose={() => setHistoryFor(null)}
       />
       <AddItemDialog
@@ -453,9 +511,35 @@ export default function StockAuditPage() {
         onAdded={(itemCode) => {
           setAddingItem(false);
           setSearch(itemCode);
-          filterBy({ category: '', state: '' });
+          filterBy({ group: '', state: '' });
         }}
       />
+      {posting && <PostToSapDialog audit={data} open={posting} onClose={() => setPosting(false)} />}
+    </div>
+  );
+}
+
+/** The audit's state in two words, and its colour. */
+function statusPill(audit: StockAuditDetail): { text: string; tone: StatusTone } {
+  if (audit.sap_posting === 'DONE')
+    return { text: `Posted to SAP · ${audit.sap_doc_num}`, tone: 'done' };
+  if (audit.status === 'APPROVED') return { text: 'Approved', tone: 'done' };
+  if (audit.status === 'SUBMITTED') return { text: 'Awaiting approval', tone: 'warn' };
+  if (audit.status === 'CLOSED') return { text: 'Closed', tone: 'neutral' };
+  return { text: audit.rejection_reason ? 'Open · rejected' : 'Open', tone: 'progress' };
+}
+
+function Notice({ tone, children }: { tone: 'warn'; children: React.ReactNode }) {
+  return (
+    <div
+      role="status"
+      className={cn(
+        'rounded-md border px-3 py-2 text-sm',
+        tone === 'warn' &&
+          'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200',
+      )}
+    >
+      {children}
     </div>
   );
 }
