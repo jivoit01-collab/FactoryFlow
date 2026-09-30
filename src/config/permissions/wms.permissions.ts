@@ -99,3 +99,22 @@ export const WMS_ADMIN_ACCESS: readonly string[] = [
 ];
 
 export type WmsPermission = (typeof WMS_PERMISSIONS)[keyof typeof WMS_PERMISSIONS];
+
+// ── Stock audit: a physical count of a SAP warehouse against SAP ────────────
+
+export const STOCK_AUDIT_PERMISSIONS = {
+  /** Open audits and see what has been counted. */
+  VIEW: 'stock_audit.can_view_stock_audit',
+  /** Enter physical counts, and take back one's own. */
+  COUNT: 'stock_audit.can_count_stock_audit',
+  /** See SAP's quantity and the difference; held back from counters by default. */
+  SEE_SAP: 'stock_audit.can_view_audit_sap_qty',
+  /** Start, re-read from SAP and close audits; take back anybody's count. */
+  MANAGE: 'stock_audit.can_manage_stock_audit',
+} as const;
+
+/** Anyone who can open the stock audit at all. */
+export const STOCK_AUDIT_ACCESS: readonly string[] = Object.values(STOCK_AUDIT_PERMISSIONS);
+
+/** Stock audit rights share the Warehouse Ops menu with the WMS ones. */
+export const STOCK_AUDIT_MODULE_PREFIX = 'stock_audit';
