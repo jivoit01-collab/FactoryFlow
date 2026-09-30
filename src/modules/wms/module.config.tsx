@@ -14,7 +14,7 @@
  * The master enable/disable flag lives in settings and gates feature UI via
  * `useWmsEnabled` / `WmsEnabledGate`.
  */
-import { Warehouse } from 'lucide-react';
+import { Boxes } from 'lucide-react';
 
 import {
   STOCK_AUDIT_ACCESS,
@@ -179,7 +179,7 @@ export const wmsModuleConfig: ModuleConfig = {
     {
       path: '/warehouse-ops',
       title: 'Warehouse Ops',
-      icon: Warehouse,
+      icon: Boxes,
       showInSidebar: true,
       // Hide the whole module from users with no `wms.*` or `stock_audit.*`
       // permission — an auditor sees the module with only Stock Audit in it.

@@ -36,8 +36,8 @@ describe('Gate Module Config', () => {
     expect(content).toContain("from '@/core/types'");
   });
 
-  it('imports Truck icon from lucide-react', () => {
-    expect(content).toContain("import { Truck } from 'lucide-react'");
+  it('imports DoorOpen icon from lucide-react', () => {
+    expect(content).toContain("import { DoorOpen } from 'lucide-react'");
   });
 
   it('imports barcode permissions for shared dispatch reports', () => {
@@ -209,8 +209,8 @@ describe('Gate Module Config', () => {
     expect(content).toContain("title: 'Gate'");
   });
 
-  it('uses Truck icon in navigation', () => {
-    expect(content).toContain('icon: Truck');
+  it('uses DoorOpen icon in navigation, so Gate is not mistaken for Dispatch', () => {
+    expect(content).toContain('icon: DoorOpen');
   });
 
   it('Gate nav item has submenu enabled', () => {

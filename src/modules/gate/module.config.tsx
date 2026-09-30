@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react';
+import { DoorOpen } from 'lucide-react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import {
@@ -1100,7 +1100,7 @@ export const gateModuleConfig: ModuleConfig = {
     {
       path: '/gate',
       title: 'Gate',
-      icon: Truck,
+      icon: DoorOpen,
       showInSidebar: true,
       permissions: GATE_NAVIGATION_PERMISSIONS,
       hasSubmenu: true,

@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react';
+import { Route } from 'lucide-react';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import { Navigate } from 'react-router-dom';
 
@@ -74,7 +74,7 @@ export const vehicleManagementModuleConfig: ModuleConfig = {
     {
       path: '/vehicle-management',
       title: 'Vehicle Management',
-      icon: Truck,
+      icon: Route,
       showInSidebar: true,
       permissions: vehicleManagementViewPermissions,
       hasSubmenu: true,
