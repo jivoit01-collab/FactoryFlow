@@ -109,15 +109,9 @@ export default function MaterialIndentApprovalsPage() {
 
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Material Indent — Purchase Approvals
-        </h2>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Review material requests raised across departments and approve them for purchase. Approving
-          sends the indent to the purchaser.
-        </p>
-      </div>
+      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        Material Indent — Purchase Approvals
+      </h2>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
       <div className="grid grid-cols-2 gap-2 sm:hidden">

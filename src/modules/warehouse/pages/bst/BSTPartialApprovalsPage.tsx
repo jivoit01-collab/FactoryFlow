@@ -159,10 +159,7 @@ export default function BSTPartialApprovalsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <DashboardHeader
-        title="BST Partial-Transfer Approvals"
-        description="Review requests to seal a branch transfer whose scanned quantity is short of the bill."
-      />
+      <DashboardHeader title="BST Partial-Transfer Approvals" />
 
       <div className="grid grid-cols-2 gap-2 sm:flex">
         {FILTERS.map((f) => (

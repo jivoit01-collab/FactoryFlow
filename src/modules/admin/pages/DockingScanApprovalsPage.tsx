@@ -109,15 +109,9 @@ export default function DockingScanApprovalsPage() {
 
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Docking — Scan Skip Requests
-        </h2>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Review operator requests to skip box scanning for docking entries. Approving unlocks the
-          scanning step for the operator.
-        </p>
-      </div>
+      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        Docking — Scan Skip Requests
+      </h2>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
       <div className="grid grid-cols-4 gap-2 sm:hidden">

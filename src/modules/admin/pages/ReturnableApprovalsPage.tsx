@@ -139,16 +139,9 @@ export default function ReturnableApprovalsPage() {
 
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Returnable / Non-returnable Approvals
-        </h2>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Sign off on material leaving the gate for repair, exchange or job work. Approving releases
-          the pass to the gate; sending it back returns it to the department as a draft. Anything
-          wrong on a pass — including its type — you can edit here instead of rejecting it.
-        </p>
-      </div>
+      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        Returnable / Non-returnable Approvals
+      </h2>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
       <div className="grid grid-cols-2 gap-2 sm:hidden">

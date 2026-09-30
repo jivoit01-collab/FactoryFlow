@@ -110,16 +110,10 @@ export default function LateDispatchApprovalsPage() {
 
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
-      <div>
-        <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
-          <Moon className="h-6 w-6" />
-          Late Dispatch Gate-In Approvals
-        </h2>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Trucks dispatch wants to load after the evening cutoff. Approving lets the gate
-          start the empty-vehicle entry for that truck; rejecting keeps it outside.
-        </p>
-      </div>
+      <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight sm:text-3xl">
+        <Moon className="h-6 w-6" />
+        Late Dispatch Gate-In Approvals
+      </h2>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
       <div className="grid grid-cols-4 gap-2 sm:hidden">

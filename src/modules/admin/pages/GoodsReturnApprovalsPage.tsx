@@ -70,10 +70,6 @@ export default function GoodsReturnApprovalsPage() {
     );
   }, [returns, search]);
 
-  const pendingCount = returns.filter(
-    (entry) => entry.requires_approval && entry.approval_status === 'PENDING',
-  ).length;
-
   function openReview(entry: GoodsReturnListItem, mode: ReviewMode) {
     setReviewTarget(entry);
     setReviewMode(mode);
@@ -106,15 +102,10 @@ export default function GoodsReturnApprovalsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-            <ShieldQuestion className="h-7 w-7 text-amber-600" />
-            Goods Return Approvals
-          </h2>
-          <p className="text-muted-foreground">
-            {pendingCount} return{pendingCount === 1 ? '' : 's'} awaiting your approval.
-          </p>
-        </div>
+        <h2 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+          <ShieldQuestion className="h-7 w-7 text-amber-600" />
+          Goods Return Approvals
+        </h2>
         <div className="relative w-full lg:max-w-sm">
           <Input
             value={search}

@@ -109,15 +109,9 @@ export default function DockingPartialScanApprovalsPage() {
 
   return (
     <div className="space-y-4 pb-6 sm:space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Docking — Partial Dispatch Approvals
-        </h2>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Review operator requests to dispatch a docking with only some of its boxes scanned.
-          Approving lets the load proceed to gatepass with the partial scan.
-        </p>
-      </div>
+      <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        Docking — Partial Dispatch Approvals
+      </h2>
 
       {/* Filter tabs sit outside the card on a phone so the list starts higher up. */}
       <div className="grid grid-cols-4 gap-2 sm:hidden">
