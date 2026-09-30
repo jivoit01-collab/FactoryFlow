@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { RETURNABLE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -341,7 +342,9 @@ export default function MaintenanceReturnableDetailPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] text-sm">
+                {/* Six columns need the room; a non-returnable pass's three fit the
+                    card, and a minimum width would scroll its quantity out of view. */}
+                <table className={`w-full text-sm ${pass.is_returnable ? 'min-w-[800px]' : ''}`}>
                   <thead className="bg-slate-50/80 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-500 dark:[&_th]:text-muted-foreground dark:bg-muted/30">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium">#</th>
@@ -377,6 +380,15 @@ export default function MaintenanceReturnableDetailPage() {
                               .filter(Boolean)
                               .join(' · ')}
                           </div>
+                          {item.spare ? (
+                            // Its stock leaves the store at gate out, and comes back with it.
+                            <Badge
+                              variant="outline"
+                              className="mt-1 border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-400"
+                            >
+                              From store
+                            </Badge>
+                          ) : null}
                         </td>
                         {pass.is_returnable ? (
                           <>

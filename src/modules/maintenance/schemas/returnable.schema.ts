@@ -7,19 +7,33 @@ const decimalString = (label: string) =>
     .refine((value) => !Number.isNaN(Number(value)), `${label} must be a number`)
     .refine((value) => Number(value) > 0, `${label} must be greater than zero`);
 
-export const returnableItemSchema = z.object({
-  id: z.number().optional(),
-  item_code: z.string().optional(),
-  item_name: z.string().min(1, 'Item name is required').max(250),
-  description: z.string().optional(),
-  serial_no: z.string().optional(),
-  make_model: z.string().optional(),
-  uom: z.string().optional(),
-  quantity_out: decimalString('Quantity'),
-  condition_out: z.enum(['WORKING', 'FAULTY', 'DAMAGED', 'NEW', 'OTHER']).optional(),
-  estimated_value: z.string().optional(),
-  remarks: z.string().optional(),
-});
+export const returnableItemSchema = z
+  .object({
+    id: z.number().optional(),
+    item_code: z.string().optional(),
+    item_name: z.string().min(1, 'Item name is required').max(250),
+    description: z.string().optional(),
+    serial_no: z.string().optional(),
+    make_model: z.string().optional(),
+    /** The Store / Spares item the line is taken from. */
+    spare: z.number().nullable().optional(),
+    /** Form-only: the line is being picked from the store. */
+    from_store: z.boolean().optional(),
+    /** Form-only: the picked item's stock, when the picker has told us. */
+    store_stock: z.string().optional(),
+    uom: z.string().optional(),
+    quantity_out: decimalString('Quantity'),
+    condition_out: z.enum(['WORKING', 'FAULTY', 'DAMAGED', 'NEW', 'OTHER']).optional(),
+    estimated_value: z.string().optional(),
+    remarks: z.string().optional(),
+  })
+  // A store line only has to say which item. How many is never held to the
+  // shelf: until the store's real stock is entered it may go below zero.
+  .superRefine((line, ctx) => {
+    if (line.from_store && !line.spare) {
+      ctx.addIssue({ code: 'custom', path: ['spare'], message: 'Pick the item from the store' });
+    }
+  });
 
 export const returnableGatePassSchema = z
   .object({

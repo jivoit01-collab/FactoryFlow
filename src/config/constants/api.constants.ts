@@ -887,6 +887,7 @@ export const API_ENDPOINTS = {
     SPARE_DETAIL: (spareId: number) => `/maintenance/spares/${spareId}/`,
     SPARES_LOW_STOCK: '/maintenance/spares/low-stock/',
     SPARE_ADJUST_STOCK: (spareId: number) => `/maintenance/spares/${spareId}/adjust-stock/`,
+    SPARE_GIVE_OUT: (spareId: number) => `/maintenance/spares/${spareId}/give-out/`,
     SPARE_REQUESTS: '/maintenance/spare-requests/',
     SPARE_REQUEST_DETAIL: (requestId: number) => `/maintenance/spare-requests/${requestId}/`,
     SPARE_REQUEST_ISSUE: (requestId: number) => `/maintenance/spare-requests/${requestId}/issue/`,
@@ -1050,6 +1051,8 @@ export const API_ENDPOINTS = {
     OPTIONS: '/returnable-items/options/',
     /** Omni-search over the SAP item master (OITM), live from HANA. */
     SAP_ITEMS: '/returnable-items/sap-items/',
+    /** Store / Spares items for a line taken from the store; POST adds one it lacks. */
+    STORE_ITEMS: '/returnable-items/store-items/',
   },
   // Blowing (preform -> bottle)
   PRODUCTION_BLOWING: {

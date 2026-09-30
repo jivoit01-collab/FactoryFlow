@@ -281,9 +281,11 @@ export interface MaintenanceSpare {
 }
 
 export interface MaintenanceSparePayload {
-  category: number;
+  /** Omitted: the item goes in the "General" category. */
+  category?: number;
   name: string;
-  part_number: string;
+  /** Omitted or blank: made from the name. */
+  part_number?: string;
   sap_item_code?: string;
   uom?: string;
   compatible_assets?: number[];
@@ -299,6 +301,13 @@ export interface MaintenanceSparePayload {
 export interface SpareStockAdjustPayload {
   new_stock: MaintenanceDecimal;
   reason: string;
+}
+
+/** Stock handed to a person with no work order behind it. */
+export interface SpareGiveOutPayload {
+  quantity: MaintenanceDecimal;
+  given_to: string;
+  remarks?: string;
 }
 
 export interface MaintenanceSpareFilters {

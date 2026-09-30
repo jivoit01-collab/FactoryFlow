@@ -17,6 +17,7 @@ import type {
   ReturnableRecordReturnPayload,
   SapItem,
   StagedAttachment,
+  StoreItem,
 } from '../types';
 
 const EP = API_ENDPOINTS.RETURNABLE;
@@ -227,6 +228,20 @@ export const returnableGatePassApi = {
     const response = await apiClient.get<SapItem[]>(EP.SAP_ITEMS, {
       params: { search, limit },
     });
+    return response.data;
+  },
+
+  // ---- Store / Spares ----
+
+  /** Store items (any stock) whose name, part number or place matches `search`. */
+  async searchStoreItems(search: string): Promise<StoreItem[]> {
+    const response = await apiClient.get<StoreItem[]>(EP.STORE_ITEMS, { params: { search } });
+    return response.data;
+  },
+
+  /** Add an item the store does not have yet (at 0), or get the one so named. */
+  async addStoreItem(payload: { name: string; uom: string }): Promise<StoreItem> {
+    const response = await apiClient.post<StoreItem>(EP.STORE_ITEMS, payload);
     return response.data;
   },
 };

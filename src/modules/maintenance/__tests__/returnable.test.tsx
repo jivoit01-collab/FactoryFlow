@@ -191,6 +191,33 @@ describe('returnable vs non-returnable', () => {
   });
 });
 
+describe('a line taken from the store', () => {
+  const pass = (line: Record<string, unknown>) =>
+    returnableGatePassSchema.safeParse({
+      is_returnable: false,
+      purpose: 'OTHER',
+      recipient_name: 'Sanjay ji',
+      items_input: [{ item_name: 'Switch 6 amp', quantity_out: '3', uom: 'NOS', ...line }],
+    });
+  const messages = (result: ReturnType<typeof pass>) =>
+    result.success ? [] : result.error.issues.map((issue) => issue.message);
+
+  it('must name the store item it is taken from', () => {
+    expect(messages(pass({ from_store: true, spare: null }))).toContain(
+      'Pick the item from the store',
+    );
+  });
+
+  it('may take more than the store shows, until its real stock is entered', () => {
+    expect(pass({ from_store: true, spare: 21, store_stock: '2.000' }).success).toBe(true);
+    expect(pass({ from_store: true, spare: 21, store_stock: '-4.000' }).success).toBe(true);
+  });
+
+  it('does not touch a typed-in line', () => {
+    expect(pass({ from_store: false, spare: null }).success).toBe(true);
+  });
+});
+
 describe('reasonSchema', () => {
   it('demands a substantive reason for reject / cancel / short-close', () => {
     expect(reasonSchema.safeParse({ reason: 'ok' }).success).toBe(false);

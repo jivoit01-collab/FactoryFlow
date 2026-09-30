@@ -22,6 +22,7 @@ export const RETURNABLE_QUERY_KEYS = {
   pendingGateIn: () => [...RETURNABLE_QUERY_KEYS.all, 'pending-gate-in'] as const,
   dashboard: () => [...RETURNABLE_QUERY_KEYS.all, 'dashboard'] as const,
   sapItems: (search: string) => [...RETURNABLE_QUERY_KEYS.all, 'sap-items', search] as const,
+  storeItems: (search: string) => [...RETURNABLE_QUERY_KEYS.all, 'store-items', search] as const,
 };
 
 /**
@@ -100,6 +101,27 @@ export function useSapItemSearch(search: string) {
     queryFn: () => returnableGatePassApi.searchSapItems(search),
     enabled: search.trim().length >= 2,
     staleTime: 30_000,
+  });
+}
+
+export function useStoreItemSearch(search: string) {
+  return useQuery({
+    queryKey: RETURNABLE_QUERY_KEYS.storeItems(search),
+    queryFn: () => returnableGatePassApi.searchStoreItems(search),
+    staleTime: 30_000,
+  });
+}
+
+export function useAddStoreItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: { name: string; uom: string }) =>
+      returnableGatePassApi.addStoreItem(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...RETURNABLE_QUERY_KEYS.all, 'store-items'] });
+      // The Store page's own list, too.
+      queryClient.invalidateQueries({ queryKey: ['maintenance'] });
+    },
   });
 }
 

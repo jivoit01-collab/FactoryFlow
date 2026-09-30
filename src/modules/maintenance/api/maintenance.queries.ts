@@ -37,6 +37,7 @@ import type {
   PreventiveMaintenancePlanFilters,
   PreventiveMaintenancePlanPayload,
   SpareCategoryPayload,
+  SpareGiveOutPayload,
   SpareIssuePayload,
   SpareMovementFilters,
   SpareRequestActionPayload,
@@ -739,6 +740,18 @@ export function useAdjustSpareStock() {
   return useMutation({
     mutationFn: ({ spareId, payload }: { spareId: number; payload: SpareStockAdjustPayload }) =>
       maintenanceApi.adjustSpareStock(spareId, payload),
+    onSuccess: (_spare, variables) => {
+      invalidateMaintenance(queryClient);
+      queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.spare(variables.spareId) });
+    },
+  });
+}
+
+export function useGiveOutSpare() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spareId, payload }: { spareId: number; payload: SpareGiveOutPayload }) =>
+      maintenanceApi.giveOutSpare(spareId, payload),
     onSuccess: (_spare, variables) => {
       invalidateMaintenance(queryClient);
       queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.spare(variables.spareId) });

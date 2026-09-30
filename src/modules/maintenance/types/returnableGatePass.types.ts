@@ -61,6 +61,19 @@ export interface SapItem {
   uom: string;
 }
 
+/**
+ * A Store / Spares item, for a line taken from the store. Its stock goes down
+ * when the pass leaves the gate (even below zero, until the store's real stock
+ * is entered) and back up when it returns.
+ */
+export interface StoreItem {
+  id: number;
+  name: string;
+  uom: string;
+  current_stock: string;
+  storage_location: string;
+}
+
 export interface ReturnableGatePassItem {
   id: number;
   company: number;
@@ -71,7 +84,9 @@ export interface ReturnableGatePassItem {
   description: string;
   serial_no: string;
   make_model: string;
+  /** The Store / Spares item this line was taken from, if any. */
   spare: number | null;
+  spare_name: string;
   asset: number | null;
   uom: string;
   quantity_out: string;

@@ -15,6 +15,7 @@ import {
   Switch,
   Textarea,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { returnableGatePassApi } from '../../api/returnableGatePass.api';
 import {
@@ -34,6 +35,7 @@ import type { ReturnableGatePass, ReturnableGatePassPayload, StagedAttachment } 
 import { AssetSelect } from './AssetSelect';
 import { ReturnableAttachmentsField } from './ReturnableAttachmentsField';
 import { SapItemSelect } from './SapItemSelect';
+import { StoreItemSelect } from './StoreItemSelect';
 import { WorkOrderSelect } from './WorkOrderSelect';
 
 interface ReturnableFormProps {
@@ -57,6 +59,9 @@ const PHOTO_REQUIRED =
 const EMPTY_LINE = {
   item_code: '',
   item_name: '',
+  spare: null,
+  from_store: false,
+  store_stock: '',
   quantity_out: '1',
   uom: 'NOS',
   condition_out: 'FAULTY' as const,
@@ -65,6 +70,9 @@ const EMPTY_LINE = {
   estimated_value: '',
   remarks: '',
 };
+
+/** The line fields a picked store item decides; cleared when the pick is. */
+const NO_STORE_ITEM = { spare: null, store_stock: '', item_code: '', item_name: '', uom: 'NOS' };
 
 function toFormValues(gatePass?: ReturnableGatePass | null): ReturnableGatePassFormValues {
   if (!gatePass) {
@@ -106,6 +114,9 @@ function toFormValues(gatePass?: ReturnableGatePass | null): ReturnableGatePassF
       description: item.description,
       serial_no: item.serial_no,
       make_model: item.make_model,
+      spare: item.spare,
+      from_store: Boolean(item.spare),
+      store_stock: '',
       uom: item.uom,
       quantity_out: item.quantity_out,
       condition_out: item.condition_out,
@@ -193,6 +204,7 @@ export function ReturnableForm({
     control,
     handleSubmit,
     reset,
+    getValues,
     setValue,
     watch,
     formState: { errors },
@@ -206,6 +218,19 @@ export function ReturnableForm({
   // actually flipped it away from what is stored.
   const typeSwitched = isEdit && isReturnable !== gatePass!.is_returnable;
   const { fields, append, remove } = useFieldArray({ control, name: 'items_input' });
+
+  const clearStoreItem = (index: number) => {
+    for (const [key, value] of Object.entries(NO_STORE_ITEM)) {
+      setValue(`items_input.${index}.${key as keyof typeof NO_STORE_ITEM}`, value);
+    }
+  };
+
+  // Switching a line's source starts it afresh: a store item's name and unit
+  // mean nothing on a typed line, and the other way round.
+  const chooseSource = (index: number, fromStore: boolean) => {
+    clearStoreItem(index);
+    setValue(`items_input.${index}.from_store`, fromStore);
+  };
 
   // The gate cannot tell one motor from another by its name, so a pass needs a
   // photo of the material. One already on the pass counts as much as a new one.
@@ -237,16 +262,23 @@ export function ReturnableForm({
       issued_by_name: values.is_returnable ? '' : values.issued_by_name,
       requested_by_name: values.is_returnable ? values.requested_by_name : '',
       contact_no: values.is_returnable ? values.contact_no : '',
-      items_input: values.items_input.map((item) => ({
-        ...item,
-        // Empty strings fail the backend's decimal parsing.
-        estimated_value: item.estimated_value ? item.estimated_value : null,
-        // Non-returnable lines hide serial, make/model, condition and value.
-        // Send neutral values — "FAULTY" would misdescribe stock being issued.
-        ...(values.is_returnable
-          ? {}
-          : { serial_no: '', make_model: '', condition_out: 'NEW' as const, estimated_value: null }),
-      })),
+      items_input: values.items_input.map(({ from_store: fromStore, ...line }) => {
+        // store_stock only drives the form's own "in store" hint.
+        const item = { ...line };
+        delete item.store_stock;
+        return {
+          ...item,
+          // A line switched back to "Other item" lets go of the store item.
+          spare: fromStore ? item.spare : null,
+          // Empty strings fail the backend's decimal parsing.
+          estimated_value: item.estimated_value ? item.estimated_value : null,
+          // Non-returnable lines hide serial, make/model, condition and value.
+          // Send neutral values — "FAULTY" would misdescribe stock being issued.
+          ...(values.is_returnable
+            ? {}
+            : { serial_no: '', make_model: '', condition_out: 'NEW' as const, estimated_value: null }),
+        };
+      }),
     };
 
     let saved: ReturnableGatePass;
@@ -317,7 +349,15 @@ export function ReturnableForm({
               id="is_returnable"
               checked={isReturnable}
               disabled={typeLocked}
-              onChange={(checked) => setValue('is_returnable', checked, { shouldValidate: true })}
+              onChange={(checked) => {
+                setValue('is_returnable', checked, { shouldValidate: true });
+                // A line not filled in yet follows the type, as new lines do.
+                getValues('items_input').forEach((line, index) => {
+                  if (!line.item_name && !line.spare) {
+                    setValue(`items_input.${index}.from_store`, !checked);
+                  }
+                });
+              }}
             />
           </div>
         }
@@ -495,11 +535,16 @@ export function ReturnableForm({
         title={isReturnable ? 'Items Going Out' : 'Items Being Issued'}
         hint={
           isReturnable
-            ? 'Search the SAP item master, or type an item that has no SAP code.'
-            : 'Pick each item from the SAP item master and enter how much is being issued.'
+            ? 'Take an item from the store, search the SAP item master, or type one that has no SAP code.'
+            : 'Take each item from the store (or the SAP item master) and enter how much is being issued.'
         }
         action={
-          <Button type="button" variant="outline" size="sm" onClick={() => append({ ...EMPTY_LINE })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append({ ...EMPTY_LINE, from_store: !isReturnable })}
+          >
             <Plus className="mr-1 h-4 w-4" />
             Add Item
           </Button>
@@ -512,11 +557,33 @@ export function ReturnableForm({
         <div className="space-y-3">
           {fields.map((field, index) => (
             <div key={field.id} className="rounded-xl border border-slate-200/80 bg-background p-4 shadow-sm dark:border-border">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Package className="h-3.5 w-3.5" />
                   Item {index + 1}
                 </span>
+                <div
+                  role="group"
+                  aria-label={`Where item ${index + 1} comes from`}
+                  className="ml-auto inline-flex rounded-md border border-slate-200 p-0.5 dark:border-border"
+                >
+                  {[true, false].map((store) => (
+                    <button
+                      key={String(store)}
+                      type="button"
+                      aria-pressed={Boolean(watch(`items_input.${index}.from_store`)) === store}
+                      onClick={() => chooseSource(index, store)}
+                      className={cn(
+                        'rounded px-3 py-1 text-xs font-medium transition-colors',
+                        Boolean(watch(`items_input.${index}.from_store`)) === store
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-muted',
+                      )}
+                    >
+                      {store ? 'From store' : 'Other item'}
+                    </button>
+                  ))}
+                </div>
                 <Button
                   type="button"
                   variant="ghost"
@@ -529,116 +596,194 @@ export function ReturnableForm({
                 </Button>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                  <SapItemSelect
-                    inputId={`sap-item-${index}`}
-                    label="SAP Item"
-                    defaultDisplayText={watch(`items_input.${index}.item_name`) || undefined}
-                    onSelect={(item) => {
-                      setValue(`items_input.${index}.item_code`, item.item_code);
-                      setValue(`items_input.${index}.item_name`, item.item_name, {
-                        shouldValidate: true,
-                      });
-                      if (item.uom) setValue(`items_input.${index}.uom`, item.uom);
-                    }}
-                    onClear={() => {
-                      setValue(`items_input.${index}.item_code`, '');
-                      setValue(`items_input.${index}.item_name`, '');
-                      // Don't leave the previous item's unit behind.
-                      setValue(`items_input.${index}.uom`, 'NOS');
-                    }}
-                  />
-                </div>
+              {watch(`items_input.${index}.from_store`) ? (
+                <div className="grid gap-4 sm:grid-cols-6">
+                  <div className="sm:col-span-4">
+                    <StoreItemSelect
+                      inputId={`store-item-${index}`}
+                      label="Store Item"
+                      defaultDisplayText={watch(`items_input.${index}.item_name`) || undefined}
+                      error={errors.items_input?.[index]?.spare?.message}
+                      onSelect={(item) => {
+                        setValue(`items_input.${index}.spare`, item.id, { shouldValidate: true });
+                        setValue(`items_input.${index}.item_name`, item.name, { shouldValidate: true });
+                        setValue(`items_input.${index}.item_code`, '');
+                        setValue(`items_input.${index}.uom`, item.uom);
+                        setValue(`items_input.${index}.store_stock`, item.current_stock);
+                      }}
+                      onClear={() => clearStoreItem(index)}
+                    />
+                    {watch(`items_input.${index}.store_stock`) ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        In store: {Number(watch(`items_input.${index}.store_stock`))}{' '}
+                        {watch(`items_input.${index}.uom`)}. It leaves the store when the gate
+                        lets the pass out.
+                        {/* Said, never stopped: the count may go below zero until
+                            the store's real stock is entered. */}
+                        {Number(watch(`items_input.${index}.quantity_out`)) >
+                        Number(watch(`items_input.${index}.store_stock`)) ? (
+                          <span className="block text-amber-700 dark:text-amber-400">
+                            That is more than the store shows; its count will go below 0.
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
 
-                <Field
-                  id={`item-name-${index}`}
-                  label="Item Name"
-                  className={isReturnable ? 'sm:col-span-2' : 'sm:col-span-3'}
-                  error={errors.items_input?.[index]?.item_name?.message}
-                >
-                  <Input
-                    id={`item-name-${index}`}
-                    {...register(`items_input.${index}.item_name`)}
-                  />
-                </Field>
-
-                <Field
-                  label="SAP Code"
-                  className={isReturnable ? 'sm:col-span-1' : 'sm:col-span-2'}
-                >
-                  <p className="truncate pt-2 font-mono text-xs text-muted-foreground">
-                    {watch(`items_input.${index}.item_code`) || '—'}
-                  </p>
-                </Field>
-
-                {/* UOM prefills from the SAP item master when an item is picked,
-                    but stays editable — the same material can be issued in sets,
-                    grams, kilograms, and so on. */}
-                {!isReturnable ? (
-                  <Field id={`uom-${index}`} label="UOM" className="sm:col-span-2">
+                  <Field
+                    id={`qty-${index}`}
+                    label={`Quantity (${watch(`items_input.${index}.uom`) || 'NOS'})`}
+                    className="sm:col-span-2"
+                    error={errors.items_input?.[index]?.quantity_out?.message}
+                  >
                     <Input
-                      id={`uom-${index}`}
-                      placeholder="e.g. NOS, SET, KG, GM"
-                      {...register(`items_input.${index}.uom`)}
+                      id={`qty-${index}`}
+                      inputMode="decimal"
+                      {...register(`items_input.${index}.quantity_out`)}
                     />
                   </Field>
-                ) : null}
 
-                <Field
-                  id={`qty-${index}`}
-                  label="Quantity"
-                  className="sm:col-span-2"
-                  error={errors.items_input?.[index]?.quantity_out?.message}
-                >
-                  <Input
-                    id={`qty-${index}`}
-                    inputMode="decimal"
-                    {...register(`items_input.${index}.quantity_out`)}
-                  />
-                </Field>
+                  {isReturnable ? (
+                    <>
+                      <Field id={`serial-${index}`} label="Serial No" className="sm:col-span-2">
+                        <Input id={`serial-${index}`} {...register(`items_input.${index}.serial_no`)} />
+                      </Field>
 
-                {isReturnable ? (
-                  <>
-                    <Field id={`serial-${index}`} label="Serial No" className="sm:col-span-2">
-                      <Input id={`serial-${index}`} {...register(`items_input.${index}.serial_no`)} />
-                    </Field>
+                      <Field id={`condition-${index}`} label="Condition Out" className="sm:col-span-2">
+                        <NativeSelect
+                          id={`condition-${index}`}
+                          {...register(`items_input.${index}.condition_out`)}
+                        >
+                          {CONDITION_OUT_OPTIONS.map((option) => (
+                            <SelectOption key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectOption>
+                          ))}
+                        </NativeSelect>
+                      </Field>
 
-                    <Field id={`model-${index}`} label="Make / Model" className="sm:col-span-2">
-                      <Input id={`model-${index}`} {...register(`items_input.${index}.make_model`)} />
-                    </Field>
+                      <Field id={`value-${index}`} label="Estimated Value" className="sm:col-span-2">
+                        <Input
+                          id={`value-${index}`}
+                          inputMode="decimal"
+                          {...register(`items_input.${index}.estimated_value`)}
+                        />
+                      </Field>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-6">
+                  <div className="sm:col-span-3">
+                    <SapItemSelect
+                      inputId={`sap-item-${index}`}
+                      label="SAP Item"
+                      defaultDisplayText={watch(`items_input.${index}.item_name`) || undefined}
+                      onSelect={(item) => {
+                        setValue(`items_input.${index}.item_code`, item.item_code);
+                        setValue(`items_input.${index}.item_name`, item.item_name, {
+                          shouldValidate: true,
+                        });
+                        if (item.uom) setValue(`items_input.${index}.uom`, item.uom);
+                      }}
+                      onClear={() => {
+                        setValue(`items_input.${index}.item_code`, '');
+                        setValue(`items_input.${index}.item_name`, '');
+                        // Don't leave the previous item's unit behind.
+                        setValue(`items_input.${index}.uom`, 'NOS');
+                      }}
+                    />
+                  </div>
 
+                  <Field
+                    id={`item-name-${index}`}
+                    label="Item Name"
+                    className={isReturnable ? 'sm:col-span-2' : 'sm:col-span-3'}
+                    error={errors.items_input?.[index]?.item_name?.message}
+                  >
+                    <Input
+                      id={`item-name-${index}`}
+                      {...register(`items_input.${index}.item_name`)}
+                    />
+                  </Field>
+
+                  <Field
+                    label="SAP Code"
+                    className={isReturnable ? 'sm:col-span-1' : 'sm:col-span-2'}
+                  >
+                    <p className="truncate pt-2 font-mono text-xs text-muted-foreground">
+                      {watch(`items_input.${index}.item_code`) || '—'}
+                    </p>
+                  </Field>
+
+                  {/* UOM prefills from the SAP item master when an item is picked,
+                      but stays editable — the same material can be issued in sets,
+                      grams, kilograms, and so on. */}
+                  {!isReturnable ? (
                     <Field id={`uom-${index}`} label="UOM" className="sm:col-span-2">
-                      <Input id={`uom-${index}`} {...register(`items_input.${index}.uom`)} />
-                    </Field>
-
-                    <Field id={`condition-${index}`} label="Condition Out" className="sm:col-span-2">
-                      <NativeSelect
-                        id={`condition-${index}`}
-                        {...register(`items_input.${index}.condition_out`)}
-                      >
-                        {CONDITION_OUT_OPTIONS.map((option) => (
-                          <SelectOption key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-
-                    <Field
-                      id={`value-${index}`}
-                      label="Estimated Value"
-                      className="sm:col-span-2"
-                    >
                       <Input
-                        id={`value-${index}`}
-                        inputMode="decimal"
-                        {...register(`items_input.${index}.estimated_value`)}
+                        id={`uom-${index}`}
+                        placeholder="e.g. NOS, SET, KG, GM"
+                        {...register(`items_input.${index}.uom`)}
                       />
                     </Field>
-                  </>
-                ) : null}
-              </div>
+                  ) : null}
+
+                  <Field
+                    id={`qty-${index}`}
+                    label="Quantity"
+                    className="sm:col-span-2"
+                    error={errors.items_input?.[index]?.quantity_out?.message}
+                  >
+                    <Input
+                      id={`qty-${index}`}
+                      inputMode="decimal"
+                      {...register(`items_input.${index}.quantity_out`)}
+                    />
+                  </Field>
+
+                  {isReturnable ? (
+                    <>
+                      <Field id={`serial-${index}`} label="Serial No" className="sm:col-span-2">
+                        <Input id={`serial-${index}`} {...register(`items_input.${index}.serial_no`)} />
+                      </Field>
+
+                      <Field id={`model-${index}`} label="Make / Model" className="sm:col-span-2">
+                        <Input id={`model-${index}`} {...register(`items_input.${index}.make_model`)} />
+                      </Field>
+
+                      <Field id={`uom-${index}`} label="UOM" className="sm:col-span-2">
+                        <Input id={`uom-${index}`} {...register(`items_input.${index}.uom`)} />
+                      </Field>
+
+                      <Field id={`condition-${index}`} label="Condition Out" className="sm:col-span-2">
+                        <NativeSelect
+                          id={`condition-${index}`}
+                          {...register(`items_input.${index}.condition_out`)}
+                        >
+                          {CONDITION_OUT_OPTIONS.map((option) => (
+                            <SelectOption key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectOption>
+                          ))}
+                        </NativeSelect>
+                      </Field>
+
+                      <Field
+                        id={`value-${index}`}
+                        label="Estimated Value"
+                        className="sm:col-span-2"
+                      >
+                        <Input
+                          id={`value-${index}`}
+                          inputMode="decimal"
+                          {...register(`items_input.${index}.estimated_value`)}
+                        />
+                      </Field>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </div>
           ))}
         </div>

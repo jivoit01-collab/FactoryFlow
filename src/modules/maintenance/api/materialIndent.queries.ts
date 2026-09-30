@@ -116,7 +116,9 @@ export function useReceiveMaterialIndent() {
   return useMutation({
     mutationFn: ({ indentId, payload }: { indentId: number; payload?: MaterialIndentReceivePayload }) =>
       materialIndentApi.receiveIndent(indentId, payload),
-    onSuccess: () => invalidateIndents(queryClient),
+    // Receiving adds to Store / Spares stock, so refresh every maintenance
+    // query (spares included), not only the indents.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['maintenance'] }),
   });
 }
 

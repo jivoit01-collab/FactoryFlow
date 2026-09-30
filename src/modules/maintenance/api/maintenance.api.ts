@@ -65,6 +65,7 @@ import type {
   PreventiveMaintenancePlanPayload,
   SpareCategory,
   SpareCategoryPayload,
+  SpareGiveOutPayload,
   SpareIssuePayload,
   SpareMovement,
   SpareMovementFilters,
@@ -604,6 +605,11 @@ export const maintenanceApi = {
       EP.SPARE_ADJUST_STOCK(spareId),
       payload,
     );
+    return response.data;
+  },
+
+  async giveOutSpare(spareId: number, payload: SpareGiveOutPayload): Promise<MaintenanceSpare> {
+    const response = await apiClient.post<MaintenanceSpare>(EP.SPARE_GIVE_OUT(spareId), payload);
     return response.data;
   },
 
