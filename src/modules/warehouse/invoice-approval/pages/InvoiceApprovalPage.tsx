@@ -260,11 +260,6 @@ export default function InvoiceApprovalPage() {
     <div className="space-y-4">
       <DashboardHeader
         title="Invoice Approval"
-        description={
-          source === 'OMS'
-            ? 'Verify invoices awaiting approval in OMS and the factory app against physical stock, then approve or reject.'
-            : 'Verify invoices awaiting approval in SAP and the factory app against physical stock, then approve or reject.'
-        }
       >
         <Button
           variant="outline"

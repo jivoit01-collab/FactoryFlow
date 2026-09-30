@@ -540,7 +540,6 @@ export default function EtpMonitoringPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="On-line Monitoring"
-        description="Two-hourly pH / TDS / DO readings across the plant's sampling points"
       />
 
       <Card>

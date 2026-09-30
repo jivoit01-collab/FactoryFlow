@@ -244,7 +244,7 @@ export default function MaintenanceDashboardPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Maintenance" description="Asset health and maintenance control">
+      <DashboardHeader title="Maintenance">
         <Button variant="outline" size="sm" onClick={() => void refetch()} disabled={isFetching}>
           <RefreshCw className="h-4 w-4" />
           Refresh

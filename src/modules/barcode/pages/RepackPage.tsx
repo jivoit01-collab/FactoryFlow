@@ -136,7 +136,7 @@ export default function RepackPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Repack" description="Pack any quantity of loose stock into a new box" />
+      <DashboardHeader title="Repack" />
 
       <Card>
         <CardContent className="p-4 space-y-4">

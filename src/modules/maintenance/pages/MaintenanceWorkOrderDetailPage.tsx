@@ -1047,7 +1047,6 @@ export default function MaintenanceWorkOrderDetailPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title={workOrder?.work_order_no ?? 'Work Order'}
-        description={workOrder?.title ?? 'Maintenance work detail'}
       >
         <Button variant="outline" size="sm" asChild>
           <Link to="/maintenance/work-orders">

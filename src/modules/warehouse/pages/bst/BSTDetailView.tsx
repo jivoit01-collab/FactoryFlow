@@ -196,7 +196,7 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
   return (
     <div className="space-y-6">
       {mode === 'page' ? (
-        <DashboardHeader title={t.entry_no} description="Branch stock transfer detail">
+        <DashboardHeader title={t.entry_no}>
           {actions}
         </DashboardHeader>
       ) : (

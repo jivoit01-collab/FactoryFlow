@@ -64,7 +64,6 @@ export default function ReturnOutListPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
         title="Material Out"
-        description="Every gate pass that has reached the gate. Verify the items physically, record the vehicle, then gate out."
       />
 
       {awaitingCount > 0 ? (

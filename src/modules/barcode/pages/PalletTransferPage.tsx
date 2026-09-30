@@ -109,7 +109,6 @@ export default function PalletTransferPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Godown Transfer"
-        description="Bulk transfer pallets between warehouses (e.g., BH-PF → GP-FG)"
       />
 
       <Card>

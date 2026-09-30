@@ -39,7 +39,7 @@ export default function DriversPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Drivers" description="Driver master records">
+      <DashboardHeader title="Drivers">
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh

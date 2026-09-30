@@ -344,7 +344,6 @@ export default function StockDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Oil Stock"
-        description="Every oil in every stage, from contract to tank: what is in the tanks, what waits outside the factory, and what is still on its way, by vendor."
         icon={Layers}
         accent="teal"
       >

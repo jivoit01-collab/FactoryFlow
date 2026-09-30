@@ -25,7 +25,6 @@ import {
   type BomKind,
   type BomType,
   type SapBomSummary,
-  useBomWorkflow,
   useCreateChangeRequest,
   useDirectPush,
   useSapBom,
@@ -58,7 +57,6 @@ export default function RequestFormPage() {
   const [loadedTree, setLoadedTree] = useState<string | null>(null);
   const [remarks, setRemarks] = useState('');
 
-  const workflow = useBomWorkflow();
   const tree = useSapBom(treeCode);
   const create = useCreateChangeRequest();
   const direct = useDirectPush();
@@ -144,11 +142,6 @@ export default function RequestFormPage() {
     <div className="space-y-6">
       <PageHeader
         title={isChange ? 'Change a BOM' : 'New BOM'}
-        description={
-          canRequest
-            ? `Goes through ${workflow.data?.levels ?? 'the'} approval levels before it is written to SAP`
-            : 'Written to SAP as soon as you confirm'
-        }
         icon={GitBranch}
         accent="indigo"
         backTo="/bom-changes/requests"

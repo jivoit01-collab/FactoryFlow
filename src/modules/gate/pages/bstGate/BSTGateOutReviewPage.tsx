@@ -75,7 +75,6 @@ export default function BSTGateOutReviewPage() {
         </Button>
         <DashboardHeader
           title={`BST Out — ${t.entry_no}`}
-          description="Verify the load and the warehouse approval, then mark the vehicle out"
         >
           {isShort && (
             <Badge variant="outline" className="border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400">

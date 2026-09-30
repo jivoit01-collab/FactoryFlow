@@ -562,7 +562,6 @@ export default function BarcodeDispatchReportsPage() {
     <div className="space-y-5">
       <DashboardHeader
         title="Dispatch Reports"
-        description="Operational dispatch history for bills, pallets, boxes, and rejected scans"
       />
 
       <section className="grid gap-3 md:grid-cols-4">

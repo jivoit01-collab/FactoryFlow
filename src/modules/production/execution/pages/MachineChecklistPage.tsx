@@ -137,7 +137,6 @@ function MachineChecklistPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Machine Checklists"
-        description="Daily, weekly & monthly maintenance checklists"
       />
 
       {/* Machine & Date selectors */}

@@ -52,7 +52,6 @@ export default function ContractHistoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Contract History"
-        description="The contract rates recorded in EXIM for each oil and vendor, and the period each ran. EXIM stopped adding to it in May 2026."
         icon={History}
         accent="teal"
       />

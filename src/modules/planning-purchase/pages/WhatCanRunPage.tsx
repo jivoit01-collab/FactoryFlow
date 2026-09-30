@@ -142,7 +142,6 @@ export default function WhatCanRunPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title="What can we run"
-        description="Name the products and quantities you want to make, and see whether the raw and packing material on hand covers it."
       >
         <div className="flex flex-wrap items-center gap-2">
           <UnitToggle unit={unit} onChange={setUnit} compact />

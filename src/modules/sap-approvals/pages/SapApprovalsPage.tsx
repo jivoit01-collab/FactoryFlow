@@ -123,7 +123,6 @@ export default function SapApprovalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="SAP Approvals"
-        description="SAP approval requests of every kind that involve you — decided as your own SAP user"
       >
         <Button
           variant="outline"

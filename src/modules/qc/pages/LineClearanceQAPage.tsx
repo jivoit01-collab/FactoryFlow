@@ -104,7 +104,6 @@ function LineClearanceQAPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Line Clearance QA"
-        description="Review and approve line clearances submitted by production"
       />
 
       <div className="flex items-center gap-3">

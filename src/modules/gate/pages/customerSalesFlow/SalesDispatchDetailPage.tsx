@@ -241,7 +241,6 @@ export default function SalesDispatchDetailPage() {
     <div className="space-y-6 pb-6">
       <PageHeader
         title={entry.entry_no}
-        description={isGateOutMode ? 'Invoice dispatch gate-out entry' : 'Docking gate-out entry'}
         icon={Warehouse}
         accent="blue"
         backTo={routes.dashboard}

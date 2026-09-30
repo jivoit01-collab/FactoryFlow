@@ -350,7 +350,7 @@ function WasteManagementPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Waste Management"
-        description={filteredRun ? `Run #${filteredRun.run_number} - ${filteredRun.product} (${filteredRun.date})` : 'Waste logs and approval workflow'}
+        description={filteredRun ? `Run #${filteredRun.run_number} - ${filteredRun.product} (${filteredRun.date})` : undefined}
         primaryAction={{
           label: 'Log Waste',
           icon: <Plus className="h-4 w-4 mr-2" />,

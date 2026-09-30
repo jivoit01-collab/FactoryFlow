@@ -310,7 +310,7 @@ export default function MaintenanceAssetDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title={asset?.asset_code ?? 'Asset'} description={asset?.name ?? 'Asset detail'}>
+      <DashboardHeader title={asset?.asset_code ?? 'Asset'}>
         <Button variant="outline" size="sm" asChild>
           <Link to="/maintenance/assets">
             <ArrowLeft className="h-4 w-4" />

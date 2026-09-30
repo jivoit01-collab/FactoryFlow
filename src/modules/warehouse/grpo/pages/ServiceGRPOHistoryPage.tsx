@@ -136,7 +136,6 @@ export default function ServiceGRPOHistoryPage({ embedded = false }: { embedded?
       {!embedded && (
         <PageHeader
           title="Service GRPO History"
-          description="View transport service GRPO postings to SAP"
           icon={History}
           accent="slate"
           backTo="/dispatch/bilty-grpo"

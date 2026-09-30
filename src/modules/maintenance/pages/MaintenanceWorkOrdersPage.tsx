@@ -177,7 +177,6 @@ export default function MaintenanceWorkOrdersPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Work Orders"
-        description="Complaints, breakdowns, and maintenance jobs"
       >
         <Button
           variant="outline"

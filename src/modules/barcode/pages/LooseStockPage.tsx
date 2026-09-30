@@ -333,7 +333,6 @@ export default function LooseStockPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Loose Stock"
-        description="Dismantled items pooled by item — expand a row to see source boxes"
       />
 
       <div className="flex flex-wrap gap-3 items-center">

@@ -245,7 +245,7 @@ function ReportsPage() {
   const navigate = useNavigate();
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Blowing — Reports" description="Daily and monthly production &amp; cost">
+      <DashboardHeader title="Blowing — Reports">
         <Button variant="outline" onClick={() => navigate('/production/blowing')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>

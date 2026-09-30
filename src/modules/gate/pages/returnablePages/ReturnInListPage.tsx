@@ -204,7 +204,6 @@ export default function ReturnInListPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
         title="Material In"
-        description="Returnable material coming back, and purchased material-indent goods arriving. Record what comes in."
       />
 
       {overdueCount > 0 ? (

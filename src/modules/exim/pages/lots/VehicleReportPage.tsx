@@ -315,7 +315,6 @@ export default function VehicleReportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Vehicle Report"
-        description="The lots in each status, truck by truck, the most overdue first."
         icon={Truck}
         accent="teal"
       >

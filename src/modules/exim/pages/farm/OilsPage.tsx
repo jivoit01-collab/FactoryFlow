@@ -325,7 +325,6 @@ export default function OilsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Oils"
-        description="The oils the tanks hold and lots are bought in, and the colour each is drawn in on the Tank Farm."
         icon={Droplets}
         accent="teal"
       >

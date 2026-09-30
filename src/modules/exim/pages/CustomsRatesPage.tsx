@@ -217,11 +217,7 @@ export default function CustomsRatesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Customs Exchange Rates"
-        description={
-          notified
-            ? `${notified}. The rates a bill of entry or shipping bill is valued at.`
-            : 'The rates CBIC notifies for valuing a bill of entry or shipping bill.'
-        }
+        description={notified || undefined}
         icon={Globe}
         accent="teal"
       >

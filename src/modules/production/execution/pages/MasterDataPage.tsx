@@ -79,7 +79,7 @@ function MasterDataPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Master Data" description="Manage checklist templates" />
+      <DashboardHeader title="Master Data" />
 
       {/* Machine Type Selector */}
       <Card>

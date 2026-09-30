@@ -152,7 +152,6 @@ export default function RawMaterialStockPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Raw Material Stock"
-        description="The quantity of each raw material your store is holding"
         {...(canSet && !managesNothing
           ? {
               primaryAction: {

@@ -503,7 +503,6 @@ export default function ARInvoicePage() {
     <div className="space-y-4">
       <DashboardHeader
         title="AR Invoices"
-        description="Raise sales invoices and track them through SAP approval."
       >
         <Button
           variant="outline"

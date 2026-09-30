@@ -54,11 +54,7 @@ export default function CustomerReturnsDashboardPage() {
     <div className="space-y-5">
       <DashboardHeader
         title="Customer Returns"
-        description={
-          data
-            ? `${dayLabel(data.window.from_date)} to ${dayLabel(data.window.to_date)} — what came back, in what state, and from whom`
-            : 'What came back, in what state, and from whom'
-        }
+        description={data ? `${dayLabel(data.window.from_date)} to ${dayLabel(data.window.to_date)} — what came back, in what state, and from whom` : undefined}
       />
 
       <ReturnsFilterBar

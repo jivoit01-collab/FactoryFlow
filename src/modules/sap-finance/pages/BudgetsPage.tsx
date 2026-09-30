@@ -95,7 +95,7 @@ export default function BudgetsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Budgets" description="SAP budget heads and the amount planned for each month">
+      <PageHeader title="Budgets">
         <Button variant="outline" onClick={() => budgets.refetch()} disabled={budgets.isFetching} aria-label="Reload budgets from SAP">
           <RefreshCw className={`mr-2 h-4 w-4 ${budgets.isFetching ? 'animate-spin' : ''}`} />
           Refresh

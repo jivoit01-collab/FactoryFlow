@@ -165,7 +165,6 @@ export default function PmRequirementDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="PM Requirement"
-        description="The month's packing material plan against what the floor has taken, what the stores hold, and the benchmark they should keep"
       />
 
       <PmReqPlanBar

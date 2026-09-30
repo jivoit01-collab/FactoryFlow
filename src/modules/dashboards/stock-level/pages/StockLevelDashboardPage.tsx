@@ -162,7 +162,6 @@ export default function StockLevelDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Stock Benchmark"
-        description="Inventory items with benchmark levels — monitor on-hand vs. benchmark requirements"
       >
         <Button
           type="button"

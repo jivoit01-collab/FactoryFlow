@@ -272,7 +272,6 @@ export default function LabelGeneratePage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Pallet QR Print"
-        description="Select pallet, fetch item from SAP, then print linked labels"
       />
 
       <Card>

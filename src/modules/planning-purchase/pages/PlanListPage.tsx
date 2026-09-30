@@ -32,7 +32,6 @@ export default function PlanListPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title="Production Plans"
-        description="The monthly plan as SAP holds it — read only, because SAP is where planners author it."
       >
         <UnitToggle unit={unit} onChange={setUnit} compact className="mr-1" />
         <Button

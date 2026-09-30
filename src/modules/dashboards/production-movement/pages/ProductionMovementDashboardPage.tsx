@@ -137,7 +137,6 @@ export default function ProductionMovementDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Production Movement"
-        description="Item-wise warehouse position: opening + received - issued = closing"
       />
 
       <ProductionMovementPositionFilters

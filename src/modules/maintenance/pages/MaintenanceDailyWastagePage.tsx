@@ -142,7 +142,6 @@ export default function MaintenanceDailyWastagePage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Daily Wastage"
-        description="Factory-wide daily wastage register — record what was wasted and why"
       >
         {canManage && (
           <Button onClick={openAdd}>

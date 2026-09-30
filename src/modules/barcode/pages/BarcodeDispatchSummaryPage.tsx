@@ -281,7 +281,7 @@ export default function BarcodeDispatchSummaryPage() {
   if (!sessionId) {
     return (
       <div className="space-y-5">
-        <DashboardHeader title="Dispatch Summary" description="Completed dispatch summary" />
+        <DashboardHeader title="Dispatch Summary" />
         <Card className="rounded-md">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
             Dispatch session id is missing.
@@ -294,7 +294,7 @@ export default function BarcodeDispatchSummaryPage() {
   if (detailReport.isLoading || sessionQuery.isLoading) {
     return (
       <div className="space-y-5">
-        <DashboardHeader title="Dispatch Summary" description="Completed dispatch summary" />
+        <DashboardHeader title="Dispatch Summary" />
         <div className="flex items-center justify-center gap-2 rounded-md border bg-white p-8 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading summary
@@ -306,7 +306,7 @@ export default function BarcodeDispatchSummaryPage() {
   if (!report || detailReport.isError) {
     return (
       <div className="space-y-5">
-        <DashboardHeader title="Dispatch Summary" description="Completed dispatch summary" />
+        <DashboardHeader title="Dispatch Summary" />
         <Card className="rounded-md">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
             Unable to load dispatch summary.
@@ -320,7 +320,6 @@ export default function BarcodeDispatchSummaryPage() {
     <div className="space-y-5">
       <DashboardHeader
         title={`Dispatch Summary · ${report.session.bill_number}`}
-        description="Final dispatch quantities, item status, and scan audit"
       />
 
       <section className="flex flex-col gap-3 rounded-md border bg-white p-4 shadow-sm print:hidden lg:flex-row lg:items-center lg:justify-between">

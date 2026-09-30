@@ -53,7 +53,6 @@ export default function GeneralLedgerPage() {
     <div className="space-y-6">
       <PageHeader
         title="General Ledger"
-        description="Every posting to one G/L account or business partner, with the running balance"
       />
 
       <FilterBar

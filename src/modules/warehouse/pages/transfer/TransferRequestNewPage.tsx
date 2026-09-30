@@ -141,7 +141,6 @@ export default function TransferRequestNewPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Raise a Transfer Request"
-        description="Ask another warehouse to send you stock. It is reserved while they decide."
       >
         <Button variant="outline" onClick={() => navigate('/warehouse/inventory-transfer')}>
           <ArrowLeft className="mr-2 h-4 w-4" />

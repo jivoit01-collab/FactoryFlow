@@ -203,7 +203,6 @@ export default function ArtworkRegisterPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Label & Carton Artwork"
-        description="The document number, barcode and files held for every label and carton in SAP"
         {...(canManage
           ? {
               primaryAction: {

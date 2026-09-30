@@ -335,7 +335,6 @@ export default function DomesticContractsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Domestic Contracts"
-        description="Oil bought in rupees on SAP purchase orders: what has come in against each, what is at the gate or still to come, and what each tonne cost to bring in."
         icon={FileText}
         accent="teal"
       >

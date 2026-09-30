@@ -107,7 +107,6 @@ export default function VoidPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Void"
-        description="Void pallets (and optionally their boxes) or void an individual box"
       />
 
       <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/void')}>

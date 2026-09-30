@@ -138,7 +138,6 @@ export default function BillSummaryNewPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <DashboardHeader
         title="New Bill Summary"
-        description="Search a bill, confirm the details, generate the sheet for the floor"
       >
         <Button variant="outline" onClick={() => navigate('/warehouse/bill-summaries')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back

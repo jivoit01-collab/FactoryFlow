@@ -139,7 +139,6 @@ export default function ElectricityMeterManagersPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Electricity Meter Managers"
-        description="Who may change each meter, and record its daily readings"
         primaryAction={{
           label: 'Assign a manager',
           icon: <Plus className="mr-2 h-4 w-4" />,

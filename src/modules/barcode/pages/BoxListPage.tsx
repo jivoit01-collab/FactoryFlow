@@ -46,7 +46,7 @@ export default function BoxListPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Boxes" description="Individual carton barcode tracking" />
+      <DashboardHeader title="Boxes" />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">

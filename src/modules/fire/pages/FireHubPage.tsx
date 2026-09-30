@@ -70,7 +70,7 @@ export default function FireHubPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Fire" description="Choose a section to open" />
+      <DashboardHeader title="Fire" />
 
       {visible.length === 0 ? (
         <Card>

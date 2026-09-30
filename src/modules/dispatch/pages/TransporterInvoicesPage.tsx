@@ -63,7 +63,6 @@ export default function TransporterInvoicesPage() {
     <div className="space-y-6">
       <PageHeader
         title="A/P Invoice"
-        description="Post submitted transporter invoices against bilty service GRPOs"
         icon={Receipt}
         accent="violet"
       >

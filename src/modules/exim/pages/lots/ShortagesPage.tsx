@@ -158,7 +158,6 @@ export default function ShortagesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Shortages"
-        description="Oil weighed into the tanks at less than it was loaded. The first 0.25% is allowed; the rest is deducted from the supplier."
         icon={Scale}
         accent="teal"
       />

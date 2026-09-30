@@ -39,7 +39,6 @@ export default function ActivityLogPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Activity Log"
-        description="Every barcode event — prints, pallet moves, dispatch scans, and BST transfers"
       />
 
       {/* Filters */}

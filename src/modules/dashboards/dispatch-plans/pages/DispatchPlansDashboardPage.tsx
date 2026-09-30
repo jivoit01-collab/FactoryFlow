@@ -243,7 +243,6 @@ export default function DispatchPlansDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dispatch Plans"
-        description="SAP dispatch bills and planning handoff dates"
         icon={ClipboardList}
         accent="indigo"
       >

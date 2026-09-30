@@ -42,7 +42,6 @@ export default function PurchaseOrderListPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title="Purchase Orders"
-        description="Raised from a production plan's bill of materials."
       >
         <Button
           variant="outline"

@@ -46,7 +46,6 @@ function CostAnalysisReportPage() {
 
       <DashboardHeader
         title="Cost Analysis Report"
-        description="Multi-dimensional cost breakdown, trends, and line comparison"
       />
 
       <Card>

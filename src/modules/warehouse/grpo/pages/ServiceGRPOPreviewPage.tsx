@@ -863,7 +863,6 @@ export default function ServiceGRPOPreviewPage() {
     <div className="space-y-6 pb-32">
       <PageHeader
         title={billNo || 'Service GRPO Preview'}
-        description="Review transport booking details and post the service GRPO to SAP"
         icon={PackageCheck}
         accent="teal"
         backTo="/dispatch/bilty-grpo/pending"

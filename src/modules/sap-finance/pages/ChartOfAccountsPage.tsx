@@ -70,7 +70,6 @@ export default function ChartOfAccountsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Chart of Accounts"
-        description="SAP's G/L accounts by drawer, title accounts totalled from the accounts beneath them"
       />
 
       <div className="space-y-3">

@@ -623,7 +623,6 @@ export default function MaintenanceFireIssuePage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Fire Equipment Issue / Return"
-        description="Issue fire gear (helmet, suit, boots) to a person and track returns"
       >
         <Button
           variant="outline"

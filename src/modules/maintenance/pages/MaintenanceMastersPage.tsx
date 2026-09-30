@@ -138,7 +138,7 @@ export default function MaintenanceMastersPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Maintenance Masters" description="Asset category, location, and department">
+      <DashboardHeader title="Maintenance Masters">
         <Button
           variant="outline"
           size="sm"

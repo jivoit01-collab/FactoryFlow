@@ -119,7 +119,6 @@ export default function BillSummaryListPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Bill Summaries"
-        description="Picking sheets issued to the warehouse floor"
       >
         {canIssue && (
           <Button onClick={() => navigate('/warehouse/bill-summaries/new')}>

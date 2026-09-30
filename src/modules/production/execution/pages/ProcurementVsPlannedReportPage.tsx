@@ -29,7 +29,6 @@ function ProcurementVsPlannedReportPage() {
 
       <DashboardHeader
         title="Procurement vs Planned"
-        description="Compare BOM material requirements against procurement and actual consumption"
       />
 
       <Card>

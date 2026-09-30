@@ -211,7 +211,6 @@ export default function NonMovingDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Non-Moving RM & PM"
-        description="Raw and packing material by movement age — spot the stock that has stopped moving, and what it is worth"
       >
         <Button
           type="button"

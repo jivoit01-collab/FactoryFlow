@@ -179,7 +179,6 @@ export default function BoxTransferPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Box Transfer"
-        description="Move selected boxes from one pallet to another pallet with available space"
       />
 
       <Card>

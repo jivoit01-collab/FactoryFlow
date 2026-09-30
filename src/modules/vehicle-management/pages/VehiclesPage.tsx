@@ -39,7 +39,7 @@ export default function VehiclesPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Vehicles" description="Vehicle master records">
+      <DashboardHeader title="Vehicles">
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Refresh

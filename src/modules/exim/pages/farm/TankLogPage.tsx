@@ -180,7 +180,6 @@ export default function TankLogPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tank Log"
-        description="Every lot that went into the tanks, as it arrived: its weight in kilograms and its rate per kg."
         icon={ListOrdered}
         accent="teal"
       />

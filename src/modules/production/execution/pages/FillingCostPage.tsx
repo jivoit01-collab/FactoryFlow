@@ -437,11 +437,6 @@ function FillingCostPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Filling Cost"
-        description={
-          canEdit
-            ? 'Enter the day’s filling cost head by head. The per-case column is the amount over the cases.'
-            : 'The day’s filling cost, head by head. Read-only.'
-        }
       />
 
       <Card>

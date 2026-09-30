@@ -121,7 +121,6 @@ export default function DismantlePage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Dismantle"
-        description="Break down pallets into boxes, or boxes into loose items"
       />
 
       {/* Mode + Search */}

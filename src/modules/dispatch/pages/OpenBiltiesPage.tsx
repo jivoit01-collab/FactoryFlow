@@ -191,7 +191,6 @@ export default function OpenBiltiesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Open Bilties"
-        description="Select open bilty GRPOs and submit the transporter invoice for A/P posting"
         icon={ScrollText}
         accent="amber"
       >

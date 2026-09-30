@@ -217,7 +217,6 @@ export default function SapDocumentsPage() {
     <div className="space-y-6">
       <PageHeader
         title="SAP Documents"
-        description="Purchase and sales documents, transfers, journals, payments and drafts, read live from SAP"
         icon={FileSearch}
       />
 

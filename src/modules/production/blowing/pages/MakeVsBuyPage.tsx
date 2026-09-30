@@ -137,7 +137,6 @@ function MakeVsBuyPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Make vs Buy"
-        description="Is blowing bottles in‑house cheaper than buying them?"
       >
         <Button variant="outline" onClick={() => navigate('/production/blowing')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back

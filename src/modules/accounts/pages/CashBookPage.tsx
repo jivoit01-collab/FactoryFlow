@@ -344,7 +344,6 @@ export default function CashBookPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Cash Book"
-        description="Every rupee in and out of the cash box, with the running balance"
       >
         {canManage && (
           <div className="flex flex-wrap gap-2">

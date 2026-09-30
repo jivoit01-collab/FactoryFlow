@@ -29,7 +29,7 @@ function ResourceTrackingPage() {
 
       <DashboardHeader
         title={`Run Cost — Run #${run?.run_number || ''}`}
-        description={run ? `${run.date} · ${run.line_name} · ${run.product}` : ''}
+        description={run ? `${run.date} · ${run.line_name} · ${run.product}` : undefined}
       />
 
       <CostBreakdownCard cost={cost} />

@@ -157,7 +157,6 @@ export default function EtpHubPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="ETP / STP Plant"
-        description="Treatment-plant registers — daily log, on-line monitoring, chemicals, sludge, back washing and calibration"
       >
         {canManageSettings && (
           <Link

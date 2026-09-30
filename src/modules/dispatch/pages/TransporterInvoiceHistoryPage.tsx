@@ -89,7 +89,6 @@ export default function TransporterInvoiceHistoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="A/P Invoice History"
-        description="Submitted and posted A/P Invoices from bilty GRPOs"
         icon={History}
         accent="slate"
         backTo="/dispatch/transporter-invoices"

@@ -113,7 +113,6 @@ export default function JournalEntriesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Journal Entries"
-        description="SAP's journal — every posting, with the account lines behind it"
       />
 
       <FilterBar

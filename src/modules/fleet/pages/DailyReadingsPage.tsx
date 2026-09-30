@@ -119,7 +119,6 @@ export default function DailyReadingsPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Daily reading"
-        description="Pick a vehicle and write down what its meter reads"
         icon={Gauge}
         accent="sky"
         backTo="/fleet"

@@ -27,7 +27,7 @@ function ElectricityUsagePage() {
 
       <DashboardHeader
         title={`Electricity — Run #${run?.run_number || ''}`}
-        description={run ? `${run.date} · ${run.line_name} · ${run.product}` : ''}
+        description={run ? `${run.date} · ${run.line_name} · ${run.product}` : undefined}
       />
 
       {numRunId > 0 && <ElectricityUsageCard runId={numRunId} />}

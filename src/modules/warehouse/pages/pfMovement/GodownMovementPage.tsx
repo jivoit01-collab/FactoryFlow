@@ -171,7 +171,6 @@ export default function GodownMovementPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Godown Stock Movements"
-        description="What you are sending out of your godown — to another godown, or straight out"
         {...(canFile
           ? {
               primaryAction: {

@@ -50,7 +50,6 @@ export default function PalletVerifyNewPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="New Verify Request"
-        description="Scan a pallet's boxes, then submit it to the barcode team"
       />
 
       <Button variant="ghost" size="sm" onClick={() => navigate('/barcode/verify')}>

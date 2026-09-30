@@ -127,7 +127,6 @@ export default function MaintenanceReturnablePage() {
     <div className="space-y-6 p-4 sm:p-6">
       <DashboardHeader
         title="Returnable / Non-returnable"
-        description="Material sent out of the gate for repair, exchange or job work — and tracked until it comes back."
         primaryAction={
           canManage
             ? {

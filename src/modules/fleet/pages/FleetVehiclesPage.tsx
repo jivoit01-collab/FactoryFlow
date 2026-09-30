@@ -35,7 +35,6 @@ export default function FleetVehiclesPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Vehicles"
-        description="Every vehicle the company owns"
         icon={Truck}
         accent="blue"
         backTo="/fleet"

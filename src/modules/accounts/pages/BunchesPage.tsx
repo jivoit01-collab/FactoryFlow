@@ -169,7 +169,6 @@ export default function BunchesPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Bunches"
-        description="Batches of approved vouchers downloaded and mailed to head office"
       >
         <div className="flex flex-wrap items-center gap-2">
           {filteredColumns.length > 0 && (

@@ -51,7 +51,7 @@ export default function BarcodeDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardHeader title="Barcode" description="Pallet and box tracking, label management" />
+      <DashboardHeader title="Barcode" />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {cards.map((card) => {

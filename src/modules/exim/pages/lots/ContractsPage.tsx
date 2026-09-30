@@ -89,7 +89,6 @@ export default function ContractsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Contracts"
-        description="Oil bought on contract and not loaded yet, the soonest to end first."
         icon={FileClock}
         accent="teal"
       />

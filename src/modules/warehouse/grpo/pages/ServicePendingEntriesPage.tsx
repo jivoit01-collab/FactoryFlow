@@ -115,7 +115,6 @@ export default function ServicePendingEntriesPage({
       {!embedded && (
         <PageHeader
           title="Service GRPO Pending"
-          description="Booked dispatch vehicle bookings pending transport service GRPO"
           icon={PackageCheck}
           accent="teal"
           backTo="/dispatch/bilty-grpo"

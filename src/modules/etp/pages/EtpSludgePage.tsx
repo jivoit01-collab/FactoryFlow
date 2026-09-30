@@ -232,7 +232,6 @@ export default function EtpSludgePage() {
       {printPortal}
       <DashboardHeader
         title="Sludge Generation"
-        description="Sludge taken off the plants — quantity, collection and storage"
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={printRegister} disabled={entries.length === 0}>

@@ -331,7 +331,6 @@ export default function LotsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Oil Lots"
-        description="Every lot of oil bought, from contract through loading, the sea, the port, the refinery and the trucks, to the factory gate and the tanks."
         icon={Droplets}
         accent="teal"
       >

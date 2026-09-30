@@ -157,7 +157,6 @@ export default function DirectorInventoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Director Inventory"
-        description="All the oil the company owns, stage by stage: packed, at the factory, and still on its way, in litres and tonnes."
         icon={Droplets}
         accent="teal"
       >

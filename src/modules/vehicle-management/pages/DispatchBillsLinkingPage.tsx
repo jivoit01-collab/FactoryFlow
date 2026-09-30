@@ -129,7 +129,6 @@ export default function DispatchBillsLinkingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dispatch Bills Linking"
-        description="Pick bills and link transport to them, one bill or a batch at a time"
         icon={Link2}
         accent="cyan"
       >

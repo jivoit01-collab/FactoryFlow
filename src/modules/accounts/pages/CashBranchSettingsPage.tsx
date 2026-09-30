@@ -138,7 +138,6 @@ export default function CashBranchSettingsPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Cash Book Branches"
-        description="The branches every payment in the cash book is filed under"
       >
         <div className="flex flex-wrap items-center gap-2">
           {filteredColumns.length > 0 && (

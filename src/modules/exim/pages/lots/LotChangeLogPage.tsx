@@ -95,7 +95,6 @@ export default function LotChangeLogPage() {
     <div className="space-y-6">
       <PageHeader
         title="Change Log"
-        description="Every change made to every oil lot: who made it, when, and what it changed."
         icon={History}
         accent="teal"
       />

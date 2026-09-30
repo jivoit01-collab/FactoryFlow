@@ -162,7 +162,6 @@ export default function WarehouseDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Warehouse"
-        description="Material requests, finished goods, branch transfers, and goods receipts"
       />
 
       {sections.length === 0 ? (

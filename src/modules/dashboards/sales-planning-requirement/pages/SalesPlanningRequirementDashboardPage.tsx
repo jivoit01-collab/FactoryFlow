@@ -81,7 +81,6 @@ export default function SalesPlanningRequirementDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Sales Planning vs Requirement"
-        description="Weekly SAP forecast requirement, stock coverage, open PO coverage, and net shortage"
       />
 
       <SalesPlanningRequirementRefreshPanel

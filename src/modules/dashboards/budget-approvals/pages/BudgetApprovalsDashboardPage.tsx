@@ -35,7 +35,6 @@ export default function BudgetApprovalsDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Budget Approvals"
-        description="Factory budget draft approvals from SAP — pending, approved and rejected expense drafts against the Factory budget head"
       />
 
       <BudgetApprovalsFilters

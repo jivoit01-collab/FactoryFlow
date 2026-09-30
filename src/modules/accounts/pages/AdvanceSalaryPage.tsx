@@ -195,7 +195,6 @@ export default function AdvanceSalaryPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Advance Salary"
-        description="Cash given against a wage, as the register recorded it."
       />
 
       <Card>

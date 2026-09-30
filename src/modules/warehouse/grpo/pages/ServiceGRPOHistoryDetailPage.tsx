@@ -74,7 +74,6 @@ export default function ServiceGRPOHistoryDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={posting?.bilty_no || posting?.dispatch_bill_no || 'Service GRPO Detail'}
-        description="Transport service GRPO posting details"
         icon={FileCheck2}
         accent="teal"
         backTo="/dispatch/bilty-grpo/history"

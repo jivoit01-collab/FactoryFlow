@@ -35,7 +35,6 @@ export default function DispatchPipelineDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Dispatch Pipeline"
-        description="Which vehicle is at which stage — from vehicle linking through sales dispatch out"
       />
 
       <DispatchPipelineFilters

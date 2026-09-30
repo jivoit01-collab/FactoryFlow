@@ -33,7 +33,6 @@ export default function ServiceGRPODashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Service GRPO"
-        description="Post transport service receipts for booked dispatch vehicles"
         icon={Truck}
         accent="teal"
       />

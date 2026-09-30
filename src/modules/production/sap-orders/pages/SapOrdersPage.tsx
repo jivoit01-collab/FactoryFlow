@@ -76,7 +76,7 @@ export default function SapOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="SAP Production Orders" description="Orders in SAP, with what has been issued to and received from each">
+      <PageHeader title="SAP Production Orders">
         <Button variant="outline" onClick={() => query.refetch()} disabled={query.isFetching} aria-label="Reload orders from SAP">
           <RefreshCw className={`mr-2 h-4 w-4 ${query.isFetching ? 'animate-spin' : ''}`} />
           Refresh

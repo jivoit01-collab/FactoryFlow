@@ -173,7 +173,6 @@ export default function ElectricityDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Electricity Dashboard"
-        description="Where the plant's units went, what they cost, and what the daily round got wrong."
       >
         {canOpenRegister && (
           <Button asChild variant="outline" size="sm" className="gap-2">

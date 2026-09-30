@@ -308,7 +308,6 @@ function CostMasterPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Cost Master"
-        description="The single registry of every cost the factory incurs. Define the cost types once, then set factory-wide rates and narrow them per company, department, or a specific value."
         primaryAction={{
           label: 'New Cost Type',
           icon: <Plus className="mr-2 h-4 w-4" />,

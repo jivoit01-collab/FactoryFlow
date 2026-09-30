@@ -1095,7 +1095,6 @@ export default function MaintenanceMaterialIndentPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Material Indent"
-        description="Raise material requests → straight to purchase approval → purchase"
       >
         <Button
           variant="outline"

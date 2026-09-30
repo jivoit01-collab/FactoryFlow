@@ -957,7 +957,6 @@ export default function MaintenanceWorkPermitsPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Work Permits"
-        description="Permit-to-work clearance for hazardous maintenance jobs"
       >
         <Button
           variant="outline"

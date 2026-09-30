@@ -268,7 +268,6 @@ export default function EtpBackwashPage() {
       {printPortal}
       <DashboardHeader
         title="Daily Back Washing"
-        description="Filter back-wash and rinse steps with their contact times"
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={printRegister} disabled={entries.length === 0}>

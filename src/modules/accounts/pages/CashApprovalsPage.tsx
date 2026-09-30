@@ -215,7 +215,6 @@ export default function CashApprovalsPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Cash Approvals"
-        description="Payments from the cash book waiting on a decision"
       >
         <div className="flex flex-wrap items-center gap-2">
           {canManageApprovers && (

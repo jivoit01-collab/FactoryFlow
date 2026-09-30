@@ -92,7 +92,6 @@ export default function SalesDispatchReportsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Docking Reports"
-        description="Date-filtered Docking operations and exports"
         icon={FileBarChart}
         accent="blue"
         backTo={DOCKING_ROUTES.dashboard}

@@ -77,7 +77,6 @@ export default function ProduciblePage() {
       <div className="p-4 sm:p-6">
         <DashboardHeader
           title="What can run"
-          description="Checking every bill of materials against stock on hand…"
         />
       </div>
     );
@@ -139,7 +138,7 @@ export default function ProduciblePage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title="What can run"
-        description={`${plan.code || `Plan ${plan.abs_id}`} — what stock on hand allows on ${shortDate(meta.target_date)}.`}
+        description={`${plan.code || `Plan ${plan.abs_id}`} · ${shortDate(meta.target_date)}`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <UnitToggle unit={unit} onChange={setUnit} compact />

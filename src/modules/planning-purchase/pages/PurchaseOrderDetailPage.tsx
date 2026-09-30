@@ -43,7 +43,7 @@ export default function PurchaseOrderDetailPage() {
   if (query.isLoading) {
     return (
       <div className="p-4 sm:p-6">
-        <DashboardHeader title="Purchase Order" description="Loading…" />
+        <DashboardHeader title="Purchase Order" />
       </div>
     );
   }
@@ -77,11 +77,7 @@ export default function PurchaseOrderDetailPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title={order.vendor_name || order.vendor_code}
-        description={
-          order.plan_code
-            ? `Raised from plan ${order.plan_code}`
-            : 'Purchase order'
-        }
+        description={order.plan_code ? `Raised from plan ${order.plan_code}` : undefined}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="ghost" size="sm">

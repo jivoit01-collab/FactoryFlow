@@ -227,7 +227,6 @@ export default function LicencesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Export Licences"
-        description="Advance Authorisations and DFIA licences: what was imported and exported against each, and what is still owed."
         icon={FileBadge}
         accent="teal"
       >

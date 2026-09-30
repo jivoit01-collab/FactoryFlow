@@ -762,7 +762,7 @@ export default function MaintenanceSparesPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Store / Spares" description="Maintenance spare stock and issue control">
+      <DashboardHeader title="Store / Spares">
         <Button
           variant="outline"
           size="sm"

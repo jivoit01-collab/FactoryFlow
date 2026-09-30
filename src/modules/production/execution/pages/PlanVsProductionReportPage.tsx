@@ -30,7 +30,6 @@ function PlanVsProductionReportPage() {
 
       <DashboardHeader
         title="Plan vs Production"
-        description="Compare SAP planned quantities against actual production output"
       />
 
       <Card>

@@ -49,7 +49,6 @@ import {
   num,
   OIL_STOCK_PATH,
   type OilUnit,
-  STAGE_BLURB,
   STAGE_ICON,
   UNIT_WORD,
 } from '../../components/reports/oilUnits';
@@ -341,7 +340,6 @@ function Breakdown({ status }: { status: LotStatus }) {
     <div className="space-y-6">
       <PageHeader
         title={LOT_STATUS_LABEL[status]}
-        description={STAGE_BLURB[status]}
         icon={STAGE_ICON[status]}
         accent="teal"
         backTo={OIL_STOCK_PATH}

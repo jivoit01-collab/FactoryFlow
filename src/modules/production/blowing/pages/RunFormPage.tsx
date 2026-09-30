@@ -105,7 +105,6 @@ function RunFormPage() {
     <div className="space-y-6">
       <DashboardHeader
         title={isEdit ? 'Edit Blowing Run' : 'New Blowing Run'}
-        description="Set up the run — request preform, then Start / Stop / log breakdowns on the run page"
       >
         <Button variant="outline" onClick={() => navigate(-1)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back

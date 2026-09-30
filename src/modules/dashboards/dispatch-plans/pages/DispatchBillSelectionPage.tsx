@@ -59,7 +59,6 @@ export default function DispatchBillSelectionPage() {
     <div className="space-y-6">
       <PageHeader
         title="Bill Selection"
-        description="Pick bills to add to dispatch planning. Submitted bills move to the Plan page and leave this list."
         icon={FileCheck2}
         accent="blue"
       >

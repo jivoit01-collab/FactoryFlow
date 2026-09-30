@@ -78,7 +78,6 @@ export default function PalletSplitPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Split Pallet"
-        description="Move selected boxes from one pallet into an existing empty pallet"
       />
 
       <Card>

@@ -89,7 +89,6 @@ export default function OilCostPage() {
     <div className="space-y-6">
       <PageHeader
         title="Oil Cost"
-        description="What the oil in the tanks cost, lot by lot. The tanks are taken to hold an oil's oldest lots, until its litres are accounted for."
         icon={IndianRupee}
         accent="teal"
       >

@@ -82,7 +82,6 @@ export default function PackingMaterialDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Packing Material"
-        description="What is in the packaging stores, what production used, and what shipped out"
       />
 
       <PmPeriodBar

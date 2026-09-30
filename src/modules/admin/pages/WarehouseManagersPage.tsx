@@ -138,7 +138,6 @@ export default function WarehouseManagersPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Warehouse Managers"
-        description="Who may send stock out of, and accept it into, each warehouse"
         primaryAction={{
           label: 'Assign a manager',
           icon: <Plus className="mr-2 h-4 w-4" />,

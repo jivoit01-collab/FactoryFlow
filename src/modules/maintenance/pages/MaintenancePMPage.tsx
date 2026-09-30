@@ -428,7 +428,6 @@ export default function MaintenancePMPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="PM / Checklist"
-        description="Preventive maintenance plans, checklist templates, and due executions"
       >
         <Button variant="outline" size="sm" onClick={refreshAll}>
           <RefreshCw

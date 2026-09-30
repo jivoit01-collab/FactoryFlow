@@ -183,7 +183,6 @@ export default function PalletizePage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Palletize"
-        description="Assign loose (unpalletized) boxes — from dismantle, dispatch removal, or splits — back onto a pallet"
       />
 
       <Card>

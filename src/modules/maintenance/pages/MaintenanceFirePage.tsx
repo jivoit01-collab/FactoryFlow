@@ -755,7 +755,7 @@ export default function MaintenanceFirePage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Store / Fire" description="Fire department store stock and issue control">
+      <DashboardHeader title="Store / Fire">
         <Button
           variant="outline"
           size="sm"

@@ -589,7 +589,6 @@ export default function MaintenanceDailyElectricityPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Daily Electricity"
-        description="Factory-wide daily meter readings — units and cost per meter"
       >
         {(canManageMeters || canAddReading) && (
           <div className="flex gap-2">

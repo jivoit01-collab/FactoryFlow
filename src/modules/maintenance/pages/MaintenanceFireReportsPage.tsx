@@ -735,7 +735,6 @@ export default function MaintenanceFireReportsPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Fire Shift Reports"
-        description="Daily two-shift fire equipment inspection log with photos"
       >
         <Button
           variant="outline"

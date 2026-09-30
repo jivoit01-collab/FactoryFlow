@@ -63,7 +63,6 @@ export default function SapBomsPage() {
     <div className="space-y-6">
       <PageHeader
         title="SAP BOMs"
-        description="Bills of materials as SAP holds them — components and resources"
         icon={GitBranch}
         accent="indigo"
       >

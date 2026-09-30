@@ -253,7 +253,6 @@ export default function BSTDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="BST Scanning"
-        description="Move stock between branches — scan it out, and receive it in"
         primaryAction={{
           label: 'New BST',
           icon: <Plus className="h-4 w-4 mr-2" />,

@@ -183,7 +183,6 @@ export default function IntercompanyTransferPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Intercompany Barcode Transfer"
-        description="Move box and pallet ownership between companies with barcode traceability"
       />
 
       {dashboardQuery.isLoading && (

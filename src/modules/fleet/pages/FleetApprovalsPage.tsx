@@ -123,7 +123,6 @@ export default function FleetApprovalsPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Approvals"
-        description="Workshop bills waiting to be passed. Fuel needs no approval."
         icon={ClipboardCheck}
         accent="amber"
         backTo="/fleet"

@@ -137,7 +137,7 @@ function LineClearanceFormPage() {
         <>
           <DashboardHeader
             title="New Line Clearance"
-            description={linkedRun ? `For Run #${linkedRun.run_number} — ${linkedRun.line_name} — ${linkedRun.product}` : 'Create a pre-production line clearance checklist'}
+            description={linkedRun ? `For Run #${linkedRun.run_number} — ${linkedRun.line_name} — ${linkedRun.product}` : undefined}
           />
           <div className="flex flex-wrap items-end gap-x-10 gap-y-4 border-y py-4">
             {linkedRun ? (

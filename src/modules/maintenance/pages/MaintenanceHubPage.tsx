@@ -166,7 +166,7 @@ export default function MaintenanceHubPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Maintenance" description="Choose a section to open" />
+      <DashboardHeader title="Maintenance" />
 
       {visible.length === 0 ? (
         <Card className="border-slate-200/80 shadow-sm transition-shadow hover:shadow-md dark:border-border">

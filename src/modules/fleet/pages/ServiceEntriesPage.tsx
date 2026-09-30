@@ -72,7 +72,6 @@ export default function ServiceEntriesPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Service & repairs"
-        description="Workshop bills, and when the next one is due"
         icon={Wrench}
         accent="violet"
         backTo="/fleet"

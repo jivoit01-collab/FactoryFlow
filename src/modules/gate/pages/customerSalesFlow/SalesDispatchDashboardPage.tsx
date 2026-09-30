@@ -480,11 +480,6 @@ export default function SalesDispatchDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title={isGateOutMode ? 'Sales Dispatch Out' : 'Docking'}
-        description={
-          isGateOutMode
-            ? 'View Docking-created invoice dispatches and mark vehicles out'
-            : 'Dock SAP invoices, verify truck documents, and print gatepasses'
-        }
         icon={Warehouse}
         accent="blue"
       >

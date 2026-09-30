@@ -24,7 +24,6 @@ function ResourceConsumptionReportPage() {
 
       <DashboardHeader
         title="Day-wise Resource Consumption"
-        description="Daily breakdown of electricity, water, gas, labour, and waste"
       />
 
       <Card>

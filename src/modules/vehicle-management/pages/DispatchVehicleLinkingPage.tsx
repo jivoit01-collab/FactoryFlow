@@ -798,7 +798,6 @@ export default function DispatchVehicleLinkingPage() {
         icon={Truck}
         accent="violet"
         title="Dispatch Vehicle Linking"
-        description="One card per truck, from booking to the gate — link a vehicle, add or move bills, unlink, or mark a truck out (no database edits)"
       >
         <Button
           type="button"

@@ -129,7 +129,6 @@ export default function SapIdentitiesPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="SAP Identities"
-        description="Which SAP account each user is — approvals are signed as this account"
         primaryAction={{
           label: 'Map a user',
           icon: <Plus className="mr-2 h-4 w-4" />,

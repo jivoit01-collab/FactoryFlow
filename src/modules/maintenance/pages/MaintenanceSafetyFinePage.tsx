@@ -644,7 +644,6 @@ export default function MaintenanceSafetyFinePage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Safety Fines"
-        description="PPE and safety violations recorded on the floor, with fines"
       >
         <Button
           variant="outline"

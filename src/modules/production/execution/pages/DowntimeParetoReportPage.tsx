@@ -24,7 +24,6 @@ function DowntimeParetoReportPage() {
 
       <DashboardHeader
         title="Downtime Pareto Analysis"
-        description="Breakdown causes ranked by impact with MTBF/MTTR metrics"
       />
 
       <Card>

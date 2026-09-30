@@ -63,7 +63,6 @@ export default function FuelEntriesPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Fuel"
-        description="Every filling, and the mileage it worked out to"
         icon={Fuel}
         accent="amber"
         backTo="/fleet"

@@ -62,7 +62,6 @@ export default function MaintenanceDailyElectricityPlusPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Daily Electricity++"
-        description="The meter tree, each day's readings, and who pays for what"
       />
 
       {/* Only when the scope is KNOWN and genuinely empty. An unreachable

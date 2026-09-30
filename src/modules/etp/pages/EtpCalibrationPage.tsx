@@ -279,7 +279,6 @@ export default function EtpCalibrationPage() {
       {printPortal}
       <DashboardHeader
         title="Calibration"
-        description="Instrument buffer checks, variation against the standard and the next due date"
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={printRegister} disabled={records.length === 0}>

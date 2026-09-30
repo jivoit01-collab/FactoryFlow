@@ -206,7 +206,6 @@ export default function BSTNewPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="New Branch Stock Transfer"
-        description="Move stock against a SAP stock transfer (intra-company) or an invoice / dispatch bill (cross-company sale)"
       />
 
       {/* Step 1 — SAP source documents */}

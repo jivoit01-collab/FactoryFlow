@@ -282,7 +282,6 @@ export default function EtpChemicalLogPage() {
       {printPortal}
       <DashboardHeader
         title="Chemical Consumption"
-        description="What the plant dosed, day by day — one column per chemical"
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={printRegister} disabled={logs.length === 0}>

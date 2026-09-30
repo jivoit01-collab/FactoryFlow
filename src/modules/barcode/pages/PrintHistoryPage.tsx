@@ -44,7 +44,6 @@ export default function PrintHistoryPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Print History"
-        description="Audit trail for all label prints and reprints"
       />
 
       {/* Filters */}

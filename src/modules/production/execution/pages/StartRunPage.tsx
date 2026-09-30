@@ -367,7 +367,6 @@ function StartRunPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Plan Production Run"
-        description="Plan a run — check RM/PM availability, clashes with other plans, and the start time"
       />
 
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">

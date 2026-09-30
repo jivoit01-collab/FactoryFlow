@@ -197,7 +197,6 @@ export default function PlanningDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Production Planning"
-        description="Create and manage monthly production plans"
         primaryAction={{
           label: 'Create Plan',
           icon: <Plus className="h-4 w-4 mr-2" />,

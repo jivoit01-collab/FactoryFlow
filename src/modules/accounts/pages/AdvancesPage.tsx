@@ -189,7 +189,6 @@ export default function AdvancesPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Advances"
-        description="Who is holding the factory's cash, and who the factory owes"
       >
         {canManage && (
           <div className="flex flex-wrap gap-2">

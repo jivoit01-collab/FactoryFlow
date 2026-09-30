@@ -60,7 +60,6 @@ export default function PalletVerifyPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Verify / Reconcile Requests"
-        description="Pallet verification requests raised for the barcode team"
         primaryAction={{
           label: 'New Entry',
           icon: <Plus className="h-4 w-4 mr-2" />,

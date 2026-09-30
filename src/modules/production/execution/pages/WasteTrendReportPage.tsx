@@ -30,7 +30,6 @@ function WasteTrendReportPage() {
 
       <DashboardHeader
         title="Waste & Scrap Report"
-        description="Waste trending, material breakdown, and approval status analysis"
       />
 
       <Card>

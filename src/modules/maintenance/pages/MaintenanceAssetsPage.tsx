@@ -130,7 +130,7 @@ export default function MaintenanceAssetsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader title="Assets" description="Maintenance asset master">
+      <DashboardHeader title="Assets">
         <Button
           variant="outline"
           size="sm"

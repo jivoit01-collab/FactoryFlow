@@ -216,11 +216,6 @@ function LineManagementPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Line Management"
-        description={
-          canEdit
-            ? 'Create multiple configuration presets per line — users pick one when starting a run'
-            : 'Configuration presets per line — users pick one when starting a run. Read-only.'
-        }
       />
 
       {/* Line Selector */}

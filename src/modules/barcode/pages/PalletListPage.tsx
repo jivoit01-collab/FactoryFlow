@@ -82,7 +82,7 @@ export default function PalletListPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <DashboardHeader title="Pallets" description="All pallets with barcode tracking" />
+        <DashboardHeader title="Pallets" />
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1" /> New Pallet
         </Button>

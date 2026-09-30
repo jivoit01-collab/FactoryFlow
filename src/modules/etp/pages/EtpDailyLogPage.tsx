@@ -313,7 +313,6 @@ export default function EtpDailyLogPage() {
       {printPortal}
       <DashboardHeader
         title="Daily Plant Log"
-        description="Inlet / outlet flow, pH and energy meter — the plant's day sheet"
       >
         <div className="flex gap-2">
           <Button variant="outline" onClick={printRegister} disabled={logs.length === 0}>

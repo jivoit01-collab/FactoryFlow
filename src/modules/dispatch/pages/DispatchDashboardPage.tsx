@@ -32,7 +32,6 @@ export default function DispatchDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Dispatch"
-        description="Plans, vehicle linking, docking, GRPO, bilties and transporter invoices — in one place."
         icon={Truck}
         accent="teal"
       />

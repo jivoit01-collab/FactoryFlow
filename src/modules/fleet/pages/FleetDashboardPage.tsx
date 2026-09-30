@@ -55,7 +55,6 @@ export default function FleetDashboardPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="Company Vehicles"
-        description="The vehicles the company owns, and what they cost to run"
         icon={Truck}
         accent="blue"
       >

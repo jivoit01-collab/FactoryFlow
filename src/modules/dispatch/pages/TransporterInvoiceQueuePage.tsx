@@ -160,7 +160,6 @@ export default function TransporterInvoiceQueuePage() {
     <div className="space-y-6">
       <PageHeader
         title="Pending A/P Invoice"
-        description="Review submitted transporter invoices and post them to SAP"
         icon={ClipboardCheck}
         accent="indigo"
         backTo="/dispatch/transporter-invoices"

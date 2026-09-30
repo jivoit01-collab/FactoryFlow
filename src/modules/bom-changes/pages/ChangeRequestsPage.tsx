@@ -29,7 +29,7 @@ import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/u
 import { useDebounce } from '@/shared/hooks';
 import { cn, formatDateTimeShort } from '@/shared/utils';
 
-import { type BomKind, useBomWorkflow, useChangeRequests } from '../api';
+import { type BomKind, useChangeRequests } from '../api';
 import { REQUEST_TABS, STATUS_TONE, tabCount } from '../utils/status';
 
 export default function ChangeRequestsPage() {
@@ -52,7 +52,6 @@ export default function ChangeRequestsPage() {
   const [kind, setKind] = useState<BomKind | ''>('');
   const debounced = useDebounce(search.trim(), 300);
 
-  const workflow = useBomWorkflow();
   const list = useChangeRequests({
     ...tab.filters,
     kind: kind || undefined,
@@ -70,11 +69,6 @@ export default function ChangeRequestsPage() {
     <div className="space-y-6">
       <PageHeader
         title="BOM change requests"
-        description={
-          workflow.data
-            ? `A new BOM or a change to one, approved in ${workflow.data.levels} levels — the last writes it to SAP`
-            : 'A new BOM or a change to one, approved level by level, then written to SAP'
-        }
         icon={ClipboardList}
         accent="indigo"
       >

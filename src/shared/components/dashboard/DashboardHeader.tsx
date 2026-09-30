@@ -30,7 +30,7 @@ export interface DashboardHeaderProps {
  * ```tsx
  * <DashboardHeader
  *   title="Quality Control"
- *   description="Manage raw material inspections and quality approvals"
+ *
  *   primaryAction={{
  *     label: 'Start Inspection',
  *     icon: <Plus className="h-4 w-4 mr-2" />,

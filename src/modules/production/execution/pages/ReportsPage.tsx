@@ -30,7 +30,6 @@ function ReportsPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Reports & Analytics"
-        description="OEE, efficiency, yield & production analysis"
       />
 
       <Card>

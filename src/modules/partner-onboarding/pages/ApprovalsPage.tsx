@@ -101,7 +101,6 @@ export default function ApprovalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Partner Onboarding"
-        description="Customer and vendor registrations: verify them, then create the partner in SAP"
         icon={UserPlus}
       >
         <Button variant="outline" onClick={copyLink}>

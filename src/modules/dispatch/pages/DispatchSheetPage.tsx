@@ -257,7 +257,6 @@ export default function DispatchSheetPage() {
           stays the height of the title it sits next to. */}
       <DashboardHeader
         title="Dispatch Sheet"
-        description="Every invoice in dispatch, day by day — from the day it joins the plans to the day it leaves the gate"
       >
         <label className="flex items-center gap-1.5 text-sm text-muted-foreground">
           From

@@ -439,7 +439,6 @@ export default function EtpSettingsPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="ETP / STP Settings"
-        description="The lists the registers pick from — plants, people, chemicals, parameters, steps, dropdowns and instruments"
       />
 
       <div className="flex flex-wrap gap-2">

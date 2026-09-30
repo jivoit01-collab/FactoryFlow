@@ -145,7 +145,6 @@ export default function AtmPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="ATM"
-        description="The imprest card the factory draws its cash off"
       >
         {canManage && (
           <div className="flex flex-wrap gap-2">

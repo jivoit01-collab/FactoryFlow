@@ -26,7 +26,6 @@ function MonthlySummaryReportPage() {
 
       <DashboardHeader
         title="Monthly Summary Report"
-        description="Month-wise rollup of production KPIs for the year"
       />
 
       <Card>

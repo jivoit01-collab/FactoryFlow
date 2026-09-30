@@ -236,7 +236,6 @@ export default function ProductionSettingsPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Production Settings"
-        description="Where production draws raw and packing material from, and where finished goods go."
       >
         {canEdit ? (
           <>

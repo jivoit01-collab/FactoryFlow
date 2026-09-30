@@ -139,7 +139,6 @@ export default function CreditNoteApprovalPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Credit Note Approval"
-        description="Credit notes SAP is holding for approval — decided as your own SAP user, from the rows SAP named you on"
       >
         <Button
           variant="outline"

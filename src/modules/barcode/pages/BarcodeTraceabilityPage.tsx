@@ -18,7 +18,6 @@ export default function BarcodeTraceabilityPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Barcode Traceability"
-        description="Search barcode, batch, item, or transfer number across ownership history"
       />
 
       <Card>

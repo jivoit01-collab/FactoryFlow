@@ -202,7 +202,6 @@ export default function PurchaseFromPlanPage() {
       <div className="p-4 sm:p-6">
         <DashboardHeader
           title="Purchase from plan"
-          description="Exploding the plan's bill of materials and reading stock from SAP…"
         />
         <p className="mt-4 text-xs text-muted-foreground">
           This reads every BOM on the plan plus stock and open purchase orders for
@@ -236,7 +235,7 @@ export default function PurchaseFromPlanPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <DashboardHeader
         title="Purchase from plan"
-        description={`${plan.code || `Plan ${plan.abs_id}`} — what the plan consumes, what is available, and what has to be bought.`}
+        description={plan.code || `Plan ${plan.abs_id}`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="ghost" size="sm">

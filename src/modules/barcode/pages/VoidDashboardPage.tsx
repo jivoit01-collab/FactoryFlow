@@ -39,7 +39,6 @@ export default function VoidDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Void"
-        description="Voided pallets and boxes with full audit trail"
         primaryAction={{
           label: 'Void Box / Pallet',
           icon: <XCircle className="h-4 w-4 mr-2" />,

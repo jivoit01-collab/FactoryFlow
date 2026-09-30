@@ -198,7 +198,6 @@ export default function TransferRequestListPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Inventory Transfer"
-        description="Ask another warehouse for stock, approve what they ask of you, and print the transfer document"
       >
         {/* Reaches transfers keyed straight into SAP too - those are on no row
             below, and are the ones most often waiting to be printed. */}

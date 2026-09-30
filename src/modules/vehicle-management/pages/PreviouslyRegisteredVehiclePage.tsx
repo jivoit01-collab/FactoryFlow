@@ -57,7 +57,6 @@ export default function PreviouslyRegisteredVehiclePage() {
         icon={History}
         accent="slate"
         title="Previously Registered Vehicle"
-        description="Look up a vehicle by registration number to see its past details before linking."
       >
         {/* Reached from both linking pages — go back where the user came from. */}
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}>

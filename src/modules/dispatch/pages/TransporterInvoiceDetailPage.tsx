@@ -129,7 +129,6 @@ export default function TransporterInvoiceDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={posting?.invoice_number || 'A/P Invoice'}
-        description="A/P Invoice posting detail"
         icon={Receipt}
         accent="violet"
         backTo="/dispatch/transporter-invoices/history"

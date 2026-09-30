@@ -54,7 +54,6 @@ function BlowingDashboardPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Blowing"
-        description="Bottle-making from preform on blowing machines — runs, costs and reports"
         primaryAction={{
           label: 'New Run',
           icon: <Plus className="mr-2 h-4 w-4" />,

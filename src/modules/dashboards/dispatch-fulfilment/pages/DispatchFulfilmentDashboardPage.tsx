@@ -140,7 +140,6 @@ export default function DispatchFulfilmentDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Dispatch Fulfilment"
-        description="Billed & dispatched value, physical quantity, and the pending backlog — across all your companies, by actual dispatch date."
       />
 
       <DispatchFulfilmentFilters

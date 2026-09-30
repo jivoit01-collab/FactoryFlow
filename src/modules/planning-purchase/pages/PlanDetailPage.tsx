@@ -54,7 +54,7 @@ export default function PlanDetailPage() {
   if (query.isLoading) {
     return (
       <div className="p-4 sm:p-6">
-        <DashboardHeader title="Production Plan" description="Reading the plan from SAP…" />
+        <DashboardHeader title="Production Plan" />
       </div>
     );
   }

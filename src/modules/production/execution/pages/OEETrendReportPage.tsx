@@ -31,7 +31,6 @@ function OEETrendReportPage() {
 
       <DashboardHeader
         title="OEE Trend Report"
-        description="Overall Equipment Effectiveness over time with drill-down by line"
       />
 
       <Card>

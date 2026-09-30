@@ -202,7 +202,6 @@ export default function DispatchTrackingPage() {
         icon={Navigation}
         accent="sky"
         title="Dispatch Tracking"
-        description="Track trucks after they leave the gate — in transit, delivered, returned. Add a status update as each event happens."
       >
         <Button
           type="button"

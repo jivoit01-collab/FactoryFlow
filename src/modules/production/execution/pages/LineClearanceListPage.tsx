@@ -17,7 +17,6 @@ function LineClearanceListPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Line Clearance"
-        description="Pre-production checklists and QA approvals"
         primaryAction={{
           label: 'New Clearance',
           icon: <Plus className="h-4 w-4 mr-2" />,

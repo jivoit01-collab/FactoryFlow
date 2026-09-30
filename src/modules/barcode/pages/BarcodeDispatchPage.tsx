@@ -1357,7 +1357,6 @@ export default function BarcodeDispatchPage() {
     <div className="space-y-5">
       <DashboardHeader
         title="Barcode Dispatch"
-        description="Scanner-first dispatch operations for SAP bills, pallets, and boxes"
       >
         <Button variant="outline" onClick={() => navigate('/barcode/dispatch/reports')}>
           <BarChart3 className="h-4 w-4" />

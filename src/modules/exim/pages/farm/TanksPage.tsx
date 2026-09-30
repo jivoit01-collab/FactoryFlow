@@ -287,7 +287,6 @@ export default function TanksPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tanks"
-        description="Every tank and tote, what it holds, and its level as last dipped. A dip recorded here is what the Tank Farm draws."
         icon={Container}
         accent="teal"
       >
