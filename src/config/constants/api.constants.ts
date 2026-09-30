@@ -20,6 +20,21 @@ export const API_CONFIG = {
 } as const;
 
 export const API_ENDPOINTS = {
+  // Stock audit: a physical count of a SAP warehouse against SAP (Warehouse Ops)
+  STOCK_AUDIT: {
+    WAREHOUSES: '/stock-audit/warehouses/',
+    AUDITS: '/stock-audit/audits/',
+    AUDIT: (id: number) => `/stock-audit/audits/${id}/`,
+    LINES: (id: number) => `/stock-audit/audits/${id}/lines/`,
+    LINE_COUNTS: (id: number, lineId: number) =>
+      `/stock-audit/audits/${id}/lines/${lineId}/counts/`,
+    VOID_COUNT: (id: number, countId: number) =>
+      `/stock-audit/audits/${id}/counts/${countId}/void/`,
+    ITEMS: (id: number) => `/stock-audit/audits/${id}/items/`,
+    REFRESH: (id: number) => `/stock-audit/audits/${id}/refresh/`,
+    CLOSE: (id: number) => `/stock-audit/audits/${id}/close/`,
+    EXPORT: (id: number) => `/stock-audit/audits/${id}/export/`,
+  },
   // Auth
   AUTH: {
     LOGIN: '/accounts/login/',
