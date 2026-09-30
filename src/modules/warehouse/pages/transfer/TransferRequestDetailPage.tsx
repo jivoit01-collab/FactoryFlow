@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Boxes,
   CheckCircle2,
+  Pencil,
   Printer,
   ShieldCheck,
   Truck,
@@ -80,7 +81,12 @@ export default function TransferRequestDetailPage() {
   const post = usePostTransferToSAP();
   const secondLeg = usePostTransferSecondLeg();
 
-  const [approvedQty, setApprovedQty] = useState<Record<number, string>>({});
+  // Typed approvals belong to the copy they were typed against. The requester
+  // can edit a pending request, and then a line number may name another item.
+  const [approvedQty, setApprovedQty] = useState<{
+    version: string;
+    byLine: Record<number, string>;
+  }>({ version: '', byLine: {} });
   const [verifyOn, setVerifyOn] = useState(false);
   const [showBatches, setShowBatches] = useState(false);
   const [error, setError] = useState('');
@@ -120,6 +126,13 @@ export default function TransferRequestDetailPage() {
   const isOnRequest =
     !!user && (user.id === r.requested_by || user.id === r.reviewed_by);
   const hasBatchLines = r.lines.some((l) => l.is_batch_managed);
+  // Editable until it is decided, and only by whoever raised it.
+  const canEdit =
+    isPending &&
+    !!user &&
+    user.id === r.requested_by &&
+    hasPermission(WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST);
+  const typedQty = approvedQty.version === r.updated_at ? approvedQty.byLine : {};
 
   async function run(fn: () => Promise<unknown>, fallback: string) {
     setError('');
@@ -133,6 +146,15 @@ export default function TransferRequestDetailPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader title={r.entry_no} description={`${r.from_warehouse} → ${r.to_warehouse}`}>
+        {canEdit && (
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/warehouse/inventory-transfer/${id}/edit`)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
+        )}
         <Button variant="outline" onClick={() => handlePrint()}>
           <Printer className="mr-2 h-4 w-4" />
           Print
@@ -284,9 +306,12 @@ export default function TransferRequestDetailPage() {
                           placeholder={qty(line.requested_qty)}
                           uom={line.uom}
                           max={line.requested_qty}
-                          value={approvedQty[line.line_num] ?? ''}
+                          value={typedQty[line.line_num] ?? ''}
                           onChange={(value) =>
-                            setApprovedQty((p) => ({ ...p, [line.line_num]: value }))
+                            setApprovedQty({
+                              version: r.updated_at,
+                              byLine: { ...typedQty, [line.line_num]: value },
+                            })
                           }
                         />
                       ) : (
@@ -387,12 +412,14 @@ export default function TransferRequestDetailPage() {
                     approve.mutateAsync({
                       requestId: id,
                       data: {
-                        lines: Object.entries(approvedQty)
+                        lines: Object.entries(typedQty)
                           .filter(([, v]) => v !== '')
                           .map(([lineNum, v]) => ({
                             line_num: Number(lineNum),
                             approved_qty: Number(v),
                           })),
+                        // Refused if the requester has edited it since.
+                        updated_at: r.updated_at,
                       },
                     }),
                   'Could not approve this request.',

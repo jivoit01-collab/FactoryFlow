@@ -8,6 +8,7 @@ import type {
   TransferPostAllocation,
   TransferRejectPayload,
   TransferRequestCreatePayload,
+  TransferRequestUpdatePayload,
   TransferSecondLegPayload,
 } from '../types';
 import {
@@ -148,12 +149,23 @@ export function useCreateTransferRequest() {
   });
 }
 
+export function useUpdateTransferRequest() {
+  const invalidate = useTransferInvalidation();
+  return useMutation({
+    mutationFn: ({ requestId, data }: { requestId: number; data: TransferRequestUpdatePayload }) =>
+      transferRequestApi.update(requestId, data),
+    onSuccess: (_result, variables) => invalidate(variables.requestId),
+  });
+}
+
 export function useApproveTransferRequest() {
   const invalidate = useTransferInvalidation();
   return useMutation({
     mutationFn: ({ requestId, data }: { requestId: number; data?: TransferApprovePayload }) =>
       transferRequestApi.approve(requestId, data ?? {}),
-    onSuccess: (_result, variables) => invalidate(variables.requestId),
+    // Settled, not success: an approval refused because the requester edited
+    // the request meanwhile has to reload it, so the approver sees the edit.
+    onSettled: (_result, _error, variables) => invalidate(variables.requestId),
   });
 }
 

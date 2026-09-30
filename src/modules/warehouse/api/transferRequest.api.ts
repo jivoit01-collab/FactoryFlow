@@ -20,6 +20,7 @@ import type {
   TransferRequestCreatePayload,
   TransferRequestDetail,
   TransferRequestListItem,
+  TransferRequestUpdatePayload,
   TransferSecondLegPayload,
   WarehouseStockItem,
 } from '../types';
@@ -100,6 +101,22 @@ export const transferRequestApi = {
    */
   async create(data: TransferRequestCreatePayload): Promise<TransferRequestDetail> {
     const res = await apiClient.post<TransferRequestDetail>(EP.TRANSFER_REQUESTS, data);
+    return res.data;
+  },
+
+  /**
+   * The requester changing items, quantities or remarks before a decision.
+   * Changed lines replace SAP's request — a new one is raised and the old one
+   * closed — so the stock stays reserved throughout.
+   */
+  async update(
+    requestId: number,
+    data: TransferRequestUpdatePayload,
+  ): Promise<TransferRequestDetail> {
+    const res = await apiClient.patch<TransferRequestDetail>(
+      EP.TRANSFER_REQUEST_DETAIL(requestId),
+      data,
+    );
     return res.data;
   },
 

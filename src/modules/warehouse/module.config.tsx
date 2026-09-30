@@ -64,6 +64,7 @@ const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprova
 const TransferRequestListPage = lazy(() => import('./pages/transfer/TransferRequestListPage'));
 const TransferRequestNewPage = lazy(() => import('./pages/transfer/TransferRequestNewPage'));
 const TransferRequestDetailPage = lazy(() => import('./pages/transfer/TransferRequestDetailPage'));
+const TransferRequestEditPage = lazy(() => import('./pages/transfer/TransferRequestEditPage'));
 
 // Dispatch Loading — scan pallets against a docked truck's bills, freeing map bins
 const DispatchLoadingListPage = lazy(() => import('./pages/dispatch-loading/DispatchLoadingListPage'));
@@ -192,6 +193,14 @@ export const warehouseModuleConfig: ModuleConfig = {
       element: <TransferRequestDetailPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
+    },
+    {
+      // Only while it is pending, and only by whoever raised it — the page and
+      // the server both check; the route gates on being able to raise one.
+      path: '/warehouse/inventory-transfer/:requestId/edit',
+      element: <TransferRequestEditPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
     },
     {
       // Legacy: the page was called Transfer Requests and lived at

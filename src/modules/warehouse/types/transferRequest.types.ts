@@ -125,10 +125,24 @@ export interface TransferRequestCreatePayload {
   lines: TransferRequestLineInput[];
 }
 
+/**
+ * What the requester may change while the request waits for a decision. Not the
+ * route — it decides who approves. A field left out keeps what is there.
+ */
+export interface TransferRequestUpdatePayload {
+  remarks?: string;
+  lines?: TransferRequestLineInput[];
+}
+
 /** Lines left out are approved at the quantity that was requested. */
 export interface TransferApprovePayload {
   lines?: { line_num: number; approved_qty: number | string }[];
   reason?: string;
+  /**
+   * The request's `updated_at` as the approver saw it. The requester can edit
+   * a pending request, so a decision on an older copy is refused.
+   */
+  updated_at?: string;
 }
 
 export interface TransferRejectPayload {
