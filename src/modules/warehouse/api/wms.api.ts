@@ -12,9 +12,12 @@ const EP = API_ENDPOINTS.WAREHOUSE;
 // because they feed filter dropdowns in the barcode pallet pages and the
 // stock-level dashboard.
 export const wmsApi = {
-  // Warehouses dropdown
-  async getWarehouses(): Promise<{ warehouses: WarehouseOption[] }> {
-    const res = await apiClient.get<{ warehouses: WarehouseOption[] }>(EP.WMS_WAREHOUSE_LIST);
+  // Warehouses dropdown. `sap_copy_as_of` is set when HANA could not be reached
+  // and the list came from the app's nightly copy of SAP's.
+  async getWarehouses(): Promise<{ warehouses: WarehouseOption[]; sap_copy_as_of?: string }> {
+    const res = await apiClient.get<{ warehouses: WarehouseOption[]; sap_copy_as_of?: string }>(
+      EP.WMS_WAREHOUSE_LIST,
+    );
     return res.data;
   },
 

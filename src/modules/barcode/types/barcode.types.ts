@@ -392,6 +392,11 @@ export interface OitmItemRow {
   pieces_per_box_source: string;
   valid_for: boolean;
   frozen_for: boolean;
+  /**
+   * Set only when HANA could not be reached and the row came from the app's
+   * nightly copy of SAP's item list: when SAP gave that copy.
+   */
+  sap_copy_as_of?: string;
 }
 
 /** One item's group (code + name), looked up by exact item code. */

@@ -46,6 +46,14 @@ const MAX_BOX_LABELS_PER_REQUEST = 5000;
 
 const getOitmItemLabel = (item: OitmItemRow) => `${item.item_code} - ${item.item_name}`;
 
+const formatCopyTime = (iso: string) =>
+  new Date(iso).toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
 export default function LabelGeneratePage() {
   const generateMutation = useGenerateBoxes();
   const addBoxesMutation = useAddBoxesToPallet();
@@ -387,6 +395,15 @@ export default function LabelGeneratePage() {
                 if (search !== selectedLabel) setItemSearch(search);
               }}
             />
+            {/* HANA not answering: the list is the app's nightly copy of SAP's. */}
+            {oitmItems[0]?.sap_copy_as_of && (
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                SAP is not answering, so this is SAP&apos;s item list as copied on{' '}
+                {formatCopyTime(oitmItems[0].sap_copy_as_of)}. An item added in SAP since then is
+                not in it.
+              </p>
+            )}
           </div>
 
           <div className="mb-4 flex items-center gap-2">
