@@ -80,7 +80,20 @@ export const EXIM_PERMISSIONS = {
   LANDED_COST_VIEW: 'exim.view_domesticcontractdetails',
   /** Set a PO's delivery terms, freight and brokerage. */
   CONTRACT_CHANGE: 'exim.change_domesticreports',
+
+  // Oil prices: EXIM's "dailyprice" (commodity prices) and "jivorates".
+  PRICE_VIEW: 'exim.view_dailyprice',
+  PRICE_GRAPH: 'exim.view_daily_price_graph',
+  /** Read the price sheet as it stands; saving it as today's needs PRICE_ADD. */
+  PRICE_FETCH: 'exim.fetch_daily_price',
+  PRICE_ADD: 'exim.add_dailyprice',
+  RATE_VIEW: 'exim.view_jivorates',
+  RATE_FETCH: 'exim.fetch_jivo_rates',
+  RATE_ADD: 'exim.add_jivorates',
 } as const;
+
+export const EXIM_PRICE_ACCESS: string[] = [EXIM_PERMISSIONS.PRICE_VIEW, EXIM_PERMISSIONS.PRICE_GRAPH];
+export const EXIM_RATE_ACCESS: string[] = [EXIM_PERMISSIONS.RATE_VIEW];
 
 export const EXIM_CONTRACT_ACCESS: string[] = [
   EXIM_PERMISSIONS.CONTRACT_VIEW,
@@ -122,4 +135,6 @@ export const EXIM_ACCESS: string[] = [
   ...EXIM_LOT_ACCESS,
   EXIM_PERMISSIONS.DIRECTOR_REPORT,
   ...EXIM_CONTRACT_ACCESS,
+  ...EXIM_PRICE_ACCESS,
+  ...EXIM_RATE_ACCESS,
 ];

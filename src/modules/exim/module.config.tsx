@@ -12,6 +12,8 @@
  *                           breakdown)
  *   Domestic Contracts      EXIM's domestic contract register and its landed-
  *                           cost sheet, rebuilt on SAP's oil POs and the gate
+ *   Oil Prices, Jivo Rates  EXIM's daily commodity prices and Jivo rates, read
+ *                           nightly from the purchase team's price sheet
  *   Director Inventory      EXIM's Director Dashboard
  *   Contract History,
  *   Change Log              EXIM's contractual history and stock updation logs
@@ -23,6 +25,7 @@
  * `config/permissions/exim.permissions.ts`), which EXIM's users arrived holding.
  */
 import {
+  ChartLine,
   ClipboardList,
   Container,
   Cylinder,
@@ -39,6 +42,7 @@ import {
   ReceiptIndianRupee,
   Scale,
   Ship,
+  Tags,
   Truck,
 } from 'lucide-react';
 
@@ -47,6 +51,8 @@ import {
   EXIM_CONTRACT_ACCESS,
   EXIM_LICENCE_ACCESS,
   EXIM_PERMISSIONS,
+  EXIM_PRICE_ACCESS,
+  EXIM_RATE_ACCESS,
 } from '@/config/permissions/exim.permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
@@ -62,6 +68,9 @@ const DirectorInventoryPage = lazy(() => import('./pages/reports/DirectorInvento
 
 const DomesticContractsPage = lazy(() => import('./pages/contracts/DomesticContractsPage'));
 const DomesticContractPage = lazy(() => import('./pages/contracts/DomesticContractPage'));
+
+const OilPricesPage = lazy(() => import('./pages/prices/OilPricesPage'));
+const JivoRatesPage = lazy(() => import('./pages/prices/JivoRatesPage'));
 
 const LotsPage = lazy(() => import('./pages/lots/LotsPage'));
 const LotDetailPage = lazy(() => import('./pages/lots/LotDetailPage'));
@@ -157,6 +166,22 @@ export const eximModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: EXIM_CONTRACT_ACCESS,
       breadcrumb: { label: 'PO' },
+    },
+
+    // --- oil prices: the purchase team's price sheet, day by day ----------------
+    {
+      path: '/exim/oil-prices',
+      element: <OilPricesPage />,
+      layout: 'main',
+      permissions: EXIM_PRICE_ACCESS,
+      breadcrumb: { label: 'Oil Prices' },
+    },
+    {
+      path: '/exim/jivo-rates',
+      element: <JivoRatesPage />,
+      layout: 'main',
+      permissions: EXIM_RATE_ACCESS,
+      breadcrumb: { label: 'Jivo Rates' },
     },
 
     // --- the tank farm ---------------------------------------------------------
@@ -281,6 +306,18 @@ export const eximModuleConfig: ModuleConfig = {
           title: 'Domestic Contracts',
           icon: ReceiptIndianRupee,
           permissions: EXIM_CONTRACT_ACCESS,
+        },
+        {
+          path: '/exim/oil-prices',
+          title: 'Oil Prices',
+          icon: ChartLine,
+          permissions: EXIM_PRICE_ACCESS,
+        },
+        {
+          path: '/exim/jivo-rates',
+          title: 'Jivo Rates',
+          icon: Tags,
+          permissions: EXIM_RATE_ACCESS,
         },
         { path: '/exim/tank-farm', title: 'Tank Farm', icon: Cylinder, permissions: [P.TANK_VIEW] },
         { path: '/exim/tanks', title: 'Tanks', icon: Container, permissions: [P.TANK_VIEW] },
