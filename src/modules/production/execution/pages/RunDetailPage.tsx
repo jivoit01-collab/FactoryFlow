@@ -54,6 +54,7 @@ import {
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { ProductionTimeline } from '../components/ProductionTimeline';
+import { CLEARANCE_STATUS_LABELS } from '../constants';
 import {
   type AddBreakdownFormData,
   addBreakdownSchema,
@@ -166,15 +167,16 @@ function RunDetailPage() {
     const runMachines = lineMachines.filter((machine) => runMachineIds.has(machine.id));
     return runMachines.length > 0 ? runMachines : lineMachines;
   }, [lineMachines, run?.machine_ids]);
-  const hasClearedClearance = runClearance?.status === 'CLEARED';
-  // Where the checks are optional (Beverages), each one gates the start only
-  // once it has been sent: the BOM request submitted, the clearance sent to QA.
+  // Where the checks are optional (Beverages), the BOM request gates the start
+  // only once it has been sent, and no line clearance is needed.
   const startChecksOptional = run?.start_checks_optional === true;
   // Oil sends the warehouse nothing: the run is planned on BH-PC stock, so
   // there is no request to submit, re-request or wait for.
   const bomRequestRequired = run?.bom_request_required !== false;
-  const clearanceSent = !!runClearance && runClearance.status !== 'DRAFT';
-  const clearanceRequired = !startChecksOptional || clearanceSent;
+  // Elsewhere the clearance must be submitted before the first start. QA's
+  // decision does not gate it — cleared or rejected, the line may start.
+  const clearanceRequired = !startChecksOptional;
+  const clearanceSubmitted = !!runClearance && runClearance.status !== 'DRAFT';
   const warehouseStatus = bomRequestRequired ? run?.warehouse_approval_status : undefined;
   const startProductionBlockReason =
     warehouseStatus === 'NOT_REQUESTED' && !startChecksOptional
@@ -183,8 +185,8 @@ function RunDetailPage() {
         ? 'Cannot start production while warehouse approval is pending.'
         : warehouseStatus === 'REJECTED'
           ? 'Cannot start production because warehouse approval was rejected.'
-          : clearanceRequired && !hasClearedClearance
-            ? 'Cannot start production — line clearance has not been approved by QA.'
+          : clearanceRequired && run?.status === 'DRAFT' && !clearanceSubmitted
+            ? 'Submit the line clearance before starting production.'
             : undefined;
 
   // ---------------------------------------------------------------------------
@@ -402,13 +404,18 @@ function RunDetailPage() {
   if (!run) return <div className="p-8 text-center text-muted-foreground">Run not found</div>;
 
   const clearanceStatusText = runClearance
-    ? {
-        DRAFT: 'Draft',
-        SUBMITTED: 'Submitted',
-        CLEARED: 'Cleared',
-        NOT_CLEARED: 'Not Cleared',
-      }[runClearance.status] ?? runClearance.status
+    ? CLEARANCE_STATUS_LABELS[runClearance.status] ?? runClearance.status
     : 'Not Done';
+  const clearanceButtonClass =
+    runClearance?.status === 'CLEARED'
+      ? 'border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/25 hover:text-green-800 dark:hover:text-green-400'
+      : runClearance?.status === 'NOT_CLEARED'
+        ? 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
+        : clearanceSubmitted
+          ? 'border-amber-300 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25 hover:text-amber-800 dark:hover:text-amber-400'
+          : clearanceRequired
+            ? 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
+            : '';
 
   return (
     <div className="space-y-6">
@@ -519,13 +526,7 @@ function RunDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            className={
-              hasClearedClearance
-                ? 'border-green-300 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/25 hover:text-green-800 dark:hover:text-green-400'
-                : !clearanceRequired
-                  ? ''
-                  : 'border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/25 hover:text-red-800 dark:hover:text-red-400'
-            }
+            className={clearanceButtonClass}
             title={`Line Clearance: ${clearanceStatusText}${clearanceRequired ? '' : ' (optional)'}`}
             onClick={() =>
               navigate(
@@ -535,7 +536,7 @@ function RunDetailPage() {
               )
             }
           >
-            <Shield className="h-4 w-4 mr-1" /> Line Clearance
+            <Shield className="h-4 w-4 mr-1" /> Line Clearance: {clearanceStatusText}
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/production/execution/runs/${run.id}/yield`)}>
             <FileText className="h-4 w-4 mr-1" /> Yield

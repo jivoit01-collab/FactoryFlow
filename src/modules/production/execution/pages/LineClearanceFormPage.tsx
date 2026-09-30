@@ -52,7 +52,6 @@ function LineClearanceFormPage() {
 
   const isDraft = clearance?.status === 'DRAFT';
   const attachments = clearance?.attachments ?? [];
-  const hasAttachments = attachments.length > 0;
 
   useEffect(() => {
     if (!clearance || isSavingSupervisor) return;
@@ -265,7 +264,7 @@ function LineClearanceFormPage() {
             <CardContent className="space-y-4">
               {isDraft && (
                 <p className="text-sm text-muted-foreground">
-                  Attach at least one photo/document of the cleared line. Required before submitting for QA approval.
+                  Optionally attach photos/documents of the cleared line.
                 </p>
               )}
 
@@ -343,15 +342,15 @@ function LineClearanceFormPage() {
             {isDraft && (
               <Button
                 onClick={handleSubmit}
-                disabled={!clearance.all_checks_passed || !supervisorName || !hasAttachments || isSavingSupervisor || submitClearance.isPending}
-                title={!clearance.all_checks_passed ? 'Mark all checks as passed first' : !supervisorName ? 'Enter supervisor name first' : !hasAttachments ? 'Add at least one attachment first' : isSavingSupervisor ? 'Wait for supervisor name to save' : undefined}
+                disabled={!clearance.all_checks_passed || !supervisorName || isSavingSupervisor || submitClearance.isPending}
+                title={!clearance.all_checks_passed ? 'Mark all checks as passed first' : !supervisorName ? 'Enter supervisor name first' : isSavingSupervisor ? 'Wait for supervisor name to save' : undefined}
               >
                 <Send className="h-4 w-4 mr-1" />
                 {submitClearance.isPending ? 'Submitting...' : 'Submit for QA Approval'}
               </Button>
             )}
             {clearance.status === 'SUBMITTED' && (
-              <p className="text-sm text-muted-foreground italic">Waiting for QA approval</p>
+              <p className="text-sm text-muted-foreground italic">Waiting for QA approval — the line can start meanwhile</p>
             )}
             {clearance.status === 'ON_HOLD' && (
               <p className="text-sm text-amber-600 font-medium">On hold by QA</p>
