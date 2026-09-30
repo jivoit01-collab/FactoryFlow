@@ -155,7 +155,10 @@ function collectFieldErrors(
 function extractFieldErrors(
   responseData: Record<string, unknown> | undefined,
 ): Record<string, string[]> | undefined {
-  if (!responseData) return undefined;
+  // A server error page (Django's 500 is HTML) arrives as a string, and
+  // Object.entries on a string lists its characters as "fields" — the error
+  // would read "0: P | 1: r | 2: o …". Only an object holds field errors.
+  if (!responseData || typeof responseData !== 'object') return undefined;
 
   const fieldErrors: Record<string, string[]> = {};
 
