@@ -184,7 +184,7 @@ export const qcModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Parameter Types' },
     },
     {
-      // One type: its parameters and its linked products, on tabs.
+      // One type and its parameters.
       path: '/qc/production/parameter-types/:typeId',
       element: <ProductionParameterTypePage />,
       layout: 'main',

@@ -1,6 +1,7 @@
 /**
  * Production QC masters, one thing per screen: the list shows parameter types
- * only, and a type opens on its own page with its parameters or its products.
+ * only, and a type opens on its own page with its parameters. Types are not
+ * tied to products, so neither screen shows any.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -34,8 +35,6 @@ vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
   useCreateProductionParameter: mutation,
   useUpdateProductionParameter: mutation,
   useDeleteProductionParameter: mutation,
-  useLinkProductionParameterTypeItem: mutation,
-  useUnlinkProductionParameterTypeItem: mutation,
 }));
 vi.mock('@/modules/qc/components/qcSections', () => ({ ProductionQCTabs: () => null }));
 
@@ -52,7 +51,9 @@ const type = (id: number, overrides: Partial<ProductionParameterType> = {}) =>
     description: '',
     is_active: true,
     parameter_count: 2,
-    items: [],
+    print_document_id: '',
+    revision: '',
+    revision_date: null,
     created_at: '2026-09-01T00:00:00Z',
     updated_at: '2026-09-01T00:00:00Z',
     ...overrides,
@@ -91,7 +92,7 @@ describe('the parameter types list', () => {
 
     expect(screen.getAllByRole('row')).toHaveLength(31); // header + 30
     expect(screen.queryByRole('button', { name: /Add Parameter$/ })).toBeNull();
-    expect(screen.queryByText(/Link a product/)).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Products' })).toBeNull();
   });
 
   it('opens a type on its own page', () => {
@@ -151,35 +152,18 @@ describe('the type dialog', () => {
 });
 
 describe('a parameter type page', () => {
-  it('opens on the parameters, and only those', () => {
+  it('shows its parameters, with no products tab', () => {
     renderAt('/qc/production/parameter-types/3');
 
     expect(screen.getByRole('heading', { name: 'TYPE3 Type 3' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /Parameters/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
     expect(screen.getByRole('button', { name: /Add Parameter/ })).toBeInTheDocument();
-    expect(screen.queryByText(/Link a product/)).toBeNull();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.queryByText(/Linked Products|Link a product/)).toBeNull();
   });
 
-  it('shows the linked products on their own tab', () => {
-    data.types = [type(3, { items: [{ id: 9, item_code: 'FG0000228', item_name: 'SO OLIVE' }] })];
-    renderAt('/qc/production/parameter-types/3');
-
-    fireEvent.mouseDown(screen.getByRole('tab', { name: /Linked Products \(1\)/ }));
-
-    expect(screen.getByText('FG0000228')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Add Parameter/ })).toBeNull();
-    expect(where()).toBe('/qc/production/parameter-types/3?view=products');
-  });
-
-  it('opens straight on the products from the address', () => {
+  it('still opens on the parameters from an old products address', () => {
     renderAt('/qc/production/parameter-types/3?view=products');
-    expect(screen.getByRole('tab', { name: /Linked Products/ })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: /Add Parameter/ })).toBeInTheDocument();
   });
 
   it('goes back to the list', () => {

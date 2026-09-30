@@ -1,6 +1,6 @@
-import { AlertCircle, ArrowLeft, Edit, Loader2, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { confirmDialog } from '@/shared/components';
@@ -18,20 +18,13 @@ import {
   DialogTitle,
   Input,
   Label,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
 
 import {
   useCreateProductionParameter,
   useDeleteProductionParameter,
-  useLinkProductionParameterTypeItem,
   useProductionParameters,
   useProductionParameterType,
-  useUnlinkProductionParameterTypeItem,
   useUpdateProductionParameter,
 } from '../../api/productionQC/productionQC.queries';
 import { PARAMETER_TYPE_LABELS } from '../../constants';
@@ -39,7 +32,6 @@ import type {
   ProductionParameter,
   ProductionParameterRequest,
   ProductionParameterType,
-  ProductionParameterTypeItem,
 } from '../../types/productionQC.types';
 import type { ParameterType } from '../../types/qc.types';
 import {
@@ -52,22 +44,12 @@ import {
 import { describeSpec, formatDecimal } from '../../utils/productionQCSpec';
 import { Field } from './MasterField';
 
-type View = 'parameters' | 'products';
-
-/**
- * One parameter type: its parameters, or the products linked to it — one at a
- * time, on tabs. The list of types is its own page.
- */
+/** One parameter type and its parameters. The list of types is its own page. */
 export default function ProductionParameterTypePage() {
   const navigate = useNavigate();
   const { typeId } = useParams<{ typeId: string }>();
   const id = Number(typeId) || null;
-  const [searchParams, setSearchParams] = useSearchParams();
-  const view: View = searchParams.get('view') === 'products' ? 'products' : 'parameters';
   const { data: type, isLoading, error } = useProductionParameterType(id);
-
-  const setView = (next: string) =>
-    setSearchParams(next === 'products' ? { view: 'products' } : {}, { replace: true });
 
   return (
     <div className="space-y-6 pb-6">
@@ -109,18 +91,7 @@ export default function ProductionParameterTypePage() {
           This parameter type could not be found. It may have been removed.
         </div>
       ) : (
-        <Tabs value={view} onValueChange={setView} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="parameters">Parameters ({type.parameter_count})</TabsTrigger>
-            <TabsTrigger value="products">Linked Products ({type.items.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="parameters" className="mt-0">
-            <ParametersCard type={type} />
-          </TabsContent>
-          <TabsContent value="products" className="mt-0">
-            <LinkedProductsCard type={type} />
-          </TabsContent>
-        </Tabs>
+        <ParametersCard type={type} />
       )}
     </div>
   );
@@ -256,7 +227,10 @@ function ParametersCard({ type }: { type: ProductionParameterType }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
-        <CardDescription>What a check on this type reads, in this order.</CardDescription>
+        <CardDescription>
+          {parameters.length} parameter{parameters.length === 1 ? '' : 's'} — what a check on this
+          type reads, in this order.
+        </CardDescription>
         <Button size="sm" onClick={() => openDialog()}>
           <Plus className="mr-2 h-4 w-4" />
           Add Parameter
@@ -486,127 +460,6 @@ function ParametersCard({ type }: { type: ProductionParameterType }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
-  );
-}
-
-// ==================== Linked products ====================
-
-function LinkedProductsCard({ type }: { type: ProductionParameterType }) {
-  const linkItem = useLinkProductionParameterTypeItem();
-  const unlinkItem = useUnlinkProductionParameterTypeItem();
-  const [itemCode, setItemCode] = useState('');
-  const [itemName, setItemName] = useState('');
-  const [error, setError] = useState('');
-
-  const handleLink = async () => {
-    const code = itemCode.trim().toUpperCase();
-    if (!code) {
-      setError('Enter the SAP item code');
-      return;
-    }
-    if (type.items.some((item) => item.item_code === code)) {
-      setError(`${code} is already linked to ${type.code}`);
-      return;
-    }
-    try {
-      setError('');
-      await linkItem.mutateAsync({
-        typeId: type.id,
-        data: { item_code: code, item_name: itemName.trim() },
-      });
-      toast.success(`${code} linked to ${type.code}`);
-      setItemCode('');
-      setItemName('');
-    } catch (err) {
-      const errors = readApiErrors(err, 'Failed to link the product');
-      setError(errors.item_code || errors.item_name || errors.general || Object.values(errors)[0]);
-    }
-  };
-
-  const handleUnlink = async (item: ProductionParameterTypeItem) => {
-    const confirmed = await confirmDialog({
-      title: `Unlink ${item.item_code} from ${type.code}?`,
-      description:
-        'Checks on this product stop offering this type. A product left with no type is offered every type again.',
-      confirmLabel: 'Unlink',
-      destructive: true,
-    });
-    if (!confirmed) return;
-    try {
-      await unlinkItem.mutateAsync(item.id);
-      toast.success(`${item.item_code} unlinked`);
-    } catch {
-      // The api client already toasts the reason.
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardDescription>
-          A check on these products offers this type. A product with no type is linked on its first
-          check.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {type.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No products linked yet.</p>
-        ) : (
-          <ul className="divide-y rounded-md border">
-            {type.items.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 p-3">
-                <div className="min-w-0">
-                  <div className="font-mono text-xs font-medium">{item.item_code}</div>
-                  <div className="truncate text-sm text-muted-foreground">
-                    {item.item_name || '-'}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Unlink ${item.item_code}`}
-                  disabled={unlinkItem.isPending}
-                  onClick={() => handleUnlink(item)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="space-y-2 rounded-md border p-3">
-          <Label>Link a product</Label>
-          <Input
-            aria-label="SAP item code"
-            value={itemCode}
-            onChange={(event) => {
-              setItemCode(event.target.value.toUpperCase());
-              setError('');
-            }}
-            placeholder="SAP item code, e.g. FG0001234"
-            disabled={linkItem.isPending}
-            className={cn('font-mono', error && 'border-destructive')}
-          />
-          <Input
-            aria-label="Item name"
-            value={itemName}
-            onChange={(event) => setItemName(event.target.value)}
-            placeholder="Item name (optional)"
-            disabled={linkItem.isPending}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button size="sm" onClick={handleLink} disabled={linkItem.isPending}>
-            {linkItem.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="mr-2 h-4 w-4" />
-            )}
-            Link
-          </Button>
-        </div>
-      </CardContent>
     </Card>
   );
 }

@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateProductionQCEntryRequest,
   ProductionParameterRequest,
-  ProductionParameterTypeItemRequest,
   ProductionParameterTypeListParams,
   ProductionParameterTypeRequest,
   ProductionQCDateRangeParams,
@@ -24,7 +23,7 @@ export const PRODUCTION_QC_QUERY_KEYS = {
   entryCounts: (params?: ProductionQCDateRangeParams) =>
     [...PRODUCTION_QC_QUERY_KEYS.entries(), 'counts', params ?? {}] as const,
   entry: (id: number) => [...PRODUCTION_QC_QUERY_KEYS.entries(), 'detail', id] as const,
-  /** The masters: types, their parameters and linked products. */
+  /** The masters: types and their parameters. */
   parameterTypes: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'parameterTypes'] as const,
   parameterTypeList: (params?: ProductionParameterTypeListParams) =>
     [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'list', params ?? {}] as const,
@@ -111,9 +110,6 @@ export function useCreateProductionQCEntry() {
     mutationFn: (data: CreateProductionQCEntryRequest) => productionQCApi.createEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.entries() });
-      // Saving a check on an unlinked product links it to the type chosen.
-      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines() });
-      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.parameterTypes() });
     },
   });
 }
@@ -243,25 +239,6 @@ export function useDeleteProductionParameter() {
   const invalidate = useInvalidateMasters();
   return useMutation({
     mutationFn: (id: number) => productionQCApi.deleteParameter(id),
-    onSuccess: invalidate,
-  });
-}
-
-// ==================== Linked products ====================
-
-export function useLinkProductionParameterTypeItem() {
-  const invalidate = useInvalidateMasters();
-  return useMutation({
-    mutationFn: ({ typeId, data }: { typeId: number; data: ProductionParameterTypeItemRequest }) =>
-      productionQCApi.linkItem(typeId, data),
-    onSuccess: invalidate,
-  });
-}
-
-export function useUnlinkProductionParameterTypeItem() {
-  const invalidate = useInvalidateMasters();
-  return useMutation({
-    mutationFn: (itemId: number) => productionQCApi.unlinkItem(itemId),
     onSuccess: invalidate,
   });
 }

@@ -38,7 +38,9 @@ vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
           description: '',
           is_active: true,
           parameter_count: 3,
-          items: [],
+          print_document_id: '',
+          revision: '',
+          revision_date: null,
           created_at: '',
           updated_at: '',
         } satisfies ProductionParameterType)
@@ -63,7 +65,6 @@ const runningLine = (overrides: Partial<ProductionRunningLine> = {}): Production
   is_running_now: true,
   last_started_at: '2026-09-29T06:00:00+05:30',
   stopped_at: null,
-  linked_parameter_types: [{ id: 1, code: 'PET_1L', name: '1 L PET Oil' }],
   ...overrides,
 });
 
@@ -270,13 +271,12 @@ describe('a new entry', () => {
     expect(screen.getByTestId('where').textContent).toBe('/qc/production');
   });
 
-  it('notes that saving links an unlinked product to the type', () => {
-    state.lines = [runningLine({ linked_parameter_types: [] })];
+  it('takes any type on any line, with nothing said about linking', () => {
+    state.lines = [runningLine({ item_code: '', product: 'Demo run' })];
     renderAt('/qc/production/new?run=11&type=1');
 
-    expect(screen.getByText(/is not linked to a parameter type yet/)).toHaveTextContent(
-      'Saving links it to 1 L PET Oil',
-    );
+    expect(screen.getByRole('button', { name: /Save & Send for Approval/ })).toBeInTheDocument();
+    expect(screen.queryByText(/linked/i)).not.toBeInTheDocument();
   });
 });
 

@@ -6,8 +6,6 @@ import type {
   ProductionParameter,
   ProductionParameterRequest,
   ProductionParameterType,
-  ProductionParameterTypeItem,
-  ProductionParameterTypeItemRequest,
   ProductionParameterTypeListParams,
   ProductionParameterTypeRequest,
   ProductionQCDateRangeParams,
@@ -188,22 +186,5 @@ export const productionQCApi = {
 
   async deleteParameter(id: number): Promise<void> {
     await apiClient.delete(ENDPOINTS.PRODUCTION_QC_PARAMETER_BY_ID(id));
-  },
-
-  // ==================== Linked products ====================
-
-  async linkItem(
-    typeId: number,
-    data: ProductionParameterTypeItemRequest,
-  ): Promise<ProductionParameterTypeItem> {
-    const response = await apiClient.post<ProductionParameterTypeItem>(
-      ENDPOINTS.PRODUCTION_QC_TYPE_ITEMS(typeId),
-      data,
-    );
-    return response.data;
-  },
-
-  async unlinkItem(itemId: number): Promise<void> {
-    await apiClient.delete(ENDPOINTS.PRODUCTION_QC_ITEM_BY_ID(itemId));
   },
 };

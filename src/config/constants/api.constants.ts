@@ -391,9 +391,6 @@ export const API_ENDPOINTS = {
       `/quality-control/production-qc/parameter-types/${typeId}/parameters/`,
     PRODUCTION_QC_PARAMETER_BY_ID: (id: number) =>
       `/quality-control/production-qc/parameters/${id}/`,
-    PRODUCTION_QC_TYPE_ITEMS: (typeId: number) =>
-      `/quality-control/production-qc/parameter-types/${typeId}/items/`,
-    PRODUCTION_QC_ITEM_BY_ID: (id: number) => `/quality-control/production-qc/items/${id}/`,
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {

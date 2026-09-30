@@ -1,7 +1,6 @@
 /**
- * New entry: pick a running line, then a parameter type. A product linked to
- * types is offered only those; an unlinked one is offered every type (and is
- * linked to the one picked when the entry is saved).
+ * New entry: pick a running line, then a parameter type. Types are not tied to
+ * products, so every active type is offered on every line.
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -41,7 +40,6 @@ const line = (overrides: Partial<ProductionRunningLine>): ProductionRunningLine 
   is_running_now: true,
   last_started_at: '2026-09-29T06:00:00+05:30',
   stopped_at: null,
-  linked_parameter_types: [],
   ...overrides,
 });
 
@@ -52,7 +50,9 @@ const type = (overrides: Partial<ProductionParameterType>): ProductionParameterT
   description: '',
   is_active: true,
   parameter_count: 4,
-  items: [],
+  print_document_id: '',
+  revision: '',
+  revision_date: null,
   created_at: '2026-09-01T00:00:00Z',
   updated_at: '2026-09-01T00:00:00Z',
   ...overrides,
@@ -125,61 +125,26 @@ describe('step 1 — the running line', () => {
 });
 
 describe('step 2 — the parameter type', () => {
-  it('offers only the linked types, and picks the only one for you', () => {
+  it('offers every type on every line, whatever its product', () => {
     data.lines = [
-      line({ linked_parameter_types: [{ id: 1, code: 'PET_1L', name: '1 L PET Oil' }] }),
+      line({}),
+      line({ line_id: 2, line_name: 'Line 2', run_id: 12, item_code: '', product: 'Demo' }),
     ];
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Line 2/ }));
 
-    const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(1);
-    expect(screen.getByRole('radio', { name: /1 L PET Oil/ })).toBeChecked();
-    expect(screen.queryByRole('radio', { name: /5 L Jar Oil/ })).not.toBeInTheDocument();
-    expect(screen.queryByText(/not linked to a parameter type yet/)).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=11&type=1');
-  });
-
-  it('lets the user choose among several linked types', () => {
-    data.lines = [
-      line({
-        linked_parameter_types: [
-          { id: 1, code: 'PET_1L', name: '1 L PET Oil' },
-          { id: 2, code: 'JAR_5L', name: '5 L Jar Oil' },
-        ],
-      }),
-    ];
-    renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
-
-    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    // Nothing about products or item codes stands between the line and the type.
+    expect(screen.queryByText(/linked|item code, so/i)).not.toBeInTheDocument();
+    // With two usable types, nothing is chosen for the user.
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('radio', { name: /5 L Jar Oil/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=11&type=2');
+    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=12&type=2');
   });
 
-  it('offers every type to an unlinked product, and says the pick will be linked', () => {
-    data.lines = [line({ linked_parameter_types: [] })];
-    renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
-
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
-    expect(screen.getByText(/not linked to a parameter type yet/)).toHaveTextContent(
-      'will be linked to it when the entry is saved',
-    );
-    // Nothing is chosen for an unlinked product.
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-
-    fireEvent.click(screen.getByRole('radio', { name: /1 L PET Oil/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=11&type=1');
-  });
-
-  it('picks the only usable type for an unlinked product too', () => {
+  it('picks the only usable type for you', () => {
     data.types = [
       type({
         id: 1,
@@ -189,7 +154,7 @@ describe('step 2 — the parameter type', () => {
       }),
       type({ id: 3, code: 'TIN_15L', name: '15 L Tin Oil', parameter_count: 0 }),
     ];
-    data.lines = [line({ linked_parameter_types: [] })];
+    data.lines = [line({})];
     renderDialog();
     fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 
@@ -198,17 +163,8 @@ describe('step 2 — the parameter type', () => {
     expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=11&type=1');
   });
 
-  it('does not promise a link for a run without an item code', () => {
-    data.lines = [line({ item_code: '', linked_parameter_types: [] })];
-    renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
-
-    expect(screen.getByText(/has no SAP item code/)).toHaveTextContent('Pick it each time');
-    expect(screen.queryByText(/will be linked to it/)).not.toBeInTheDocument();
-  });
-
   it('disables a type with no parameters yet', () => {
-    data.lines = [line({ linked_parameter_types: [] })];
+    data.lines = [line({})];
     renderDialog();
     fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 
@@ -218,10 +174,9 @@ describe('step 2 — the parameter type', () => {
     expect(screen.getByRole('radio', { name: /1 L PET Oil/ })).toBeEnabled();
   });
 
-  it('does not preselect the only linked type when it has no parameters', () => {
-    data.lines = [
-      line({ linked_parameter_types: [{ id: 3, code: 'TIN_15L', name: '15 L Tin Oil' }] }),
-    ];
+  it('does not preselect the only type when it has no parameters', () => {
+    data.types = [type({ id: 3, code: 'TIN_15L', name: '15 L Tin Oil', parameter_count: 0 })];
+    data.lines = [line({})];
     renderDialog();
     fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 

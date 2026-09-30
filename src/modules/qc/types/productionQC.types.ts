@@ -3,9 +3,10 @@
  * QC lead. Mirrors `quality_control/serializers_production_qc.py`.
  *
  * A *parameter type* plays the part an arrival slip's material type does: it
- * carries its own list of parameters and is linked to FG products by SAP item
- * code. Its parameters' `value_type` is the kind of reading they take (the
- * arrival-slip master calls that `parameter_type`).
+ * carries its own list of parameters. Unlike a material type it is not tied to
+ * products: any type can be checked on any running line. Its parameters'
+ * `value_type` is the kind of reading they take (the arrival-slip master calls
+ * that `parameter_type`).
  */
 
 import type { ParameterType } from './qc.types';
@@ -39,8 +40,6 @@ export interface ProductionRunningLine {
   is_running_now: boolean;
   last_started_at: string;
   stopped_at: string | null;
-  /** Empty when the product is not linked to a type yet: every type is offered then. */
-  linked_parameter_types: ProductionParameterTypeRef[];
 }
 
 // ==================== Entries ====================
@@ -150,12 +149,6 @@ export interface ProductionQCDecisionRequest {
 
 // ==================== Masters ====================
 
-export interface ProductionParameterTypeItem {
-  id: number;
-  item_code: string;
-  item_name: string;
-}
-
 export interface ProductionParameterType {
   id: number;
   code: string;
@@ -170,7 +163,6 @@ export interface ProductionParameterType {
   is_active: boolean;
   /** Active parameters only; a type with none cannot be used for a check. */
   parameter_count: number;
-  items: ProductionParameterTypeItem[];
   created_at: string;
   updated_at: string;
 }
@@ -215,9 +207,4 @@ export interface ProductionParameterRequest {
   uom: string;
   sequence: number;
   is_mandatory: boolean;
-}
-
-export interface ProductionParameterTypeItemRequest {
-  item_code: string;
-  item_name?: string;
 }

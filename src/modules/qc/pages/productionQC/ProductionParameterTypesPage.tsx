@@ -122,8 +122,7 @@ export default function ProductionParameterTypesPage() {
     const confirmed = await confirmDialog({
       title: `Remove ${type.code} - ${type.name}?`,
       description:
-        'It is no longer offered for new checks; a product linked only to it is offered ' +
-        'every type again. Entries already saved keep their readings.',
+        'It is no longer offered for new checks. Entries already saved keep their readings.',
       confirmLabel: 'Remove',
       destructive: true,
     });
@@ -156,7 +155,7 @@ export default function ProductionParameterTypesPage() {
             Parameter Types
           </h2>
           <p className="text-muted-foreground">
-            The parameters a production QC check reads, and the products each type applies to
+            The checks production QC makes, each with the parameters it reads
           </p>
         </div>
         <Button onClick={() => openDialog()}>
@@ -187,8 +186,8 @@ export default function ProductionParameterTypesPage() {
                   onKeyDown={(event) => {
                     if (event.key === 'Escape' && search) setSearch('');
                   }}
-                  placeholder="Search types or products"
-                  aria-label="Search parameter types by code, name, or linked product"
+                  placeholder="Search types"
+                  aria-label="Search parameter types by code or name"
                   className={cn('pl-9', search || isSearching ? 'pr-16' : 'pr-3')}
                 />
                 {isSearching && (
@@ -230,7 +229,6 @@ export default function ProductionParameterTypesPage() {
                       <th className="p-3 text-left font-medium">Code</th>
                       <th className="p-3 text-left font-medium">Name</th>
                       <th className="p-3 text-center font-medium">Parameters</th>
-                      <th className="p-3 text-center font-medium">Products</th>
                       <th className="p-3 text-center font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -265,7 +263,6 @@ export default function ProductionParameterTypesPage() {
                         >
                           {type.parameter_count}
                         </td>
-                        <td className="p-3 text-center">{type.items.length}</td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-2">
                             <Button

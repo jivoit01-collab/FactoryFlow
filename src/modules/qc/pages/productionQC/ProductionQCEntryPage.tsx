@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, CheckCircle2, Info, Loader2, Save, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Save, XCircle } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -217,18 +217,6 @@ function NewEntry() {
       />
     );
   }
-  const linked = line.linked_parameter_types;
-  if (linked.length > 0 && !linked.some((type) => type.id === parameterType.id)) {
-    return (
-      <EntryProblem
-        title="This product uses other parameter types"
-        message={`${line.product || line.item_code} is linked to ${linked
-          .map((type) => type.name)
-          .join(', ')}. Pick one of those.`}
-        action={backToList}
-      />
-    );
-  }
   if (rows.length === 0) {
     return (
       <EntryProblem
@@ -251,7 +239,6 @@ function NewEntry() {
         typeCode: parameterType.code,
         runningLine: line,
       }}
-      linksProduct={linked.length === 0 && !!line.item_code}
       rows={rows}
       cancelTo={LIST_PATH}
       onSave={async (data) => {
@@ -354,7 +341,6 @@ function EntryForm({
   rows,
   initialReadings,
   initialRemarks = '',
-  linksProduct = false,
   cancelTo,
   onSave,
 }: {
@@ -363,7 +349,6 @@ function EntryForm({
   rows: ReadingRow[];
   initialReadings?: Record<number, ReadingState>;
   initialRemarks?: string;
-  linksProduct?: boolean;
   cancelTo: string;
   /** Saves and returns the entry's id. */
   onSave: (data: { remarks: string; results: ProductionQCReading[] }) => Promise<number>;
@@ -514,16 +499,6 @@ function EntryForm({
           {entry && <InfoItem label="Checked At">{formatDateTime(entry.checked_at)}</InfoItem>}
         </CardContent>
       </Card>
-
-      {linksProduct && (
-        <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-          <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-          <span>
-            {header.product || header.itemCode} is not linked to a parameter type yet. Saving links
-            it to {header.typeName}, so later checks offer that type first.
-          </span>
-        </div>
-      )}
 
       {/* Readings */}
       <Card>

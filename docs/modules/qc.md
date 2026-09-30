@@ -92,7 +92,6 @@ Production QC, in `types/productionQC.types.ts` (mirrors
 - **`ProductionRunningLine`** — a line a check can be made on: the line's IN_PROGRESS
   run whose latest segment started in the last 24h or is open now.
   `is_running_now=false` means stopped (breakdown / lunch) since `stopped_at`.
-  `linked_parameter_types` are the types its product is linked to.
 - **`ProductionQCEntry`** — one check: line / run / product snapshot, the parameter
   type, `checked_at`, `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
   (`ProductionQCResult`, the parameter's spec snapshotted onto each reading).
@@ -183,11 +182,10 @@ footer, as on the paper form; its revision / revision date come from the type.
    so an unfinished check never drops off. A row opens the entry.
 2. **New** (FILL only, `NewProductionQCEntryDialog`) — step 1 picks a running line
    (`GET production-qc/running-lines/`), each showing product, item code and a
-   *Running* / *Stopped since HH:MM* badge. Step 2 picks the parameter type: a product
-   linked to types is offered **only those** (the only one is preselected); an
-   **unlinked** product is offered every active type, with a note that the one picked
-   is linked to it when the entry is saved (the backend links it). A type with no
-   parameters is disabled. Continue opens `/qc/production/new?run=<run_id>&type=<id>`.
+   *Running* / *Stopped since HH:MM* badge. Step 2 picks the parameter type: every
+   active type is offered on every line — types are **not tied to products** — and the
+   only usable one is preselected. A type with no parameters is disabled. Continue
+   opens `/qc/production/new?run=<run_id>&type=<id>`.
 3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/production/entries/:id/edit`)
    — line / product / item code / run / type, then one row per parameter: name, spec,
    the input by value kind (number; text; a Pass / Fail select), an optional row remark,
@@ -208,9 +206,9 @@ footer, as on the paper form; its revision / revision date come from the type.
    PENDING. Mutations invalidate the entry lists, the counts and so the badge.
 5. **Parameter Types** (`/qc/production/parameter-types`, `ProductionParameterTypesPage`,
    MANAGE) — search / add / edit / remove types (a soft delete: saved entries keep
-   their readings); select one (`?type=`) for its parameters (add / edit / remove:
-   code, name, standard value, value type, min / max for numeric kinds, uom, sequence,
-   mandatory) and its linked products (unlink; link by typing item code + name).
+   their readings); a type opens on its own page (`/qc/production/parameter-types/:id`)
+   with its parameters (add / edit / remove: code, name, standard value, value type,
+   min / max for numeric kinds, uom, sequence, mandatory).
 
 ---
 
