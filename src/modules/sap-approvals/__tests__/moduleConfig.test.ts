@@ -9,7 +9,7 @@ vi.mock('../components/PendingCountBadge', () => ({
 
 import { SAP_APPROVALS_ACCESS, SAP_APPROVALS_PERMISSIONS } from '@/config/permissions';
 
-import { sapApprovalsModuleConfig } from '../module.config';
+import { SAP_APPROVALS_NAV_ITEMS, sapApprovalsModuleConfig } from '../module.config';
 
 describe('sap-approvals module config', () => {
   it('registers the inbox page', () => {
@@ -29,15 +29,13 @@ describe('sap-approvals module config', () => {
     }
   });
 
-  it('gates the sidebar entry on the same rights, never by prefix, with the badge', () => {
-    const [item] = sapApprovalsModuleConfig.navigation ?? [];
-    expect(item.title).toBe('SAP Approvals');
+  it('sits under SAP Portal on the same rights, never by prefix, with the badge', () => {
+    expect(sapApprovalsModuleConfig.navigation ?? []).toEqual([]);
+    const [item] = SAP_APPROVALS_NAV_ITEMS;
+    expect(item.title).toBe('Approvals');
     expect(item.modulePrefix).toBeUndefined();
     expect(item.permissions).toEqual(SAP_APPROVALS_ACCESS);
     expect(item.badge).toBeDefined();
-    for (const child of item.children ?? []) {
-      expect(child.permissions?.length).toBeGreaterThan(0);
-    }
   });
 
   it('names only sap_approvals rights, as the backend declares them', () => {

@@ -16,7 +16,7 @@ import { FileSearch } from 'lucide-react';
 
 import { SAP_DOCUMENTS_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
-import type { ModuleConfig } from '@/core/types';
+import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 const SapDocumentsPage = lazy(() => import('./pages/SapDocumentsPage'));
 
@@ -31,13 +31,14 @@ export const sapDocumentsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Documents' },
     },
   ],
-  navigation: [
-    {
-      path: '/sap-documents',
-      title: 'SAP Documents',
-      icon: FileSearch,
-      showInSidebar: true,
-      permissions: SAP_DOCUMENTS_ACCESS,
-    },
-  ],
 };
+
+/** Shown under SAP Portal in the sidebar (see modules/sap-portal). */
+export const SAP_DOCUMENTS_NAV_ITEMS: ModuleNavItem[] = [
+  {
+    path: '/sap-documents',
+    title: 'Documents',
+    icon: FileSearch,
+    permissions: SAP_DOCUMENTS_ACCESS,
+  },
+];

@@ -12,15 +12,11 @@
  * any sap_finance.* right. The ledger pages and the budget page have their own
  * audiences (SAP Portal's `journal-entries` and `budget` modules).
  */
-import { BookOpen, FileSpreadsheet, Landmark, ListTree, PiggyBank } from 'lucide-react';
+import { BookOpen, FileSpreadsheet, ListTree, PiggyBank } from 'lucide-react';
 
-import {
-  SAP_FINANCE_ACCESS,
-  SAP_FINANCE_BUDGETS_ACCESS,
-  SAP_FINANCE_LEDGERS_ACCESS,
-} from '@/config/permissions';
+import { SAP_FINANCE_BUDGETS_ACCESS, SAP_FINANCE_LEDGERS_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
-import type { ModuleConfig } from '@/core/types';
+import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 const JournalEntriesPage = lazy(() => import('./pages/JournalEntriesPage'));
 const GeneralLedgerPage = lazy(() => import('./pages/GeneralLedgerPage'));
@@ -59,40 +55,32 @@ export const sapFinanceModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Budgets' },
     },
   ],
-  navigation: [
-    {
-      path: '/sap-finance/journal-entries',
-      title: 'SAP Finance',
-      icon: Landmark,
-      showInSidebar: true,
-      hasSubmenu: true,
-      permissions: SAP_FINANCE_ACCESS,
-      children: [
-        {
-          path: '/sap-finance/journal-entries',
-          title: 'Journal Entries',
-          icon: BookOpen,
-          permissions: SAP_FINANCE_LEDGERS_ACCESS,
-        },
-        {
-          path: '/sap-finance/general-ledger',
-          title: 'General Ledger',
-          icon: FileSpreadsheet,
-          permissions: SAP_FINANCE_LEDGERS_ACCESS,
-        },
-        {
-          path: '/sap-finance/chart-of-accounts',
-          title: 'Chart of Accounts',
-          icon: ListTree,
-          permissions: SAP_FINANCE_LEDGERS_ACCESS,
-        },
-        {
-          path: '/sap-finance/budgets',
-          title: 'Budgets',
-          icon: PiggyBank,
-          permissions: SAP_FINANCE_BUDGETS_ACCESS,
-        },
-      ],
-    },
-  ],
 };
+
+/** The books' pages, shown under SAP Portal in the sidebar (see modules/sap-portal). */
+export const SAP_FINANCE_NAV_ITEMS: ModuleNavItem[] = [
+  {
+    path: '/sap-finance/journal-entries',
+    title: 'Journal Entries',
+    icon: BookOpen,
+    permissions: SAP_FINANCE_LEDGERS_ACCESS,
+  },
+  {
+    path: '/sap-finance/general-ledger',
+    title: 'General Ledger',
+    icon: FileSpreadsheet,
+    permissions: SAP_FINANCE_LEDGERS_ACCESS,
+  },
+  {
+    path: '/sap-finance/chart-of-accounts',
+    title: 'Chart of Accounts',
+    icon: ListTree,
+    permissions: SAP_FINANCE_LEDGERS_ACCESS,
+  },
+  {
+    path: '/sap-finance/budgets',
+    title: 'Budgets',
+    icon: PiggyBank,
+    permissions: SAP_FINANCE_BUDGETS_ACCESS,
+  },
+];

@@ -15,11 +15,11 @@
  * Not the warehouse's "BOM requests" (production asking the store for
  * material) — those stay under Warehouse.
  */
-import { ClipboardList, GitBranch, Network } from 'lucide-react';
+import { ClipboardList, GitBranch } from 'lucide-react';
 
 import { BOM_CHANGES_ACCESS, BOM_CHANGES_PERMISSIONS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
-import type { ModuleConfig } from '@/core/types';
+import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 const SapBomsPage = lazy(() => import('./pages/SapBomsPage'));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage'));
@@ -64,28 +64,20 @@ export const bomChangesModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Request' },
     },
   ],
-  navigation: [
-    {
-      path: '/bom-changes/requests',
-      title: 'BOM Changes',
-      icon: Network,
-      showInSidebar: true,
-      hasSubmenu: true,
-      permissions: BOM_CHANGES_ACCESS,
-      children: [
-        {
-          path: '/bom-changes/sap-boms',
-          title: 'SAP BOMs',
-          icon: GitBranch,
-          permissions: BOM_CHANGES_ACCESS,
-        },
-        {
-          path: '/bom-changes/requests',
-          title: 'Change Requests',
-          icon: ClipboardList,
-          permissions: BOM_CHANGES_ACCESS,
-        },
-      ],
-    },
-  ],
 };
+
+/** Shown under SAP Portal in the sidebar (see modules/sap-portal). */
+export const BOM_CHANGES_NAV_ITEMS: ModuleNavItem[] = [
+  {
+    path: '/bom-changes/sap-boms',
+    title: 'BOMs',
+    icon: GitBranch,
+    permissions: BOM_CHANGES_ACCESS,
+  },
+  {
+    path: '/bom-changes/requests',
+    title: 'BOM Change Requests',
+    icon: ClipboardList,
+    permissions: BOM_CHANGES_ACCESS,
+  },
+];

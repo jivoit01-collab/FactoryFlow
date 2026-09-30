@@ -6,7 +6,11 @@ import {
   BOM_CHANGES_PERMISSIONS,
 } from '@/config/permissions';
 
-import { BOM_CHANGES_RAISE_ACCESS, bomChangesModuleConfig } from '../module.config';
+import {
+  BOM_CHANGES_NAV_ITEMS,
+  BOM_CHANGES_RAISE_ACCESS,
+  bomChangesModuleConfig,
+} from '../module.config';
 
 describe('bom-changes module config', () => {
   it('registers the viewer, the list, the form and the detail under /bom-changes', () => {
@@ -37,18 +41,15 @@ describe('bom-changes module config', () => {
     ]);
   });
 
-  it('has its own sidebar group with SAP BOMs and Change Requests, gated and never by prefix', () => {
-    const [group] = bomChangesModuleConfig.navigation ?? [];
-    expect(group.title).toBe('BOM Changes');
-    expect(group.modulePrefix).toBeUndefined();
-    expect(group.permissions).toEqual(BOM_CHANGES_ACCESS);
-    expect(group.children?.map((child) => [child.title, child.path])).toEqual([
-      ['SAP BOMs', '/bom-changes/sap-boms'],
-      ['Change Requests', '/bom-changes/requests'],
+  it('sits under SAP Portal as BOMs and BOM Change Requests, gated and never by prefix', () => {
+    expect(bomChangesModuleConfig.navigation ?? []).toEqual([]);
+    expect(BOM_CHANGES_NAV_ITEMS.map((item) => [item.title, item.path])).toEqual([
+      ['BOMs', '/bom-changes/sap-boms'],
+      ['BOM Change Requests', '/bom-changes/requests'],
     ]);
-    for (const child of group.children ?? []) {
-      // A child with no permissions is shown to everyone who sees the parent.
-      expect(child.permissions?.length).toBeGreaterThan(0);
+    for (const item of BOM_CHANGES_NAV_ITEMS) {
+      expect(item.modulePrefix).toBeUndefined();
+      expect(item.permissions).toEqual(BOM_CHANGES_ACCESS);
     }
   });
 

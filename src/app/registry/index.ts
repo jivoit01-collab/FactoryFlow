@@ -32,6 +32,7 @@ import { returnsModuleConfig } from '@/modules/returns/module.config';
 import { sapApprovalsModuleConfig } from '@/modules/sap-approvals/module.config';
 import { sapDocumentsModuleConfig } from '@/modules/sap-documents/module.config';
 import { sapFinanceModuleConfig } from '@/modules/sap-finance/module.config';
+import { sapPortalModuleConfig } from '@/modules/sap-portal/module.config';
 import { sapReportsModuleConfig } from '@/modules/sap-reports/module.config';
 import { settingsModuleConfig } from '@/modules/settings/module.config';
 import { vehicleManagementModuleConfig } from '@/modules/vehicle-management/module.config';
@@ -94,6 +95,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // other thing the office keeps a book of, and it is nobody's shop-floor
   // screen.
   accountsModuleConfig,
+  // One sidebar entry for everything that came over from SAP Portal. It holds
+  // no routes of its own: the five modules below keep theirs, and hand it
+  // their menu items instead of each taking a line of the sidebar.
+  sapPortalModuleConfig,
   // SAP's books, merged in from SAP Portal: journal entries, ledgers, the chart
   // of accounts and budgets. Beside Accounts because it is the other set of
   // books; separate because it is SAP's, not the factory's cash box, and a

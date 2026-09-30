@@ -15,7 +15,7 @@ import { ClipboardCheck } from 'lucide-react';
 
 import { SAP_APPROVALS_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
-import type { ModuleConfig } from '@/core/types';
+import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 import { PendingCountBadge } from './components/PendingCountBadge';
 
@@ -32,14 +32,15 @@ export const sapApprovalsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Approvals' },
     },
   ],
-  navigation: [
-    {
-      path: '/sap-approvals',
-      title: 'SAP Approvals',
-      icon: ClipboardCheck,
-      showInSidebar: true,
-      permissions: SAP_APPROVALS_ACCESS,
-      badge: PendingCountBadge,
-    },
-  ],
 };
+
+/** Shown under SAP Portal in the sidebar, with its pending count (see modules/sap-portal). */
+export const SAP_APPROVALS_NAV_ITEMS: ModuleNavItem[] = [
+  {
+    path: '/sap-approvals',
+    title: 'Approvals',
+    icon: ClipboardCheck,
+    permissions: SAP_APPROVALS_ACCESS,
+    badge: PendingCountBadge,
+  },
+];

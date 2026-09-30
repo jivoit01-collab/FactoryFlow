@@ -7,7 +7,7 @@ import {
   VENDOR_REGISTRATIONS_ACCESS,
 } from '@/config/permissions';
 
-import { partnerOnboardingModuleConfig } from '../module.config';
+import { PARTNER_ONBOARDING_NAV_ITEMS, partnerOnboardingModuleConfig } from '../module.config';
 
 const route = (path: string) => partnerOnboardingModuleConfig.routes.find((r) => r.path === path);
 
@@ -48,10 +48,10 @@ describe('partner-onboarding module config', () => {
     }
   });
 
-  it('shows one sidebar entry, gated on the view rights and never by prefix', () => {
-    const navigation = partnerOnboardingModuleConfig.navigation ?? [];
-    expect(navigation.map((item) => item.title)).toEqual(['Partner Onboarding']);
-    for (const item of navigation) {
+  it('sits under SAP Portal, gated on the view rights and never by prefix', () => {
+    expect(partnerOnboardingModuleConfig.navigation ?? []).toEqual([]);
+    expect(PARTNER_ONBOARDING_NAV_ITEMS.map((item) => item.title)).toEqual(['Partner Onboarding']);
+    for (const item of PARTNER_ONBOARDING_NAV_ITEMS) {
       expect(item.modulePrefix).toBeUndefined();
       expect(item.permissions).toEqual(PARTNER_ONBOARDING_ACCESS);
       expect(item.path.startsWith('/register')).toBe(false);

@@ -22,7 +22,7 @@ import {
   VENDOR_REGISTRATIONS_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
-import type { ModuleConfig } from '@/core/types';
+import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 const PublicCustomerRegistrationPage = lazy(() => import('./pages/PublicCustomerRegistrationPage'));
 const PublicVendorRegistrationPage = lazy(() => import('./pages/PublicVendorRegistrationPage'));
@@ -69,13 +69,14 @@ export const partnerOnboardingModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Vendor' },
     },
   ],
-  navigation: [
-    {
-      path: '/partners/approvals',
-      title: 'Partner Onboarding',
-      icon: UserPlus,
-      showInSidebar: true,
-      permissions: PARTNER_ONBOARDING_ACCESS,
-    },
-  ],
 };
+
+/** Shown under SAP Portal in the sidebar (see modules/sap-portal). */
+export const PARTNER_ONBOARDING_NAV_ITEMS: ModuleNavItem[] = [
+  {
+    path: '/partners/approvals',
+    title: 'Partner Onboarding',
+    icon: UserPlus,
+    permissions: PARTNER_ONBOARDING_ACCESS,
+  },
+];
