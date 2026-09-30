@@ -46,6 +46,7 @@ export interface StockAudit {
   completed_at: string | null;
   approved_by: string;
   approved_at: string | null;
+  approval_comment: string;
   rejected_by: string;
   rejected_at: string | null;
   /** The last rejection, shown on the reopened audit */
@@ -54,6 +55,9 @@ export interface StockAudit {
   sap_doc_num: string;
   sap_posted_at: string | null;
   sap_posting_error: string;
+  sap_posted_by: string;
+  /** What was sent to SAP, line by line and batch by batch */
+  sap_posted_lines: PostingLine[];
   /** On the list only */
   lines?: number;
   counted?: number;

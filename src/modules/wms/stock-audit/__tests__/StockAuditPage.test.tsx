@@ -67,6 +67,7 @@ const AUDIT: StockAuditDetail = {
   completed_at: null,
   approved_by: '',
   approved_at: null,
+  approval_comment: '',
   rejected_by: '',
   rejected_at: null,
   rejection_reason: '',
@@ -74,6 +75,8 @@ const AUDIT: StockAuditDetail = {
   sap_doc_num: '',
   sap_posted_at: null,
   sap_posting_error: '',
+  sap_posted_by: '',
+  sap_posted_lines: [],
   actions: ACTIONS,
   summary: {
     by_group: {
@@ -236,23 +239,53 @@ describe('Stock audit — complete, approve, post', () => {
     dialogs.prompt.mockClear();
   });
 
-  it('lets the auditor complete it, saying what is uncounted', async () => {
-    calls.complete.mockResolvedValue({});
+  it('will not complete while anything is uncounted, and shows what is left', () => {
     renderAudit();
     expect(screen.queryByRole('button', { name: /Close/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Complete/ }));
-    await waitFor(() => expect(calls.complete).toHaveBeenCalled());
-    expect(dialogs.confirm.mock.calls[0][0].description).toBe('1 items are not counted.');
+    expect(calls.complete).not.toHaveBeenCalled();
+    expect(state.askedLines.at(-1)).toMatchObject({ state: 'uncounted' });
   });
 
-  it('shows an approver Approve and Reject, and asks a reason to reject', async () => {
+  it('completes once every item is counted', async () => {
+    withActions({}, { summary: { ...AUDIT.summary, total: { lines: 3, counted: 3 } } });
+    calls.complete.mockResolvedValue({});
+    renderAudit();
+    fireEvent.click(screen.getByRole('button', { name: /Complete/ }));
+    await waitFor(() => expect(calls.complete).toHaveBeenCalled());
+  });
+
+  it('asks the approver for a comment to approve or reject', async () => {
     withActions({ complete: false, approve: true }, { status: 'SUBMITTED' });
+    calls.approve.mockResolvedValue({});
     calls.reject.mockResolvedValue({});
+    dialogs.prompt.mockResolvedValueOnce('Rechecked racks A-C');
     renderAudit();
     expect(screen.getByText('Awaiting approval')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Approve/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Approve/ }));
+    await waitFor(() => expect(calls.approve).toHaveBeenCalledWith('Rechecked racks A-C'));
+    expect(dialogs.prompt.mock.calls[0][0].label).toBe('Comment');
+
     fireEvent.click(screen.getByRole('button', { name: /Reject/ }));
     await waitFor(() => expect(calls.reject).toHaveBeenCalledWith('Count rack C again'));
+  });
+
+  it('does nothing when the comment is cancelled', async () => {
+    withActions({ complete: false, approve: true }, { status: 'SUBMITTED' });
+    dialogs.prompt.mockResolvedValueOnce(null);
+    renderAudit();
+    fireEvent.click(screen.getByRole('button', { name: /Approve/ }));
+    await waitFor(() => expect(dialogs.prompt).toHaveBeenCalled());
+    expect(calls.approve).not.toHaveBeenCalled();
+  });
+
+  it('shows the approver’s comment', () => {
+    withActions(
+      { count: false, complete: false },
+      { status: 'APPROVED', approved_by: 'approver', approval_comment: 'Rechecked racks A-C' },
+    );
+    renderAudit();
+    expect(screen.getByText('Approved by approver: Rechecked racks A-C')).toBeInTheDocument();
   });
 
   it('lets an approver still correct counts while approving', () => {
@@ -275,13 +308,34 @@ describe('Stock audit — complete, approve, post', () => {
     expect(screen.getByRole('button', { name: /Post to SAP/ })).toBeInTheDocument();
   });
 
-  it('shows the SAP document once posted', () => {
+  it('shows what was posted to SAP, batches included', () => {
     withActions(
       { count: false, complete: false },
-      { status: 'APPROVED', sap_posting: 'DONE', sap_doc_num: '1234' },
+      {
+        status: 'APPROVED',
+        sap_posting: 'DONE',
+        sap_doc_num: '1234',
+        sap_posted_by: 'poster',
+        sap_posted_lines: [
+          {
+            line_id: 2,
+            item_code: 'RM0000009',
+            item_name: 'MUSTARD OIL',
+            category: 'RM',
+            uom: 'KG',
+            sap_qty: '1500.5',
+            counted_qty: '1400',
+            difference: '-100.5',
+            batches: [{ batch: 'OLD', sap_qty: '1000', counted_qty: '899.5' }],
+          },
+        ],
+      },
     );
     renderAudit();
     expect(screen.getByText('Posted to SAP · 1234')).toBeInTheDocument();
+    expect(screen.getByText('Posted to SAP · document 1234 · poster')).toBeInTheDocument();
+    expect(screen.getByText('-100.5 KG')).toBeInTheDocument();
+    expect(screen.getByText('Batch OLD')).toBeInTheDocument();
   });
 });
 

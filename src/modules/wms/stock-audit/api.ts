@@ -58,11 +58,11 @@ export const stockAuditApi = {
   async complete(id: number) {
     return (await apiClient.post<StockAuditDetail>(EP.COMPLETE(id))).data;
   },
-  async approve(id: number) {
-    return (await apiClient.post<StockAuditDetail>(EP.APPROVE(id))).data;
+  async approve(id: number, comment: string) {
+    return (await apiClient.post<StockAuditDetail>(EP.APPROVE(id), { comment })).data;
   },
-  async reject(id: number, reason: string) {
-    return (await apiClient.post<StockAuditDetail>(EP.REJECT(id), { reason })).data;
+  async reject(id: number, comment: string) {
+    return (await apiClient.post<StockAuditDetail>(EP.REJECT(id), { comment })).data;
   },
   /** What the Inventory Posting would change in SAP. Reads SAP; changes nothing. */
   async postingPreview(id: number): Promise<PostingPreview> {
@@ -199,13 +199,16 @@ export function useCompleteAudit(id: number) {
 
 export function useApproveAudit(id: number) {
   const refresh = useRefreshAudit();
-  return useMutation({ mutationFn: () => stockAuditApi.approve(id), onSuccess: refresh });
+  return useMutation({
+    mutationFn: (comment: string) => stockAuditApi.approve(id, comment),
+    onSuccess: refresh,
+  });
 }
 
 export function useRejectAudit(id: number) {
   const refresh = useRefreshAudit();
   return useMutation({
-    mutationFn: (reason: string) => stockAuditApi.reject(id, reason),
+    mutationFn: (comment: string) => stockAuditApi.reject(id, comment),
     onSuccess: refresh,
   });
 }

@@ -13,7 +13,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -216,29 +216,32 @@ export default function StockAuditPage() {
 
   const handleComplete = async () => {
     const uncounted = (data?.summary.total.lines ?? 0) - (data?.summary.total.counted ?? 0);
-    const ok = await confirmDialog({
-      title: 'Complete the audit?',
-      description: uncounted > 0 ? `${uncounted} items are not counted.` : undefined,
-      confirmLabel: 'Complete',
-    });
+    if (uncounted > 0) {
+      // Every item is counted first — 0 for one not found — so show what is left.
+      toast.error(
+        `${uncounted} ${uncounted === 1 ? 'item is' : 'items are'} not counted. Count them, or press 0.`,
+      );
+      filterBy({ group: '', state: 'uncounted' });
+      return;
+    }
+    const ok = await confirmDialog({ title: 'Complete the audit?', confirmLabel: 'Complete' });
     if (ok) await run(() => complete.mutateAsync(), 'Sent for approval', 'Not completed.');
   };
 
-  const handleApprove = async () => {
-    const ok = await confirmDialog({ title: 'Approve this audit?', confirmLabel: 'Approve' });
-    if (ok) await run(() => approve.mutateAsync(), 'Audit approved', 'Not approved.');
-  };
-
-  const handleReject = async () => {
-    const reason = await promptDialog({
-      title: 'Reject this audit?',
-      label: 'What should be counted again?',
-      confirmLabel: 'Reject',
-      destructive: true,
+  const decide = async (kind: 'approve' | 'reject') => {
+    const comment = await promptDialog({
+      title: kind === 'approve' ? 'Approve this audit?' : 'Reject this audit?',
+      label: 'Comment',
+      confirmLabel: kind === 'approve' ? 'Approve' : 'Reject',
+      destructive: kind === 'reject',
       multiline: true,
     });
-    if (reason)
-      await run(() => reject.mutateAsync(reason), 'Sent back to the auditors', 'Not rejected.');
+    if (!comment) return;
+    if (kind === 'approve') {
+      await run(() => approve.mutateAsync(comment), 'Audit approved', 'Not approved.');
+    } else {
+      await run(() => reject.mutateAsync(comment), 'Sent back to the auditors', 'Not rejected.');
+    }
   };
 
   const handleExport = async () => {
@@ -318,12 +321,12 @@ export default function StockAuditPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReject}
+                onClick={() => decide('reject')}
                 disabled={reject.isPending}
               >
                 <X className="mr-2 h-4 w-4" /> Reject
               </Button>
-              <Button size="sm" onClick={handleApprove} disabled={approve.isPending}>
+              <Button size="sm" onClick={() => decide('approve')} disabled={approve.isPending}>
                 <Check className="mr-2 h-4 w-4" /> Approve
               </Button>
             </>
@@ -341,12 +344,19 @@ export default function StockAuditPage() {
           Rejected by {data.rejected_by}: {data.rejection_reason}
         </Notice>
       )}
+      {data.approval_comment && data.status === 'APPROVED' && (
+        <Notice tone="info">
+          Approved by {data.approved_by}: {data.approval_comment}
+        </Notice>
+      )}
       {(data.sap_posting === 'FAILED' || data.sap_posting === 'UNKNOWN') && (
         <Notice tone="warn">
           {data.sap_posting === 'FAILED' ? 'SAP refused the posting' : 'SAP did not answer'}:{' '}
           {data.sap_posting_error}
         </Notice>
       )}
+
+      {data.sap_posted_lines.length > 0 && <PostedToSap audit={data} />}
 
       <StatTileRow>
         {tile('', data.summary.total)}
@@ -529,7 +539,7 @@ function statusPill(audit: StockAuditDetail): { text: string; tone: StatusTone }
   return { text: audit.rejection_reason ? 'Open · rejected' : 'Open', tone: 'progress' };
 }
 
-function Notice({ tone, children }: { tone: 'warn'; children: React.ReactNode }) {
+function Notice({ tone, children }: { tone: 'warn' | 'info'; children: React.ReactNode }) {
   return (
     <div
       role="status"
@@ -537,9 +547,73 @@ function Notice({ tone, children }: { tone: 'warn'; children: React.ReactNode })
         'rounded-md border px-3 py-2 text-sm',
         tone === 'warn' &&
           'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200',
+        tone === 'info' &&
+          'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200',
       )}
     >
       {children}
     </div>
+  );
+}
+
+/** What went to SAP: each line's change, and for a batch item each batch. */
+function PostedToSap({ audit }: { audit: StockAuditDetail }) {
+  const done = audit.sap_posting === 'DONE';
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <p className="mb-3 text-sm font-medium">
+          {done
+            ? `Posted to SAP · document ${audit.sap_doc_num} · ${audit.sap_posted_by}`
+            : 'Sent to SAP — not confirmed'}
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs text-muted-foreground">
+                <th className="py-2 pr-2 font-medium">Item</th>
+                <th className="py-2 pr-2 text-right font-medium">SAP</th>
+                <th className="py-2 pr-2 text-right font-medium">On Hand</th>
+                <th className="py-2 text-right font-medium">Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.sap_posted_lines.map((line) => (
+                <Fragment key={line.item_code}>
+                  <tr className="border-b last:border-0">
+                    <td className="py-2 pr-2">
+                      <span className="font-mono">{line.item_code}</span>
+                      <span className="block text-xs text-muted-foreground">{line.item_name}</span>
+                    </td>
+                    <td className="py-2 pr-2 text-right font-mono tabular-nums">
+                      {qty(line.sap_qty)}
+                    </td>
+                    <td className="py-2 pr-2 text-right font-mono tabular-nums">
+                      {qty(line.counted_qty)}
+                    </td>
+                    <td className="py-2 text-right font-mono tabular-nums">
+                      {Number(line.difference) > 0 ? '+' : ''}
+                      {qty(line.difference)} {line.uom}
+                    </td>
+                  </tr>
+                  {line.batches.map((b) => (
+                    <tr key={b.batch} className="text-xs text-muted-foreground">
+                      <td className="py-1 pl-4 pr-2">Batch {b.batch}</td>
+                      <td className="py-1 pr-2 text-right font-mono tabular-nums">
+                        {qty(b.sap_qty)}
+                      </td>
+                      <td className="py-1 pr-2 text-right font-mono tabular-nums">
+                        {qty(b.counted_qty)}
+                      </td>
+                      <td />
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
