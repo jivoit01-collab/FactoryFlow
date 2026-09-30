@@ -73,19 +73,7 @@ export const EXIM_PERMISSIONS = {
   /** A vendor SAP does not have yet. EXIM's vendors were "party". */
   TEMP_VENDOR_ADD: 'exim.add_party',
   DIRECTOR_REPORT: 'exim.view_director_report',
-
-  // Oil contracts. EXIM's register was "domesticreports", its landed-cost
-  // sheet "domesticcontractdetails"; either opens the contracts.
-  CONTRACT_VIEW: 'exim.view_domesticreports',
-  LANDED_COST_VIEW: 'exim.view_domesticcontractdetails',
-  /** Set a PO's delivery terms, freight and brokerage. */
-  CONTRACT_CHANGE: 'exim.change_domesticreports',
 } as const;
-
-export const EXIM_CONTRACT_ACCESS: string[] = [
-  EXIM_PERMISSIONS.CONTRACT_VIEW,
-  EXIM_PERMISSIONS.LANDED_COST_VIEW,
-];
 
 export const EXIM_TANK_ACCESS: string[] = [
   EXIM_PERMISSIONS.TANK_VIEW,
@@ -121,5 +109,4 @@ export const EXIM_ACCESS: string[] = [
   ...EXIM_TANK_ACCESS,
   ...EXIM_LOT_ACCESS,
   EXIM_PERMISSIONS.DIRECTOR_REPORT,
-  ...EXIM_CONTRACT_ACCESS,
 ];

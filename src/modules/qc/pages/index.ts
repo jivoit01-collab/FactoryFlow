@@ -3,4 +3,3 @@ export { default as DecisionChangedInspectionsPage } from './DecisionChangedInsp
 export { default as InspectionDetailPage } from './InspectionDetailPage';
 export * from './masterdata';
 export { default as PendingInspectionsPage } from './PendingInspectionsPage';
-export { default as QCDashboardPage } from './QCDashboardPage';

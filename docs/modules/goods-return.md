@@ -111,11 +111,10 @@ Route base `/gate/customer-return` (see `module.config.tsx`).
      enforcement only applies to `flow="dispatch"`.)*
    - **Only file names are captured** (`file.name`), stored as JSON in
      `values.attachmentFileNames`. No file is uploaded anywhere.
-4. **Downstream — QC decision (different module).** The `PENDING_QC` entry is read
-   from the **same** localStorage key by
-   `src/modules/qc/pages/customerReturns/CustomerReturnQCDashboardPage.tsx` /
-   `CustomerReturnQCDetailPage.tsx`, which move it to `QC_ACCEPTED` / `QC_PARTIAL` /
-   `QC_REJECTED` (with a factory-head decision) and on to `PENDING_SAP_GR`.
+4. **Downstream — QC decision: removed.** The QC module's Customer Return QC pages
+   (`/qc/customer-returns`), which read `PENDING_QC` entries from this key and moved
+   them to `QC_ACCEPTED` / `QC_PARTIAL` / `QC_REJECTED` (with a factory-head decision)
+   and on to `PENDING_SAP_GR`, were removed in 2026-09, to be rebuilt from scratch.
 5. **Detail / SAP GR** — `CustomerReturnDetailPage.tsx`.
    - Shows the summary, vehicle/driver, and returned items with a per-line QC result.
    - When status is `PENDING_SAP_GR`, the operator types the **SAP Document No.**
@@ -320,8 +319,8 @@ Each: **trigger → current behaviour → operator-visible symptom → risk/gap.
   + `.queries.ts` (`useCustomerReturnInvoiceSearch`).
 - Endpoint constant: `API_ENDPOINTS.DISPATCH_PLANS.BILL_BY_NUMBER`
   (`src/config/constants/api.constants.ts`).
-- Downstream: `src/modules/qc/pages/customerReturns/CustomerReturnQC*Page.tsx`,
-  `src/modules/finance/pages/FinanceMemo*.tsx`.
+- Downstream: `src/modules/finance/pages/FinanceMemo*.tsx` (the QC module's Customer
+  Return QC pages were removed in 2026-09).
 
 **Rejected-QC Return**
 
@@ -353,4 +352,4 @@ Each: **trigger → current behaviour → operator-visible symptom → risk/gap.
 - `C:/Users/gurpa/dev/FactoryFlow/docs/modules/sales-dispatch-docking.md` — the
   outbound counterpart that shares the `customerSalesFlow` folder + attachments page.
 - `C:/Users/gurpa/dev/FactoryFlow/docs/modules/qc.md` — QC inspections that produce
-  the rejected lots and drive the customer-return QC handoff.
+  the rejected lots.

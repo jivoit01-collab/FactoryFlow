@@ -102,5 +102,4 @@ export interface CustomsRates {
   fetched_at: string;
 }
 
-export * from './contracts';
 export * from './farm';

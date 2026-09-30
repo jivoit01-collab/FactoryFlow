@@ -53,18 +53,6 @@ export const QC_PERMISSIONS = {
   },
 
   // ============================================
-  // QC RECORD FORMS (DOCUMENTS) PERMISSIONS
-  // ============================================
-  QC_RECORD: {
-    /** View record forms and filled records */
-    VIEW: 'quality_control.can_view_qc_records',
-    /** Open and fill records */
-    FILL: 'quality_control.can_fill_qc_records',
-    /** Approve records and maintain the forms themselves */
-    APPROVE: 'quality_control.can_approve_qc_records',
-  },
-
-  // ============================================
   // QC PDF DOCUMENT LIBRARY PERMISSIONS
   // ============================================
   DOCUMENT_FILE: {
@@ -94,29 +82,18 @@ export const QC_PERMISSIONS = {
   // ============================================
   // PRODUCTION QC PERMISSIONS
   // ============================================
+  // Checks on a running line against a production parameter type, approved in
+  // one step by a QC lead. Not the removed session-based Production QC: these
+  // codenames all end in `_entries` / `_parameters`.
   PRODUCTION_QC: {
-    /** View production QC sessions */
-    VIEW: 'quality_control.can_view_production_qc',
-    /** Create production QC sessions */
-    CREATE: 'quality_control.can_create_production_qc',
-    /** Submit production QC for approval */
-    SUBMIT: 'quality_control.can_submit_production_qc',
-    /** Approve/reject production QC sessions */
-    APPROVE: 'quality_control.can_approve_production_qc',
-  },
-
-  // ============================================
-  // ONLINE QUALITY MONITORING PERMISSIONS
-  // ============================================
-  ONLINE_MONITORING: {
-    /** View online monitoring records */
-    VIEW: 'quality_control.can_view_online_monitoring',
-    /** Create / edit draft records */
-    CREATE: 'quality_control.can_create_online_monitoring',
-    /** Submit a record for approval */
-    SUBMIT: 'quality_control.can_submit_online_monitoring',
-    /** Approve / reject records */
-    APPROVE: 'quality_control.can_approve_online_monitoring',
+    /** See production QC entries (whoever fills or approves them sees them too) */
+    VIEW: 'quality_control.can_view_production_qc_entries',
+    /** Make a check on a running line, and correct one pending or sent back */
+    FILL: 'quality_control.can_fill_production_qc_entries',
+    /** Approve an entry, or send it back with a remark */
+    APPROVE: 'quality_control.can_approve_production_qc_entries',
+    /** Maintain the parameter types, their parameters and linked products */
+    MANAGE_PARAMETERS: 'quality_control.can_manage_production_qc_parameters',
   },
 
   // ============================================
@@ -144,6 +121,5 @@ export type QCPermission =
   | (typeof QC_PERMISSIONS.INSPECTION)[keyof typeof QC_PERMISSIONS.INSPECTION]
   | (typeof QC_PERMISSIONS.APPROVAL)[keyof typeof QC_PERMISSIONS.APPROVAL]
   | (typeof QC_PERMISSIONS.MASTER_DATA)[keyof typeof QC_PERMISSIONS.MASTER_DATA]
-  | (typeof QC_PERMISSIONS.QC_RECORD)[keyof typeof QC_PERMISSIONS.QC_RECORD]
   | (typeof QC_PERMISSIONS.PRODUCTION_QC)[keyof typeof QC_PERMISSIONS.PRODUCTION_QC]
   | (typeof QC_PERMISSIONS.LINE_CLEARANCE_QC)[keyof typeof QC_PERMISSIONS.LINE_CLEARANCE_QC];

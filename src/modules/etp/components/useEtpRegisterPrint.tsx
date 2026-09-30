@@ -2,7 +2,7 @@
  * Print an ETP / STP register through the shared print view.
  *
  * Lives in its own file so `EtpRegisterPrint.tsx` exports components only (fast
- * refresh), mirroring the QC online-monitoring print hook.
+ * refresh).
  */
 
 import { useCallback, useEffect, useState } from 'react';

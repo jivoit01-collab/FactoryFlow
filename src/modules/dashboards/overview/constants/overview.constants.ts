@@ -44,7 +44,7 @@ const MODULE_ACCENT_KEYS: Record<string, AccentKey> = {
 /** One-line blurb per module, keyed by exact top-level path. */
 const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/dispatch': 'Docking, dispatch plans, bilty GRPO & transporter invoices',
-  '/qc': 'Arrival-slip, production & line-clearance quality inspections',
+  '/qc': 'Arrival-slip inspections and line-clearance QA',
   '/production': 'Planning, execution runs, OEE, downtime, waste & cost reports',
   '/maintenance': 'Assets, work orders, PM, work permits, spares & fire safety',
   '/warehouse': 'FG receipts, BOM requests, BST & warehouse analytics',

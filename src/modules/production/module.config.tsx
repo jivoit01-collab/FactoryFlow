@@ -50,8 +50,6 @@ const OEETrendReportPage = lazy(() => import('./execution/pages/OEETrendReportPa
 const DowntimeParetoReportPage = lazy(() => import('./execution/pages/DowntimeParetoReportPage'));
 const CostAnalysisReportPage = lazy(() => import('./execution/pages/CostAnalysisReportPage'));
 const WasteTrendReportPage = lazy(() => import('./execution/pages/WasteTrendReportPage'));
-// QC moved to /qc/production module — redirect component
-const QCRedirectPage = lazy(() => import('./execution/pages/QCRedirectPage'));
 const MasterDataPage = lazy(() => import('./execution/pages/MasterDataPage'));
 const LineManagementPage = lazy(() => import('./execution/pages/LineManagementPage'));
 const FillingCostPage = lazy(() => import('./execution/pages/FillingCostPage'));
@@ -170,12 +168,6 @@ export const productionModuleConfig: ModuleConfig = {
       element: <ElectricityUsagePage />,
       layout: 'main',
       permissions: [EXECUTION_PERMISSIONS.CREATE_MATERIAL],
-    },
-    {
-      path: '/production/execution/runs/:runId/qc',
-      element: <QCRedirectPage />,
-      layout: 'main',
-      permissions: [EXECUTION_PERMISSIONS.VIEW_RUN],
     },
     {
       path: '/production/execution/line-clearance',

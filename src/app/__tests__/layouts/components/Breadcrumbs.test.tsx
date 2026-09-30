@@ -92,10 +92,10 @@ describe('Breadcrumbs', () => {
     expect(content).toContain("path.includes('/new')");
   });
 
-  it('redirects /inspections to /qc/pending', () => {
+  it('redirects /inspections to the arrival-slip list', () => {
     const content = readSource();
     expect(content).toContain("path.includes('/inspections')");
-    expect(content).toContain("'/qc/pending'");
+    expect(content).toContain("'/qc/arrival-slips'");
   });
 
   it('redirects the GRPO preview breadcrumb to the pending list', () => {

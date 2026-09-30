@@ -20,21 +20,6 @@ export const API_CONFIG = {
 } as const;
 
 export const API_ENDPOINTS = {
-  // Stock audit: a physical count of a SAP warehouse against SAP (Warehouse Ops)
-  STOCK_AUDIT: {
-    WAREHOUSES: '/stock-audit/warehouses/',
-    AUDITS: '/stock-audit/audits/',
-    AUDIT: (id: number) => `/stock-audit/audits/${id}/`,
-    LINES: (id: number) => `/stock-audit/audits/${id}/lines/`,
-    LINE_COUNTS: (id: number, lineId: number) =>
-      `/stock-audit/audits/${id}/lines/${lineId}/counts/`,
-    VOID_COUNT: (id: number, countId: number) =>
-      `/stock-audit/audits/${id}/counts/${countId}/void/`,
-    ITEMS: (id: number) => `/stock-audit/audits/${id}/items/`,
-    REFRESH: (id: number) => `/stock-audit/audits/${id}/refresh/`,
-    CLOSE: (id: number) => `/stock-audit/audits/${id}/close/`,
-    EXPORT: (id: number) => `/stock-audit/audits/${id}/export/`,
-  },
   // Auth
   AUTH: {
     LOGIN: '/accounts/login/',
@@ -344,17 +329,6 @@ export const API_ENDPOINTS = {
     QC_DOCUMENT_FILE_AUDIT_LOG_FOR: (id: number) =>
       `/quality-control/document-files/${id}/audit-log/`,
 
-    // QC Record Forms (Documents) — blank forms and filled sheets
-    RECORD_TEMPLATES: '/quality-control/record-templates/',
-    RECORD_TEMPLATE_BY_ID: (id: number) => `/quality-control/record-templates/${id}/`,
-    RECORD_TEMPLATE_IMPORT_SHEET: '/quality-control/record-templates/import-sheet/',
-    QC_RECORDS: '/quality-control/qc-records/',
-    QC_RECORD_BY_ID: (id: number) => `/quality-control/qc-records/${id}/`,
-    QC_RECORD_VALUES: (id: number) => `/quality-control/qc-records/${id}/values/`,
-    QC_RECORD_CELLS: (id: number) => `/quality-control/qc-records/${id}/cells/`,
-    QC_RECORD_SUBMIT: (id: number) => `/quality-control/qc-records/${id}/submit/`,
-    QC_RECORD_APPROVE: (id: number) => `/quality-control/qc-records/${id}/approve/`,
-
     // QC Parameters
     QC_PARAMETER_BY_ID: (id: number) => `/quality-control/parameters/${id}/`,
 
@@ -383,55 +357,25 @@ export const API_ENDPOINTS = {
     MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
 
-    // Production QC
-    PRODUCTION_QC_LIST: '/quality-control/production-qc/',
-    PRODUCTION_QC_PENDING: '/quality-control/production-qc/pending/',
-    PRODUCTION_QC_RUNNING_RUNS: '/quality-control/production-qc/running-runs/',
-    PRODUCTION_QC_COUNTS: '/quality-control/production-qc/counts/',
-    PRODUCTION_QC_RUN_SESSIONS: (runId: number) =>
-      `/quality-control/production-qc/runs/${runId}/sessions/`,
-    PRODUCTION_QC_FINAL_REQUEST: (runId: number) =>
-      `/quality-control/production-qc/runs/${runId}/request-final/`,
-    PRODUCTION_QC_SESSION_DETAIL: (sessionId: number) =>
-      `/quality-control/production-qc/sessions/${sessionId}/`,
-    PRODUCTION_QC_SESSION_RESULTS: (sessionId: number) =>
-      `/quality-control/production-qc/sessions/${sessionId}/results/`,
-    PRODUCTION_QC_SESSION_SUBMIT: (sessionId: number) =>
-      `/quality-control/production-qc/sessions/${sessionId}/submit/`,
-    PRODUCTION_QC_SESSION_APPROVE: (sessionId: number) =>
-      `/quality-control/production-qc/sessions/${sessionId}/approve/`,
-    PRODUCTION_QC_SESSION_REJECT: (sessionId: number) =>
-      `/quality-control/production-qc/sessions/${sessionId}/reject/`,
-
-    // Online Quality Monitoring
-    ONLINE_MONITORING_LIST: '/quality-control/online-monitoring/',
-    ONLINE_MONITORING_LINES: '/quality-control/online-monitoring/lines/',
-    ONLINE_MONITORING_RUNS: '/quality-control/online-monitoring/runs/',
-    ONLINE_MONITORING_SPECS: '/quality-control/online-monitoring/specs/',
-    ONLINE_MONITORING_SPEC_DETAIL: (specId: number) =>
-      `/quality-control/online-monitoring/specs/${specId}/`,
-    ONLINE_MONITORING_DETAIL: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/`,
-    ONLINE_MONITORING_READINGS: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/readings/`,
-    ONLINE_MONITORING_READING_DETAIL: (recordId: number, readingId: number) =>
-      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/`,
-    ONLINE_MONITORING_READING_ATTACHMENTS: (recordId: number, readingId: number) =>
-      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/`,
-    ONLINE_MONITORING_READING_ATTACHMENT_DETAIL: (
-      recordId: number,
-      readingId: number,
-      attachmentId: number,
-    ) =>
-      `/quality-control/online-monitoring/${recordId}/readings/${readingId}/attachments/${attachmentId}/`,
-    ONLINE_MONITORING_SUBMIT: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/submit/`,
-    ONLINE_MONITORING_APPROVE: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/approve/`,
-    ONLINE_MONITORING_REJECT: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/reject/`,
-    ONLINE_MONITORING_REOPEN: (recordId: number) =>
-      `/quality-control/online-monitoring/${recordId}/reopen/`,
+    // Production QC — checks on a running line, approved in one step by a QC lead
+    PRODUCTION_QC_RUNNING_LINES: '/quality-control/production-qc/running-lines/',
+    PRODUCTION_QC_ENTRIES: '/quality-control/production-qc/entries/',
+    PRODUCTION_QC_ENTRY_COUNTS: '/quality-control/production-qc/entries/counts/',
+    PRODUCTION_QC_ENTRY_BY_ID: (id: number) => `/quality-control/production-qc/entries/${id}/`,
+    PRODUCTION_QC_ENTRY_APPROVE: (id: number) =>
+      `/quality-control/production-qc/entries/${id}/approve/`,
+    PRODUCTION_QC_ENTRY_SEND_BACK: (id: number) =>
+      `/quality-control/production-qc/entries/${id}/send-back/`,
+    PRODUCTION_QC_PARAMETER_TYPES: '/quality-control/production-qc/parameter-types/',
+    PRODUCTION_QC_PARAMETER_TYPE_BY_ID: (id: number) =>
+      `/quality-control/production-qc/parameter-types/${id}/`,
+    PRODUCTION_QC_TYPE_PARAMETERS: (typeId: number) =>
+      `/quality-control/production-qc/parameter-types/${typeId}/parameters/`,
+    PRODUCTION_QC_PARAMETER_BY_ID: (id: number) =>
+      `/quality-control/production-qc/parameters/${id}/`,
+    PRODUCTION_QC_TYPE_ITEMS: (typeId: number) =>
+      `/quality-control/production-qc/parameter-types/${typeId}/items/`,
+    PRODUCTION_QC_ITEM_BY_ID: (id: number) => `/quality-control/production-qc/items/${id}/`,
   },
   // GRPO (Goods Receipt Purchase Order)
   GRPO: {

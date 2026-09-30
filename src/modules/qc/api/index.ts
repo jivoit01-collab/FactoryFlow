@@ -6,4 +6,3 @@ export * from './productionQC';
 export * from './qcDocumentFile';
 export * from './qcDocumentFileAudit';
 export * from './qcParameter';
-export * from './qcRecord';

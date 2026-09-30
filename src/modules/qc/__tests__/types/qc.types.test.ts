@@ -122,7 +122,8 @@ describe('QCPrintDocument', () => {
     const document: QCPrintDocument = {
       id: 1,
       document_key: 'RAW_MATERIAL_INSPECTION',
-      document_key_label: 'Raw Material Inspection Print',
+      document_key_label: 'Arrival Slip Inspection Print',
+      production_parameter_type: null,
       document_id: 'QC-FRM-001',
       notes: 'Footer document ID',
       is_active: true,

@@ -21,18 +21,11 @@ import { toast } from 'sonner';
 
 import { EXECUTION_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
-import { useProductionQCRunSessions, useRequestFinalProductionQC } from '@/modules/qc/api/productionQC';
 import {
   useCreateBOMRequest,
-  useCreateFGReceipt,
-  useFGReceipts,
   useReRequestBOMShortfall,
   useRunBOMRequests,
 } from '@/modules/warehouse/api';
-import { useWarehouses } from '@/modules/warehouse/grpo/api';
-import type { Warehouse as SAPWarehouse } from '@/modules/warehouse/grpo/types';
-import type { FGReceipt } from '@/modules/warehouse/types';
-import { SearchableSelect } from '@/shared/components/SearchableSelect';
 import {
   Button, Card, CardContent, Checkbox,
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -49,7 +42,6 @@ import {
   useLineClearances,
   useMachines,
   useMaterials,
-  useProductionSettings,
   useResolveBreakdown,
   useRunDetail,
   useStartProduction,
@@ -94,63 +86,6 @@ function WarehouseApprovalBadge({ status }: { status: string }) {
   );
 }
 
-function getFGReceiptButtonLabel(receipt?: FGReceipt) {
-  if (!receipt) return 'Create FG Receipt';
-  if (receipt.status === 'PENDING') return 'Edit FG Receipt';
-  if (receipt.status === 'RECEIVED') return 'FG Receipt Received';
-  if (receipt.status === 'SAP_POSTED') return 'FG Posted to SAP';
-  return 'FG Receipt Locked';
-}
-
-type FinalQCGateSession = {
-  workflow_status: string;
-  overall_result?: string;
-};
-
-function getFinalQCGate(session?: FinalQCGateSession) {
-  if (!session) {
-    return {
-      canSendFG: false,
-      actionLabel: 'Send FG to QC',
-      reason: 'Create an FG QC approval request before sending FG to warehouse.',
-    };
-  }
-
-  if (session.workflow_status === 'APPROVED' && session.overall_result === 'PASS') {
-    return { canSendFG: true, actionLabel: 'Create FG Receipt', reason: undefined };
-  }
-
-  if (session.workflow_status === 'APPROVED') {
-    return {
-      canSendFG: false,
-      actionLabel: 'Final QC Failed',
-      reason: 'Final QC is approved, but the result is not PASS.',
-    };
-  }
-
-  if (session.workflow_status === 'REJECTED') {
-    return {
-      canSendFG: false,
-      actionLabel: 'Final QC Rejected',
-      reason: 'Final QC was rejected. Resolve QC before sending FG to warehouse.',
-    };
-  }
-
-  if (session.workflow_status === 'SUBMITTED') {
-    return {
-      canSendFG: false,
-      actionLabel: 'Awaiting QC Approval',
-      reason: 'Final QC is submitted and waiting for QA approval.',
-    };
-  }
-
-  return {
-    canSendFG: false,
-    actionLabel: 'FG QC Requested',
-    reason: 'FG QC request is with QC. QC will select parameters, submit, and approve it.',
-  };
-}
-
 function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
@@ -169,13 +104,6 @@ function RunDetailPage() {
   const { data: wasteLogs = [] } = useWasteLogs(numRunId);
   const { data: lineMachines = [] } = useMachines(run?.line);
 
-  const { data: qcSessions = [] } = useProductionQCRunSessions(numRunId || null);
-  const { data: fgReceipts = [], isLoading: fgReceiptsLoading } = useFGReceipts(
-    undefined,
-    numRunId || undefined,
-    !!numRunId && run?.status === 'COMPLETED',
-  );
-
   // ---------------------------------------------------------------------------
   // Mutations
   // ---------------------------------------------------------------------------
@@ -191,8 +119,6 @@ function RunDetailPage() {
   const updateMaterial = useUpdateMaterial(numRunId);
   const createBOMRequest = useCreateBOMRequest();
   const reRequestBOM = useReRequestBOMShortfall();
-  const createFGReceipt = useCreateFGReceipt();
-  const requestFinalQC = useRequestFinalProductionQC(numRunId);
 
   // Latest BOM request for the run — used to re-request the un-approved
   // remainder when warehouse only partially approved (or rejected) the materials.
@@ -220,36 +146,16 @@ function RunDetailPage() {
   // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
-  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'fg-receipt' | 'manual-segment' | 'manual-breakdown' | null>(null);
+  const [dialog, setDialog] = useState<'breakdown' | 'stop' | 'material' | 'segment-detail' | 'breakdown-detail' | 'manual-segment' | 'manual-breakdown' | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<ProductionSegment | null>(null);
   const [selectedBreakdown, setSelectedBreakdown] = useState<MachineBreakdown | null>(null);
   const [editRemarks, setEditRemarks] = useState('');
-  const [selectedFGWarehouse, setSelectedFGWarehouse] = useState('');
-  const [fgWarehouseError, setFGWarehouseError] = useState('');
-  const { data: fgWarehouses = [], isLoading: fgWarehousesLoading, isError: fgWarehousesError } = useWarehouses(dialog === 'fg-receipt');
-  // A new FG receipt opens on the FG warehouse from Production Settings.
-  const { data: productionSettings } = useProductionSettings();
   const isCompleted = run?.status === 'COMPLETED';
   // Total produced so far: the run-level figure once completed, else the sum of
   // stopped segments' produced cases (active segments report at stop time).
   const totalProduced = isCompleted
     ? parseFloat(run?.total_production || '0')
     : run?.segments?.reduce((sum, s) => sum + parseFloat(s.produced_cases || '0'), 0) ?? 0;
-  const lockedFGReceipt = fgReceipts.find((receipt) =>
-    receipt.status !== 'PENDING' || Boolean(receipt.received_at)
-  );
-  const editableFGReceipt = fgReceipts.find((receipt) =>
-    receipt.status === 'PENDING' && !receipt.received_at
-  );
-  const existingFGReceipt = lockedFGReceipt || editableFGReceipt;
-  const canEditFGReceipt = !lockedFGReceipt;
-  const latestFinalQC = [...qcSessions]
-    .filter((session) => session.session_type === 'FINAL')
-    .sort((a, b) => {
-      const checkedAtDiff = new Date(b.checked_at).getTime() - new Date(a.checked_at).getTime();
-      return checkedAtDiff || b.id - a.id;
-    })[0];
-  const finalQCGate = getFinalQCGate(latestFinalQC);
   const hasActiveSegment = run?.segments?.some((s) => s.is_active) ?? false;
   const hasActiveBreakdown = run?.breakdowns?.some((b) => b.is_active) ?? false;
   const canComplete = !hasActiveSegment && !hasActiveBreakdown && run?.status === 'IN_PROGRESS';
@@ -476,30 +382,6 @@ function RunDetailPage() {
     } catch { toast.error('Failed to update closing qty'); }
   };
 
-  const handleCreateFGReceipt = async () => {
-    if (!run) return;
-    if (!finalQCGate.canSendFG) {
-      toast.error(finalQCGate.reason || 'Final QC approval is required');
-      return;
-    }
-    if (!selectedFGWarehouse) {
-      setFGWarehouseError('Select a warehouse');
-      return;
-    }
-    try {
-      const wasEditing = Boolean(editableFGReceipt);
-      await createFGReceipt.mutateAsync({
-        production_run_id: run.id,
-        posting_date: run.date,
-        warehouse: selectedFGWarehouse,
-      });
-      toast.success(wasEditing ? 'FG receipt updated' : 'FG receipt created - warehouse notified');
-      setDialog(null);
-      setSelectedFGWarehouse('');
-      setFGWarehouseError('');
-    } catch { /* interceptor handles */ }
-  };
-
   const handleSaveBreakdownRemarks = async () => {
     if (!selectedBreakdown) return;
     try {
@@ -674,52 +556,6 @@ function RunDetailPage() {
           {!isCompleted && (
             <Button onClick={() => navigate(`/production/execution/runs/${run.id}/yield?complete=true`)} disabled={!canComplete} title={!canComplete ? 'Stop all running segments and resolve all breakdowns first' : undefined}>
               <CheckCircle2 className="h-4 w-4 mr-1" /> Complete Run
-            </Button>
-          )}
-          {isCompleted && (
-            <Button
-              variant="outline" size="sm"
-              disabled={
-                fgReceiptsLoading ||
-                createFGReceipt.isPending ||
-                requestFinalQC.isPending ||
-                !canEditFGReceipt ||
-                Boolean(latestFinalQC && !finalQCGate.canSendFG)
-              }
-              title={
-                !canEditFGReceipt
-                  ? 'Warehouse has already received this FG receipt'
-                  : finalQCGate.reason
-              }
-              onClick={async () => {
-                if (!finalQCGate.canSendFG) {
-                  if (latestFinalQC) {
-                    toast.info(finalQCGate.reason || 'Final QC approval is required');
-                    return;
-                  }
-                  try {
-                    await requestFinalQC.mutateAsync();
-                    toast.success('FG QC approval request sent to QC');
-                  } catch {
-                    toast.error('Failed to send FG QC request');
-                  }
-                  return;
-                }
-                setSelectedFGWarehouse(
-                  editableFGReceipt?.warehouse || productionSettings?.fg_warehouse || '',
-                );
-                setFGWarehouseError('');
-                setDialog('fg-receipt');
-              }}
-            >
-              {fgReceiptsLoading || createFGReceipt.isPending || requestFinalQC.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Warehouse className="h-4 w-4 mr-1" />}
-              {fgReceiptsLoading
-                ? 'Loading FG Receipt...'
-                : requestFinalQC.isPending
-                  ? 'Sending FG to QC...'
-                : finalQCGate.canSendFG
-                  ? getFGReceiptButtonLabel(existingFGReceipt)
-                  : finalQCGate.actionLabel}
             </Button>
           )}
         </div>
@@ -1117,82 +953,6 @@ function RunDetailPage() {
               <Button type="submit" disabled={createMaterial.isPending}>{createMaterial.isPending ? 'Saving...' : 'Add Material'}</Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* FG Receipt Dialog */}
-      <Dialog open={dialog === 'fg-receipt'} onOpenChange={(open) => { if (!open) setDialog(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{editableFGReceipt ? 'Edit FG Receipt' : 'Create FG Receipt'}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Run</span>
-                <p className="font-medium">#{run.run_number}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Posting Date</span>
-                <p className="font-medium">{run.date}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Product</span>
-                <p className="font-medium">{run.product}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Good Qty</span>
-                <p className="font-medium">
-                  {(parseFloat(run.total_production || '0') - parseFloat(run.rejected_qty || '0')).toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <SearchableSelect<SAPWarehouse>
-              value={selectedFGWarehouse}
-              items={fgWarehouses}
-              isLoading={fgWarehousesLoading}
-              isError={fgWarehousesError}
-              label="Warehouse"
-              required
-              inputId="fg-receipt-warehouse"
-              placeholder="Select warehouse..."
-              getItemKey={(wh) => wh.warehouse_code}
-              getItemLabel={(wh) => `${wh.warehouse_code} - ${wh.warehouse_name}`}
-              filterFn={(wh, search) => {
-                const term = search.toLowerCase();
-                return (
-                  wh.warehouse_code.toLowerCase().includes(term) ||
-                  wh.warehouse_name.toLowerCase().includes(term)
-                );
-              }}
-              renderItem={(wh) => (
-                <div>
-                  <span className="text-sm font-medium">{wh.warehouse_code}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{wh.warehouse_name}</span>
-                </div>
-              )}
-              onItemSelect={(wh) => {
-                setSelectedFGWarehouse(wh.warehouse_code);
-                setFGWarehouseError('');
-              }}
-              onClear={() => {
-                setSelectedFGWarehouse('');
-                setFGWarehouseError('');
-              }}
-              loadingText="Loading warehouses..."
-              emptyText="No warehouses found"
-              notFoundText="No matching warehouses"
-              errorText="Failed to load warehouses"
-              error={fgWarehouseError}
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
-              <Button type="button" onClick={handleCreateFGReceipt} disabled={createFGReceipt.isPending || fgWarehousesLoading}>
-                {createFGReceipt.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                {editableFGReceipt ? 'Save Receipt' : 'Create Receipt'}
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 

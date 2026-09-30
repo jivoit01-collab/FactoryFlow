@@ -1,12 +1,24 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
-import type { QCPrintDocument, SaveQCPrintDocumentRequest } from '../../types';
+import type {
+  QCPrintDocument,
+  QCPrintDocumentOption,
+  SaveQCPrintDocumentRequest,
+} from '../../types';
 
 export const printDocumentApi = {
   async getList(): Promise<QCPrintDocument[]> {
     const response = await apiClient.get<QCPrintDocument[]>(
       API_ENDPOINTS.QUALITY_CONTROL_V2.PRINT_DOCUMENTS,
+    );
+    return response.data;
+  },
+
+  /** Every form a number can be set for: the fixed reports and each production QC form. */
+  async getOptions(): Promise<QCPrintDocumentOption[]> {
+    const response = await apiClient.get<QCPrintDocumentOption[]>(
+      `${API_ENDPOINTS.QUALITY_CONTROL_V2.PRINT_DOCUMENTS}options/`,
     );
     return response.data;
   },

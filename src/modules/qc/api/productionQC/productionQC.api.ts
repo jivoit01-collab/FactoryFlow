@@ -2,143 +2,208 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
-  CreateProductionQCSessionRequest,
-  ProductionQCApprovalRequest,
-  ProductionQCCounts,
-  ProductionQCListParams,
-  ProductionQCRejectRequest,
-  ProductionQCRunningRun,
-  ProductionQCSession,
-  ProductionQCSessionListItem,
-  ProductionQCSubmitRequest,
-  UpdateProductionQCResultRequest,
-} from '../../types';
+  CreateProductionQCEntryRequest,
+  ProductionParameter,
+  ProductionParameterRequest,
+  ProductionParameterType,
+  ProductionParameterTypeItem,
+  ProductionParameterTypeItemRequest,
+  ProductionParameterTypeListParams,
+  ProductionParameterTypeRequest,
+  ProductionQCDateRangeParams,
+  ProductionQCDecisionRequest,
+  ProductionQCEntry,
+  ProductionQCEntryCounts,
+  ProductionQCEntryListItem,
+  ProductionQCEntryListParams,
+  ProductionRunningLine,
+  UpdateProductionQCEntryRequest,
+} from '../../types/productionQC.types';
 
-const EP = API_ENDPOINTS.QUALITY_CONTROL_V2;
+const ENDPOINTS = API_ENDPOINTS.QUALITY_CONTROL_V2;
+
+/** Drop the filters that are not set, so the URL carries only what was picked. */
+function cleanParams(params?: object): Record<string, string | number | boolean> {
+  const clean: Record<string, string | number | boolean> = {};
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') clean[key] = value;
+  });
+  return clean;
+}
 
 export const productionQCApi = {
-  // List all sessions (with filters)
-  async list(params?: ProductionQCListParams): Promise<ProductionQCSessionListItem[]> {
-    const response = await apiClient.get<ProductionQCSessionListItem[]>(
-      EP.PRODUCTION_QC_LIST,
-      { params },
+  // ==================== Running lines ====================
+
+  async getRunningLines(): Promise<ProductionRunningLine[]> {
+    const response = await apiClient.get<ProductionRunningLine[]>(
+      ENDPOINTS.PRODUCTION_QC_RUNNING_LINES,
     );
     return response.data;
   },
 
-  // Get counts for dashboard
-  async counts(): Promise<ProductionQCCounts> {
-    const response = await apiClient.get<ProductionQCCounts>(
-      EP.PRODUCTION_QC_COUNTS,
+  // ==================== Entries ====================
+
+  async listEntries(params?: ProductionQCEntryListParams): Promise<ProductionQCEntryListItem[]> {
+    const response = await apiClient.get<ProductionQCEntryListItem[]>(
+      ENDPOINTS.PRODUCTION_QC_ENTRIES,
+      { params: cleanParams(params) },
     );
     return response.data;
   },
 
-  // Sessions submitted by production/QC and awaiting QA approval
-  async pending(): Promise<ProductionQCSessionListItem[]> {
-    const response = await apiClient.get<ProductionQCSessionListItem[]>(
-      EP.PRODUCTION_QC_PENDING,
+  /** A day's entries with their readings, for the sheet view. */
+  async listEntriesWithResults(params: ProductionQCEntryListParams): Promise<ProductionQCEntry[]> {
+    const response = await apiClient.get<ProductionQCEntry[]>(ENDPOINTS.PRODUCTION_QC_ENTRIES, {
+      params: { ...cleanParams(params), include: 'results' },
+    });
+    return response.data;
+  },
+
+  async getEntryCounts(params?: ProductionQCDateRangeParams): Promise<ProductionQCEntryCounts> {
+    // Also the sidebar badge's 30s poll, on every page: an outage must not toast
+    // app-wide. The badge renders nothing and the dashboard's list says why.
+    const response = await apiClient.get<ProductionQCEntryCounts>(
+      ENDPOINTS.PRODUCTION_QC_ENTRY_COUNTS,
+      { params: cleanParams(params), suppressErrorToast: true },
     );
     return response.data;
   },
 
-  // Currently-running production runs a QC user can select to do QC on
-  async runningRuns(lineId?: number): Promise<ProductionQCRunningRun[]> {
-    const response = await apiClient.get<ProductionQCRunningRun[]>(
-      EP.PRODUCTION_QC_RUNNING_RUNS,
-      { params: lineId ? { line: lineId } : undefined },
+  async getEntry(id: number): Promise<ProductionQCEntry> {
+    const response = await apiClient.get<ProductionQCEntry>(
+      ENDPOINTS.PRODUCTION_QC_ENTRY_BY_ID(id),
     );
     return response.data;
   },
 
-  // List sessions for a specific run
-  async getRunSessions(
-    runId: number,
-    sessionType?: string,
-  ): Promise<ProductionQCSessionListItem[]> {
-    const response = await apiClient.get<ProductionQCSessionListItem[]>(
-      EP.PRODUCTION_QC_RUN_SESSIONS(runId),
-      { params: sessionType ? { session_type: sessionType } : undefined },
-    );
+  /** Save a check and send it for approval (there are no drafts). */
+  async createEntry(data: CreateProductionQCEntryRequest): Promise<ProductionQCEntry> {
+    const response = await apiClient.post<ProductionQCEntry>(ENDPOINTS.PRODUCTION_QC_ENTRIES, data);
     return response.data;
   },
 
-  // Create a new QC session for a run
-  async createSession(
-    runId: number,
-    data: CreateProductionQCSessionRequest,
-  ): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_RUN_SESSIONS(runId),
+  /** Correct a pending or sent-back check; it goes back to pending. */
+  async updateEntry(id: number, data: UpdateProductionQCEntryRequest): Promise<ProductionQCEntry> {
+    const response = await apiClient.patch<ProductionQCEntry>(
+      ENDPOINTS.PRODUCTION_QC_ENTRY_BY_ID(id),
       data,
     );
     return response.data;
   },
 
-  // Production requests final FG QC approval; QC selects parameters later
-  async requestFinalApproval(runId: number): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_FINAL_REQUEST(runId),
-    );
-    return response.data;
-  },
-
-  // Get session detail
-  async getSession(sessionId: number): Promise<ProductionQCSession> {
-    const response = await apiClient.get<ProductionQCSession>(
-      EP.PRODUCTION_QC_SESSION_DETAIL(sessionId),
-    );
-    return response.data;
-  },
-
-  // Delete session (soft-delete, only DRAFT)
-  async deleteSession(sessionId: number): Promise<void> {
-    await apiClient.delete(EP.PRODUCTION_QC_SESSION_DETAIL(sessionId));
-  },
-
-  // Update parameter results in a session
-  async updateResults(
-    sessionId: number,
-    results: UpdateProductionQCResultRequest[],
-  ): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_SESSION_RESULTS(sessionId),
-      { results },
-    );
-    return response.data;
-  },
-
-  // Submit session with PASS/FAIL result (finalize, cannot change after)
-  async submitSession(
-    sessionId: number,
-    data: ProductionQCSubmitRequest,
-  ): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_SESSION_SUBMIT(sessionId),
+  async approveEntry(
+    id: number,
+    data: ProductionQCDecisionRequest = {},
+  ): Promise<ProductionQCEntry> {
+    const response = await apiClient.post<ProductionQCEntry>(
+      ENDPOINTS.PRODUCTION_QC_ENTRY_APPROVE(id),
       data,
     );
     return response.data;
   },
 
-  async approveSession(
-    sessionId: number,
-    data: ProductionQCApprovalRequest,
-  ): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_SESSION_APPROVE(sessionId),
+  async sendBackEntry(id: number, data: ProductionQCDecisionRequest): Promise<ProductionQCEntry> {
+    const response = await apiClient.post<ProductionQCEntry>(
+      ENDPOINTS.PRODUCTION_QC_ENTRY_SEND_BACK(id),
       data,
     );
     return response.data;
   },
 
-  async rejectSession(
-    sessionId: number,
-    data: ProductionQCRejectRequest,
-  ): Promise<ProductionQCSession> {
-    const response = await apiClient.post<ProductionQCSession>(
-      EP.PRODUCTION_QC_SESSION_REJECT(sessionId),
+  // ==================== Parameter types ====================
+
+  async listParameterTypes(
+    params?: ProductionParameterTypeListParams,
+  ): Promise<ProductionParameterType[]> {
+    const response = await apiClient.get<ProductionParameterType[]>(
+      ENDPOINTS.PRODUCTION_QC_PARAMETER_TYPES,
+      { params: cleanParams(params) },
+    );
+    return response.data;
+  },
+
+  async getParameterType(id: number): Promise<ProductionParameterType> {
+    const response = await apiClient.get<ProductionParameterType>(
+      ENDPOINTS.PRODUCTION_QC_PARAMETER_TYPE_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async createParameterType(
+    data: ProductionParameterTypeRequest,
+  ): Promise<ProductionParameterType> {
+    const response = await apiClient.post<ProductionParameterType>(
+      ENDPOINTS.PRODUCTION_QC_PARAMETER_TYPES,
       data,
     );
     return response.data;
+  },
+
+  async updateParameterType(
+    id: number,
+    data: Partial<ProductionParameterTypeRequest>,
+  ): Promise<ProductionParameterType> {
+    const response = await apiClient.patch<ProductionParameterType>(
+      ENDPOINTS.PRODUCTION_QC_PARAMETER_TYPE_BY_ID(id),
+      data,
+    );
+    return response.data;
+  },
+
+  /** A soft delete: saved entries keep their readings. */
+  async deleteParameterType(id: number): Promise<void> {
+    await apiClient.delete(ENDPOINTS.PRODUCTION_QC_PARAMETER_TYPE_BY_ID(id));
+  },
+
+  // ==================== Parameters ====================
+
+  async listParameters(typeId: number): Promise<ProductionParameter[]> {
+    const response = await apiClient.get<ProductionParameter[]>(
+      ENDPOINTS.PRODUCTION_QC_TYPE_PARAMETERS(typeId),
+    );
+    return response.data;
+  },
+
+  async createParameter(
+    typeId: number,
+    data: ProductionParameterRequest,
+  ): Promise<ProductionParameter> {
+    const response = await apiClient.post<ProductionParameter>(
+      ENDPOINTS.PRODUCTION_QC_TYPE_PARAMETERS(typeId),
+      data,
+    );
+    return response.data;
+  },
+
+  async updateParameter(
+    id: number,
+    data: Partial<ProductionParameterRequest>,
+  ): Promise<ProductionParameter> {
+    const response = await apiClient.patch<ProductionParameter>(
+      ENDPOINTS.PRODUCTION_QC_PARAMETER_BY_ID(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async deleteParameter(id: number): Promise<void> {
+    await apiClient.delete(ENDPOINTS.PRODUCTION_QC_PARAMETER_BY_ID(id));
+  },
+
+  // ==================== Linked products ====================
+
+  async linkItem(
+    typeId: number,
+    data: ProductionParameterTypeItemRequest,
+  ): Promise<ProductionParameterTypeItem> {
+    const response = await apiClient.post<ProductionParameterTypeItem>(
+      ENDPOINTS.PRODUCTION_QC_TYPE_ITEMS(typeId),
+      data,
+    );
+    return response.data;
+  },
+
+  async unlinkItem(itemId: number): Promise<void> {
+    await apiClient.delete(ENDPOINTS.PRODUCTION_QC_ITEM_BY_ID(itemId));
   },
 };

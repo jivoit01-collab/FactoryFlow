@@ -76,7 +76,7 @@ function getRedirectPath(path: string, segments: string[]): string | null {
     if (newIndex > 0) return '/' + segments.slice(0, newIndex).join('/');
   }
   if (path.includes('/inspections') && !path.includes('/pending')) {
-    return '/qc/pending';
+    return '/qc/arrival-slips';
   }
   if (path === '/warehouse/grpo/material/preview' || path === '/warehouse/grpo/preview') {
     return '/warehouse/grpo/material/pending';

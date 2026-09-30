@@ -1,6 +1,5 @@
-import { AlertCircle, ArrowLeft, Edit, FileText, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, FileText, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { confirmDialog } from '@/shared/components';
@@ -24,25 +23,28 @@ import { useScrollToError } from '@/shared/hooks';
 import {
   useCreatePrintDocument,
   useDeletePrintDocument,
+  usePrintDocumentOptions,
   usePrintDocuments,
   useUpdatePrintDocument,
 } from '../../api/printDocument';
-import type { QCPrintDocument, QCPrintDocumentKey, SaveQCPrintDocumentRequest } from '../../types';
-
-const PRINT_DOCUMENT_OPTIONS: Array<{ value: QCPrintDocumentKey; label: string }> = [
-  { value: 'RAW_MATERIAL_INSPECTION', label: 'Raw Material Inspection Print' },
-  { value: 'QC_PARAMETERS', label: 'QC Parameters Print' },
-];
+import { MasterDataTabs } from '../../components/qcSections';
+import type { QCPrintDocument, SaveQCPrintDocumentRequest } from '../../types';
 
 const emptyForm: SaveQCPrintDocumentRequest = {
   document_key: 'RAW_MATERIAL_INSPECTION',
+  production_parameter_type: null,
   document_id: '',
   notes: '',
 };
 
+/** One form: a report's key, or a production QC sheet's key and type. */
+const formKey = (form: { document_key: string; production_parameter_type?: number | null }) =>
+  `${form.document_key}:${form.production_parameter_type ?? ''}`;
+
 export default function PrintDocumentsPage() {
-  const navigate = useNavigate();
   const { data: printDocuments = [], isLoading, error } = usePrintDocuments();
+  // Every form a number can be set for — the reports, and each production QC form.
+  const { data: options = [] } = usePrintDocumentOptions();
   const createPrintDocument = useCreatePrintDocument();
   const updatePrintDocument = useUpdatePrintDocument();
   const deletePrintDocument = useDeletePrintDocument();
@@ -54,8 +56,8 @@ export default function PrintDocumentsPage() {
 
   useScrollToError(apiErrors);
 
-  const usedDocumentKeys = new Set(printDocuments.map((document) => document.document_key));
-  const canAddDocument = PRINT_DOCUMENT_OPTIONS.some((option) => !usedDocumentKeys.has(option.value));
+  const usedForms = new Set(printDocuments.map(formKey));
+  const canAddDocument = options.some((option) => !usedForms.has(formKey(option)));
   const isSaving = createPrintDocument.isPending || updatePrintDocument.isPending;
 
   const handleOpenDialog = (document?: QCPrintDocument) => {
@@ -63,17 +65,17 @@ export default function PrintDocumentsPage() {
       setEditingDocument(document);
       setFormData({
         document_key: document.document_key,
+        production_parameter_type: document.production_parameter_type,
         document_id: document.document_id,
         notes: document.notes || '',
       });
     } else {
       setEditingDocument(null);
-      const unusedOption =
-        PRINT_DOCUMENT_OPTIONS.find((option) => !usedDocumentKeys.has(option.value)) ||
-        PRINT_DOCUMENT_OPTIONS[0];
+      const unusedOption = options.find((option) => !usedForms.has(formKey(option)));
       setFormData({
         ...emptyForm,
-        document_key: unusedOption.value,
+        document_key: unusedOption?.document_key ?? emptyForm.document_key,
+        production_parameter_type: unusedOption?.production_parameter_type ?? null,
       });
     }
     setApiErrors({});
@@ -101,6 +103,7 @@ export default function PrintDocumentsPage() {
 
     const payload: SaveQCPrintDocumentRequest = {
       document_key: formData.document_key,
+      production_parameter_type: formData.production_parameter_type ?? null,
       document_id: documentId,
       notes: formData.notes?.trim() || '',
     };
@@ -145,19 +148,17 @@ export default function PrintDocumentsPage() {
 
   return (
     <div className="space-y-6 pb-6">
+      <MasterDataTabs />
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
-              <FileText className="h-8 w-8" />
-              Print Documents
-            </h2>
-          </div>
+          <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
+            <FileText className="h-8 w-8" />
+            Print Documents
+          </h2>
           <p className="text-muted-foreground">
-            Manage document IDs printed at the bottom of QC reports
+            The document number printed on each of QC&apos;s forms — the arrival slip reports and
+            every production QC sheet
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()} disabled={!canAddDocument}>
@@ -270,21 +271,31 @@ export default function PrintDocumentsPage() {
             <div className="space-y-2">
               <Label>Document</Label>
               <select
+                aria-label="Document"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={formData.document_key}
-                onChange={(event) =>
+                value={formKey(formData)}
+                onChange={(event) => {
+                  const picked = options.find((option) => formKey(option) === event.target.value);
+                  if (!picked) return;
                   setFormData((prev) => ({
                     ...prev,
-                    document_key: event.target.value as QCPrintDocumentKey,
-                  }))
-                }
+                    document_key: picked.document_key,
+                    production_parameter_type: picked.production_parameter_type,
+                  }));
+                }}
                 disabled={isSaving || !!editingDocument}
               >
-                {PRINT_DOCUMENT_OPTIONS.map((option) => (
+                {editingDocument &&
+                  !options.some((o) => formKey(o) === formKey(editingDocument)) && (
+                    <option value={formKey(editingDocument)}>
+                      {editingDocument.document_key_label}
+                    </option>
+                  )}
+                {options.map((option) => (
                   <option
-                    key={option.value}
-                    value={option.value}
-                    disabled={!editingDocument && usedDocumentKeys.has(option.value)}
+                    key={formKey(option)}
+                    value={formKey(option)}
+                    disabled={!editingDocument && usedForms.has(formKey(option))}
                   >
                     {option.label}
                   </option>
@@ -311,7 +322,7 @@ export default function PrintDocumentsPage() {
                     });
                   }
                 }}
-                placeholder="e.g., QC-FRM-001"
+                placeholder="e.g., QA-FRM-14-01-05-02"
                 disabled={isSaving}
                 className={
                   apiErrors.document_id ? 'border-destructive focus-visible:ring-destructive' : ''

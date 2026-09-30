@@ -125,19 +125,9 @@ Inspection submitted
 
 ### Production QC → WMS
 
-```
-Production QC Module                 WMS Module
-────────────────────                 ──────────
-
-ProductionQCSession
-  └─ IN_PROCESS check
-     └─ PASS ─────────────────►  (no WMS action — production continues)
-     └─ FAIL ─────────────────►  WMS: rework/scrap decision pending
-  └─ FINAL check
-     └─ PASS ─────────────────►  WMS: FG ready for receipt into FG warehouse
-     └─ FAIL ─────────────────►  WMS: reject/rework to rejection area
-     └─ CONDITIONAL ──────────►  WMS: conditional hold pending disposition
-```
+> **Removed (2026-09).** The Production QC sub-module (`ProductionQCSession`, in-process
+> and final checks) was deleted from both backend and frontend, to be rebuilt from
+> scratch. There is currently no production-QC signal into WMS.
 
 ---
 
@@ -148,6 +138,9 @@ This is the **heaviest integration point**. Production both consumes from WMS (r
 ### What happens today
 - Production creates `BOMRequest` → Warehouse approves line-by-line → Material issued to SAP (`InventoryGenExits`)
 - Production completes → `FinishedGoodsReceipt` created → Warehouse receives → Posts to SAP (`InventoryGenEntries`)
+  - *2026-09:* the run screen's *Create FG Receipt* button (gated on a Final Production QC
+    pass) was removed with Production QC, so the frontend no longer creates the receipt;
+    the receive / post-to-SAP half is unchanged.
 
 ### 3A. Production → WMS: Material Request (BOM Request)
 

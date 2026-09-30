@@ -805,7 +805,7 @@ export default function InspectionDetailPage() {
         slipId: arrivalSlipId,
         data: sendBackRemarks.trim() ? { remarks: sendBackRemarks.trim() } : undefined,
       });
-      navigate('/qc/pending');
+      navigate('/qc/arrival-slips');
     } catch (error) {
       const apiError = error as ApiError;
       if (apiError.errors) {
@@ -885,7 +885,7 @@ export default function InspectionDetailPage() {
       <QCSuccessScreen
         type={successAction.actor}
         decision={successAction.decision}
-        onNavigateToDashboard={() => navigate('/qc')}
+        onBackToQueue={() => navigate('/qc/arrival-slips/approvals')}
         onNavigateToHome={() => navigate('/')}
       />
     );
@@ -905,7 +905,7 @@ export default function InspectionDetailPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print-no-break">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/qc/pending')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/qc/arrival-slips')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -1640,7 +1640,7 @@ export default function InspectionDetailPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate(`/qc/master/parameters?materialType=${selectedMaterialTypeId}`)
+                        navigate(`/qc/arrival-slips/parameters?materialType=${selectedMaterialTypeId}`)
                       }
                       className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 hover:opacity-80"
                     >
@@ -2124,7 +2124,7 @@ export default function InspectionDetailPage() {
 
       {/* Footer Actions */}
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:justify-between print-hide">
-        <Button variant="outline" onClick={() => navigate('/qc/pending')}>
+        <Button variant="outline" onClick={() => navigate('/qc/arrival-slips')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>

@@ -10,8 +10,6 @@
  *   Tank Farm               EXIM's Tank Monitoring, with its Tanks, Oils (EXIM's
  *                           "tank items"), Tank Log and Oil Cost (its in-tank
  *                           breakdown)
- *   Domestic Contracts      EXIM's domestic contract register and its landed-
- *                           cost sheet, rebuilt on SAP's oil POs and the gate
  *   Director Inventory      EXIM's Director Dashboard
  *   Contract History,
  *   Change Log              EXIM's contractual history and stock updation logs
@@ -36,7 +34,6 @@ import {
   LayoutGrid,
   ListChecks,
   Palette,
-  ReceiptIndianRupee,
   Scale,
   Ship,
   Truck,
@@ -44,7 +41,6 @@ import {
 
 import {
   EXIM_ACCESS,
-  EXIM_CONTRACT_ACCESS,
   EXIM_LICENCE_ACCESS,
   EXIM_PERMISSIONS,
 } from '@/config/permissions/exim.permissions';
@@ -59,9 +55,6 @@ const CustomsRatesPage = lazy(() => import('./pages/CustomsRatesPage'));
 const StockDashboardPage = lazy(() => import('./pages/reports/StockDashboardPage'));
 const StockStatusBreakdownPage = lazy(() => import('./pages/reports/StockStatusBreakdownPage'));
 const DirectorInventoryPage = lazy(() => import('./pages/reports/DirectorInventoryPage'));
-
-const DomesticContractsPage = lazy(() => import('./pages/contracts/DomesticContractsPage'));
-const DomesticContractPage = lazy(() => import('./pages/contracts/DomesticContractPage'));
 
 const LotsPage = lazy(() => import('./pages/lots/LotsPage'));
 const LotDetailPage = lazy(() => import('./pages/lots/LotDetailPage'));
@@ -141,22 +134,6 @@ export const eximModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [P.SHORTAGE_VIEW],
       breadcrumb: { label: 'Shortages' },
-    },
-
-    // --- domestic contracts: SAP's oil POs, their trucks and landed cost ------
-    {
-      path: '/exim/domestic-contracts',
-      element: <DomesticContractsPage />,
-      layout: 'main',
-      permissions: EXIM_CONTRACT_ACCESS,
-      breadcrumb: { label: 'Domestic Contracts' },
-    },
-    {
-      path: '/exim/domestic-contracts/:poNumber',
-      element: <DomesticContractPage />,
-      layout: 'main',
-      permissions: EXIM_CONTRACT_ACCESS,
-      breadcrumb: { label: 'PO' },
     },
 
     // --- the tank farm ---------------------------------------------------------
@@ -275,12 +252,6 @@ export const eximModuleConfig: ModuleConfig = {
           title: 'Shortages',
           icon: Scale,
           permissions: [P.SHORTAGE_VIEW],
-        },
-        {
-          path: '/exim/domestic-contracts',
-          title: 'Domestic Contracts',
-          icon: ReceiptIndianRupee,
-          permissions: EXIM_CONTRACT_ACCESS,
         },
         { path: '/exim/tank-farm', title: 'Tank Farm', icon: Cylinder, permissions: [P.TANK_VIEW] },
         { path: '/exim/tanks', title: 'Tanks', icon: Container, permissions: [P.TANK_VIEW] },

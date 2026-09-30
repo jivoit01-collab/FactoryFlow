@@ -1,5 +1,3 @@
-export { CONTRACT_ENDPOINTS, contractApi, type ContractScope } from './contracts.api';
-export * from './contracts.queries';
 export { EXIM_ENDPOINTS, eximApi } from './exim.api';
 export {
   EXIM_KEYS,

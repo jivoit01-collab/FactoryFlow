@@ -1,207 +1,267 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
-  CreateProductionQCSessionRequest,
-  ProductionQCApprovalRequest,
-  ProductionQCListParams,
-  ProductionQCRejectRequest,
-  ProductionQCSubmitRequest,
-  UpdateProductionQCResultRequest,
-} from '../../types';
+  CreateProductionQCEntryRequest,
+  ProductionParameterRequest,
+  ProductionParameterTypeItemRequest,
+  ProductionParameterTypeListParams,
+  ProductionParameterTypeRequest,
+  ProductionQCDateRangeParams,
+  ProductionQCEntryListParams,
+  UpdateProductionQCEntryRequest,
+} from '../../types/productionQC.types';
 import { productionQCApi } from './productionQC.api';
-
-// ============================================================================
-// Query Keys
-// ============================================================================
 
 export const PRODUCTION_QC_QUERY_KEYS = {
   all: ['productionQC'] as const,
-  lists: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'list'] as const,
-  list: (params?: ProductionQCListParams) =>
-    [...PRODUCTION_QC_QUERY_KEYS.lists(), params] as const,
-  pending: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'pending'] as const,
-  runningRuns: (lineId?: number) =>
-    [...PRODUCTION_QC_QUERY_KEYS.all, 'runningRuns', lineId ?? null] as const,
-  counts: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'counts'] as const,
-  runSessions: (runId: number) =>
-    [...PRODUCTION_QC_QUERY_KEYS.all, 'run', runId] as const,
-  detail: (sessionId: number) =>
-    [...PRODUCTION_QC_QUERY_KEYS.all, 'detail', sessionId] as const,
+  runningLines: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'runningLines'] as const,
+  /** Lists, counts (and so the sidebar badge) and details: what a decision changes. */
+  entries: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'entries'] as const,
+  entryList: (params?: ProductionQCEntryListParams) =>
+    [...PRODUCTION_QC_QUERY_KEYS.entries(), 'list', params ?? {}] as const,
+  entrySheet: (params: ProductionQCEntryListParams) =>
+    [...PRODUCTION_QC_QUERY_KEYS.entries(), 'sheet', params] as const,
+  entryCounts: (params?: ProductionQCDateRangeParams) =>
+    [...PRODUCTION_QC_QUERY_KEYS.entries(), 'counts', params ?? {}] as const,
+  entry: (id: number) => [...PRODUCTION_QC_QUERY_KEYS.entries(), 'detail', id] as const,
+  /** The masters: types, their parameters and linked products. */
+  parameterTypes: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'parameterTypes'] as const,
+  parameterTypeList: (params?: ProductionParameterTypeListParams) =>
+    [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'list', params ?? {}] as const,
+  parameterType: (id: number) =>
+    [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'detail', id] as const,
+  parameters: (typeId: number) =>
+    [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'parameters', typeId] as const,
 };
 
-// ============================================================================
-// Queries
-// ============================================================================
+// ==================== Running lines ====================
 
-export function useProductionQCList(params?: ProductionQCListParams) {
+export function useProductionQCRunningLines(enabled = true) {
   return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.list(params),
-    queryFn: () => productionQCApi.list(params),
-    staleTime: 30_000,
-  });
-}
-
-export function useProductionQCCounts(enabled = true) {
-  return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.counts(),
-    queryFn: () => productionQCApi.counts(),
+    queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines(),
+    queryFn: () => productionQCApi.getRunningLines(),
     enabled,
-    staleTime: 30_000,
+    staleTime: 30 * 1000,
   });
 }
 
-export function useProductionQCPending() {
+// ==================== Entries ====================
+
+/**
+ * The list and its counts are made and approved from different screens — the
+ * floor fills, a lead approves elsewhere — so they refresh on coming back to the
+ * tab (the app turns that off by default) and every minute while it is in front.
+ * Both use the same settings, so the counts never run ahead of the list.
+ */
+const ENTRY_LIST_REFRESH = {
+  staleTime: 30 * 1000,
+  refetchOnWindowFocus: 'always',
+  refetchInterval: 60 * 1000,
+} as const;
+
+export function useProductionQCEntries(params?: ProductionQCEntryListParams) {
   return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.pending(),
-    queryFn: () => productionQCApi.pending(),
-    staleTime: 30_000,
+    queryKey: PRODUCTION_QC_QUERY_KEYS.entryList(params),
+    queryFn: () => productionQCApi.listEntries(params),
+    ...ENTRY_LIST_REFRESH,
   });
 }
 
-export function useProductionQCRunningRuns(lineId?: number, enabled = true) {
+/** A day's entries with their readings, laid out as the paper record. */
+export function useProductionQCSheetEntries(params: ProductionQCEntryListParams, enabled = true) {
   return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.runningRuns(lineId),
-    queryFn: () => productionQCApi.runningRuns(lineId),
+    queryKey: PRODUCTION_QC_QUERY_KEYS.entrySheet(params),
+    queryFn: () => productionQCApi.listEntriesWithResults(params),
     enabled,
-    staleTime: 15_000,
+    ...ENTRY_LIST_REFRESH,
   });
 }
 
-export function useProductionQCRunSessions(
-  runId: number | null,
-  sessionType?: string,
+/**
+ * Pending and sent-back cover every date; approved covers the range (today when
+ * none). The sidebar badge polls it with no range, for the pending count, on its
+ * own interval; the dashboard takes the list's refresh.
+ */
+export function useProductionQCEntryCounts(
+  params?: ProductionQCDateRangeParams,
+  enabled = true,
+  refetchInterval: number | false = ENTRY_LIST_REFRESH.refetchInterval,
 ) {
   return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.runSessions(runId!),
-    queryFn: () => productionQCApi.getRunSessions(runId!, sessionType),
-    enabled: !!runId,
-    staleTime: 30_000,
+    queryKey: PRODUCTION_QC_QUERY_KEYS.entryCounts(params),
+    queryFn: () => productionQCApi.getEntryCounts(params),
+    enabled,
+    staleTime: ENTRY_LIST_REFRESH.staleTime,
+    refetchOnWindowFocus: ENTRY_LIST_REFRESH.refetchOnWindowFocus,
+    refetchInterval: enabled ? refetchInterval : false,
   });
 }
 
-export function useProductionQCSession(sessionId: number | null) {
+export function useProductionQCEntry(id: number | null) {
   return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.detail(sessionId!),
-    queryFn: () => productionQCApi.getSession(sessionId!),
-    enabled: !!sessionId,
-    staleTime: 30_000,
+    queryKey: PRODUCTION_QC_QUERY_KEYS.entry(id ?? 0),
+    queryFn: () => productionQCApi.getEntry(id!),
+    enabled: !!id,
   });
 }
 
-// ============================================================================
-// Mutations
-// ============================================================================
-
-export function useCreateProductionQCSession(runId: number) {
+export function useCreateProductionQCEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: CreateProductionQCSessionRequest) =>
-      productionQCApi.createSession(runId, data),
+    mutationFn: (data: CreateProductionQCEntryRequest) => productionQCApi.createEntry(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.runSessions(runId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.counts(),
-      });
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.entries() });
+      // Saving a check on an unlinked product links it to the type chosen.
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines() });
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.parameterTypes() });
     },
   });
 }
 
-export function useRequestFinalProductionQC(runId: number) {
+export function useUpdateProductionQCEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => productionQCApi.requestFinalApproval(runId),
+    mutationFn: ({ id, data }: { id: number; data: UpdateProductionQCEntryRequest }) =>
+      productionQCApi.updateEntry(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.runSessions(runId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.counts(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.lists(),
-      });
-      queryClient.invalidateQueries({ queryKey: ['production-execution'] });
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.entries() });
     },
   });
 }
 
-export function useDeleteProductionQCSession(runId: number) {
+export function useApproveProductionQCEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (sessionId: number) =>
-      productionQCApi.deleteSession(sessionId),
+    mutationFn: ({ id, remarks }: { id: number; remarks?: string }) =>
+      productionQCApi.approveEntry(id, { remarks: remarks ?? '' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.runSessions(runId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.counts(),
-      });
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.entries() });
     },
   });
 }
 
-export function useUpdateProductionQCResults(sessionId: number, runId: number) {
+export function useSendBackProductionQCEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (results: UpdateProductionQCResultRequest[]) =>
-      productionQCApi.updateResults(sessionId, results),
+    mutationFn: ({ id, remarks }: { id: number; remarks: string }) =>
+      productionQCApi.sendBackEntry(id, { remarks }),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.detail(sessionId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.runSessions(runId),
-      });
+      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.entries() });
     },
   });
 }
 
-export function useSubmitProductionQCSession() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ sessionId, data }: { sessionId: number; data: ProductionQCSubmitRequest }) =>
-      productionQCApi.submitSession(sessionId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: PRODUCTION_QC_QUERY_KEYS.all,
-      });
-    },
+// ==================== Parameter types ====================
+
+export function useProductionParameterTypes(
+  params?: ProductionParameterTypeListParams,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.parameterTypeList(params),
+    queryFn: () => productionQCApi.listParameterTypes(params),
+    enabled,
+    staleTime: 30 * 1000,
   });
 }
 
-export function useApproveProductionQCSession() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      sessionId,
-      data,
-    }: {
-      sessionId: number;
-      data: ProductionQCApprovalRequest;
-    }) => productionQCApi.approveSession(sessionId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: ['production-execution'] });
-    },
+export function useProductionParameterType(id: number | null) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.parameterType(id ?? 0),
+    queryFn: () => productionQCApi.getParameterType(id!),
+    enabled: !!id,
   });
 }
 
-export function useRejectProductionQCSession() {
+/** Everything a master edit can change: the types, their parameters, and which lines offer which type. */
+function useInvalidateMasters() {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.parameterTypes() });
+    queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines() });
+    // A type's form number is its Print Documents row (Master Data): refresh that
+    // list too. Its key is PRINT_DOCUMENT_QUERY_KEYS.all, spelled out here because
+    // the print-document hooks import these.
+    queryClient.invalidateQueries({ queryKey: ['qcPrintDocuments'] });
+  };
+}
+
+export function useCreateProductionParameterType() {
+  const invalidate = useInvalidateMasters();
   return useMutation({
-    mutationFn: ({
-      sessionId,
-      data,
-    }: {
-      sessionId: number;
-      data: ProductionQCRejectRequest;
-    }) => productionQCApi.rejectSession(sessionId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.all });
-      queryClient.invalidateQueries({ queryKey: ['production-execution'] });
-    },
+    mutationFn: (data: ProductionParameterTypeRequest) => productionQCApi.createParameterType(data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateProductionParameterType() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ProductionParameterTypeRequest> }) =>
+      productionQCApi.updateParameterType(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteProductionParameterType() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: (id: number) => productionQCApi.deleteParameterType(id),
+    onSuccess: invalidate,
+  });
+}
+
+// ==================== Parameters ====================
+
+export function useProductionParameters(typeId: number | null) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.parameters(typeId ?? 0),
+    queryFn: () => productionQCApi.listParameters(typeId!),
+    enabled: !!typeId,
+  });
+}
+
+export function useCreateProductionParameter() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({ typeId, data }: { typeId: number; data: ProductionParameterRequest }) =>
+      productionQCApi.createParameter(typeId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateProductionParameter() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ProductionParameterRequest> }) =>
+      productionQCApi.updateParameter(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteProductionParameter() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: (id: number) => productionQCApi.deleteParameter(id),
+    onSuccess: invalidate,
+  });
+}
+
+// ==================== Linked products ====================
+
+export function useLinkProductionParameterTypeItem() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({ typeId, data }: { typeId: number; data: ProductionParameterTypeItemRequest }) =>
+      productionQCApi.linkItem(typeId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUnlinkProductionParameterTypeItem() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: (itemId: number) => productionQCApi.unlinkItem(itemId),
+    onSuccess: invalidate,
   });
 }

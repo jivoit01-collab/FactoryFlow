@@ -36,4 +36,16 @@ describe('api/index.ts — Barrel', () => {
     const content = readSource();
     expect(content).not.toContain("from './arrivalSlip'");
   });
+
+  it('re-exports from ./productionQC (the rebuilt Production QC client)', () => {
+    const content = readSource();
+    expect(content).toContain("from './productionQC'");
+  });
+
+  it.each(['onlineMonitoring', 'qcRecord'])(
+    'no longer re-exports the removed ./%s client',
+    (name) => {
+      expect(readSource()).not.toContain(`from './${name}'`);
+    },
+  );
 });

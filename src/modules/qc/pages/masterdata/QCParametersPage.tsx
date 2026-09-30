@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   Copy,
   Edit,
   FlaskConical,
@@ -10,7 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
 import { VendorSelect } from '@/modules/gate/components/VendorSelect';
@@ -46,6 +45,7 @@ import {
   useUpdateQCParameter,
 } from '../../api/qcParameter/qcParameter.queries';
 import { MaterialTypeSelect } from '../../components';
+import { ArrivalSlipTabs } from '../../components/qcSections';
 import { PARAMETER_TYPE_LABELS } from '../../constants';
 import type {
   CreateQCParameterRequest,
@@ -55,7 +55,6 @@ import type {
 } from '../../types';
 
 export default function QCParametersPage() {
-  const navigate = useNavigate();
   // Deep-linkable: an inspection can send the user here with the material type
   // already chosen (e.g. "Create vendor parameters" from the inspection page).
   const [searchParams] = useSearchParams();
@@ -346,21 +345,18 @@ export default function QCParametersPage() {
 
   return (
     <div className="space-y-6 pb-6">
+      <ArrivalSlipTabs />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <FlaskConical className="h-8 w-8" />
-              QC Parameters
-            </h2>
-          </div>
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <FlaskConical className="h-8 w-8" />
+            QC Parameters
+          </h2>
           <p className="text-muted-foreground">
-            Configure inspection parameters per material type — the same for every vendor,
-            or a separate set for vendors whose limits differ
+            Configure arrival slip inspection parameters per material type — the same for
+            every vendor, or a separate set for vendors whose limits differ
           </p>
         </div>
       </div>
@@ -465,7 +461,7 @@ export default function QCParametersPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {selectedSet?.is_default
-                ? 'Used for every vendor without their own set, and for production QC.'
+                ? 'Used for every vendor without their own set.'
                 : `Used only when the purchase order is on ${selectedSet?.label}.`}
             </p>
           </CardContent>

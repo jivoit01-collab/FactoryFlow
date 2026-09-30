@@ -120,7 +120,7 @@ Each row: the headline KPIs, the trend, the breakdown, the drill-downs, and the 
 ### 5.5 QC (`quality_control`, `production_execution` QC checks)
 - **KPIs:** Pass rate %, arrival slips pending/approved, inspections done, customer returns, line-clearance status.
 - **Trend:** pass rate over time. **Breakdown:** rejections by parameter/material-type.
-- **Status:** arrival-slip approvals, production-QC approvals pending.
+- **Status:** arrival-slip approvals pending. (Production QC was removed in 2026-09.)
 - **Backend:** **New** `QCDashboardSummaryAPI` (aggregate from QC + in-process/final QC check models).
 
 ### 5.6 Marketplace (`marketplace`)

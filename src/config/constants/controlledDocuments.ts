@@ -68,12 +68,6 @@ export const CONTROLLED_DOCUMENTS = {
     revision: '00',
     issueDate: '23-07-2026',
   },
-  ONLINE_QUALITY_RECORD: {
-    name: 'ON LINE MONITORING QUALITY RECORD',
-    code: 'QA-FRM-14-00-05-04',
-    revision: '00',
-    issueDate: '23-07-2026',
-  },
 
   // --- ETP / STP plant registers -------------------------------------------
   // Revisions and issue dates read off photographs of the FILLED registers

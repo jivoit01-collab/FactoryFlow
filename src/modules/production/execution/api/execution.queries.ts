@@ -655,7 +655,12 @@ export function useDeleteManpower(runId: number) {
 // Line Clearance
 // ============================================================================
 
-export function useLineClearances(lineId?: number, status?: string, enabled = true) {
+export function useLineClearances(
+  lineId?: number,
+  status?: string,
+  enabled = true,
+  refetchInterval: number | false = false,
+) {
   return useQuery({
     queryKey: EXECUTION_QUERY_KEYS.clearances(lineId, status),
     queryFn: () => executionApi.getLineClearances(lineId, status),
@@ -663,6 +668,7 @@ export function useLineClearances(lineId?: number, status?: string, enabled = tr
     staleTime: 30 * 1000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+    refetchInterval: enabled ? refetchInterval : false,
   });
 }
 

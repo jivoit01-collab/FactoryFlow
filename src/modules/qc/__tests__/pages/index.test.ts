@@ -11,9 +11,9 @@ function readSource(): string {
 }
 
 describe('pages/index.ts — Barrel', () => {
-  it('exports QCDashboardPage', () => {
+  it('no longer exports the removed QC dashboard', () => {
     const content = readSource();
-    expect(content).toContain('QCDashboardPage');
+    expect(content).not.toContain('QCDashboardPage');
   });
 
   it('exports PendingInspectionsPage', () => {

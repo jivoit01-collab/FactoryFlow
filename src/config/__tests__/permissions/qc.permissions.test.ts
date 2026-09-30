@@ -55,6 +55,46 @@ describe('QC_PERMISSIONS — Structure', () => {
     expect(QC_PERMISSIONS.MASTER_DATA).toHaveProperty('MANAGE_MATERIAL_TYPES');
     expect(QC_PERMISSIONS.MASTER_DATA).toHaveProperty('MANAGE_QC_PARAMETERS');
   });
+
+  // ─── Removed sub-modules ───
+  it('no longer defines the removed Online Monitoring and QC Record groups', () => {
+    expect(QC_PERMISSIONS).not.toHaveProperty('ONLINE_MONITORING');
+    expect(QC_PERMISSIONS).not.toHaveProperty('QC_RECORD');
+  });
+
+  // ─── PRODUCTION_QC (rebuilt: entries on a running line, one-step approval) ───
+  it('PRODUCTION_QC maps to the entry codenames', () => {
+    expect(QC_PERMISSIONS.PRODUCTION_QC).toEqual({
+      VIEW: 'quality_control.can_view_production_qc_entries',
+      FILL: 'quality_control.can_fill_production_qc_entries',
+      APPROVE: 'quality_control.can_approve_production_qc_entries',
+      MANAGE_PARAMETERS: 'quality_control.can_manage_production_qc_parameters',
+    });
+  });
+
+  it('holds none of the removed session-based Production QC codenames', () => {
+    // Whole values: each new codename contains an old one as a substring.
+    const values: string[] = Object.values(QC_PERMISSIONS).flatMap((group) =>
+      Object.values(group as Record<string, string>),
+    );
+    for (const removed of [
+      'quality_control.can_view_production_qc',
+      'quality_control.can_create_production_qc',
+      'quality_control.can_submit_production_qc',
+      'quality_control.can_approve_production_qc',
+    ]) {
+      expect(values).not.toContain(removed);
+    }
+    expect(QC_PERMISSIONS.PRODUCTION_QC).not.toHaveProperty('CREATE');
+    expect(QC_PERMISSIONS.PRODUCTION_QC).not.toHaveProperty('SUBMIT');
+  });
+
+  it('keeps the Line Clearance QC permission strings', () => {
+    expect(QC_PERMISSIONS.LINE_CLEARANCE_QC.VIEW).toBe('quality_control.can_view_line_clearance_qc');
+    expect(QC_PERMISSIONS.LINE_CLEARANCE_QC.APPROVE).toBe(
+      'quality_control.can_approve_line_clearance_qc',
+    );
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -72,6 +112,7 @@ describe('QC_MODULE_PREFIX', () => {
       ...Object.values(QC_PERMISSIONS.INSPECTION),
       ...Object.values(QC_PERMISSIONS.APPROVAL),
       ...Object.values(QC_PERMISSIONS.MASTER_DATA),
+      ...Object.values(QC_PERMISSIONS.PRODUCTION_QC),
     ];
     for (const value of allValues) {
       expect(value).toContain(QC_MODULE_PREFIX);
@@ -89,6 +130,7 @@ describe('QC_PERMISSIONS — Integrity', () => {
     ...Object.values(QC_PERMISSIONS.INSPECTION),
     ...Object.values(QC_PERMISSIONS.APPROVAL),
     ...Object.values(QC_PERMISSIONS.MASTER_DATA),
+    ...Object.values(QC_PERMISSIONS.PRODUCTION_QC),
   ];
 
   it('no permission values are undefined', () => {
@@ -114,7 +156,7 @@ describe('QC_PERMISSIONS — Integrity', () => {
     }
   });
 
-  it('total permission count is 15', () => {
-    expect(allValues).toHaveLength(15);
+  it('total permission count is 19', () => {
+    expect(allValues).toHaveLength(19);
   });
 });

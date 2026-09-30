@@ -7,8 +7,10 @@ The Warehouse module is the store operator's cockpit. It has three surfaces:
 
 1. **BOM Requests** — review material requests from production, approve/partially-
    approve line quantities against live stock, and issue approved materials to SAP.
-2. **FG Receipts** — receive finished goods off completed+QC-passed runs and post
-   them to SAP.
+2. **FG Receipts** — receive finished goods off completed runs and post them to SAP.
+   (The run screen's *Create FG Receipt* button, which raised them after a Final
+   Production QC pass, was removed with Production QC in 2026-09; nothing in the
+   frontend creates a new receipt today.)
 3. **WMS dashboards** (`/wms/*`) — read-only stock, movement, transfer, batch-expiry,
    sales-backlog, billing and warehouse-comparison analytics from SAP HANA.
 

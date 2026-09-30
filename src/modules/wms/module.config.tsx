@@ -15,15 +15,9 @@
  * `useWmsEnabled` / `WmsEnabledGate`.
  */
 import { Warehouse } from 'lucide-react';
-
-import {
-  STOCK_AUDIT_ACCESS,
-  STOCK_AUDIT_MODULE_PREFIX,
-  WMS_ACCESS,
-  WMS_ADMIN_ACCESS,
-  WMS_MODULE_PREFIX,
-} from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
+
+import { WMS_ACCESS, WMS_ADMIN_ACCESS, WMS_MODULE_PREFIX } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 
 const WmsOverviewPage = lazy(() => import('./pages/WmsOverviewPage'));
@@ -42,8 +36,6 @@ const WmsCountPage = lazy(() => import('./pages/WmsCountPage'));
 const WmsReportsPage = lazy(() => import('./pages/WmsReportsPage'));
 const WmsLabelsPage = lazy(() => import('./pages/WmsLabelsPage'));
 const WmsAdminPage = lazy(() => import('./pages/WmsAdminPage'));
-const StockAuditListPage = lazy(() => import('./stock-audit/pages/StockAuditListPage'));
-const StockAuditPage = lazy(() => import('./stock-audit/pages/StockAuditPage'));
 
 export const wmsModuleConfig: ModuleConfig = {
   name: 'warehouse-ops',
@@ -158,22 +150,6 @@ export const wmsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: WMS_ADMIN_ACCESS,
     },
-    {
-      // A physical count of a SAP warehouse against SAP's figures. Its own
-      // rights: auditors count stock without being WMS operators.
-      path: '/warehouse-ops/stock-audit',
-      element: <StockAuditListPage />,
-      layout: 'main',
-      permissions: STOCK_AUDIT_ACCESS,
-      breadcrumb: { label: 'Stock Audit' },
-    },
-    {
-      path: '/warehouse-ops/stock-audit/:auditId',
-      element: <StockAuditPage />,
-      layout: 'main',
-      permissions: STOCK_AUDIT_ACCESS,
-      breadcrumb: { label: 'Audit' },
-    },
   ],
   navigation: [
     {
@@ -181,9 +157,8 @@ export const wmsModuleConfig: ModuleConfig = {
       title: 'Warehouse Ops',
       icon: Warehouse,
       showInSidebar: true,
-      // Hide the whole module from users with no `wms.*` or `stock_audit.*`
-      // permission — an auditor sees the module with only Stock Audit in it.
-      modulePrefix: [WMS_MODULE_PREFIX, STOCK_AUDIT_MODULE_PREFIX],
+      // Hide the whole module from users with no `wms.*` permission.
+      modulePrefix: WMS_MODULE_PREFIX,
       hasSubmenu: true,
       children: [
         { path: '/warehouse-ops', title: 'Overview', permissions: WMS_ACCESS },
@@ -194,11 +169,6 @@ export const wmsModuleConfig: ModuleConfig = {
         { path: '/warehouse-ops/pick', title: 'Pick', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/outbound', title: 'Outbound', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/count', title: 'Cycle Count', permissions: WMS_ACCESS },
-        {
-          path: '/warehouse-ops/stock-audit',
-          title: 'Stock Audit',
-          permissions: STOCK_AUDIT_ACCESS,
-        },
         { path: '/warehouse-ops/removed', title: 'Removed Pallets', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/reports', title: 'Reports', permissions: WMS_ACCESS },
         { path: '/warehouse-ops/labels', title: 'Labels', permissions: WMS_ACCESS },

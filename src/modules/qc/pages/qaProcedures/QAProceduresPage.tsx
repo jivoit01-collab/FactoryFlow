@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   FileText,
   Loader2,
   Plus,
@@ -227,9 +226,6 @@ export default function QAProceduresPage() {
   return (
     <div className="space-y-6 pb-6">
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
         <div className="space-y-1">
           <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
             <FileText className="h-8 w-8" />

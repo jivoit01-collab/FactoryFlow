@@ -72,15 +72,33 @@ describe('module.config — Config', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('module.config — Routes', () => {
-  it('has /qc dashboard route with main layout', () => {
+  it('has a /qc route that opens the first page the user may see', () => {
     const content = readSource();
     expect(content).toContain("path: '/qc'");
+    expect(content).toContain('<QCSectionRedirect candidates={QC_HOME_CANDIDATES} />');
     expect(content).toContain("layout: 'main'");
   });
 
-  it('has /qc/pending route', () => {
+  it('has a /qc/master route that opens the first master tab the user may see', () => {
+    const content = readSource();
+    expect(content).toContain("path: '/qc/master'");
+    expect(content).toContain('<QCSectionRedirect candidates={MASTER_TABS} />');
+  });
+
+  it('redirects the legacy list routes to their pages', () => {
     const content = readSource();
     expect(content).toContain("path: '/qc/pending'");
+    expect(content).toContain('<Navigate to="/qc/arrival-slips" replace />');
+    expect(content).toContain('<Navigate to="/qc/arrival-slips/approvals" replace />');
+    expect(content).toContain('<Navigate to="/qc/qa-procedures" replace />');
+  });
+
+  it('keeps the arrival-slip pages on their own routes', () => {
+    const content = readSource();
+    expect(content).toContain("path: '/qc/arrival-slips'");
+    expect(content).toContain("path: '/qc/arrival-slips/approvals'");
+    expect(content).toContain("path: '/qc/arrival-slips/decision-changed'");
+    expect(content).toContain("path: '/qc/arrival-slips/inspections/:inspectionId'");
   });
 
   it('has /qc/inspections/:slipId/new route for creating inspections', () => {
@@ -98,14 +116,18 @@ describe('module.config — Routes', () => {
     expect(content).toContain("path: '/qc/approvals'");
   });
 
-  it('has /qc/master/material-types route', () => {
+  it('puts material types and QC parameters under arrival slips', () => {
     const content = readSource();
-    expect(content).toContain("path: '/qc/master/material-types'");
+    expect(content).toContain("path: '/qc/arrival-slips/material-types'");
+    expect(content).toContain("path: '/qc/arrival-slips/parameters'");
   });
 
-  it('has /qc/master/parameters route', () => {
+  it('redirects the old master addresses there, keeping the query', () => {
     const content = readSource();
+    expect(content).toContain("path: '/qc/master/material-types'");
+    expect(content).toContain('<RedirectWithSearch to="/qc/arrival-slips/material-types" />');
     expect(content).toContain("path: '/qc/master/parameters'");
+    expect(content).toContain('<RedirectWithSearch to="/qc/arrival-slips/parameters" />');
   });
 
   it('has /qc/master/print-documents route', () => {
@@ -113,9 +135,37 @@ describe('module.config — Routes', () => {
     expect(content).toContain("path: '/qc/master/print-documents'");
   });
 
+  it('has the Production QC pages on their own routes', () => {
+    const content = readSource();
+    expect(content).toContain("path: '/qc/production'");
+    expect(content).toContain("path: '/qc/production/new'");
+    expect(content).toContain("path: '/qc/production/entries/:entryId'");
+    expect(content).toContain("path: '/qc/production/entries/:entryId/edit'");
+    expect(content).toContain("path: '/qc/production/parameter-types'");
+  });
+
+  it('gates making and correcting an entry on FILL, the masters on MANAGE_PARAMETERS', () => {
+    const route = (path: string) => {
+      const content = readSource();
+      const start = content.indexOf(`path: '${path}'`);
+      return content.slice(start, content.indexOf('}', start));
+    };
+    expect(route('/qc/production/new')).toContain('QC_PERMISSIONS.PRODUCTION_QC.FILL');
+    expect(route('/qc/production/entries/:entryId/edit')).toContain(
+      'QC_PERMISSIONS.PRODUCTION_QC.FILL',
+    );
+    expect(route('/qc/production/parameter-types')).toContain(
+      'QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS',
+    );
+    expect(route('/qc/production/entries/:entryId')).toContain('PRODUCTION_QC_ENTRY_PERMISSIONS');
+  });
+
   it('lazy loads all page components', () => {
     const content = readSource();
-    expect(content).toContain('const QCDashboardPage = lazy(');
+    expect(content).toContain('const ProductionQCDashboardPage = lazy(');
+    expect(content).toContain('const ProductionQCEntryPage = lazy(');
+    expect(content).toContain('const ProductionQCEntryDetailPage = lazy(');
+    expect(content).toContain('const ProductionParameterTypesPage = lazy(');
     expect(content).toContain('const PendingInspectionsPage = lazy(');
     expect(content).toContain('const InspectionDetailPage = lazy(');
     expect(content).toContain('const ApprovalQueuePage = lazy(');
@@ -146,16 +196,69 @@ describe('module.config — Navigation', () => {
     expect(content).toContain('hasSubmenu: true');
   });
 
-  it('has children with submenu items', () => {
+  it('has one sidebar item per area, in order', () => {
+    const navigation = readSource().split('navigation: [')[1];
+    const titles = [...navigation.matchAll(/title: '([^']+)'/g)].map((m) => m[1]);
+    expect(titles).toEqual([
+      'Quality Control',
+      'Arrival Slips',
+      'Production QC',
+      'Line Clearance',
+      'QA Procedures',
+      'Master Data',
+    ]);
+  });
+
+  it('shows pending counts on the areas with a queue', () => {
     const content = readSource();
-    expect(content).toContain("title: 'Dashboard'");
-    expect(content).toContain("title: 'Arrival Slips'");
-    expect(content).toContain("title: 'Arrival Slip Approvals'");
-    expect(content).toContain("title: 'Production QC'");
-    expect(content).toContain("title: 'Line Clearance QA'");
-    expect(content).toContain("title: 'Customer Return QC'");
-    expect(content).toContain("title: 'Material Types'");
-    expect(content).toContain("title: 'QC Parameters'");
-    expect(content).toContain("title: 'Print Documents'");
+    expect(content).toContain('badge: PendingApprovalsBadge');
+    expect(content).toContain('badge: ProductionQCBadge');
+    expect(content).toContain('badge: LineClearanceQABadge');
+  });
+
+  it('has no dashboard', () => {
+    const content = readSource();
+    // The whole word: Production QC's own list page is ProductionQCDashboardPage.
+    expect(content).not.toMatch(/\bQCDashboardPage\b/);
+    expect(content).not.toContain("title: 'Dashboard'");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Removed sub-modules
+//
+// Online Quality Monitoring, Customer Return QC and the Documents (record sheet)
+// sub-module were removed; their backend is gone, so no route, sidebar item or
+// permission gate may point at them. Production QC was removed too and rebuilt
+// from scratch (entries on a running line): nothing of the old session-based
+// one — its pages, routes or permissions — may come back with it.
+// ═══════════════════════════════════════════════════════════════
+
+describe('module.config — Removed sub-modules', () => {
+  it.each(['/qc/online-monitoring', '/qc/customer-returns', '/qc/documents'])(
+    'has no %s route or sidebar item',
+    (path) => {
+      expect(readSource()).not.toContain(`'${path}`);
+    },
+  );
+
+  it.each([
+    "'/qc/production/runs/",
+    "'/qc/production/sessions/",
+    "'/qc/production/approvals'",
+    'ProductionQCRunPage',
+    'ProductionQCSessionPage',
+    'ProductionQCApprovalPage',
+    "'./pages/production/",
+  ])('keeps nothing of the old session-based Production QC: %s', (fragment) => {
+    expect(readSource()).not.toContain(fragment);
+  });
+
+  it('no longer gates on the removed permission groups', () => {
+    const content = readSource();
+    expect(content).not.toContain('PRODUCTION_QC.CREATE');
+    expect(content).not.toContain('PRODUCTION_QC.SUBMIT');
+    expect(content).not.toContain('ONLINE_MONITORING');
+    expect(content).not.toContain('QC_RECORD');
   });
 });

@@ -11,9 +11,12 @@
 > **Accuracy note (2026-07):** rewritten from the code. Older versions of this file and
 > `src/modules/production/docs/README.md` describe "hourly logging", sales-projection
 > planning, and "no cross-module imports" — all stale for the execution flow. The run
-> screen now imports from the **warehouse** and **qc** modules, the run timeline is
-> **segments + breakdowns**, and QC has moved to `/qc/production`. Trust this file and
-> the code.
+> screen now imports from the **warehouse** module and the run timeline is
+> **segments + breakdowns**. Trust this file and the code.
+>
+> **2026-09:** Production QC was removed (frontend and backend) to be rebuilt later.
+> With it went the run screen's post-completion **Send FG to QC / Create FG Receipt**
+> button and dialog, and the `/production/execution/runs/:runId/qc` redirect.
 
 ---
 
@@ -50,7 +53,6 @@ searchable dropdowns.
 - **Line clearance** — pre-production checklist gating the run; a single "all checks
   passed" toggle + supervisor sign, submitted for QA.
 - **Waste log** — BOM/manual material waste rows with an approval sign-off.
-- **FG receipt / Final QC** — post-completion handoff to warehouse + QC (cross-module).
 
 Types: `execution/types/execution.types.ts`, `planning/types/planning.types.ts`.
 API layer: `execution/api/execution.api.ts` (+ `.queries.ts` hooks),
@@ -96,7 +98,9 @@ adapts to state:
   with a priority; the breakdown detail dialog deep-links to the maintenance WO.
 - **Materials tab** (`MaterialConsumptionTable`): edit closing quantity per row; wastage
   is computed server-side.
-- **After completion** the action bar switches to the FG flow (see flow 6).
+- **After completion** the run is read-only; the action bar keeps Line Clearance,
+  Yield, Electricity, Cost and Waste Logs. (There is no FG-receipt action on the run
+  screen any more — see the note at the top.)
 
 ### 4. Line clearance — `LineClearanceFormPage`
 Create (optionally linked to a run via `?run_id=`), read-only list of the 9 checklist
@@ -112,17 +116,11 @@ items; enter a waste qty per row + a common reason; submit creates one waste log
 **Sign & Approve** (name → `useApproveWaste`) that marks the log fully approved — the
 status filter only offers **Pending** and **Approved**.
 
-### 6. Post-completion FG handoff (cross-module) — on `RunDetailPage`
-When the run is `COMPLETED`: **Send FG to QC** (`useRequestFinalProductionQC`) → the
-button reflects the Final-QC gate (`getFinalQCGate`): *FG QC Requested → Awaiting QC
-Approval → Final QC Rejected/Failed → Create FG Receipt*. Only on **APPROVED + PASS** can
-the user open the **FG Receipt** dialog, pick a warehouse (`useWarehouses` from the
-warehouse module), and `useCreateFGReceipt`. Warehouse then posts the goods receipt to
-SAP. FG receipts already RECEIVED/SAP_POSTED lock the button.
-
-### 7. QC — `QCRedirectPage`
-`/production/execution/runs/:runId/qc` immediately redirects to
-`/qc/production/runs/:runId`. QC lives in the separate `qc` module now.
+### 6. Post-completion FG handoff — removed
+The run screen used to raise the FG receipt after a Final Production QC pass (**Send FG
+to QC** → **Create FG Receipt**). That gate, the button and its warehouse-picker dialog
+were removed with Production QC, and no other screen calls the warehouse module's
+`useCreateFGReceipt` today; the warehouse side (receive / post to SAP) is unchanged.
 
 ---
 
@@ -149,11 +147,12 @@ SAP. FG receipts already RECEIVED/SAP_POSTED lock the button.
 
 ## Integrations & cross-module boundaries
 
-- **warehouse** (`@/modules/warehouse/...`): `useCreateBOMRequest`, `useCreateFGReceipt`,
-  `useFGReceipts`, and `useWarehouses` (GRPO) — the BOM-approval gate and FG-receipt
-  handoff are warehouse features surfaced inside the run screen.
-- **qc** (`@/modules/qc/...`): `useProductionQCRunSessions`, `useRequestFinalProductionQC`
-  — Final-QC gating of FG; the whole QC UI is external (`/qc/production`).
+- **warehouse** (`@/modules/warehouse/...`): `useCreateBOMRequest`,
+  `useReRequestBOMShortfall`, `useRunBOMRequests` — the BOM-approval gate is a warehouse
+  feature surfaced inside the run screen.
+- **qc**: the QC module's Line Clearance QA page approves this module's line clearances
+  (it reads them through `@/modules/production/execution/api`); the run screen no longer
+  imports anything from `@/modules/qc`.
 - **maintenance**: breakdowns link to work orders; the breakdown dialog deep-links to
   `/maintenance/work-orders/:id`.
 - **Dashboards**: "Production Movement" nav item points at
@@ -185,14 +184,9 @@ SAP. FG receipts already RECEIVED/SAP_POSTED lock the button.
 6. **Clearance rejected (NOT_CLEARED)** → the run's Line Clearance button stays red and
    Start stays blocked → operator must create a **new** clearance; there's no "re-open"
    of the rejected one.
-7. **Final QC not approved when trying to send FG** → FG button shows the gate label
-   (Awaiting QC Approval / Final QC Rejected) and is disabled → FG receipt can't be
-   created until QC passes; the state is legible but depends on QC-module data loading.
-8. **Warehouse already received the FG receipt** → `lockedFGReceipt` disables the button
-   ("Warehouse has already received this FG receipt") → prevents a duplicate receipt.
-9. **Two supervisors editing one run** → no live sync; one sees a stale timeline until a
+7. **Two supervisors editing one run** → no live sync; one sees a stale timeline until a
    mutation/refetch → risk of double-logging a stop/breakdown.
-10. **Company switch** → run lists come back empty for the other company (backend is
+8. **Company switch** → run lists come back empty for the other company (backend is
     company-scoped) → "my runs disappeared" confusion, not a bug.
 
 ---
@@ -200,17 +194,15 @@ SAP. FG receipts already RECEIVED/SAP_POSTED lock the button.
 ## Failure modes / what can break (operator-visible)
 
 - **Network/API error on a mutation** → `sonner` toast ("Failed to …") from the page's
-  `catch`, or the global axios interceptor handles it (FG/BOM requests rely on the
+  `catch`, or the global axios interceptor handles it (BOM requests rely on the
   interceptor). The action silently no-ops otherwise.
 - **SAP-backed dropdowns empty** → looks like "no results"; the underlying 503 isn't
   surfaced as an outage message.
 - **Permission missing** → the route/nav item is hidden by the module config's
   `permissions` gate; a deep link renders the app's not-authorized fallback.
 - **Slow run detail** → the page fans out many queries (run, materials, labour,
-  categories, clearances, waste, machines, QC sessions, FG receipts); on a slow link the
-  action bar/tabs populate incrementally.
-- **QC/warehouse module data not loaded** → FG action shows loading/disabled states until
-  those cross-module queries resolve.
+  categories, clearances, waste, machines); on a slow link the action bar/tabs populate
+  incrementally.
 
 ---
 
@@ -265,12 +257,11 @@ sees the entries they can use. QA-approve of clearance and all QC live in the `q
 - `execution/api/execution.queries.ts` — TanStack Query hooks, query keys, invalidation.
 - `execution/pages/ExecutionDashboardPage.tsx` — run list + filters.
 - `execution/pages/StartRunPage.tsx` — SKU/BOM/preset start wizard.
-- `execution/pages/RunDetailPage.tsx` — **the hub**: timeline, materials, gates, FG/QC handoff.
+- `execution/pages/RunDetailPage.tsx` — **the hub**: timeline, materials, start gates.
 - `execution/pages/LineClearanceFormPage.tsx` / `LineClearanceListPage.tsx` — clearance.
 - `execution/pages/WasteManagementPage.tsx` — waste logging + approval.
 - `execution/pages/{MachineChecklist,BreakdownLog,ResourceTracking,YieldReport,MasterData,LineManagement}Page.tsx`.
 - `execution/pages/*ReportPage.tsx` + `ReportsPage.tsx` — analytics screens.
-- `execution/pages/QCRedirectPage.tsx` — redirect to `/qc/production`.
 - `execution/components/` — `ProductionTimeline`, `MaterialConsumptionTable`,
   `ProductionStatusBadge`, `WasteLogTable`, `SignatureBlock`, badges, etc.
 - `execution/schemas/`, `execution/types/`, `execution/constants/`.

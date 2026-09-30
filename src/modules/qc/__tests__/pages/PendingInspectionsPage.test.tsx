@@ -26,7 +26,6 @@ describe('PendingInspectionsPage — Exports', () => {
   it('imports from lucide-react', () => {
     const content = readSource();
     expect(content).toContain("from 'lucide-react'");
-    expect(content).toContain('ArrowLeft');
     expect(content).toContain('RefreshCw');
     expect(content).toContain('Download');
     expect(content).toContain('Search');
@@ -102,7 +101,7 @@ describe('PendingInspectionsPage — States', () => {
   it('uses arrival_slip_id for navigation', () => {
     const content = readSource();
     expect(content).toContain('arrival_slip_id');
-    expect(content).toContain('/qc/inspections/');
+    expect(content).toContain('/qc/arrival-slips/inspections/');
   });
 
   it('shows vendor and SAP material details', () => {

@@ -6,7 +6,7 @@ import type { InspectionDecision } from '../types';
 interface QCSuccessScreenProps {
   type: 'chemist' | 'manager';
   decision: InspectionDecision;
-  onNavigateToDashboard: () => void;
+  onBackToQueue: () => void;
   onNavigateToHome: () => void;
 }
 
@@ -19,7 +19,7 @@ const DECISION_LABELS: Record<InspectionDecision, string> = {
 export function QCSuccessScreen({
   type,
   decision,
-  onNavigateToDashboard,
+  onBackToQueue,
   onNavigateToHome,
 }: QCSuccessScreenProps) {
   const actorLabel = type === 'chemist' ? 'QC Chemist' : 'QC Manager';
@@ -65,9 +65,9 @@ export function QCSuccessScreen({
       </p>
 
       <div className="flex flex-col gap-4 sm:flex-row opacity-0 animate-fade-in-delay-3">
-        <Button size="lg" onClick={onNavigateToDashboard} className="min-w-[200px]">
+        <Button size="lg" onClick={onBackToQueue} className="min-w-[200px]">
           <FlaskConical className="mr-2 h-5 w-5" />
-          QC Dashboard
+          Approval Queue
         </Button>
         <Button size="lg" variant="outline" onClick={onNavigateToHome} className="min-w-[200px]">
           <Home className="mr-2 h-5 w-5" />

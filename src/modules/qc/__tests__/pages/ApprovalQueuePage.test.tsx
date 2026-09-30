@@ -27,7 +27,6 @@ describe('ApprovalQueuePage — Exports', () => {
     const content = readSource();
     expect(content).toContain("from 'lucide-react'");
     expect(content).toContain('FlaskConical');
-    expect(content).toContain('ArrowLeft');
     expect(content).toContain('Eye');
   });
 
@@ -122,6 +121,6 @@ describe('ApprovalQueuePage — States', () => {
   it('has Review button for each inspection', () => {
     const content = readSource();
     expect(content).toContain('Review');
-    expect(content).toContain('navigate(`/qc/inspections/${item.arrival_slip}`)');
+    expect(content).toContain('navigate(`/qc/arrival-slips/inspections/${item.arrival_slip}`)');
   });
 });

@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  ArrowLeft,
   Edit,
   FlaskConical,
   Loader2,
@@ -10,7 +9,6 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
@@ -41,6 +39,7 @@ import {
   useSAPItems,
   useUpdateMaterialType,
 } from '../../api/materialType/materialType.queries';
+import { ArrivalSlipTabs } from '../../components/qcSections';
 import type { CreateMaterialTypeRequest, MaterialType, SAPItemMasterOption } from '../../types';
 
 const getSAPItemLabel = (item: SAPItemMasterOption) =>
@@ -67,7 +66,6 @@ const emptyMaterialTypeForm: CreateMaterialTypeRequest = {
 };
 
 export default function MaterialTypesPage() {
-  const navigate = useNavigate();
   const { hasAnyPermission } = usePermission();
   const canCopyQCParameters = hasAnyPermission([QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS]);
   const [materialTypeSearch, setMaterialTypeSearch] = useState('');
@@ -303,20 +301,17 @@ export default function MaterialTypesPage() {
 
   return (
     <div className="space-y-6 pb-6">
+      <ArrivalSlipTabs />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <FlaskConical className="h-8 w-8" />
-              Material Types
-            </h2>
-          </div>
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <FlaskConical className="h-8 w-8" />
+            Material Types
+          </h2>
           <p className="text-muted-foreground">
-            Manage material type definitions for QC inspections
+            Manage material type definitions for arrival slip inspections
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>

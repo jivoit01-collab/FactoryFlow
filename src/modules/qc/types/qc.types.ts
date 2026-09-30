@@ -84,12 +84,18 @@ export interface LinkMaterialTypeSAPItemRequest {
 }
 
 // QC Print Documents
-export type QCPrintDocumentKey = 'RAW_MATERIAL_INSPECTION' | 'QC_PARAMETERS';
+export type QCPrintDocumentKey =
+  | 'RAW_MATERIAL_INSPECTION'
+  | 'QC_PARAMETERS'
+  | 'PRODUCTION_QC_SHEET';
 
 export interface QCPrintDocument {
   id: number;
   document_key: QCPrintDocumentKey;
+  /** The form's name: the key's, or "Production QC — <type>" for a production sheet. */
   document_key_label: string;
+  /** Set for a production QC sheet: which parameter type (form) it is. */
+  production_parameter_type: number | null;
   document_id: string;
   notes: string;
   is_active: boolean;
@@ -99,13 +105,21 @@ export interface QCPrintDocument {
 
 export interface SaveQCPrintDocumentRequest {
   document_key: QCPrintDocumentKey;
+  production_parameter_type?: number | null;
   document_id: string;
   notes?: string;
 }
 
+/** A form a document number can be set for. */
+export interface QCPrintDocumentOption {
+  document_key: QCPrintDocumentKey;
+  production_parameter_type: number | null;
+  label: string;
+}
+
 // QC Parameter Set — one material type can carry different limits per vendor.
 // The set with a blank vendor_code is the default: it applies to every vendor
-// without one of their own, and to production QC.
+// without one of their own.
 export interface QCParameterSet {
   id: number;
   material_type: number;
@@ -391,144 +405,4 @@ export interface ApprovalRequest {
   remarks?: string;
   decision?: InspectionDecision;
   final_status?: InspectionFinalStatus;
-}
-
-// ============================================================================
-// Production QC Types
-// ============================================================================
-
-export type ProductionQCSessionType = 'IN_PROCESS' | 'FINAL';
-
-export type ProductionQCWorkflowStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
-
-export type ProductionQCOverallResult = 'PASS' | 'FAIL' | '';
-
-// Production QC Parameter Result (same structure as ParameterResult)
-export interface ProductionQCResult {
-  id: number;
-  parameter_master: number;
-  parameter_code: string;
-  parameter_name: string;
-  standard_value: string;
-  parameter_type: ParameterType;
-  min_value: string | null;
-  max_value: string | null;
-  uom: string;
-  is_mandatory: boolean;
-  result_value: string;
-  result_numeric: number | null;
-  is_within_spec: boolean | null;
-  remarks: string;
-}
-
-// Production QC Session (full detail with results)
-export interface ProductionQCSession {
-  id: number;
-  production_run: number;
-  run_number: number;
-  material_type: number | null;
-  material_type_name: string | null;
-  material_type_code: string | null;
-  session_number: number;
-  session_type: ProductionQCSessionType;
-  checked_at: string;
-  checked_by: number | null;
-  checked_by_name: string | null;
-  overall_result: ProductionQCOverallResult;
-  workflow_status: ProductionQCWorkflowStatus;
-  submitted_by: number | null;
-  submitted_by_name: string | null;
-  submitted_at: string | null;
-  remarks: string;
-  results: ProductionQCResult[];
-  created_at: string;
-  updated_at: string;
-}
-
-// Production QC Session list item (lightweight)
-export interface ProductionQCSessionListItem {
-  id: number;
-  production_run: number;
-  run_number: number;
-  run_date: string;
-  product: string;
-  line_name: string;
-  material_type: number | null;
-  material_type_name: string | null;
-  session_number: number;
-  session_type: ProductionQCSessionType;
-  checked_at: string;
-  checked_by_name: string | null;
-  overall_result: ProductionQCOverallResult;
-  workflow_status: ProductionQCWorkflowStatus;
-  pass_count: number;
-  fail_count: number;
-  total_params: number;
-  created_at: string;
-}
-
-// Production QC Counts
-export interface ProductionQCCounts {
-  draft: number;
-  submitted: number;
-  approved?: number;
-  rejected?: number;
-}
-
-// A currently-running production run a QC user can select to do QC on
-export interface ProductionQCRunningRun {
-  id: number;
-  run_number: number;
-  date: string;
-  line: number;
-  line_name: string;
-  product: string;
-  item_code: string;
-  status: string;
-  live_status: 'RUNNING' | 'BREAKDOWN' | 'STOPPED' | string;
-  inprocess_qc_count: number;
-  latest_inprocess_status: ProductionQCWorkflowStatus | null;
-  latest_inprocess_result: ProductionQCOverallResult | null;
-  has_pending_qc: boolean;
-}
-
-// Create session request
-export interface CreateProductionQCSessionRequest {
-  material_type_id: number;
-  session_type: ProductionQCSessionType;
-  checked_at: string;
-  remarks?: string;
-}
-
-// Update result request (same as existing pattern)
-export interface UpdateProductionQCResultRequest {
-  parameter_master_id: number;
-  result_value: string;
-  result_numeric?: number | null;
-  is_within_spec?: boolean | null;
-  remarks?: string;
-}
-
-// Production QC approval request
-export interface ProductionQCSubmitRequest {
-  overall_result: 'PASS' | 'FAIL';
-}
-
-export interface ProductionQCApprovalRequest {
-  remarks?: string;
-  overall_result?: 'PASS' | 'FAIL';
-}
-
-export interface ProductionQCRejectRequest {
-  remarks?: string;
-}
-
-// Production QC list filter params
-export interface ProductionQCListParams {
-  workflow_status?: ProductionQCWorkflowStatus;
-  session_type?: ProductionQCSessionType;
-  run_id?: number;
-  line?: number;
-  date_from?: string;
-  date_to?: string;
 }

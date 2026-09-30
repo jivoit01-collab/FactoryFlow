@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Download, History, RefreshCw, Search, ShieldX } from 'lucide-react';
+import { AlertCircle, Download, History, RefreshCw, Search, ShieldX } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -9,13 +9,14 @@ import { DateRangePicker } from '@/modules/gate/components';
 import { Button, Input } from '@/shared/components/ui';
 
 import { useDecisionChangedInspections } from '../api/inspection/inspection.queries';
+import { ArrivalSlipTabs } from '../components/qcSections';
 import { DECISION_STATUS_CONFIG } from '../constants';
 import type { InspectionDecisionInfo, InspectionListItem } from '../types';
 
 function getNavigateTo(item: InspectionListItem): string {
   return item.inspection_id
-    ? `/qc/inspections/${item.arrival_slip_id}`
-    : `/qc/inspections/${item.arrival_slip_id}/new`;
+    ? `/qc/arrival-slips/inspections/${item.arrival_slip_id}`
+    : `/qc/arrival-slips/inspections/${item.arrival_slip_id}/new`;
 }
 
 function getDecisionBadge(decision?: InspectionDecisionInfo | null) {
@@ -125,20 +126,12 @@ export default function DecisionChangedInspectionsPage() {
 
   return (
     <div className="space-y-6">
+      <ArrivalSlipTabs />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/qc')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">Decision Changes</h2>
-          </div>
+          <h2 className="mb-1 text-3xl font-bold tracking-tight">Decision Changes</h2>
           <p className="text-muted-foreground">
             Inspections where the QA Manager changed their decision at least once
           </p>

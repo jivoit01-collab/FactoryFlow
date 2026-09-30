@@ -1,11 +1,29 @@
 import { FlaskConical } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
-// Lazy load QC pages
-const QCDashboardPage = lazy(() => import('./pages/QCDashboardPage'));
+import {
+  LineClearanceQABadge,
+  PendingApprovalsBadge,
+  ProductionQCBadge,
+} from './components/QCSidebarBadges';
+import { RedirectWithSearch } from './components/RedirectWithSearch';
+import {
+  APPROVAL_PERMISSIONS,
+  LINE_CLEARANCE_QC_PERMISSIONS,
+  MASTER_PERMISSIONS,
+  MASTER_TABS,
+  PRINT_DOCUMENT_PERMISSIONS,
+  PRODUCTION_QC_ENTRY_PERMISSIONS,
+  QA_PROCEDURES_PERMISSIONS,
+  QC_HOME_CANDIDATES,
+} from './constants/qcSections';
+
+// `/qc` and `/qc/master` open the first page of their section the user may see
+const QCSectionRedirect = lazy(() => import('./pages/QCSectionRedirect'));
 
 // Arrival Slips submodule
 const PendingInspectionsPage = lazy(() => import('./pages/PendingInspectionsPage'));
@@ -13,15 +31,24 @@ const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
 const DecisionChangedInspectionsPage = lazy(() => import('./pages/DecisionChangedInspectionsPage'));
 
+// Production QC submodule — checks on a running line, approved by a QC lead
+const ProductionQCDashboardPage = lazy(
+  () => import('./pages/productionQC/ProductionQCDashboardPage'),
+);
+const ProductionQCEntryPage = lazy(() => import('./pages/productionQC/ProductionQCEntryPage'));
+const ProductionQCEntryDetailPage = lazy(
+  () => import('./pages/productionQC/ProductionQCEntryDetailPage'),
+);
+const ProductionParameterTypesPage = lazy(
+  () => import('./pages/productionQC/ProductionParameterTypesPage'),
+);
+const ProductionParameterTypePage = lazy(
+  () => import('./pages/productionQC/ProductionParameterTypePage'),
+);
+
 // QA Procedures — controlled documents kept as the original PDF file
 const QAProceduresPage = lazy(() => import('./pages/qaProcedures/QAProceduresPage'));
 const QAProcedureLogPage = lazy(() => import('./pages/qaProcedures/QAProcedureLogPage'));
-
-// Documents submodule — fillable QC record sheets
-const QCDocumentsPage = lazy(() => import('./pages/documents/QCDocumentsPage'));
-const QCRecordDetailPage = lazy(() => import('./pages/documents/QCRecordDetailPage'));
-const RecordFormatPage = lazy(() => import('./pages/documents/RecordFormatPage'));
-const RecordSheetFormatPage = lazy(() => import('./pages/documents/RecordSheetFormatPage'));
 
 // Master Data (shared)
 const MaterialTypesPage = lazy(() => import('./pages/masterdata/MaterialTypesPage'));
@@ -31,57 +58,43 @@ const PrintDocumentsPage = lazy(() => import('./pages/masterdata/PrintDocumentsP
 // Line Clearance QA submodule
 const LineClearanceQAPage = lazy(() => import('./pages/LineClearanceQAPage'));
 
-// Production QC submodule
-const ProductionQCDashboardPage = lazy(
-  () => import('./pages/production/ProductionQCDashboardPage'),
-);
-const ProductionQCRunPage = lazy(() => import('./pages/production/ProductionQCRunPage'));
-const ProductionQCSessionPage = lazy(() => import('./pages/production/ProductionQCSessionPage'));
-const ProductionQCApprovalPage = lazy(() => import('./pages/production/ProductionQCApprovalPage'));
-const CustomerReturnQCDashboardPage = lazy(
-  () => import('./pages/customerReturns/CustomerReturnQCDashboardPage'),
-);
-const CustomerReturnQCDetailPage = lazy(
-  () => import('./pages/customerReturns/CustomerReturnQCDetailPage'),
-);
-// Online Quality Monitoring submodule
-const OnlineMonitoringListPage = lazy(
-  () => import('./pages/onlineMonitoring/OnlineMonitoringListPage'),
-);
-const OnlineMonitoringRecordPage = lazy(
-  () => import('./pages/onlineMonitoring/OnlineMonitoringRecordPage'),
-);
-const OnlineMonitoringSpecMasterPage = lazy(
-  () => import('./pages/onlineMonitoring/SpecMasterPage'),
-);
-
-const lineClearanceQCPermissions = [
-  QC_PERMISSIONS.LINE_CLEARANCE_QC.VIEW,
-  QC_PERMISSIONS.LINE_CLEARANCE_QC.APPROVE,
+// Everything the module's pages are gated on. The sidebar shows the module to
+// exactly these users, so nobody gets a Quality Control menu with nothing in it.
+const QC_MODULE_PERMISSIONS = [
+  QC_PERMISSIONS.INSPECTION.VIEW,
+  ...APPROVAL_PERMISSIONS,
+  ...PRODUCTION_QC_ENTRY_PERMISSIONS,
+  QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS,
+  ...LINE_CLEARANCE_QC_PERMISSIONS,
+  ...QA_PROCEDURES_PERMISSIONS,
+  // The audit log is deliberately held on its own, without the rights to view
+  // or manage the library. It has no sidebar item: it is opened from the
+  // Audit log button on QA Procedures, and a user holding only this lands on
+  // it from `/qc`.
+  QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT,
+  ...MASTER_PERMISSIONS,
 ];
 
 /**
  * Quality Control module configuration
  *
- * Submodules:
- * 1. Arrival Slips — Raw material inspection workflow
- * 2. Production QC — Production run quality control
- * 3. Master Data — Material types & QC parameters (shared)
+ * Sidebar areas (one item each; an area of several pages has a tab bar across
+ * them, see constants/qcSections.ts):
+ * 1. Arrival Slips — inspections, the chemist / QAM approval queues, decision
+ *    changes, and the masters they run on: material types and QC parameters
+ * 2. Production QC — checks on a running line and their approval; its parameter types
+ * 3. Line Clearance — QA approval of pre-production line clearances
+ * 4. QA Procedures — controlled procedures kept as the original PDF
+ * 5. Master Data — print documents: every printed form's document number
  */
 export const qcModuleConfig: ModuleConfig = {
   name: 'qc',
   routes: [
-    // ==================== QC Dashboard ====================
     {
       path: '/qc',
-      element: <QCDashboardPage />,
+      element: <QCSectionRedirect candidates={QC_HOME_CANDIDATES} />,
       layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.INSPECTION.VIEW,
-        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
-        QC_PERMISSIONS.PRODUCTION_QC.VIEW,
-        ...lineClearanceQCPermissions,
-      ],
+      permissions: QC_MODULE_PERMISSIONS,
     },
 
     // ==================== Arrival Slips Submodule ====================
@@ -107,10 +120,8 @@ export const qcModuleConfig: ModuleConfig = {
       path: '/qc/arrival-slips/approvals',
       element: <ApprovalQueuePage />,
       layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
-        QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
-      ],
+      permissions: APPROVAL_PERMISSIONS,
+      breadcrumb: { label: 'Approvals' },
     },
     {
       path: '/qc/arrival-slips/decision-changed',
@@ -119,132 +130,74 @@ export const qcModuleConfig: ModuleConfig = {
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
       breadcrumb: { label: 'Decision Changes' },
     },
+    {
+      path: '/qc/arrival-slips/material-types',
+      element: <MaterialTypesPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
+      breadcrumb: { label: 'Material Types' },
+    },
+    {
+      path: '/qc/arrival-slips/parameters',
+      element: <QCParametersPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
+      breadcrumb: { label: 'QC Parameters' },
+    },
 
     // ==================== Production QC Submodule ====================
     {
       path: '/qc/production',
       element: <ProductionQCDashboardPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+      permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
+      breadcrumb: { label: 'Production QC' },
     },
     {
-      path: '/qc/production/runs/:runId',
-      element: <ProductionQCRunPage />,
+      // Opened from the New dialog as ?run=<run_id>&type=<parameter_type_id>
+      path: '/qc/production/new',
+      element: <ProductionQCEntryPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.FILL],
+      breadcrumb: { label: 'New Entry' },
     },
     {
-      path: '/qc/production/sessions/:sessionId',
-      element: <ProductionQCSessionPage />,
+      path: '/qc/production/entries/:entryId',
+      element: <ProductionQCEntryDetailPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
+      permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
+      breadcrumb: { label: 'Entry' },
     },
     {
-      path: '/qc/production/approvals',
-      element: <ProductionQCApprovalPage />,
+      // The same form as a new entry; saving sends it back for approval.
+      path: '/qc/production/entries/:entryId/edit',
+      element: <ProductionQCEntryPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.PRODUCTION_QC.APPROVE],
-    },
-    // ==================== Online Quality Monitoring Submodule ====================
-    {
-      path: '/qc/online-monitoring',
-      element: <OnlineMonitoringListPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
-      breadcrumb: { label: 'Online Monitoring' },
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.FILL],
+      breadcrumb: { label: 'Edit' },
     },
     {
-      path: '/qc/online-monitoring/specifications',
-      element: <OnlineMonitoringSpecMasterPage />,
+      path: '/qc/production/parameter-types',
+      element: <ProductionParameterTypesPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
-      breadcrumb: { label: 'Specifications' },
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
+      breadcrumb: { label: 'Parameter Types' },
     },
     {
-      path: '/qc/online-monitoring/:recordId',
-      element: <OnlineMonitoringRecordPage />,
+      // One type: its parameters and its linked products, on tabs.
+      path: '/qc/production/parameter-types/:typeId',
+      element: <ProductionParameterTypePage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
-      breadcrumb: { label: 'Record' },
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
+      breadcrumb: { label: 'Type' },
     },
+
     // ==================== Line Clearance QA Submodule ====================
     {
       path: '/qc/line-clearance',
       element: <LineClearanceQAPage />,
       layout: 'main',
-      permissions: lineClearanceQCPermissions,
-    },
-
-    // ==================== Customer Return QC Submodule ====================
-    {
-      path: '/qc/customer-returns',
-      element: <CustomerReturnQCDashboardPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
-      breadcrumb: { label: 'Customer Return QC' },
-    },
-    {
-      path: '/qc/customer-returns/:returnId',
-      element: <CustomerReturnQCDetailPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
-      breadcrumb: { label: 'Return QC' },
-    },
-    // ==================== Documents Submodule ====================
-    {
-      path: '/qc/documents',
-      element: <QCDocumentsPage />,
-      layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.QC_RECORD.VIEW,
-        QC_PERMISSIONS.QC_RECORD.FILL,
-        QC_PERMISSIONS.QC_RECORD.APPROVE,
-      ],
-      breadcrumb: { label: 'Documents' },
-    },
-    {
-      // Laying out the printed form itself. Gated on the approver permission
-      // alone — the same one the backend gates the template endpoints on — so
-      // an operator who only fills sheets cannot reshape them.
-      path: '/qc/documents/forms/new',
-      element: <RecordFormatPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
-      breadcrumb: { label: 'New Format' },
-    },
-    {
-      path: '/qc/documents/forms/:templateId',
-      element: <RecordFormatPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
-      breadcrumb: { label: 'Customize Format' },
-    },
-    {
-      // A format uploaded as the Excel sheet QA already keeps. Same gate as
-      // the format builder above.
-      path: '/qc/documents/sheets/new',
-      element: <RecordSheetFormatPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
-      breadcrumb: { label: 'Upload Excel Format' },
-    },
-    {
-      path: '/qc/documents/sheets/:templateId',
-      element: <RecordSheetFormatPage />,
-      layout: 'main',
-      permissions: [QC_PERMISSIONS.QC_RECORD.APPROVE],
-      breadcrumb: { label: 'Sheet Format' },
-    },
-    {
-      path: '/qc/documents/records/:recordId',
-      element: <QCRecordDetailPage />,
-      layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.QC_RECORD.VIEW,
-        QC_PERMISSIONS.QC_RECORD.FILL,
-        QC_PERMISSIONS.QC_RECORD.APPROVE,
-      ],
-      breadcrumb: { label: 'Record' },
+      permissions: LINE_CLEARANCE_QC_PERMISSIONS,
     },
 
     // ==================== QA Procedures (PDF library) ====================
@@ -252,7 +205,7 @@ export const qcModuleConfig: ModuleConfig = {
       path: '/qc/qa-procedures',
       element: <QAProceduresPage />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
+      permissions: QA_PROCEDURES_PERMISSIONS,
       breadcrumb: { label: 'QA Procedures' },
     },
     {
@@ -265,34 +218,42 @@ export const qcModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Audit Log' },
     },
 
-    // ==================== Shared Master Data ====================
+    // ==================== Masters ====================
+    {
+      path: '/qc/master',
+      element: <QCSectionRedirect candidates={MASTER_TABS} />,
+      layout: 'main',
+      permissions: PRINT_DOCUMENT_PERMISSIONS,
+      breadcrumb: { label: 'Master Data' },
+    },
+    // Material types and QC parameters are tabs of Arrival Slips now; the old
+    // addresses redirect, keeping `?materialType=` and the like.
     {
       path: '/qc/master/material-types',
-      element: <MaterialTypesPage />,
+      element: <RedirectWithSearch to="/qc/arrival-slips/material-types" />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
-      breadcrumb: { label: 'Materials' },
     },
     {
       path: '/qc/master/parameters',
-      element: <QCParametersPage />,
+      element: <RedirectWithSearch to="/qc/arrival-slips/parameters" />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
-      breadcrumb: { label: 'Params' },
     },
     {
       path: '/qc/master/print-documents',
       element: <PrintDocumentsPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
-      breadcrumb: { label: 'Print Docs' },
+      breadcrumb: { label: 'Print Documents' },
     },
 
-    // ==================== Legacy route redirects ====================
-    // Keep old routes working (redirect via same components)
+    // ==================== Legacy routes ====================
+    // Old bookmarks keep working. The list pages redirect, so the tab bar and
+    // sidebar light up; the detail pages render in place (their ids are params).
     {
       path: '/qc/pending',
-      element: <PendingInspectionsPage />,
+      element: <Navigate to="/qc/arrival-slips" replace />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
     },
@@ -310,20 +271,16 @@ export const qcModuleConfig: ModuleConfig = {
     },
     {
       path: '/qc/approvals',
-      element: <ApprovalQueuePage />,
+      element: <Navigate to="/qc/arrival-slips/approvals" replace />,
       layout: 'main',
-      permissions: [
-        QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
-        QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
-      ],
+      permissions: APPROVAL_PERMISSIONS,
     },
-    // The PDF library used to live at /qc/pdf-documents; keep bookmarks working.
+    // The PDF library used to live at /qc/pdf-documents.
     {
       path: '/qc/pdf-documents',
-      element: <QAProceduresPage />,
+      element: <Navigate to="/qc/qa-procedures" replace />,
       layout: 'main',
-      permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
-      breadcrumb: { label: 'QA Procedures' },
+      permissions: QA_PROCEDURES_PERMISSIONS,
     },
   ],
   navigation: [
@@ -332,116 +289,39 @@ export const qcModuleConfig: ModuleConfig = {
       title: 'Quality Control',
       icon: FlaskConical,
       showInSidebar: true,
-      // Gate the QC module on inspection/arrival-slip perms (QC team) plus the
-      // line-clearance-QC perms (the dedicated Production QC group). Line-clearance
-      // QC — not production-QC — is used as the second gate on purpose: the
-      // shop-floor `production_execution` group holds can_view_production_qc for
-      // in-run QC, so gating on that would wrongly surface the whole QC module to
-      // them; only the Production QC group holds the line-clearance-QC perms.
-      // Children below are still filtered per-permission, so a Production QC user
-      // sees only the Production QC + Line Clearance QA items.
-      permissions: [
-        QC_PERMISSIONS.INSPECTION.VIEW,
-        QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
-        ...lineClearanceQCPermissions,
-        // Same reasoning for the record sheets: a QA operator who only fills
-        // daily records still needs the module to appear.
-        QC_PERMISSIONS.QC_RECORD.VIEW,
-        QC_PERMISSIONS.DOCUMENT_FILE.VIEW,
-        // And for the audit reader: the log permission is deliberately held on
-        // its own, without the rights to view or manage the library. The log has
-        // no sidebar item of its own — it is opened from the Audit log button on
-        // the QA Procedures page — but the route stays permission-gated.
-        QC_PERMISSIONS.DOCUMENT_FILE.VIEW_AUDIT,
-      ],
+      // The line-clearance-QC perms are held only by QC groups (Production QC,
+      // qc_manager) — not by the shop-floor `production_execution` group — so
+      // gating on them does not surface this module to the shop floor.
+      permissions: QC_MODULE_PERMISSIONS,
       hasSubmenu: true,
       children: [
-        {
-          path: '/qc',
-          title: 'Dashboard',
-          permissions: [
-            QC_PERMISSIONS.INSPECTION.VIEW,
-            QC_PERMISSIONS.ARRIVAL_SLIP.VIEW,
-            QC_PERMISSIONS.PRODUCTION_QC.VIEW,
-            ...lineClearanceQCPermissions,
-          ],
-        },
         {
           path: '/qc/arrival-slips',
           title: 'Arrival Slips',
           permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
-        },
-        {
-          path: '/qc/arrival-slips/approvals',
-          title: 'Arrival Slip Approvals',
-          permissions: [
-            QC_PERMISSIONS.APPROVAL.APPROVE_AS_CHEMIST,
-            QC_PERMISSIONS.APPROVAL.APPROVE_AS_QAM,
-          ],
-        },
-        {
-          path: '/qc/arrival-slips/decision-changed',
-          title: 'Decision Changes',
-          permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
+          badge: PendingApprovalsBadge,
         },
         {
           path: '/qc/production',
           title: 'Production QC',
-          permissions: [QC_PERMISSIONS.PRODUCTION_QC.VIEW],
-        },
-        {
-          path: '/qc/production/approvals',
-          title: 'Production QC Approvals',
-          permissions: [QC_PERMISSIONS.PRODUCTION_QC.APPROVE],
-        },
-        {
-          path: '/qc/online-monitoring',
-          title: 'Online Quality Monitoring',
-          permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
-        },
-        {
-          path: '/qc/online-monitoring/specifications',
-          title: 'Water Quality Specs',
-          permissions: [QC_PERMISSIONS.ONLINE_MONITORING.VIEW],
+          permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
+          badge: ProductionQCBadge,
         },
         {
           path: '/qc/line-clearance',
-          title: 'Line Clearance QA',
-          permissions: lineClearanceQCPermissions,
-        },
-        {
-          path: '/qc/customer-returns',
-          title: 'Customer Return QC',
-          permissions: [QC_PERMISSIONS.INSPECTION.VIEW],
-        },
-        {
-          path: '/qc/documents',
-          title: 'Documents',
-          permissions: [
-            QC_PERMISSIONS.QC_RECORD.VIEW,
-            QC_PERMISSIONS.QC_RECORD.FILL,
-            QC_PERMISSIONS.QC_RECORD.APPROVE,
-          ],
+          title: 'Line Clearance',
+          permissions: LINE_CLEARANCE_QC_PERMISSIONS,
+          badge: LineClearanceQABadge,
         },
         {
           path: '/qc/qa-procedures',
           title: 'QA Procedures',
-          permissions: [QC_PERMISSIONS.DOCUMENT_FILE.VIEW, QC_PERMISSIONS.DOCUMENT_FILE.MANAGE],
+          permissions: QA_PROCEDURES_PERMISSIONS,
         },
         {
-          path: '/qc/master/material-types',
-          title: 'Material Types',
-          permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_MATERIAL_TYPES],
-        },
-        {
-          path: '/qc/master/parameters',
-          title: 'QC Parameters',
-          permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
-        },
-        {
-          path: '/qc/master/print-documents',
-          title: 'Print Documents',
-          permissions: [QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS],
+          path: '/qc/master',
+          title: 'Master Data',
+          permissions: PRINT_DOCUMENT_PERMISSIONS,
         },
       ],
     },

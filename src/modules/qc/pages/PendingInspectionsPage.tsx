@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Download, RefreshCw, Search, ShieldX } from 'lucide-react';
+import { AlertCircle, Download, RefreshCw, Search, ShieldX } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -11,6 +11,7 @@ import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 
 import { useInspectionsByTab } from '../api/inspection/inspection.queries';
+import { ArrivalSlipTabs } from '../components/qcSections';
 import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
 import type {
   InspectionDecisionInfo,
@@ -23,8 +24,8 @@ import type {
 const TAB_CONFIG = {
   all: {
     label: 'All',
-    title: 'All Inspections',
-    description: 'All inspections',
+    title: 'All Arrival Slip Inspections',
+    description: 'All arrival slip inspections',
   },
   actionable: {
     label: 'Actionable',
@@ -86,8 +87,8 @@ const STATUS_BADGE_CLASSES: Record<InspectionListWorkflowStatus, string> = {
 
 function getNavigateTo(item: InspectionListItem): string {
   return item.inspection_id
-    ? `/qc/inspections/${item.arrival_slip_id}`
-    : `/qc/inspections/${item.arrival_slip_id}/new`;
+    ? `/qc/arrival-slips/inspections/${item.arrival_slip_id}`
+    : `/qc/arrival-slips/inspections/${item.arrival_slip_id}/new`;
 }
 
 function getEffectiveStatusBadge(item: InspectionListItem) {
@@ -254,20 +255,12 @@ export default function PendingInspectionsPage() {
 
   return (
     <div className="space-y-6">
+      <ArrivalSlipTabs />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => navigate('/qc')}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight">{currentTab.title}</h2>
-          </div>
+          <h2 className="mb-1 text-3xl font-bold tracking-tight">{currentTab.title}</h2>
           <p className="text-muted-foreground">{currentTab.description}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">

@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, Eye, FlaskConical, RefreshCw, ShieldX } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +13,7 @@ import {
   useAwaitingChemistInspections,
   useAwaitingQAMInspections,
 } from '../api/inspection/inspection.queries';
+import { ArrivalSlipTabs } from '../components/qcSections';
 import { DECISION_STATUS_CONFIG, WORKFLOW_STATUS_CONFIG } from '../constants';
 import type { Inspection, InspectionDecisionInfo, InspectionWorkflowStatus } from '../types';
 
@@ -104,18 +105,15 @@ export default function ApprovalQueuePage() {
 
   return (
     <div className="space-y-6 pb-6">
+      <ArrivalSlipTabs />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/qc')}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <FlaskConical className="h-8 w-8" />
-              Approval Queue
-            </h2>
-          </div>
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <FlaskConical className="h-8 w-8" />
+            Approval Queue
+          </h2>
           <p className="text-muted-foreground">Review and approve inspections</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -299,7 +297,7 @@ export default function ApprovalQueuePage() {
                         <td className="p-3 text-center">
                           <Button
                             size="sm"
-                            onClick={() => navigate(`/qc/inspections/${item.arrival_slip}`)}
+                            onClick={() => navigate(`/qc/arrival-slips/inspections/${item.arrival_slip}`)}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             Review

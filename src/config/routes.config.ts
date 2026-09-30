@@ -245,20 +245,6 @@ export const ROUTES = {
     showInSidebar: false,
   },
 
-  QC: {
-    path: '/qc',
-    title: 'Quality Control',
-    icon: 'FlaskConical',
-    showInSidebar: true,
-    hasSubmenu: true,
-    children: {
-      CUSTOMER_RETURNS: {
-        path: '/qc/customer-returns',
-        title: 'Goods Return QC',
-      },
-    },
-  },
-
   FINANCE: {
     path: '/finance',
     title: 'Sales / Finance',

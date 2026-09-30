@@ -11,14 +11,6 @@ export type CustomerFlowStatus =
 
 export type CustomerFlowValue = string | boolean;
 
-export const CUSTOMER_RETURN_FACTORY_HEAD_DECISION_LABELS: Record<string, string> = {
-  ACCEPT_QC_OVERRIDE: 'Accept QC Override',
-  RETURN_TO_VENDOR: 'Return to Vendor',
-  HOLD_FOR_REVIEW: 'Hold for Review',
-  SEND_FOR_RECHECK: 'Send for Recheck',
-  SCRAP: 'Scrap',
-};
-
 export interface CustomerFlowItem {
   id: string;
   itemCode: string;
@@ -44,7 +36,7 @@ export interface CustomerFlowEntry {
 }
 
 export const SALES_DISPATCH_KEY = 'gate.sales-dispatch.completed-entries';
-export const CUSTOMER_RETURN_KEY = 'gate.customer-return.completed-entries';
+const CUSTOMER_RETURN_KEY = 'gate.customer-return.completed-entries';
 export const CREDIT_NOTE_KEY = 'finance.credit-note.completed-entries';
 export const DEBIT_NOTE_KEY = 'finance.debit-note.completed-entries';
 
@@ -163,57 +155,10 @@ export function findCustomerFlowEntry(storageKey: string, entryIdOrNo: string) {
   ) || null;
 }
 
-export function updateCustomerFlowEntry(
-  storageKey: string,
-  entryId: string,
-  updater: (entry: CustomerFlowEntry) => CustomerFlowEntry,
-) {
-  let updatedEntry: CustomerFlowEntry | null = null;
-  const entries = readCustomerFlowEntries(storageKey).map((entry) => {
-    if (entry.id !== entryId) return entry;
-    updatedEntry = updater(entry);
-    return updatedEntry;
-  });
-
-  if (updatedEntry) {
-    writeCustomerFlowEntries(storageKey, entries);
-  }
-
-  return updatedEntry;
-}
-
 export function getCustomerFlowValue(entry: CustomerFlowEntry, key: string): string {
   const value = entry.values[key];
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   return value || '-';
-}
-
-export function getCustomerFlowRawValue(entry: CustomerFlowEntry, key: string): string {
-  const value = entry.values[key];
-  return typeof value === 'string' ? value : '';
-}
-
-export function getCustomerReturnStatusLabel(entry: CustomerFlowEntry) {
-  if (entry.status === 'PENDING_QC') return 'PENDING QC';
-  if (entry.status === 'PENDING_SAP_GR') return 'PENDING SAP GR';
-  if (entry.status === 'IN_PROGRESS') return 'IN PROGRESS';
-  if (entry.status === 'CANCELLED') return 'CANCELLED';
-  if (entry.status === 'QC_ACCEPTED') return 'QC ACCEPTED';
-  if (entry.status === 'QC_PARTIAL') return 'QC PARTIAL';
-  if (entry.status === 'QC_REJECTED') {
-    const factoryHeadDecision = getCustomerFlowRawValue(entry, 'factoryHeadDecision');
-    if (factoryHeadDecision) {
-      return `FH: ${
-        CUSTOMER_RETURN_FACTORY_HEAD_DECISION_LABELS[factoryHeadDecision] || factoryHeadDecision
-      }`;
-    }
-    return 'AWAITING FACTORY HEAD';
-  }
-  return entry.status;
-}
-
-export function isCustomerReturnAwaitingFactoryHead(entry: CustomerFlowEntry) {
-  return entry.status === 'QC_REJECTED' && !getCustomerFlowRawValue(entry, 'factoryHeadDecision');
 }
 
 export function buildCustomerFlowEntryNo(prefix: string) {
@@ -221,12 +166,6 @@ export function buildCustomerFlowEntryNo(prefix: string) {
   const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
   const timePart = now.toTimeString().slice(0, 8).replace(/:/g, '');
   return `${prefix}-${datePart}-${timePart}`;
-}
-
-export function formatCustomerFlowDateTime(date?: CustomerFlowValue, time?: CustomerFlowValue) {
-  const dateLabel = typeof date === 'string' && date ? date : '';
-  const timeLabel = typeof time === 'string' && time ? time : '';
-  return [dateLabel, timeLabel].filter(Boolean).join(' ') || '-';
 }
 
 export function formatCustomerFlowTimestamp(value?: string) {
@@ -243,12 +182,6 @@ export function formatCustomerFlowTimestamp(value?: string) {
   } catch {
     return value;
   }
-}
-
-export function buildCustomerFlowItemSummary(items: CustomerFlowItem[]) {
-  if (items.length === 0) return '-';
-  if (items.length === 1) return items[0].itemName || items[0].itemCode || '-';
-  return `${items[0].itemName || items[0].itemCode} + ${items.length - 1} more`;
 }
 
 export function buildCustomerFlowSearchText(entry: CustomerFlowEntry) {
