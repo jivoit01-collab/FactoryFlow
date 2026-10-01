@@ -58,7 +58,7 @@ function slices(heads: FillingCostHeadRow[], theme: 'light' | 'dark'): Slice[] {
 }
 
 function skuText(skus: FillingCostSku[]) {
-  return skus.length ? skus.map((sku) => sku.product).join(', ') : '—';
+  return skus.length ? [...new Set(skus.map((sku) => sku.sku || sku.product))].join(', ') : '—';
 }
 
 function boxText(skus: FillingCostSku[]) {

@@ -47,6 +47,7 @@ const costMaster = vi.hoisted(() => ({
   produced_cases: '0.00',
   run_count: 0,
   warnings: [] as string[],
+  skus: [] as unknown[],
   askedFor: [] as unknown[],
 }));
 /** The night of the 28th, as the defaults endpoint works it out. */
@@ -85,6 +86,7 @@ vi.mock('../api', () => ({
             produced_cases: costMaster.produced_cases,
             run_count: costMaster.run_count,
             warnings: costMaster.warnings,
+            skus: costMaster.skus,
           }
         : undefined,
       isLoading: false,
@@ -119,6 +121,7 @@ describe('Filling cost sheet', () => {
     costMaster.produced_cases = '0.00';
     costMaster.run_count = 0;
     costMaster.warnings = [];
+    costMaster.skus = [];
     costMaster.askedFor.length = 0;
   });
 
@@ -341,6 +344,46 @@ describe('Filling cost sheet', () => {
     render(<FillingCostPage />);
     openDay('2026-09-25');
 
+    expect(screen.getByLabelText('Cases')).toHaveValue('160000');
+  });
+
+  it('opens on yesterday, the day whose cost is entered', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-01T10:00:00'));
+    try {
+      render(<FillingCostPage />);
+      expect(screen.getByLabelText('Date')).toHaveValue('2026-09-30');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('heads the sheet with the SKU, box size and production the runs filled', () => {
+    costMaster.skus = [
+      {
+        product: 'JIVO WATER 1 LTR',
+        sku: '1000 ML',
+        pieces_per_case: 12,
+        litres_per_piece: '1.0000',
+        cases: '7140.00',
+      },
+    ];
+    render(<FillingCostPage />);
+    openDay('2026-09-26');
+    const strip = within(screen.getByText('SKU').closest('table') as HTMLElement);
+    expect(strip.getByText('1000 ML')).toBeInTheDocument();
+    expect(strip.getByText('12 PCS')).toBeInTheDocument();
+    expect(strip.getByText('7,140 BOXES')).toBeInTheDocument();
+  });
+
+  it('shows the runs’ SKU on a day already saved too', () => {
+    costMaster.skus = [
+      { product: 'X', sku: '500 ML', pieces_per_case: 24, litres_per_piece: '0.5', cases: '10' },
+    ];
+    render(<FillingCostPage />);
+    openDay('2026-09-25');
+    expect(screen.getByText('500 ML')).toBeInTheDocument();
+    // The saved figures are still the saved ones.
     expect(screen.getByLabelText('Cases')).toHaveValue('160000');
   });
 });

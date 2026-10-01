@@ -37,7 +37,15 @@ const DAY: FillingCostBoardDayDetail = {
   per_bottle: '0.7221',
   heads: NIGHT_HEADS,
   sheet_heads: NIGHT_HEADS,
-  skus: [{ product: '500 ML', pieces_per_case: 24, cases: '8655.00' }],
+  skus: [
+    {
+      product: 'JIVO WATER 500 ML',
+      sku: '500 ML',
+      litres_per_piece: '0.5',
+      pieces_per_case: 24,
+      cases: '8655.00',
+    },
+  ],
   shifts: [
     {
       shift: 'DAY',
@@ -48,7 +56,15 @@ const DAY: FillingCostBoardDayDetail = {
       per_case: '17.13',
       per_bottle: '0.7137',
       heads: [head('Electricity', '51383.00', '17.13')],
-      skus: [{ product: '500 ML', pieces_per_case: 24, cases: '3000.00' }],
+      skus: [
+        {
+          product: 'JIVO WATER 500 ML',
+          sku: '500 ML',
+          litres_per_piece: '0.5',
+          pieces_per_case: 24,
+          cases: '3000.00',
+        },
+      ],
     },
     {
       shift: 'NIGHT',
@@ -59,7 +75,15 @@ const DAY: FillingCostBoardDayDetail = {
       per_case: '17.44',
       per_bottle: '0.7266',
       heads: NIGHT_HEADS,
-      skus: [{ product: '500 ML', pieces_per_case: 24, cases: '5655.00' }],
+      skus: [
+        {
+          product: 'JIVO WATER 500 ML',
+          sku: '500 ML',
+          litres_per_piece: '0.5',
+          pieces_per_case: 24,
+          cases: '5655.00',
+        },
+      ],
     },
   ],
 };

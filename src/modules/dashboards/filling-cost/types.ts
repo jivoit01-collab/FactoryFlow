@@ -27,6 +27,9 @@ export interface FillingCostHeadRow {
 /** A SKU a day or shift filled, from its production runs. */
 export interface FillingCostSku {
   product: string;
+  /** '1000 ML' — the bottle, as the sheet writes it; the product when unknown */
+  sku: string;
+  litres_per_piece: string | null;
   /** Bottles a case (the box size); null when the run never had it */
   pieces_per_case: number | null;
   cases: string;

@@ -35,6 +35,7 @@ import { DEFAULT_FILLING_COST_HEADS, FILLING_COST_SHIFTS } from '../constants';
 import type {
   FillingCostDefaultEntry,
   FillingCostDefaults,
+  FillingCostRunSku,
   FillingCostSheet,
   FillingCostShift,
 } from '../types';
@@ -54,10 +55,12 @@ const newRow = (head = '', amount = ''): Row => {
   return { key: `row-${rowSeq}`, head, amount };
 };
 
-const today = () => {
-  const now = new Date();
+/** Yesterday, local: a day's filling cost is entered the morning after. */
+const yesterday = () => {
+  const day = new Date();
+  day.setDate(day.getDate() - 1);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
 };
 
 /** '2026-09-26' → '26 September 2026'. */
@@ -89,6 +92,36 @@ function DefaultHint({ entry }: { entry?: FillingCostDefaultEntry }) {
   return <p className="mt-1 px-1 text-xs text-muted-foreground">{entry.explain}</p>;
 }
 
+/** The head of the factory's sheet: what was filled, from the day's runs. */
+function SkuStrip({ skus }: { skus: FillingCostRunSku[] }) {
+  return (
+    <div className="mb-4 overflow-x-auto rounded-lg border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+            <th className="px-3 py-2 font-medium">SKU</th>
+            <th className="px-3 py-2 text-right font-medium">Box size</th>
+            <th className="px-3 py-2 text-right font-medium">Production</th>
+          </tr>
+        </thead>
+        <tbody>
+          {skus.map((sku) => (
+            <tr key={`${sku.product}-${sku.pieces_per_case}`} className="border-b last:border-0">
+              <td className="px-3 py-2" title={sku.product}>
+                {sku.sku}
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                {sku.pieces_per_case ? `${sku.pieces_per_case} PCS` : '—'}
+              </td>
+              <td className="px-3 py-2 text-right tabular-nums">{fmt(num(sku.cases), 0)} BOXES</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface SheetEditorProps {
   /** The day's sheet, or null when nobody has entered it yet. */
   sheet: FillingCostSheet | null;
@@ -105,6 +138,8 @@ interface SheetEditorProps {
   lineId: number | null;
   lineName: string;
   canEdit: boolean;
+  /** SKU, box size and boxes the runs filled — the head of the sheet */
+  runSkus: FillingCostRunSku[];
 }
 
 /**
@@ -122,6 +157,7 @@ function SheetEditor({
   lineId,
   lineName,
   canEdit,
+  runSkus,
 }: SheetEditorProps) {
   // A blank day starts from the cases its own runs produced — never
   // yesterday's, which would price the day on the wrong figure unseen.
@@ -283,6 +319,7 @@ function SheetEditor({
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {runSkus.length > 0 && <SkuStrip skus={runSkus} />}
         {!sheet && (defaults?.warnings.length ?? 0) > 0 && (
           <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
             <p className="font-medium">Not everything could be worked out:</p>
@@ -409,7 +446,7 @@ function FillingCostPage() {
 
   const { data: lines = [] } = useLines(true);
 
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(yesterday);
   const [lineId, setLineId] = useState<number | null>(null);
   const [shift, setShift] = useState<FillingCostShift>('');
   const shiftLabel = FILLING_COST_SHIFTS.find((s) => s.value === shift)?.label ?? '';
@@ -426,18 +463,18 @@ function FillingCostPage() {
   const sheet = (dayQuery.data ?? []).find((s) => s.date === date && inScope(s)) ?? null;
   const template = (latestQuery.data ?? []).find((s) => s.date !== date && inScope(s)) ?? null;
 
-  // Only a day nobody has entered opens from the Cost Master. If it cannot be
-  // reached the sheet still opens, with the Salary blank to be typed in.
-  const defaultsQuery = useFillingCostDefaults(date, scope, shift, !dayQuery.isLoading && !sheet);
+  // The runs' figures are read for every day, saved or not, for the sheet's
+  // SKU, box size and production; only a day nobody has entered opens from
+  // them. If they cannot be read the sheet still opens, to be typed in.
+  const defaultsQuery = useFillingCostDefaults(date, scope, shift, !dayQuery.isLoading);
   const defaults = sheet ? null : (defaultsQuery.data ?? null);
+  const runSkus = defaultsQuery.data?.skus ?? [];
 
   const isLoading = dayQuery.isLoading || latestQuery.isLoading || defaultsQuery.isLoading;
 
   return (
     <div className="space-y-6">
-      <DashboardHeader
-        title="Filling Cost"
-      />
+      <DashboardHeader title="Filling Cost" />
 
       <Card>
         <CardContent className="pt-6">
@@ -449,7 +486,7 @@ function FillingCostPage() {
                 type="date"
                 className="w-44"
                 value={date}
-                onChange={(e) => setDate(e.target.value || today())}
+                onChange={(e) => setDate(e.target.value || yesterday())}
               />
             </div>
             <div className="space-y-1">
@@ -520,6 +557,7 @@ function FillingCostPage() {
           lineId={lineId}
           lineName={lineId === null ? '' : (lines.find((l) => l.id === lineId)?.name ?? '')}
           canEdit={canEdit}
+          runSkus={runSkus}
         />
       )}
     </div>

@@ -24,11 +24,7 @@ export type ClearanceResult = 'YES' | 'NO' | 'NA';
 
 export type ClearanceStatus = 'DRAFT' | 'SUBMITTED' | 'ON_HOLD' | 'CLEARED' | 'NOT_CLEARED';
 
-export type WasteApprovalStatus =
-  | 'PENDING'
-  | 'PARTIALLY_APPROVED'
-  | 'FULLY_APPROVED'
-  | 'REJECTED';
+export type WasteApprovalStatus = 'PENDING' | 'PARTIALLY_APPROVED' | 'FULLY_APPROVED' | 'REJECTED';
 
 export type Shift = 'MORNING' | 'AFTERNOON' | 'NIGHT';
 
@@ -1643,6 +1639,18 @@ export interface FillingCostDefaultEntry {
   source: 'cost_master' | 'electricity' | 'waste_logs';
 }
 
+/** A SKU the day's (or shift's) runs filled. */
+export interface FillingCostRunSku {
+  product: string;
+  /** '1000 ML' — the bottle, as the sheet writes it; the product when unknown */
+  sku: string;
+  /** The box size */
+  pieces_per_case: number | null;
+  litres_per_piece: string | null;
+  /** Boxes filled */
+  cases: string;
+}
+
 export interface FillingCostDefaults {
   date: string;
   shift: FillingCostShift;
@@ -1653,6 +1661,8 @@ export interface FillingCostDefaults {
   bottles: string;
   litres: string;
   running_hours: string;
+  /** What the runs filled, biggest first: the sheet's SKU, box size and boxes */
+  skus: FillingCostRunSku[];
   entries: FillingCostDefaultEntry[];
   /** What could not be worked out, and why — shown above the sheet */
   warnings: string[];
