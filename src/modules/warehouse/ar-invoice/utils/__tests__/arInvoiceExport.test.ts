@@ -8,6 +8,7 @@ import {
   AR_INVOICE_COLUMNS,
   buildArInvoiceWorkbook,
   invoiceAmount,
+  isAmountEstimated,
   paymentLabel,
   sapReference,
   toClipboardRows,
@@ -63,15 +64,50 @@ const paid = (overrides: Partial<ARInvoicePayment> = {}): ARInvoicePayment => ({
   ...overrides,
 });
 
+function line(line_total: string, tax_code: string) {
+  return {
+    id: 1,
+    base_entry: 0,
+    base_line: 0,
+    base_doc_num: null,
+    item_code: 'FG0000106',
+    description: 'MUSTARD KACHHI GHANI 1 LTR POUCH 12 PCS',
+    quantity: '2.000',
+    price: '152.3800',
+    line_total,
+    tax_code,
+    warehouse_code: 'BH-PTD',
+  };
+}
+
 describe('invoiceAmount', () => {
-  it("takes SAP's total once posted, the picked total before that", () => {
+  it("takes SAP's total once posted", () => {
     expect(invoiceAmount(makePosting())).toBe(1100);
-    expect(
-      invoiceAmount(makePosting({ sap_doc_total: null, selected_total: '950.50' })),
-    ).toBe(950.5);
+    expect(isAmountEstimated(makePosting())).toBe(false);
   });
 
-  it('is null when neither side has a value', () => {
+  it('includes tax before SAP posts it, rather than showing the pre-tax figure', () => {
+    // Bill #55 on live: 2 pouches at ₹152.38, awaiting the warehouse manager.
+    const posting = makePosting({
+      status: 'AWAITING_MANAGER',
+      sap_doc_total: null,
+      selected_total: '304.76',
+      lines: [line('304.76', 'CG+SG@5')],
+    });
+    expect(invoiceAmount(posting)).toBe(320);
+    expect(isAmountEstimated(posting)).toBe(true);
+  });
+
+  it('is null rather than pre-tax when a line carries no rate', () => {
+    const posting = makePosting({
+      sap_doc_total: null,
+      selected_total: '304.76',
+      lines: [line('100', 'IGST@5'), line('204.76', 'EXEMPT')],
+    });
+    expect(invoiceAmount(posting)).toBeNull();
+  });
+
+  it('is null when there is nothing to total', () => {
     expect(invoiceAmount(makePosting({ sap_doc_total: null, selected_total: null }))).toBeNull();
   });
 });
@@ -112,7 +148,9 @@ describe('toClipboardRows', () => {
 
   it('leaves the amount unformatted so the sheet reads it as a number', () => {
     const cells = toClipboardRows([makePosting({ sap_doc_total: '1234567.89' })])[0];
-    expect(cells[AR_INVOICE_COLUMNS.findIndex((c) => c.label === 'Amount')]).toBe(1234567.89);
+    expect(cells[AR_INVOICE_COLUMNS.findIndex((c) => c.label === 'Amount incl. tax')]).toBe(
+      1234567.89,
+    );
   });
 });
 
@@ -128,10 +166,11 @@ describe('buildArInvoiceWorkbook', () => {
       Date: '12-09-2026',
       Customer: 'HARPREET SINGH CASH SALE',
       'SAP invoice': '626090350',
-      Amount: 1100,
+      'Amount incl. tax': 1100,
       Status: 'Posted',
       Payment: 'Paid',
       'Customer code': 'CUSTA000101',
+      'Amount is estimated': 'No',
       'Payment mode': 'Cash',
       'Raised by': 'Gurpreet',
       'SAP doc entry': 4011,
@@ -146,7 +185,7 @@ describe('buildArInvoiceWorkbook', () => {
       header: 1,
     })[0];
 
-    expect(header).toContain('Amount');
-    expect(header.indexOf('Status')).toBe(header.indexOf('Amount') + 1);
+    expect(header).toContain('Amount incl. tax');
+    expect(header.indexOf('Status')).toBe(header.indexOf('Amount incl. tax') + 1);
   });
 });

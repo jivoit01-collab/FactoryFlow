@@ -4,6 +4,7 @@ import { type ClipboardCell,formatDate } from '@/shared/utils';
 
 import type { ARInvoicePosting } from '../types';
 import { paymentBucket } from './payment';
+import { billTotals } from './tax';
 
 /** What the payment pill says, as a word a sheet can be filtered on. */
 export function paymentLabel(posting: ARInvoicePosting): string {
@@ -13,12 +14,28 @@ export function paymentLabel(posting: ARInvoicePosting): string {
   return posting.payment ? 'Unpaid' : 'Not tracked';
 }
 
-/** The bill's value: SAP's own total once posted, the picked total before that. */
-export function invoiceAmount(posting: ARInvoicePosting): number | null {
-  const raw = posting.sap_doc_total ?? posting.selected_total;
+/** A money field as a number, or null when blank. */
+function money(raw: string | null | undefined): number | null {
   if (raw === null || raw === undefined || raw === '') return null;
   const value = Number(raw);
   return Number.isFinite(value) ? value : null;
+}
+
+/** Whether the bill's total is still worked out here — SAP has not posted it. */
+export function isAmountEstimated(posting: ARInvoicePosting): boolean {
+  return money(posting.sap_doc_total) === null;
+}
+
+/**
+ * The bill's value including tax: SAP's own total once posted, estimated from
+ * the lines' tax codes before that. Never the pre-tax figure — a bill awaiting
+ * approval at ₹304.76 that turned into ₹320.00 on posting read as two prices.
+ */
+export function invoiceAmount(posting: ARInvoicePosting): number | null {
+  if (!isAmountEstimated(posting)) return money(posting.sap_doc_total);
+  if (posting.lines.length === 0) return null;
+  const { inclTax } = billTotals(posting.lines);
+  return inclTax == null ? null : Math.round(inclTax * 100) / 100;
 }
 
 /** SAP's identifier for the bill — the posted number, or the draft it is still held as. */
@@ -51,7 +68,7 @@ export const AR_INVOICE_COLUMNS: ArInvoiceColumn[] = [
   { label: 'Customer', value: (p) => p.customer_name || p.customer_code },
   { label: 'Ref', value: (p) => p.customer_ref },
   { label: 'SAP invoice', value: sapReference },
-  { label: 'Amount', value: invoiceAmount, align: 'right' },
+  { label: 'Amount incl. tax', value: invoiceAmount, align: 'right' },
   { label: 'Status', value: (p) => p.status_display || p.status },
   { label: 'Payment', value: paymentLabel },
 ];
@@ -65,6 +82,8 @@ export const AR_INVOICE_COLUMNS: ArInvoiceColumn[] = [
  */
 const EXPORT_ONLY_COLUMNS: ArInvoiceColumn[] = [
   { label: 'Customer code', value: (p) => p.customer_code },
+  { label: 'Before tax', value: (p) => money(p.selected_total) },
+  { label: 'Amount is estimated', value: (p) => (isAmountEstimated(p) ? 'Yes' : 'No') },
   { label: 'Paid on', value: (p) => (p.payment?.received_on ? formatDate(p.payment.received_on) : '') },
   { label: 'Amount received', value: (p) => (p.payment?.amount ? Number(p.payment.amount) : null) },
   { label: 'Payment mode', value: (p) => p.payment?.mode_display || '' },

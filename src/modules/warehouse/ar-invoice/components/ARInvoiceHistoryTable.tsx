@@ -7,6 +7,7 @@ import type { ARInvoicePosting } from '../types';
 import {
   AR_INVOICE_COLUMNS,
   invoiceAmount,
+  isAmountEstimated,
   sapReference,
 } from '../utils/arInvoiceExport';
 import { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
@@ -20,9 +21,18 @@ import { ARPaymentCell } from './ARPaymentControls';
  * here as plain text rather than silently going missing from the table.
  */
 const RICH_CELLS: Record<string, (posting: ARInvoicePosting) => ReactNode> = {
-  Amount: (posting) => {
+  // Including tax either way, so a bill reads the same before and after SAP
+  // posts it; until then it is our estimate, marked as one.
+  'Amount incl. tax': (posting) => {
     const amount = invoiceAmount(posting);
-    return amount === null ? '-' : formatCurrency(amount);
+    if (amount === null) return '-';
+    return isAmountEstimated(posting) ? (
+      <span title="Estimated from the tax codes — SAP works out the final total when it posts the bill">
+        ≈ {formatCurrency(amount)}
+      </span>
+    ) : (
+      formatCurrency(amount)
+    );
   },
   'SAP invoice': (posting) => sapReference(posting) || '-',
   Status: (posting) => <ARInvoiceStatusBadge status={posting.status} />,
@@ -45,7 +55,7 @@ const RICH_CELLS: Record<string, (posting: ARInvoicePosting) => ReactNode> = {
 };
 
 /** Whether a cell's own value should read as a number would. */
-const isNumeric = (label: string) => label === 'Amount' || label === 'SAP invoice';
+const isNumeric = (label: string) => label === 'Amount incl. tax' || label === 'SAP invoice';
 
 /**
  * The invoices this app raised, one row each.

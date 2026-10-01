@@ -18,6 +18,7 @@ import { formatCurrency, formatDate, formatDateTimeShort, getErrorMessage } from
 
 import { useArInvoiceAction } from '../api/ar-invoice.queries';
 import type { ARInvoicePosting } from '../types';
+import { billTotals, lineInclTax } from '../utils/tax';
 import { ARInvoicePrintButton } from './ARInvoicePrintButton';
 import { ARInvoiceStatusBadge } from './ARInvoiceStatusBadge';
 import { ARPaymentBadge, ARPaymentDialog } from './ARPaymentControls';
@@ -26,6 +27,47 @@ function amount(value?: string | null) {
   if (value == null || value === '') return '-';
   const n = Number(value);
   return Number.isNaN(n) ? value : formatCurrency(n);
+}
+
+/**
+ * The bill's money: before tax, the tax, and the total the customer pays.
+ * Until SAP posts the bill there is no total of SAP's to show, so the tax is
+ * worked out from the lines' tax codes and marked as an estimate — showing
+ * only the pre-tax figure read as the bill being short (₹304.76 for two ₹160
+ * pouches).
+ */
+function BillTotals({ posting }: { posting: ARInvoicePosting }) {
+  const totals = billTotals(posting.lines);
+  const sapTotal = posting.sap_doc_total ? Number(posting.sap_doc_total) : null;
+  const total = sapTotal ?? totals.inclTax;
+  const tax = sapTotal != null ? sapTotal - totals.beforeTax : totals.tax;
+  return (
+    <div className="rounded-md border bg-muted/30 p-3">
+      <dl className="space-y-1 text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted-foreground">Before tax</dt>
+          <dd className="tabular-nums">{formatCurrency(totals.beforeTax)}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted-foreground">GST{sapTotal == null ? ' (estimated)' : ''}</dt>
+          <dd className="tabular-nums">{tax == null ? '-' : formatCurrency(tax)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 border-t pt-1 text-base font-semibold">
+          <dt>Total incl. tax</dt>
+          <dd className="tabular-nums">
+            {total == null ? '-' : `${sapTotal == null ? '≈ ' : ''}${formatCurrency(total)}`}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {sapTotal != null
+          ? `SAP's total on invoice ${posting.sap_doc_num ?? ''}.`
+          : total == null
+            ? 'A line has no tax rate in its tax code, so the tax is not estimated. SAP adds it when it posts the bill.'
+            : 'Worked out from the tax codes. SAP adds the tax when it posts the bill, and its total is final.'}
+      </p>
+    </div>
+  );
 }
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -65,6 +107,7 @@ export function ARInvoiceDetailSheet({
   const refreshAction = useArInvoiceAction('refresh');
   const postDraftAction = useArInvoiceAction('postDraft');
   const cancelAction = useArInvoiceAction('cancel');
+  const hasSoLines = posting?.lines.some((line) => line.base_entry != null) ?? false;
   const busy =
     postAction.isPending ||
     refreshAction.isPending ||
@@ -111,18 +154,12 @@ export function ARInvoiceDetailSheet({
                 value={`${posting.customer_name} (${posting.customer_code})`}
               />
               <Field label="Customer ref" value={posting.customer_ref || '-'} />
-              <Field label="Selected lines (pre-tax)" value={amount(posting.selected_total)} />
               <Field label="Posting date" value={posting.doc_date || '-'} />
               <Field label="SAP draft" value={posting.sap_draft_entry ?? '-'} />
-              <Field
-                label="SAP invoice"
-                value={
-                  posting.sap_doc_num
-                    ? `${posting.sap_doc_num} (${amount(posting.sap_doc_total)})`
-                    : '-'
-                }
-              />
+              <Field label="SAP invoice" value={posting.sap_doc_num ?? '-'} />
             </dl>
+
+            <BillTotals posting={posting} />
 
             {/* Printing is a read of a document SAP already holds, so it sits
                 outside the `canAct` block: anyone who may see the record may
@@ -249,39 +286,60 @@ export function ARInvoiceDetailSheet({
             ) : null}
 
             <div>
-              <h3 className="mb-2 text-sm font-semibold">Sales Order lines</h3>
+              {/* A counter sale has no Sales Order, so no SO column to fill. */}
+              <h3 className="mb-2 text-sm font-semibold">
+                {hasSoLines ? 'Sales Order lines' : 'Lines'}
+              </h3>
               <div className="overflow-x-auto rounded-md border">
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 font-medium">SO</th>
+                      {hasSoLines ? <th className="px-3 py-2 font-medium">SO</th> : null}
                       <th className="px-3 py-2 font-medium">Item</th>
-                      <th className="px-3 py-2 font-medium">Qty</th>
-                      <th className="px-3 py-2 font-medium">Warehouse</th>
-                      <th className="px-3 py-2 text-right font-medium">Line total</th>
+                      <th className="px-3 py-2 text-right font-medium">Qty</th>
+                      <th className="px-3 py-2 text-right font-medium">Unit price</th>
+                      <th className="px-3 py-2 text-right font-medium">Before tax</th>
+                      <th className="px-3 py-2 text-right font-medium">Incl. tax</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {posting.lines.map((line) => (
-                      <tr key={line.id} className="border-t align-top">
-                        <td className="px-3 py-2 tabular-nums">
-                          {line.base_doc_num ?? line.base_entry}/{line.base_line}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className="font-medium">{line.item_code}</span>
-                          {line.description ? (
-                            <span className="block text-xs text-muted-foreground">
-                              {line.description}
-                            </span>
+                    {posting.lines.map((line) => {
+                      const gross = lineInclTax(Number(line.line_total), line.tax_code);
+                      return (
+                        <tr key={line.id} className="border-t align-top">
+                          {hasSoLines ? (
+                            <td className="px-3 py-2 tabular-nums">
+                              {line.base_entry != null
+                                ? `${line.base_doc_num ?? line.base_entry}/${line.base_line}`
+                                : '-'}
+                            </td>
                           ) : null}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">{line.quantity ?? '-'}</td>
-                        <td className="px-3 py-2">{line.warehouse_code || '-'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {amount(line.line_total)}
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="px-3 py-2">
+                            <span className="font-medium">{line.item_code}</span>
+                            {line.description ? (
+                              <span className="block text-xs text-muted-foreground">
+                                {line.description}
+                              </span>
+                            ) : null}
+                            <span className="block text-xs text-muted-foreground">
+                              {[line.warehouse_code, line.tax_code].filter(Boolean).join(' · ')}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {line.quantity == null ? '-' : Number(line.quantity)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {amount(line.price)}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {amount(line.line_total)}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium tabular-nums">
+                            {gross == null ? '-' : formatCurrency(gross)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -343,6 +401,13 @@ export function ARInvoiceDetailSheet({
                               {
                                 label: 'Value before tax',
                                 value: amount(posting.selected_total),
+                              },
+                              {
+                                label: 'Total incl. tax (est.)',
+                                value: (() => {
+                                  const { inclTax } = billTotals(posting.lines);
+                                  return inclTax == null ? '-' : formatCurrency(inclTax);
+                                })(),
                               },
                             ],
                           },

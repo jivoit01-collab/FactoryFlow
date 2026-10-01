@@ -12,22 +12,15 @@ import { toastSuccessMark } from '@/shared/utils/toasts';
 import { arInvoiceApi } from '../api/ar-invoice.api';
 import { useCreateArInvoice, useWarehouseItems } from '../api/ar-invoice.queries';
 import type { DirectSaleLine, LineDefaults, WarehouseStockItem } from '../types';
+import { lineInclTax, taxRate } from '../utils/tax';
 import { heldForApprovalMessage, warehousesNeedingApproval } from '../utils/warehouseApproval';
 import { CustomerCreditPanel } from './CustomerCreditPanel';
 import { CustomerSelect } from './CustomerSelect';
 import { LinePriceGuide } from './LinePriceGuide';
 
-/** The org's tax codes embed their rate ("CG+SG@5", "IGST@12") — parse it to
- * estimate the gross. SAP's own computation at posting stays authoritative. */
-function taxRate(taxCode: string): number | null {
-  const match = /@(\d+(?:\.\d+)?)/.exec(taxCode);
-  return match ? Number(match[1]) : null;
-}
-
 function lineGross(line: DirectSaleLine): number {
   const net = Number(line.quantity) * Number(line.unit_price);
-  const rate = taxRate(line.tax_code);
-  return rate == null ? net : net * (1 + rate / 100);
+  return lineInclTax(net, line.tax_code) ?? net;
 }
 
 /**
