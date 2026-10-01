@@ -9,7 +9,8 @@
  * Identities); without that mapping the page says so and lists nothing.
  *
  * Decisions are signed in SAP as your own SAP user. Buttons appear only where
- * the server says you may act (`can_decide` / `can_withdraw`). The status
+ * the server says you may act (`can_decide` / `can_withdraw`, and
+ * `can_change_decision` on a request you approved or rejected). The status
  * shown is the one SAP acts on: a request SAP still lists as pending whose
  * draft's approval has ended is shown with the draft's outcome, never as work.
  */
@@ -42,6 +43,7 @@ import type {
   SapApprovalScope,
   SapApprovalStatus,
 } from '../types';
+import { changeMode } from '../utils/decision';
 import { money, person, shortDate, STATUS_LABELS } from '../utils/format';
 
 const SCOPES: { key: SapApprovalScope; label: string; hint: string }[] = [
@@ -352,7 +354,7 @@ export default function SapApprovalsPage() {
                     </div>
                   </Td>
                   <Td align="right" onClick={(e) => e.stopPropagation()}>
-                    {row.can_decide || row.can_withdraw ? (
+                    {row.can_decide || row.can_withdraw || changeMode(row) ? (
                       <div className="flex justify-end gap-2">
                         {row.can_decide && (
                           <>
@@ -375,6 +377,24 @@ export default function SapApprovalsPage() {
                             onClick={() => openAction('withdraw', row)}
                           >
                             Withdraw
+                          </Button>
+                        )}
+                        {changeMode(row) === 'reject' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openAction('reject', row)}
+                          >
+                            Change to rejected
+                          </Button>
+                        )}
+                        {changeMode(row) === 'approve' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openAction('approve', row)}
+                          >
+                            Change to approved
                           </Button>
                         )}
                       </div>

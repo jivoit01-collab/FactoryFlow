@@ -1,7 +1,8 @@
 /**
  * The decision dialog's handling of the typed SAP password: a password field
  * the browser does not autofill, sent only when typed, and gone when the
- * dialog closes. SAP and the confirmation are mocked.
+ * dialog closes. Also changing a decision already taken. SAP and the
+ * confirmation are mocked.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,8 +19,11 @@ vi.mock('../api/sap-approvals.queries', () => ({
   useSapApprovalActions: () => ({ decide, withdraw, invalidate }),
 }));
 
+import { confirmSapPost } from '@/shared/components';
+
 import { SapActionDialog } from '../components/SapActionDialog';
 import type { SapApprovalRequest } from '../types';
+import { changeMode } from '../utils/decision';
 
 const REQUEST = {
   wdd_code: 75424,
@@ -129,5 +133,85 @@ describe('SapActionDialog', () => {
       75424,
       expect.objectContaining({ confirmDuplicate: true }),
     );
+  });
+});
+
+describe('changing a decision already taken', () => {
+  const APPROVED = {
+    ...REQUEST,
+    status: 'APPROVED',
+    pending_request_count: 0,
+    decided_by: 'USER37',
+    decided_at: '2026-09-17T11:00:00',
+    can_change_decision: true,
+  } as unknown as SapApprovalRequest;
+  const REJECTED = { ...APPROVED, status: 'REJECTED' } as SapApprovalRequest;
+
+  beforeEach(() => {
+    decide.mockReset().mockResolvedValue({
+      message: 'A/R Credit Note changed to rejected in SAP.',
+      signed_as: 'USER37',
+      changed_from: 'APPROVED',
+    });
+    vi.mocked(confirmSapPost).mockClear();
+  });
+
+  it('offers the other decision only when the server allows a change', () => {
+    expect(changeMode(APPROVED)).toBe('reject');
+    expect(changeMode(REJECTED)).toBe('approve');
+    expect(changeMode({ ...APPROVED, can_change_decision: false })).toBeNull();
+    // Posted or withdrawn requests are final whatever the flag says.
+    expect(changeMode({ ...APPROVED, status: 'GENERATED' } as SapApprovalRequest)).toBeNull();
+    expect(changeMode({ ...APPROVED, status: 'CANCELLED' } as SapApprovalRequest)).toBeNull();
+    expect(changeMode({ ...APPROVED, status: 'PENDING' } as SapApprovalRequest)).toBeNull();
+  });
+
+  it('says what it changes and needs a reason to change to rejected', async () => {
+    renderDialog(APPROVED, 'reject');
+    expect(screen.getByRole('heading', { name: 'Change to rejected in SAP' })).toBeInTheDocument();
+    expect(screen.getByText(/You approved this request/)).toBeInTheDocument();
+    expect(screen.getByText(/changes your\s+decision to rejected/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change to rejected in SAP' }));
+    expect(await screen.findByText(/Say why this is being rejected/)).toBeInTheDocument();
+    expect(decide).not.toHaveBeenCalled();
+  });
+
+  it('sends the other decision through the same call and confirms the change first', async () => {
+    const { onDone } = renderDialog(APPROVED, 'reject');
+    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'wrong party' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Change to rejected in SAP' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+
+    expect(decide).toHaveBeenCalledWith(75424, {
+      approve: false,
+      remarks: 'wrong party',
+      sapPassword: undefined,
+      confirmDuplicate: false,
+    });
+    const confirmation = vi.mocked(confirmSapPost).mock.calls[0][0];
+    expect(confirmation.title).toBe('Change to rejected in SAP?');
+    expect(confirmation.details).toContainEqual({ label: 'Change', value: 'Approved → Rejected' });
+    expect(onDone).toHaveBeenCalledWith(
+      'A/R Credit Note changed to rejected in SAP. Signed in SAP as USER37.',
+    );
+  });
+
+  it('changes a rejection to an approval without asking for a reason', async () => {
+    const { onDone } = renderDialog(REJECTED, 'approve');
+    expect(screen.getByText(/You rejected this request/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Change to approved in SAP' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(decide).toHaveBeenCalledWith(75424, expect.objectContaining({ approve: true }));
+    expect(vi.mocked(confirmSapPost).mock.calls[0][0].details).toContainEqual({
+      label: 'Change',
+      value: 'Rejected → Approved',
+    });
+  });
+
+  it('keeps the plain titles for a request still pending', () => {
+    renderDialog(REQUEST, 'reject');
+    expect(screen.getByRole('heading', { name: 'Reject in SAP' })).toBeInTheDocument();
+    expect(screen.queryByText(/changes your/)).not.toBeInTheDocument();
   });
 });

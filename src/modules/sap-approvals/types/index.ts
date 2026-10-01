@@ -94,6 +94,9 @@ export interface SapApprovalRequest {
   credentials_configured: boolean;
   /** The server's answer to "may I approve/reject this": the buttons follow it. */
   can_decide: boolean;
+  /** Approved or rejected by the caller's own SAP user and not yet posted: they
+   * may change it to the other decision. SAP still accepts or refuses it. */
+  can_change_decision: boolean;
   /** The server's answer to "may I withdraw this". */
   can_withdraw: boolean;
 }
@@ -164,6 +167,8 @@ export interface SapActionResult {
   signed_as: string;
   wdd_code: number;
   action: 'APPROVE' | 'REJECT' | 'WITHDRAW';
+  /** The outcome a changed decision replaced; null for a first decision. */
+  changed_from?: 'APPROVED' | 'REJECTED' | null;
 }
 
 export interface SapPendingCount {

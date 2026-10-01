@@ -1,5 +1,6 @@
 /**
- * Approve, reject or withdraw one SAP approval request.
+ * Approve, reject or withdraw one SAP approval request — or change a decision
+ * already taken: approve on a rejected request, reject on an approved one.
  *
  * The decision is signed in SAP as the reader's own SAP user — the server has
  * already checked they ARE the stage's authorizer (or the request's originator,
@@ -12,7 +13,8 @@
  *   every attempt SAP answered — and is sent only when not blank;
  * - the duplicate lock: approving a document SAP already posted needs an
  *   explicit tick, whether the row said so up front or the server answered 409;
- * - the SAP-post confirmation every write to SAP goes through.
+ * - the SAP-post confirmation every write to SAP goes through;
+ * - for a change, what it changes from and to, in the dialog and the confirmation.
  */
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { useState } from 'react';
@@ -37,7 +39,7 @@ import { getErrorMessage } from '@/shared/utils';
 
 import { useSapApprovalActions } from '../api/sap-approvals.queries';
 import type { PostedDocument, SapApprovalRequest } from '../types';
-import { money, shortDate } from '../utils/format';
+import { dateTime, money, shortDate, STATUS_LABELS } from '../utils/format';
 
 export type SapActionMode = 'approve' | 'reject' | 'withdraw';
 
@@ -45,6 +47,11 @@ const TITLES: Record<SapActionMode, string> = {
   approve: 'Approve in SAP',
   reject: 'Reject in SAP',
   withdraw: 'Withdraw this request',
+};
+
+const CHANGE_TITLES: Record<'approve' | 'reject', string> = {
+  approve: 'Change to approved in SAP',
+  reject: 'Change to rejected in SAP',
 };
 
 function postedLabel(docs: PostedDocument[]): string {
@@ -105,6 +112,9 @@ function ActionForm({
   const [busy, setBusy] = useState(false);
 
   const passwordRequired = !request.credentials_configured;
+  // A decision on a request that is no longer pending changes the one SAP holds.
+  const change = mode !== 'withdraw' && request.status !== 'PENDING';
+  const title = mode !== 'withdraw' && change ? CHANGE_TITLES[mode] : TITLES[mode];
   const doc = request.document;
   const otherPending = Math.max(
     0,
@@ -127,9 +137,13 @@ function ActionForm({
     }
 
     const confirmed = await confirmSapPost({
-      title: `${TITLES[mode]}?`,
+      title: `${title}?`,
       details: [
         { label: 'Request', value: `#${request.wdd_code} · ${request.object_type_label}` },
+        change && {
+          label: 'Change',
+          value: `${STATUS_LABELS[request.status]} → ${mode === 'approve' ? 'Approved' : 'Rejected'}`,
+        },
         doc.party_name ? { label: 'Party', value: doc.party_name } : null,
         doc.total_amount ? { label: 'Amount', value: money(doc.total_amount, doc.currency) } : null,
         mode !== 'withdraw' &&
@@ -148,7 +162,7 @@ function ActionForm({
           value: password ? 'Your SAP user, with the password you typed' : 'Your SAP user',
         },
       ],
-      confirmLabel: TITLES[mode],
+      confirmLabel: title,
       destructive: mode !== 'approve',
     });
     if (!confirmed) return;
@@ -188,7 +202,7 @@ function ActionForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{TITLES[mode]}</DialogTitle>
+        <DialogTitle>{title}</DialogTitle>
         <DialogDescription>
           #{request.wdd_code} · {request.object_type_label}
           {doc.party_name ? ` · ${doc.party_name}` : ''}
@@ -197,6 +211,15 @@ function ActionForm({
       </DialogHeader>
 
       <DialogBody className="space-y-4">
+        {change && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+            You {request.status === 'APPROVED' ? 'approved' : 'rejected'} this request
+            {request.decided_at ? ` on ${dateTime(request.decided_at)}` : ''}. This changes your
+            decision to {mode === 'approve' ? 'approved' : 'rejected'}. SAP itself accepts or
+            refuses the change, and refuses it once the document is posted.
+          </div>
+        )}
+
         {mode !== 'withdraw' && otherPending > 0 && (
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
             SAP opened {request.request_count} approval requests on this document and {otherPending}{' '}
@@ -238,7 +261,9 @@ function ActionForm({
               onChange={(e) => setRemarks(e.target.value)}
               placeholder={
                 mode === 'reject'
-                  ? 'Why is this being rejected? SAP records it against your user.'
+                  ? change
+                    ? 'Why are you changing this to rejected? SAP records it against your user.'
+                    : 'Why is this being rejected? SAP records it against your user.'
                   : 'Anything SAP should record with the approval'
               }
               rows={2}
@@ -284,7 +309,7 @@ function ActionForm({
           onClick={submit}
           disabled={busy}
         >
-          {busy ? 'Sending to SAP…' : TITLES[mode]}
+          {busy ? 'Sending to SAP…' : title}
         </Button>
       </DialogFooter>
     </>

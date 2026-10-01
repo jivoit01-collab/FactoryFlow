@@ -10,7 +10,8 @@
  * - **already posted**: the same document is already in SAP, so approving this
  *   copy would post it again.
  *
- * The action buttons follow the server's `can_decide` / `can_withdraw`.
+ * The action buttons follow the server's `can_decide` / `can_withdraw`, and
+ * `can_change_decision` offers the one who decided a request the other decision.
  */
 import { AlertTriangle, CheckCircle2, Circle, Layers, XCircle } from 'lucide-react';
 
@@ -26,6 +27,7 @@ import {
 
 import { useSapApprovalRequest } from '../api/sap-approvals.queries';
 import type { SapApprovalDetail, SapApprovalRequest, SapApprovalStage } from '../types';
+import { changeMode } from '../utils/decision';
 import { dateTime, money, person, shortDate, STATUS_LABELS } from '../utils/format';
 import { ApprovalDocument } from './ApprovalDocument';
 import type { SapActionMode } from './SapActionDialog';
@@ -219,6 +221,7 @@ export function ApprovalDetailSheet({
 }) {
   const query = useSapApprovalRequest(wddCode);
   const detail = query.data;
+  const change = detail ? changeMode(detail) : null;
 
   return (
     <Sheet open={wddCode !== null} onOpenChange={onOpenChange}>
@@ -308,6 +311,24 @@ export function ApprovalDetailSheet({
                     Withdraw
                   </Button>
                 )}
+              </div>
+            )}
+
+            {change && (
+              <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+                <p>
+                  You {detail.status === 'APPROVED' ? 'approved' : 'rejected'} this request
+                  {detail.decided_at ? ` on ${dateTime(detail.decided_at)}` : ''}. Until the
+                  document is posted you can change your decision — SAP itself accepts or refuses
+                  the change.
+                </p>
+                <Button
+                  size="sm"
+                  variant={change === 'reject' ? 'destructive' : 'default'}
+                  onClick={() => onAction(change, detail)}
+                >
+                  {change === 'reject' ? 'Change to rejected' : 'Change to approved'}
+                </Button>
               </div>
             )}
 
