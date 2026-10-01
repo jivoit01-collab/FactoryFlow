@@ -1,8 +1,10 @@
-import { ArrowLeft, FileText, Loader2, PackageCheck, Paperclip, Truck } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, PackageCheck, Paperclip, Pencil, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { GOODS_RETURN_PERMISSIONS } from '@/config/permissions';
+import { useHasPermission } from '@/core/auth';
 import { confirmSapPost } from '@/shared/components';
 import { Badge, Button, Card, CardContent, Label } from '@/shared/components/ui';
 import { cn, resolveFileUrl } from '@/shared/utils';
@@ -21,6 +23,7 @@ import {
   formatDate,
   formatDateTime,
   invoiceNumbersByRef,
+  isEditable,
   REF_NO_LABELS,
   STATUS_BADGE_CLASS,
   STATUS_LABELS,
@@ -31,6 +34,7 @@ export default function GoodsReturnDetailPage() {
   const { entryId } = useParams<{ entryId: string }>();
   const id = Number(entryId);
   const { data: detail, isLoading } = useGoodsReturn(id);
+  const canEdit = useHasPermission(GOODS_RETURN_PERMISSIONS.EDIT);
   const invoiceNumbers = invoiceNumbersByRef(detail?.invoice_refs ?? []);
   const customers = distinctCustomers(detail);
 
@@ -81,6 +85,17 @@ export default function GoodsReturnDetailPage() {
               onClick={() => navigate(`/returns/customer/edit/${id}/vehicle`)}
             >
               <Truck className="mr-2 h-4 w-4" /> Change Vehicle
+            </Button>
+          )}
+          {/* Until Confirm Receipt posts it, the quantities can still be
+              corrected — once the truck is unloaded the count often differs
+              from what was booked. */}
+          {canEdit && isEditable(detail.status) && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/returns/customer/edit/${id}/items`)}
+            >
+              <Pencil className="mr-2 h-4 w-4" /> Edit Items
             </Button>
           )}
           <Button variant="outline" onClick={() => navigate('/returns/customer')}>

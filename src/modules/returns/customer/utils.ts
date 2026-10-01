@@ -65,6 +65,18 @@ export const APPROVAL_BADGE_CLASS: Record<GoodsReturnApprovalStatus, string> = {
 };
 
 /**
+ * Whether the clerk can still change what is on a return.
+ *
+ * Right up to Confirm Receipt, which is what posts it to SAP — a truck already
+ * inside still has its quantities counted off the floor, and that count is
+ * what the A/R Return should carry. Mirrors the server's `EDITABLE_STATUSES`;
+ * past it there is stock (and maybe a SAP document) behind every line.
+ */
+export function isEditable(status: GoodsReturnStatus): boolean {
+  return status === 'DRAFT' || status === 'AWAITING_ARRIVAL' || status === 'ARRIVED';
+}
+
+/**
  * Why the gate must keep a return's truck outside, or null when it may come in.
  *
  * A return coming on approval waits for the admin's decision before anything
