@@ -5,8 +5,9 @@ import type { FgStock, InvoiceLine } from '../types';
  * laid out for the approver to compare against physical stock at the warehouse.
  *
  * `fgStock` (live HANA on-hand, read from SAP with the list) is joined per line to
- * surface the item name and the warehouse's current stock next to the invoiced
- * quantity. Rows without an OITW entry simply show no name/stock.
+ * surface the item name (shown first, code beneath) and the warehouse's current
+ * stock next to the invoiced quantity. Rows without an OITW entry fall back to the
+ * payload's ItemDescription, else show the code alone, and no stock.
  */
 export function DocumentLinesTable({
   lines,
@@ -46,16 +47,21 @@ export function DocumentLinesTable({
         <tbody>
           {lines.map((line, index) => {
             const stock = stockFor(line);
+            const itemName = stock?.item_name || line.ItemDescription;
             const onHand = stock?.warehouse_stock;
             // Flag a line the warehouse can't cover so the approver catches it.
             const short = onHand != null && onHand < line.Quantity;
             return (
               <tr key={line.LineNum ?? index} className="border-t align-top">
                 <td className="px-3 py-2">
-                  <span className="font-medium">{line.ItemCode}</span>
-                  {stock?.item_name ? (
-                    <span className="block text-xs text-muted-foreground">{stock.item_name}</span>
-                  ) : null}
+                  {itemName ? (
+                    <>
+                      <span className="block font-semibold">{itemName}</span>
+                      <span className="block text-xs text-muted-foreground">{line.ItemCode}</span>
+                    </>
+                  ) : (
+                    <span className="font-semibold">{line.ItemCode}</span>
+                  )}
                 </td>
                 <td className="px-3 py-2 tabular-nums">{line.Quantity}</td>
                 <td
