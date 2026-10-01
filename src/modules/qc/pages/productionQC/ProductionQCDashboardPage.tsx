@@ -76,7 +76,7 @@ export default function ProductionQCDashboardPage() {
   const view: View = searchParams.get('view') === 'sheet' ? 'sheet' : 'list';
 
   const statusFilter = readStatus(searchParams.get('status'));
-  const lineFilter = searchParams.get('line') ?? '';
+  const docFilter = searchParams.get('doc') ?? '';
 
   const listParams = useMemo<ProductionQCEntryListParams>(() => {
     const params: ProductionQCEntryListParams = { date: day };
@@ -109,24 +109,27 @@ export default function ProductionQCDashboardPage() {
       }
     : {};
 
-  // The line filter runs here rather than on the server, so its options are the
-  // lines in the list the other filters give — and never go stale.
-  const lineOptions = useMemo(() => {
+  // The document filter runs here rather than on the server, so its options are
+  // the documents in the list the other filters give — and never go stale.
+  const docOptions = useMemo(() => {
     const byId = new Map<number, string>();
     (view === 'sheet' ? sheetEntries : entries).forEach((entry) =>
-      byId.set(entry.line_id, entry.line_name),
+      byId.set(entry.parameter_type.id, entry.parameter_type.name),
     );
     return [...byId.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [entries, sheetEntries, view]);
   const filteredEntries = useMemo(
-    () => (lineFilter ? entries.filter((entry) => String(entry.line_id) === lineFilter) : entries),
-    [entries, lineFilter],
+    () =>
+      docFilter
+        ? entries.filter((entry) => String(entry.parameter_type.id) === docFilter)
+        : entries,
+    [entries, docFilter],
   );
 
   // Any change of filter starts again from the first page.
-  const filterKey = [statusFilter, lineFilter, debouncedSearch, day, pageSize].join('|');
+  const filterKey = [statusFilter, docFilter, debouncedSearch, day, pageSize].join('|');
   const page = paging.key === filterKey ? paging.page : 1;
   const setPage = (next: number) => setPaging({ key: filterKey, page: next });
 
@@ -141,7 +144,7 @@ export default function ProductionQCDashboardPage() {
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
 
-  const updateParam = (key: 'status' | 'line' | 'date' | 'view', value: string) => {
+  const updateParam = (key: 'status' | 'doc' | 'date' | 'view', value: string) => {
     const next = new URLSearchParams(searchParams);
     const isDefault =
       !value ||
@@ -159,12 +162,12 @@ export default function ProductionQCDashboardPage() {
     if (view === 'sheet') refetchSheet();
   };
 
-  // One sheet per parameter type — each type is its own paper form — covering
-  // every line, as the form does (its LINE ID row changes column by column).
+  // One sheet per document — each is its own paper form — with the day's entries
+  // as its columns.
   const sheets = useMemo(() => {
     const byType = new Map<number, ProductionQCEntry[]>();
     sheetEntries
-      .filter((entry) => !lineFilter || String(entry.line_id) === lineFilter)
+      .filter((entry) => !docFilter || String(entry.parameter_type.id) === docFilter)
       .forEach((entry) => {
         const list = byType.get(entry.parameter_type.id) ?? [];
         list.push(entry);
@@ -184,7 +187,7 @@ export default function ProductionQCDashboardPage() {
         };
       })
       .sort((a, b) => a.title.localeCompare(b.title));
-  }, [sheetEntries, lineFilter, types]);
+  }, [sheetEntries, docFilter, types]);
 
   const waitingElsewhere = counts?.waiting_elsewhere ?? 0;
   const firstWaitingDay = counts?.waiting_elsewhere_first_date ?? null;
@@ -199,10 +202,8 @@ export default function ProductionQCDashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="mb-1 text-3xl font-bold tracking-tight">Production QC</h2>
-          <p className="text-muted-foreground">
-            Checks made on running lines, approved by a QC lead
-          </p>
+          <h2 className="mb-1 text-3xl font-bold tracking-tight">Documents</h2>
+          <p className="text-muted-foreground">The records QC maintains, approved by a QC lead</p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <div className="flex items-center gap-1">
@@ -300,11 +301,11 @@ export default function ProductionQCDashboardPage() {
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search this day by entry no., product, item code, line or type..."
+            placeholder="Search this day by entry no., document, or anything entered..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="pl-10"
-            aria-label="Search production QC entries"
+            aria-label="Search document entries"
           />
         </div>
       )}
@@ -340,19 +341,19 @@ export default function ProductionQCDashboardPage() {
             })}
         </div>
         <select
-          aria-label="Filter by line"
-          value={lineFilter}
-          onChange={(event) => updateParam('line', event.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+          aria-label="Filter by document"
+          value={docFilter}
+          onChange={(event) => updateParam('doc', event.target.value)}
+          className="h-8 max-w-[260px] rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="">All lines</option>
-          {lineOptions.map((line) => (
-            <option key={line.id} value={line.id}>
-              {line.name}
+          <option value="">All documents</option>
+          {docOptions.map((doc) => (
+            <option key={doc.id} value={doc.id}>
+              {doc.name}
             </option>
           ))}
-          {lineFilter && !lineOptions.some((line) => String(line.id) === lineFilter) && (
-            <option value={lineFilter}>Line #{lineFilter}</option>
+          {docFilter && !docOptions.some((doc) => String(doc.id) === docFilter) && (
+            <option value={docFilter}>Document #{docFilter}</option>
           )}
         </select>
       </div>
@@ -364,7 +365,7 @@ export default function ProductionQCDashboardPage() {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-destructive">Permission Denied</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {apiError?.message || 'You do not have permission to view production QC entries.'}
+              {apiError?.message || 'You do not have permission to view document entries.'}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -380,7 +381,7 @@ export default function ProductionQCDashboardPage() {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {apiError?.message || 'An error occurred while loading production QC entries.'}
+              {apiError?.message || 'An error occurred while loading document entries.'}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -398,8 +399,8 @@ export default function ProductionQCDashboardPage() {
         ) : sheets.length === 0 ? (
           <div className="flex h-24 items-center justify-center rounded-lg border text-sm text-muted-foreground">
             {sheetEntries.length > 0
-              ? 'No checks on this line on this day'
-              : `No production QC checks on ${dayLabel(day)}`}
+              ? 'No entries of this document on this day'
+              : `No document entries on ${dayLabel(day)}`}
           </div>
         ) : (
           <div className="space-y-6">
@@ -431,9 +432,9 @@ export default function ProductionQCDashboardPage() {
           {debouncedSearch
             ? `No entries on this day match "${debouncedSearch}"`
             : entries.length > 0
-              ? 'No entries on this line'
+              ? 'No entries of this document'
               : statusFilter === 'ALL'
-                ? `No production QC entries on ${dayLabel(day)}`
+                ? `No document entries on ${dayLabel(day)}`
                 : `No ${statusLabel.toLowerCase()} entries on ${dayLabel(day)}`}
         </div>
       )}
@@ -446,15 +447,13 @@ export default function ProductionQCDashboardPage() {
           </h3>
           <div className="overflow-hidden rounded-md border">
             <div className="max-w-full overflow-x-auto">
-              <table className="w-full min-w-[1100px]">
+              <table className="w-full min-w-[900px]">
                 <thead className="bg-muted/50">
                   <tr>
                     {[
                       '#',
                       'Checked At',
-                      'Line',
-                      'Product',
-                      'Parameter Type',
+                      'Document',
                       'Status',
                       'Out of Spec',
                       'Submitted By',
@@ -474,30 +473,11 @@ export default function ProductionQCDashboardPage() {
                     <tr
                       key={entry.id}
                       className="cursor-pointer border-t transition-colors hover:bg-muted/50"
-                      onClick={() => navigate(`/qc/production/entries/${entry.id}`)}
+                      onClick={() => navigate(`/qc/documents/entries/${entry.id}`)}
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">#{entry.id}</td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
                         {formatDateTime(entry.checked_at)}
-                      </td>
-                      <td className="whitespace-nowrap p-3 text-sm">
-                        {entry.line_name}
-                        <div className="text-xs text-muted-foreground">Run #{entry.run_number}</div>
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="max-w-[260px]">
-                          {entry.item_code && (
-                            <div
-                              className="truncate font-mono text-xs font-medium text-muted-foreground"
-                              title={entry.item_code}
-                            >
-                              {entry.item_code}
-                            </div>
-                          )}
-                          <div className="truncate" title={entry.product || '-'}>
-                            {entry.product || '-'}
-                          </div>
-                        </div>
                       </td>
                       <td className="whitespace-nowrap p-3 text-sm">
                         {entry.parameter_type.name}

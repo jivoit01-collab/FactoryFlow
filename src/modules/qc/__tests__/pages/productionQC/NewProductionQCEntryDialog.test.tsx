@@ -1,47 +1,21 @@
 /**
- * New entry: pick a running line, then a parameter type. Types are not tied to
- * products, so every active type is offered on every line.
+ * New entry: pick the document, then fill it. Documents are not tied to lines
+ * or runs, so the document is the only thing to choose.
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-  ProductionParameterType,
-  ProductionRunningLine,
-} from '@/modules/qc/types/productionQC.types';
+import type { ProductionParameterType } from '@/modules/qc/types/productionQC.types';
 
 import { NewProductionQCEntryDialog } from '../../../pages/productionQC/NewProductionQCEntryDialog';
 
-const data = vi.hoisted(() => ({
-  lines: [] as ProductionRunningLine[],
-  types: [] as ProductionParameterType[],
-}));
+const data = vi.hoisted(() => ({ types: [] as ProductionParameterType[] }));
 
 vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
-  useProductionQCRunningLines: () => ({
-    data: data.lines,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
   useProductionParameterTypes: () => ({ data: data.types, isLoading: false, error: null }),
 }));
-
-const line = (overrides: Partial<ProductionRunningLine>): ProductionRunningLine => ({
-  line_id: 1,
-  line_name: 'Line 1',
-  run_id: 11,
-  run_number: 3,
-  run_date: '2026-09-29',
-  item_code: 'FG0001',
-  product: 'Jivo Canola 1L PET',
-  is_running_now: true,
-  last_started_at: '2026-09-29T06:00:00+05:30',
-  stopped_at: null,
-  ...overrides,
-});
 
 const type = (overrides: Partial<ProductionParameterType>): ProductionParameterType => ({
   id: 1,
@@ -64,15 +38,14 @@ function Where() {
 }
 
 function renderDialog() {
-  const onOpenChange = vi.fn();
   render(
-    <MemoryRouter initialEntries={['/qc/production']}>
+    <MemoryRouter initialEntries={['/qc/documents']}>
       <Routes>
         <Route
           path="*"
           element={
             <>
-              <NewProductionQCEntryDialog open onOpenChange={onOpenChange} />
+              <NewProductionQCEntryDialog open onOpenChange={vi.fn()} />
               <Where />
             </>
           }
@@ -80,118 +53,93 @@ function renderDialog() {
       </Routes>
     </MemoryRouter>,
   );
-  return { onOpenChange };
 }
 
+const where = () => screen.getByTestId('where').textContent;
+
 beforeEach(() => {
-  data.lines = [];
   data.types = [
-    type({ id: 1, code: 'PET_1L', name: '1 L PET Oil', parameter_count: 4 }),
-    type({ id: 2, code: 'JAR_5L', name: '5 L Jar Oil', parameter_count: 6 }),
-    type({ id: 3, code: 'TIN_15L', name: '15 L Tin Oil', parameter_count: 0 }),
+    type({
+      id: 1,
+      code: 'OIL_ONLINE',
+      name: 'Oil Plant On-line Monitoring',
+      print_document_id: 'QA-FRM-14-01-05-02',
+    }),
+    type({ id: 2, code: 'BACKWASHING', name: 'Backwashing Record', parameter_count: 5 }),
+    type({ id: 3, code: 'EMPTY', name: 'Not Ready Yet', parameter_count: 0 }),
   ];
 });
 
-describe('step 1 — the running line', () => {
-  it('says so when no line is running', () => {
-    renderDialog();
-    expect(screen.getByText('No line is running right now')).toBeInTheDocument();
-  });
-
-  it('shows each line with its product, item code and whether it is running', () => {
-    data.lines = [
-      line({}),
-      line({
-        line_id: 2,
-        line_name: 'Line 2',
-        run_id: 12,
-        item_code: 'FG0002',
-        product: 'Jivo Olive 5L',
-        is_running_now: false,
-        stopped_at: new Date(new Date().setHours(13, 5, 0, 0)).toISOString(),
-      }),
-    ];
+describe('picking the document', () => {
+  it('offers every document straight away — no line to pick first', () => {
     renderDialog();
 
-    const first = screen.getByRole('button', { name: /Line 1/ });
-    expect(first).toHaveTextContent('Jivo Canola 1L PET');
-    expect(first).toHaveTextContent('FG0001');
-    expect(first).toHaveTextContent('Running');
-
-    const second = screen.getByRole('button', { name: /Line 2/ });
-    expect(second).toHaveTextContent('Jivo Olive 5L');
-    expect(second).toHaveTextContent('Stopped since 13:05');
-  });
-});
-
-describe('step 2 — the parameter type', () => {
-  it('offers every type on every line, whatever its product', () => {
-    data.lines = [
-      line({}),
-      line({ line_id: 2, line_name: 'Line 2', run_id: 12, item_code: '', product: 'Demo' }),
-    ];
-    renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 2/ }));
-
+    expect(screen.getByRole('heading', { name: 'Pick a document' })).toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(3);
-    // Nothing about products or item codes stands between the line and the type.
-    expect(screen.queryByText(/linked|item code, so/i)).not.toBeInTheDocument();
-    // With two usable types, nothing is chosen for the user.
+    expect(screen.queryByText(/running/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Change line/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a document by its form number when it has one', () => {
+    renderDialog();
+    expect(
+      screen.getByRole('radio', { name: /Oil Plant On-line Monitoring/ }).closest('label'),
+    ).toHaveTextContent('QA-FRM-14-01-05-02');
+    expect(
+      screen.getByRole('radio', { name: /Backwashing Record/ }).closest('label'),
+    ).toHaveTextContent('BACKWASHING');
+  });
+
+  it('opens the form for the document picked', () => {
+    renderDialog();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('radio', { name: /5 L Jar Oil/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Backwashing Record/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=12&type=2');
+
+    expect(where()).toBe('/qc/documents/new?type=2');
   });
 
-  it('picks the only usable type for you', () => {
-    data.types = [
-      type({
-        id: 1,
-        code: 'OIL_ONLINE',
-        name: 'Oil Plant On-line Monitoring',
-        parameter_count: 16,
-      }),
-      type({ id: 3, code: 'TIN_15L', name: '15 L Tin Oil', parameter_count: 0 }),
-    ];
-    data.lines = [line({})];
+  it('picks the only usable document for you', () => {
+    data.types = [data.types[0], data.types[2]];
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 
     expect(screen.getByRole('radio', { name: /Oil Plant On-line Monitoring/ })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/new?run=11&type=1');
+    expect(where()).toBe('/qc/documents/new?type=1');
   });
 
-  it('disables a type with no parameters yet', () => {
-    data.lines = [line({})];
+  it('disables a document with no parameters yet', () => {
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 
-    const empty = screen.getByRole('radio', { name: /15 L Tin Oil/ });
+    const empty = screen.getByRole('radio', { name: /Not Ready Yet/ });
     expect(empty).toBeDisabled();
     expect(empty.closest('label')).toHaveTextContent('no parameters yet');
-    expect(screen.getByRole('radio', { name: /1 L PET Oil/ })).toBeEnabled();
   });
 
-  it('does not preselect the only type when it has no parameters', () => {
-    data.types = [type({ id: 3, code: 'TIN_15L', name: '15 L Tin Oil', parameter_count: 0 })];
-    data.lines = [line({})];
+  it('does not preselect the only document when it has no parameters', () => {
+    data.types = [data.types[2]];
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
 
-    expect(screen.getByRole('radio', { name: /15 L Tin Oil/ })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: /15 L Tin Oil/ })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /Not Ready Yet/ })).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
-  it('goes back to the lines', () => {
-    data.lines = [line({})];
+  it('narrows a long list by search', () => {
+    data.types = Array.from({ length: 10 }, (_, i) =>
+      type({
+        id: i + 1,
+        code: `DOC_${i + 1}`,
+        name: i === 6 ? 'RO Testing Record' : `Doc ${i + 1}`,
+      }),
+    );
     renderDialog();
-    fireEvent.click(screen.getByRole('button', { name: /Line 1/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Change line/ }));
 
-    expect(screen.getByRole('button', { name: /Line 1/ })).toBeInTheDocument();
-    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    fireEvent.change(screen.getByRole('textbox', { name: /Search documents/ }), {
+      target: { value: 'ro test' },
+    });
+
+    expect(screen.getAllByRole('radio')).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /RO Testing Record/ })).toBeInTheDocument();
   });
 });

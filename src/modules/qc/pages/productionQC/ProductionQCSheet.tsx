@@ -58,19 +58,6 @@ export function ProductionQCSheet({
   const columns = sheetColumns(entries);
   const rows = sheetRows(columns);
 
-  const idRow = (sr: number, label: string, value: (entry: ProductionQCEntry) => string) => (
-    <tr key={label}>
-      <td className={cn(cell, stickySr)}>{sr}</td>
-      <td className={cn(cell, stickyName, 'font-medium')}>{label}</td>
-      <td className={cn(cell, stickyUom)} />
-      {columns.map((entry) => (
-        <td key={entry.id} className={cn(cell, valueCell)}>
-          {value(entry) || '-'}
-        </td>
-      ))}
-    </tr>
-  );
-
   const footRow = (label: string, value: (entry: ProductionQCEntry) => React.ReactNode) => (
     <tr key={label}>
       <td className={cn(cell, stickySr)} />
@@ -119,7 +106,7 @@ export function ProductionQCSheet({
               {columns.map((entry) => (
                 <th key={entry.id} className={cn(cell, valueCell, 'text-left font-semibold')}>
                   <Link
-                    to={`/qc/production/entries/${entry.id}`}
+                    to={`/qc/documents/entries/${entry.id}`}
                     className="hover:underline"
                     aria-label={`Entry #${entry.id} at ${time(entry.checked_at)}`}
                   >
@@ -135,12 +122,9 @@ export function ProductionQCSheet({
             </tr>
           </thead>
           <tbody>
-            {idRow(1, 'PRODUCT', (entry) => entry.product)}
-            {idRow(2, 'SKU', (entry) => entry.item_code)}
-            {idRow(3, 'LINE ID', (entry) => entry.line_name)}
             {rows.map((row, index) => (
               <tr key={row.key}>
-                <td className={cn(cell, stickySr)}>{index + 4}</td>
+                <td className={cn(cell, stickySr)}>{index + 1}</td>
                 <td className={cn(cell, stickyName)}>{row.name}</td>
                 <td className={cn(cell, stickyUom, 'text-muted-foreground')}>{row.uom || '-'}</td>
                 {columns.map((entry) => {

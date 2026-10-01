@@ -12,8 +12,13 @@
 > scratch; nothing in the frontend calls their old endpoints any more.
 >
 > **2026-09-29:** Production QC is back, rebuilt from scratch (entries on a running
-> line, one-step approval — see [Flow D](#flow-d--production-qc)). None of the old
-> session-based pages, routes, endpoints or permissions came back with it.
+> line, one-step approval). None of the old session-based pages, routes, endpoints or
+> permissions came back with it.
+>
+> **2026-10-01:** Production QC is now **Documents** (`/qc/documents`; the old
+> `/qc/production…` addresses redirect) and is **not tied to production**: an entry is
+> a filled-in copy of a document QC maintains — no line, run or product — see
+> [Flow D](#flow-d--documents). The code keeps its `productionQC` names.
 
 ---
 
@@ -34,12 +39,13 @@ opens the first page the user may see (`pages/QCSectionRedirect.tsx`).
    create an inspection against a submitted arrival slip, enter parameter readings, and
    route it through **QA Chemist → QA Manager**. The sidebar item carries a red count of
    inspections waiting for *this* user's sign-off (`PendingApprovalsBadge`).
-2. **Production QC** — checks QC make on a line while a run is on it. Tabs: **Entries**
-   (`/qc/production`, the dashboard) and **Parameter Types**
-   (`/qc/production/parameter-types`, the masters; manage-only). An entry is made
-   against a running line and a *parameter type*, one value per parameter, and saving it
-   sends it to a QC lead, who approves it or sends it back. Its badge counts entries
-   pending approval, for approvers only (`ProductionQCBadge`).
+2. **Documents** — the records QC maintains (on-line monitoring, water testing, net
+   content, checklists…), each a paper form. Tabs: **Entries** (`/qc/documents`) and
+   **Document Types** (`/qc/documents/types`, the masters; manage-only). An entry is a
+   filled-in copy of one document, one value per parameter; saving it sends it to a QC
+   lead, who approves it or sends it back. Nothing ties it to a line, run or product:
+   whatever the paper header asks for is one of the document's parameters. Its badge
+   counts entries pending approval, for approvers only (`ProductionQCBadge`).
 3. **Line Clearance** (`/qc/line-clearance`) — approve pre-production line clearances
    (the data comes from the `production/execution` module; QC just reviews/approves).
    Its badge counts clearances SUBMITTED and waiting for QA (`LineClearanceQABadge`).
@@ -47,7 +53,7 @@ opens the first page the user may see (`pages/QCSectionRedirect.tsx`).
    (`/qc/qa-procedures`), with an audit log of who changed which procedure.
 5. **Master Data** (`/qc/master` → `/qc/master/print-documents`) — one tab for now,
    **Print Documents**: where every printed form's document number lives — the two
-   arrival-slip reports and each production QC sheet (one row per parameter type;
+   arrival-slip reports and each QC document's sheet (one row per document type;
    ETP keeps its own, `etp.EtpPrintDocument`).
 
 A tab bar shows only the tabs the user may open, and none at all when that is one.
@@ -80,21 +86,19 @@ Defined in `types/qc.types.ts`:
 - **`ParameterType`** — NUMERIC / TEXT / BOOLEAN / RANGE (drives the result input:
   number field, text, Pass/Fail dropdown, number-within-range).
 
-Production QC, in `types/productionQC.types.ts` (mirrors
+Documents, in `types/productionQC.types.ts` (mirrors
 `quality_control/serializers_production_qc.py`):
 
-- **`ProductionParameterType`** — plays the part a material type does on the arrival
-  slip: its own list of parameters (`ProductionParameter`: spec text, min / max, uom,
-  sequence, mandatory, and `value_type` — the kind of reading, NUMERIC / TEXT / BOOLEAN
-  / RANGE) and the FG products it applies to (`items`, keyed on SAP item code).
-  `parameter_count` counts active parameters; a type with none cannot be checked
-  against. Production parameters are **not** the arrival-slip ones.
-- **`ProductionRunningLine`** — a line a check can be made on: the line's IN_PROGRESS
-  run whose latest segment started in the last 24h or is open now.
-  `is_running_now=false` means stopped (breakdown / lunch) since `stopped_at`.
-- **`ProductionQCEntry`** — one check: line / run / product snapshot, the parameter
-  type, `checked_at`, `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
-  (`ProductionQCResult`, the parameter's spec snapshotted onto each reading).
+- **`ProductionParameterType`** — a *document type*: one paper form and its parameters
+  (`ProductionParameter`: spec text, min / max, uom, sequence, mandatory, and
+  `value_type` — the kind of reading, NUMERIC / TEXT / BOOLEAN / RANGE), plus the form's
+  number (`print_document_id`) and revision. `parameter_count` counts active
+  parameters; a type with none cannot be filled. Not tied to products, and not the
+  arrival-slip parameters.
+- **`ProductionQCEntry`** — one filled-in copy: the document type, `checked_at`,
+  `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
+  (`ProductionQCResult`, the parameter's spec snapshotted onto each reading). No line,
+  run or product.
 
 Status → label/colour/icon maps live in `constants/qc.constants.ts`
 (`WORKFLOW_STATUS_CONFIG`, `FINAL_STATUS_CONFIG`, `DECISION_STATUS_CONFIG`).
@@ -159,56 +163,53 @@ optional remark. On success it navigates back to the list; the gate is notified.
 "Pending Approval") from the `production/execution` API, with a review dialog to
 Approve/Reject. Approving requires `can_approve_line_clearance_qc`.
 
-### Flow D — Production QC
+### Flow D — Documents
 
-**The dashboard is one day at a time** (`?date=YYYY-MM-DD`, default today; the list,
-counts and search are that day's). A notice points at checks still waiting on other
-days (`waiting_elsewhere` in the counts). A **List / Sheet** toggle (`?view=sheet`) lays
-the day out as the paper record — one sheet per parameter type, a column per check
-(PRODUCT / SKU / LINE ID, then each parameter with its UoM, remarks, Q.A Chemist,
-Q.A.M; `ProductionQCSheet.tsx`, rows from `utils/productionQCSheet.ts`). Each sheet
-prints (`ProductionQCSheetPrint.tsx`, `useProductionQCSheetPrint.tsx`): landscape A4 in
-the shared `ControlledDocumentFrame`, ten time columns a page as on the form, out-of-spec
+**The page is one day at a time** (`?date=YYYY-MM-DD`, default today; the list, the
+counts on the status chips and the search are that day's). A notice points at entries
+still waiting on other days (`waiting_elsewhere` in the counts). A **List / Sheet**
+toggle (`?view=sheet`) lays the day out as the paper record — one sheet per document, a
+column per entry, each parameter with its UoM, then remarks, Q.A Chemist, Q.A.M
+(`ProductionQCSheet.tsx`, rows from `utils/productionQCSheet.ts`). Each sheet prints
+(`ProductionQCSheetPrint.tsx`, `useProductionQCSheetPrint.tsx`): landscape A4 in the
+shared `ControlledDocumentFrame`, ten columns a page as on the form, out-of-spec
 readings bold red with `*`. The form's number comes from Master Data > Print Documents
 (the type's `print_document_id`) and is printed above "Controlled Document" in the
-footer, as on the paper form; its revision / revision date come from the type.
+footer; its revision / revision date come from the type.
 
-
-1. **Dashboard** (`/qc/production`, `ProductionQCDashboardPage`) — count cards
-   (Pending Approval and Sent Back on every date; Approved within the global date
-   range), status chips (All / Pending Approval / Sent Back / Approved, in `?status=`),
-   a line filter (`?line=`, applied client-side over the loaded list), and a search
-   that spans every date. Pending and sent-back entries are listed whatever their date,
-   so an unfinished check never drops off. A row opens the entry.
-2. **New** (FILL only, `NewProductionQCEntryDialog`) — step 1 picks a running line
-   (`GET production-qc/running-lines/`), each showing product, item code and a
-   *Running* / *Stopped since HH:MM* badge. Step 2 picks the parameter type: every
-   active type is offered on every line — types are **not tied to products** — and the
-   only usable one is preselected. A type with no parameters is disabled. Continue
-   opens `/qc/production/new?run=<run_id>&type=<id>`.
-3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/production/entries/:id/edit`)
-   — line / product / item code / run / type, then one row per parameter: name, spec,
-   the input by value kind (number; text; a Pass / Fail select), an optional row remark,
-   and a live within / out-of-spec hint. The hint is `utils/productionQCSpec.ts`, a port
-   of the backend's `spec_evaluation.py` (min / max first, else the spec text: `910±5`,
-   `NLT 20`, `58.6-61.7`), so it predicts the verdict the server records; a reading the
-   spec cannot judge (text, a spec without numbers) gets a hand-set *Within spec* box.
+1. **List** (`/qc/documents`, `ProductionQCDashboardPage`) — status chips with the
+   day's counts (`?status=`), a document filter (`?doc=`, client-side over the loaded
+   day), and a search over the entry no., the document and every value entered (so a
+   product or batch typed into a document finds it). A row opens the entry.
+2. **New** (FILL only, `NewProductionQCEntryDialog`) — pick the document (searchable
+   once there are more than six); the only usable one is preselected and one with no
+   parameters is disabled. Continue opens `/qc/documents/new?type=<id>`.
+3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/documents/entries/:id/edit`)
+   — the document, then one row per parameter: name, spec, the input by value kind
+   (number; text; a Pass / Fail select), an optional row remark, and a live within /
+   out-of-spec hint. The hint is `utils/productionQCSpec.ts`, a port of the backend's
+   `spec_evaluation.py` (min / max first, else the spec text: `910±5`, `NLT 20`,
+   `58.6-61.7`), so it predicts the verdict the server records; a reading the spec
+   cannot judge (text, a spec without numbers) gets a hand-set *Within spec* box.
    **Save** is also *send for approval* — there are no drafts. The form blocks a missing
    mandatory value and an out-of-spec reading with no entry remark; the backend's own
-   400s land on the field (`remarks`, `results`, `run_id` / `parameter_type_id` with a
-   *Pick again* button, or `detail`). If the run left the line before the form opened,
-   the form says so and offers the way back.
-4. **Entry detail** (`/qc/production/entries/:entryId`, `ProductionQCEntryDetailPage`) —
-   status, the check, the results (value, spec, in-spec ✓/✗), remarks, and a highlighted
-   banner with the send-back remark while SENT_BACK. **Edit** (FILL) while PENDING or
-   SENT_BACK → the form in edit mode → `PATCH`, which puts it back to PENDING.
-   **Approve** (optional remark) and **Send back** (remark required) for APPROVE while
-   PENDING. Mutations invalidate the entry lists, the counts and so the badge.
-5. **Parameter Types** (`/qc/production/parameter-types`, `ProductionParameterTypesPage`,
-   MANAGE) — search / add / edit / remove types (a soft delete: saved entries keep
-   their readings); a type opens on its own page (`/qc/production/parameter-types/:id`)
-   with its parameters (add / edit / remove: code, name, standard value, value type,
-   min / max for numeric kinds, uom, sequence, mandatory).
+   400s land on the field (`remarks`, `results`, `parameter_type_id` with a *Pick again*
+   button, or `detail`).
+4. **Entry detail** (`/qc/documents/entries/:entryId`, `ProductionQCEntryDetailPage`) —
+   status, the document, the results (value, spec, in-spec ✓/✗), remarks, and a
+   highlighted banner with the send-back remark while SENT_BACK. **Edit** (FILL) while
+   PENDING or SENT_BACK → the form in edit mode → `PATCH`, which puts it back to
+   PENDING. **Approve** (optional remark) and **Send back** (remark required) for
+   APPROVE while PENDING. Mutations invalidate the entry lists, the counts and the badge.
+5. **Document Types** (`/qc/documents/types`, `ProductionParameterTypesPage`, MANAGE) —
+   search / add / edit / remove types (a soft delete: saved entries keep their
+   readings); a type opens on its own page (`/qc/documents/types/:id`) with its
+   parameters (add / edit / remove: code, name, standard value, value type, min / max
+   for numeric kinds, uom, sequence, mandatory).
+
+The old addresses (`/qc/production`, `/qc/production/new`, `/qc/production/entries/…`,
+`/qc/production/parameter-types[/:id]`) redirect, keeping the rest of the path and the
+query (`components/RedirectPathPrefix.tsx`).
 
 ---
 
@@ -333,15 +334,16 @@ codenames. Routes and sidebar entries in `module.config.tsx` gate on them.
 | Send slip back | `can_send_back_arrival_slip` | qc_store / qam |
 | Line Clearance QA | `can_(view/approve)_line_clearance_qc` | Production-QC group |
 | Master data | `can_manage_material_types`, `can_manage_qc_parameters` | qam / admins |
-| Production QC — see entries | `can_view_production_qc_entries` (FILL / APPROVE see them too) | QC |
-| Production QC — make / correct an entry | `can_fill_production_qc_entries` | QC chemist |
-| Production QC — approve / send back | `can_approve_production_qc_entries` | QC lead |
-| Production QC — parameter types | `can_manage_production_qc_parameters` | qam / admins |
+| Documents — see entries | `can_view_production_qc_entries` (FILL / APPROVE see them too) | QC |
+| Documents — fill / correct an entry | `can_fill_production_qc_entries` | QC chemist |
+| Documents — approve / send back | `can_approve_production_qc_entries` | QC lead |
+| Documents — document types | `can_manage_production_qc_parameters` | qam / admins |
 
-`QC_PERMISSIONS.PRODUCTION_QC = { VIEW, FILL, APPROVE, MANAGE_PARAMETERS }`. The
-sidebar item and `/qc/production` open to VIEW / FILL / APPROVE; New and edit need
-FILL; the running-lines endpoint needs FILL. A user holding only MANAGE_PARAMETERS has
-no Production QC sidebar item and lands on Parameter Types from `/qc`. These are new
+`QC_PERMISSIONS.PRODUCTION_QC = { VIEW, FILL, APPROVE, MANAGE_PARAMETERS }` (the
+codenames kept their production-QC names when the area became Documents). The sidebar
+item and `/qc/documents` open to VIEW / FILL / APPROVE; New and edit need FILL. A user
+holding only MANAGE_PARAMETERS has no Documents sidebar item and lands on Document Types
+from `/qc`. These are new
 codenames: the removed session-based ones (`can_view_production_qc`,
 `can_create_production_qc`, …) must not come back (the permission and module-config
 tests check the exact old strings are absent).
@@ -367,7 +369,7 @@ permission sees the module with no items and lands on the log from `/qc`.
 - `module.config.tsx` — routes (incl. legacy redirects), sidebar, permission gates.
 - `constants/qcSections.ts` — the areas' tabs, their permissions, where `/qc` lands.
 - `components/QCSectionTabs.tsx`, `components/qcSections.tsx` — the tab bars.
-- `components/QCSidebarBadges.tsx` — the Arrival Slips / Production QC / Line Clearance counts.
+- `components/QCSidebarBadges.tsx` — the Arrival Slips / Documents / Line Clearance counts.
 - `pages/QCSectionRedirect.tsx` — `/qc` and `/qc/master` open the first allowed page.
 - `pages/PendingInspectionsPage.tsx` — arrival-slip list, tabs, search, Excel export.
 - `pages/InspectionDetailPage.tsx` — create/edit/submit/approve/send-back/print.
@@ -382,10 +384,10 @@ permission sees the module with no items and lands on the log from `/qc`.
 - `api/` — `inspection/`, `arrivalSlip/`, `materialType/`, `qcParameter/`,
   `parameterSet/`, `printDocument/`, `qcDocumentFile/`, `qcDocumentFileAudit/`,
   `productionQC/` (each `*.api.ts` + `*.queries.ts`).
-- `constants/productionQC.ts` — Production QC status labels / colours and filter chips.
+- `constants/productionQC.ts` — Documents status labels / colours and filter chips.
 - `utils/productionQCSpec.ts` — judging a reading against its spec (port of the
   backend's `spec_evaluation.py`); `utils/productionQCFormat.ts` — date / time labels.
-- `types/productionQC.types.ts` — Production QC types.
+- `types/productionQC.types.ts` — Documents types ("production QC" in code).
 - `hooks/useInspectionPermissions.ts` — permission × workflow-state flags.
 - `constants/qc.constants.ts` — status/decision label & colour maps.
 - `types/qc.types.ts` — all module types.

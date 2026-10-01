@@ -80,19 +80,19 @@ export const QC_PERMISSIONS = {
   },
 
   // ============================================
-  // PRODUCTION QC PERMISSIONS
+  // QC DOCUMENTS PERMISSIONS ("production QC" in code)
   // ============================================
-  // Checks on a running line against a production parameter type, approved in
-  // one step by a QC lead. Not the removed session-based Production QC: these
+  // The records QC maintains (Quality Control > Documents), approved in one
+  // step by a QC lead. Not the removed session-based Production QC: these
   // codenames all end in `_entries` / `_parameters`.
   PRODUCTION_QC: {
-    /** See production QC entries (whoever fills or approves them sees them too) */
+    /** See document entries (whoever fills or approves them sees them too) */
     VIEW: 'quality_control.can_view_production_qc_entries',
-    /** Make a check on a running line, and correct one pending or sent back */
+    /** Fill a document, and correct an entry pending or sent back */
     FILL: 'quality_control.can_fill_production_qc_entries',
     /** Approve an entry, or send it back with a remark */
     APPROVE: 'quality_control.can_approve_production_qc_entries',
-    /** Maintain the parameter types, their parameters and linked products */
+    /** Maintain the document types and their parameters */
     MANAGE_PARAMETERS: 'quality_control.can_manage_production_qc_parameters',
   },
 

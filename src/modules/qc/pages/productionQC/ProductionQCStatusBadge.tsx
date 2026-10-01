@@ -1,8 +1,8 @@
 import { cn } from '@/shared/utils';
 
 import { PRODUCTION_QC_STATUS_CONFIG } from '../../constants/productionQC';
-import type { ProductionQCStatus, ProductionRunningLine } from '../../types/productionQC.types';
-import { formatDateTime, formatStoppedAt } from '../../utils/productionQCFormat';
+import type { ProductionQCStatus } from '../../types/productionQC.types';
+import { formatDateTime } from '../../utils/productionQCFormat';
 
 export function ProductionQCStatusBadge({
   status,
@@ -24,29 +24,6 @@ export function ProductionQCStatusBadge({
       )}
     >
       {label || config?.label || status}
-    </span>
-  );
-}
-
-/** "Running", or "Stopped since HH:MM" for a line stopped for a breakdown or lunch. */
-export function LineRunningBadge({
-  line,
-}: {
-  line: Pick<ProductionRunningLine, 'is_running_now' | 'stopped_at'>;
-}) {
-  if (line.is_running_now) {
-    return (
-      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-green-500" aria-hidden />
-        Running
-      </span>
-    );
-  }
-  const since = formatStoppedAt(line.stopped_at);
-  return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
-      {since ? `Stopped since ${since}` : 'Stopped'}
     </span>
   );
 }

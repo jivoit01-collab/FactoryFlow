@@ -135,13 +135,22 @@ describe('module.config — Routes', () => {
     expect(content).toContain("path: '/qc/master/print-documents'");
   });
 
-  it('has the Production QC pages on their own routes', () => {
+  it('has the Documents pages on their own routes', () => {
     const content = readSource();
-    expect(content).toContain("path: '/qc/production'");
-    expect(content).toContain("path: '/qc/production/new'");
-    expect(content).toContain("path: '/qc/production/entries/:entryId'");
-    expect(content).toContain("path: '/qc/production/entries/:entryId/edit'");
-    expect(content).toContain("path: '/qc/production/parameter-types'");
+    expect(content).toContain("path: '/qc/documents'");
+    expect(content).toContain("path: '/qc/documents/new'");
+    expect(content).toContain("path: '/qc/documents/entries/:entryId'");
+    expect(content).toContain("path: '/qc/documents/entries/:entryId/edit'");
+    expect(content).toContain("path: '/qc/documents/types'");
+    expect(content).toContain("path: '/qc/documents/types/:typeId'");
+  });
+
+  it('sends the old Production QC addresses to Documents', () => {
+    const content = readSource();
+    expect(content).toContain('<RedirectPathPrefix from="/qc/production" to="/qc/documents" />');
+    expect(content).toContain(
+      '<RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/documents/types" />',
+    );
   });
 
   it('gates making and correcting an entry on FILL, the masters on MANAGE_PARAMETERS', () => {
@@ -150,14 +159,14 @@ describe('module.config — Routes', () => {
       const start = content.indexOf(`path: '${path}'`);
       return content.slice(start, content.indexOf('}', start));
     };
-    expect(route('/qc/production/new')).toContain('QC_PERMISSIONS.PRODUCTION_QC.FILL');
-    expect(route('/qc/production/entries/:entryId/edit')).toContain(
+    expect(route('/qc/documents/new')).toContain('QC_PERMISSIONS.PRODUCTION_QC.FILL');
+    expect(route('/qc/documents/entries/:entryId/edit')).toContain(
       'QC_PERMISSIONS.PRODUCTION_QC.FILL',
     );
-    expect(route('/qc/production/parameter-types')).toContain(
+    expect(route('/qc/documents/types')).toContain(
       'QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS',
     );
-    expect(route('/qc/production/entries/:entryId')).toContain('PRODUCTION_QC_ENTRY_PERMISSIONS');
+    expect(route('/qc/documents/entries/:entryId')).toContain('PRODUCTION_QC_ENTRY_PERMISSIONS');
   });
 
   it('lazy loads all page components', () => {
@@ -202,7 +211,7 @@ describe('module.config — Navigation', () => {
     expect(titles).toEqual([
       'Quality Control',
       'Arrival Slips',
-      'Production QC',
+      'Documents',
       'Line Clearance',
       'QA Procedures',
       'Master Data',
@@ -218,7 +227,7 @@ describe('module.config — Navigation', () => {
 
   it('has no dashboard', () => {
     const content = readSource();
-    // The whole word: Production QC's own list page is ProductionQCDashboardPage.
+    // The whole word: the Documents list page is ProductionQCDashboardPage.
     expect(content).not.toMatch(/\bQCDashboardPage\b/);
     expect(content).not.toContain("title: 'Dashboard'");
   });
@@ -227,15 +236,15 @@ describe('module.config — Navigation', () => {
 // ═══════════════════════════════════════════════════════════════
 // Removed sub-modules
 //
-// Online Quality Monitoring, Customer Return QC and the Documents (record sheet)
-// sub-module were removed; their backend is gone, so no route, sidebar item or
-// permission gate may point at them. Production QC was removed too and rebuilt
-// from scratch (entries on a running line): nothing of the old session-based
-// one — its pages, routes or permissions — may come back with it.
+// Online Quality Monitoring, Customer Return QC and the old Documents (record
+// sheet) sub-module were removed; their backend is gone, so no route, sidebar
+// item or permission gate may point at them. Production QC was removed too and
+// rebuilt from scratch — it is the new Documents, at /qc/documents — and nothing
+// of the old session-based one or the old record sheets may come back with it.
 // ═══════════════════════════════════════════════════════════════
 
 describe('module.config — Removed sub-modules', () => {
-  it.each(['/qc/online-monitoring', '/qc/customer-returns', '/qc/documents'])(
+  it.each(['/qc/online-monitoring', '/qc/customer-returns'])(
     'has no %s route or sidebar item',
     (path) => {
       expect(readSource()).not.toContain(`'${path}`);
@@ -250,6 +259,10 @@ describe('module.config — Removed sub-modules', () => {
     'ProductionQCSessionPage',
     'ProductionQCApprovalPage',
     "'./pages/production/",
+    "'./pages/documents/",
+    'QCDocumentsPage',
+    'QCRecordDetailPage',
+    'RecordSheetFormatPage',
   ])('keeps nothing of the old session-based Production QC: %s', (fragment) => {
     expect(readSource()).not.toContain(fragment);
   });

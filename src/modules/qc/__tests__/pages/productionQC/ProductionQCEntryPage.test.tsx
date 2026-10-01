@@ -12,13 +12,11 @@ import type {
   ProductionParameter,
   ProductionParameterType,
   ProductionQCEntry,
-  ProductionRunningLine,
 } from '@/modules/qc/types/productionQC.types';
 
 import ProductionQCEntryPage from '../../../pages/productionQC/ProductionQCEntryPage';
 
 const state = vi.hoisted(() => ({
-  lines: [] as unknown[],
   parameters: [] as unknown[],
   entry: null as unknown,
   create: vi.fn(),
@@ -28,7 +26,6 @@ const state = vi.hoisted(() => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
-  useProductionQCRunningLines: () => ({ data: state.lines, isLoading: false, error: null }),
   useProductionParameterType: (id: number | null) => ({
     data: id
       ? ({
@@ -53,20 +50,6 @@ vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
   useProductionQCEntry: () => ({ data: state.entry, isLoading: false, error: null }),
   useUpdateProductionQCEntry: () => ({ mutateAsync: state.update, isPending: false }),
 }));
-
-const runningLine = (overrides: Partial<ProductionRunningLine> = {}): ProductionRunningLine => ({
-  line_id: 1,
-  line_name: 'Line 1',
-  run_id: 11,
-  run_number: 3,
-  run_date: '2026-09-29',
-  item_code: 'FG0001',
-  product: 'Jivo Canola 1L PET',
-  is_running_now: true,
-  last_started_at: '2026-09-29T06:00:00+05:30',
-  stopped_at: null,
-  ...overrides,
-});
 
 const parameter = (overrides: Partial<ProductionParameter>): ProductionParameter => ({
   id: 1,
@@ -115,8 +98,8 @@ function renderAt(path: string) {
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/qc/production/new" element={<ProductionQCEntryPage />} />
-        <Route path="/qc/production/entries/:entryId/edit" element={<ProductionQCEntryPage />} />
+        <Route path="/qc/documents/new" element={<ProductionQCEntryPage />} />
+        <Route path="/qc/documents/entries/:entryId/edit" element={<ProductionQCEntryPage />} />
         <Route path="*" element={<Where />} />
       </Routes>
     </MemoryRouter>,
@@ -129,7 +112,6 @@ const netWeight = () => screen.getByLabelText('Net Weight *');
 const leakTest = () => screen.getByLabelText('Leak Test *');
 
 beforeEach(() => {
-  state.lines = [runningLine()];
   state.parameters = PARAMETERS;
   state.entry = null;
   state.create = vi.fn().mockResolvedValue({ id: 99 });
@@ -137,19 +119,23 @@ beforeEach(() => {
 });
 
 describe('a new entry', () => {
-  it('shows the line, product, item code, run and parameter type', () => {
-    renderAt('/qc/production/new?run=11&type=1');
+  it('shows the document being filled, and nothing about lines or runs', () => {
+    renderAt('/qc/documents/new?type=1');
 
-    expect(screen.getByText('Line 1')).toBeInTheDocument();
-    expect(screen.getByText('Jivo Canola 1L PET')).toBeInTheDocument();
-    expect(screen.getByText('FG0001')).toBeInTheDocument();
-    expect(screen.getByText('#3')).toBeInTheDocument();
     expect(screen.getByText('1 L PET Oil')).toBeInTheDocument();
-    expect(screen.getByText('Running')).toBeInTheDocument();
+    expect(screen.getByText('PET_1L')).toBeInTheDocument();
+    expect(screen.queryByText(/^(Line|Run No\.|Product|Item Code)$/)).not.toBeInTheDocument();
+  });
+
+  it('asks for the document first when the address has none', () => {
+    renderAt('/qc/documents/new');
+    expect(screen.getByText('Pick a document first')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Documents' }));
+    expect(screen.getByTestId('where').textContent).toBe('/qc/documents');
   });
 
   it('will not save with a mandatory parameter missing', () => {
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     save();
 
@@ -161,7 +147,7 @@ describe('a new entry', () => {
   });
 
   it('asks for a remark when a reading is out of spec, then sends Pass / Fail as strings', async () => {
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     expect(screen.getByText('Within spec')).toBeInTheDocument();
 
@@ -181,7 +167,6 @@ describe('a new entry', () => {
 
     await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
     expect(state.create).toHaveBeenCalledWith({
-      run_id: 11,
       parameter_type_id: 1,
       remarks: 'Two bottles leaking at the cap',
       results: [
@@ -191,12 +176,12 @@ describe('a new entry', () => {
       ],
     });
     await waitFor(() =>
-      expect(screen.getByTestId('where').textContent).toBe('/qc/production/entries/99'),
+      expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/99'),
     );
   });
 
   it('sends Pass for a passing check, and the hand-set verdict for a text reading', async () => {
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '909' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     fireEvent.change(screen.getByLabelText('Label Print'), { target: { value: 'Smudged' } });
@@ -218,7 +203,7 @@ describe('a new entry', () => {
       message: 'remarks: A remark is required when any parameter is out of spec.',
       errors: { remarks: ['A remark is required when any parameter is out of spec.'] },
     });
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
@@ -229,22 +214,20 @@ describe('a new entry', () => {
     expect(screen.getByLabelText(/^Remarks/)).toHaveAttribute('data-error', 'true');
   });
 
-  it('says so, with a way back, when the run left the line before the save', async () => {
+  it('says so, with a way back, when the document was removed before the save', async () => {
     state.create = vi.fn().mockRejectedValue({
       status: 400,
-      message: 'run id: That run is not on a running line any more. Pick the line again.',
-      errors: { run_id: ['That run is not on a running line any more. Pick the line again.'] },
+      message: 'parameter type id: Pick a document.',
+      errors: { parameter_type_id: ['Pick a document.'] },
     });
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
 
-    expect(
-      await screen.findByText('That run is not on a running line any more. Pick the line again.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Pick a document.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pick again' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production');
+    expect(screen.getByTestId('where').textContent).toBe('/qc/documents');
   });
 
   it('shows a detail error from the backend as it is', async () => {
@@ -252,7 +235,7 @@ describe('a new entry', () => {
       status: 400,
       message: 'This parameter type has no parameters yet.',
     });
-    renderAt('/qc/production/new?run=11&type=1');
+    renderAt('/qc/documents/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
@@ -261,34 +244,11 @@ describe('a new entry', () => {
       await screen.findByText('This parameter type has no parameters yet.'),
     ).toBeInTheDocument();
   });
-
-  it('refuses a run that is no longer on a running line, with a way back', () => {
-    state.lines = [runningLine({ run_id: 12 })];
-    renderAt('/qc/production/new?run=11&type=1');
-
-    expect(screen.getByText('This line is not running any more')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Pick the line again/ }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production');
-  });
-
-  it('takes any type on any line, with nothing said about linking', () => {
-    state.lines = [runningLine({ item_code: '', product: 'Demo run' })];
-    renderAt('/qc/production/new?run=11&type=1');
-
-    expect(screen.getByRole('button', { name: /Save & Send for Approval/ })).toBeInTheDocument();
-    expect(screen.queryByText(/linked/i)).not.toBeInTheDocument();
-  });
 });
 
 describe('correcting an entry', () => {
   const entry = (overrides: Partial<ProductionQCEntry> = {}): ProductionQCEntry => ({
     id: 7,
-    line_id: 1,
-    line_name: 'Line 1',
-    run_id: 11,
-    run_number: 3,
-    item_code: 'FG0001',
-    product: 'Jivo Canola 1L PET',
     parameter_type: { id: 1, code: 'PET_1L', name: '1 L PET Oil' },
     checked_at: '2026-09-29T08:00:00+05:30',
     status: 'SENT_BACK',
@@ -327,7 +287,7 @@ describe('correcting an entry', () => {
 
   it('opens with the saved readings and the send-back remark, and PATCHes the correction', async () => {
     state.entry = entry();
-    renderAt('/qc/production/entries/7/edit');
+    renderAt('/qc/documents/entries/7/edit');
 
     expect(screen.getByText('Recheck the weight')).toBeInTheDocument();
     expect(netWeight()).toHaveValue(900);
@@ -345,7 +305,7 @@ describe('correcting an entry', () => {
       },
     });
     await waitFor(() =>
-      expect(screen.getByTestId('where').textContent).toBe('/qc/production/entries/7'),
+      expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/7'),
     );
   });
 
@@ -355,7 +315,7 @@ describe('correcting an entry', () => {
       status_label: 'Approved',
       approved_by_name: 'QC Lead',
     });
-    renderAt('/qc/production/entries/7/edit');
+    renderAt('/qc/documents/entries/7/edit');
 
     expect(screen.getByText('An approved entry cannot be changed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Save/ })).not.toBeInTheDocument();

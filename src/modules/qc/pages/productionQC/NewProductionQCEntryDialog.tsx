@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, Factory, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,19 +11,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import {
-  useProductionParameterTypes,
-  useProductionQCRunningLines,
-} from '../../api/productionQC/productionQC.queries';
-import type { ProductionRunningLine } from '../../types/productionQC.types';
-import { LineRunningBadge } from './ProductionQCStatusBadge';
+import { useProductionParameterTypes } from '../../api/productionQC/productionQC.queries';
 
 /**
- * New entry, in two steps: the running line, then the parameter type. Types are
- * not tied to products, so every active type is offered on every line.
+ * New entry: pick the document, then fill it. Documents are not tied to lines
+ * or runs, so this is the only choice to make.
  */
 export function NewProductionQCEntryDialog({
   open,
@@ -33,52 +29,39 @@ export function NewProductionQCEntryDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
-  const [runId, setRunId] = useState<number | null>(null);
   const [typeId, setTypeId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
 
-  const {
-    data: lines = [],
-    isLoading: linesLoading,
-    error: linesError,
-    refetch: refetchLines,
-  } = useProductionQCRunningLines(open);
-  // Every active type, with its parameter count: a type with no parameters
-  // cannot be checked against.
-  const {
-    data: typeOptions = [],
-    isLoading: typesLoading,
-    error: typesError,
-  } = useProductionParameterTypes(undefined, open);
+  // Every active document, with its parameter count: one with no parameters
+  // cannot be filled.
+  const { data: documents = [], isLoading, error } = useProductionParameterTypes(undefined, open);
 
-  const line = lines.find((candidate) => candidate.run_id === runId) ?? null;
+  const query = search.trim().toLowerCase();
+  const shown = query
+    ? documents.filter(
+        (doc) => doc.name.toLowerCase().includes(query) || doc.code.toLowerCase().includes(query),
+      )
+    : documents;
 
-  // With only one usable type there is nothing to choose: it is picked until
-  // the user picks otherwise.
-  const usable = typeOptions.filter((type) => type.parameter_count > 0);
+  // With only one usable document there is nothing to choose: it is picked
+  // until the user picks otherwise.
+  const usable = documents.filter((doc) => doc.parameter_count > 0);
   const onlyOption = usable.length === 1 ? usable[0].id : null;
-  const chosenTypeId = typeId ?? onlyOption;
-
-  const reset = () => {
-    setRunId(null);
-    setTypeId(null);
-  };
+  const chosenId = typeId ?? onlyOption;
+  const chosen = documents.find((doc) => doc.id === chosenId) ?? null;
+  const canContinue = !!chosen && chosen.parameter_count > 0;
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) reset();
+    if (!next) {
+      setTypeId(null);
+      setSearch('');
+    }
     onOpenChange(next);
   };
 
-  const pickLine = (picked: ProductionRunningLine) => {
-    setRunId(picked.run_id);
-    setTypeId(null);
-  };
-
-  const selectedType = typeOptions.find((type) => type.id === chosenTypeId) ?? null;
-  const canContinue = !!line && !!selectedType && selectedType.parameter_count > 0;
-
   const handleContinue = () => {
-    if (!line || !selectedType) return;
-    navigate(`/qc/production/new?run=${line.run_id}&type=${selectedType.id}`);
+    if (!chosen) return;
+    navigate(`/qc/documents/new?type=${chosen.id}`);
     handleOpenChange(false);
   };
 
@@ -86,156 +69,98 @@ export function NewProductionQCEntryDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{line ? 'Pick the parameter type' : 'Pick a running line'}</DialogTitle>
-          <DialogDescription>
-            {line
-              ? 'Pick the check to make on this line.'
-              : 'A check is made against the run on the line right now.'}
-          </DialogDescription>
+          <DialogTitle>Pick a document</DialogTitle>
+          <DialogDescription>The form to fill in.</DialogDescription>
         </DialogHeader>
 
         <DialogBody className="max-h-[60vh] space-y-3">
-          {!line && (
-            <>
-              {linesLoading && (
-                <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading running lines…
-                </div>
-              )}
-              {linesError && !linesLoading && (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                  <span className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Could not load the running lines.
-                  </span>
-                  <Button variant="outline" size="sm" onClick={() => refetchLines()}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-              {!linesLoading && !linesError && lines.length === 0 && (
-                <div className="flex flex-col items-center gap-2 rounded-md border border-dashed py-10 text-center text-sm text-muted-foreground">
-                  <Factory className="h-8 w-8" />
-                  No line is running right now
-                </div>
-              )}
-              {!linesLoading &&
-                lines.map((candidate) => (
-                  <button
-                    key={candidate.run_id}
-                    type="button"
-                    onClick={() => pickLine(candidate)}
-                    className="flex w-full items-start justify-between gap-3 rounded-md border p-3 text-left transition-colors hover:border-primary/60 hover:bg-muted/50"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium">{candidate.line_name}</div>
-                      <div className="truncate text-sm">{candidate.product || '-'}</div>
-                      <div className="font-mono text-xs text-muted-foreground">
-                        {candidate.item_code || 'No item code'} · Run #{candidate.run_number}
-                      </div>
-                    </div>
-                    <LineRunningBadge line={candidate} />
-                  </button>
-                ))}
-            </>
+          {documents.length > 6 && (
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search documents"
+                aria-label="Search documents by name or code"
+                className="pl-9"
+              />
+            </div>
           )}
 
-          {line && (
-            <>
-              <div className="flex items-start justify-between gap-3 rounded-md bg-muted/50 p-3">
-                <div className="min-w-0">
-                  <div className="font-medium">{line.line_name}</div>
-                  <div className="truncate text-sm">{line.product || '-'}</div>
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {line.item_code || 'No item code'} · Run #{line.run_number}
-                  </div>
-                </div>
-                <LineRunningBadge line={line} />
-              </div>
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading documents…
+            </div>
+          )}
+          {error && !isLoading && (
+            <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              Could not load the documents.
+            </div>
+          )}
+          {!isLoading && !error && documents.length === 0 && (
+            <div className="rounded-md border border-dashed py-6 text-center text-sm text-muted-foreground">
+              There are no documents yet. Add them under Document Types.
+            </div>
+          )}
+          {!isLoading && documents.length > 0 && shown.length === 0 && (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              No document matches “{search.trim()}”.
+            </div>
+          )}
 
-              {typesLoading && (
-                <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading parameter types…
-                </div>
-              )}
-              {typesError && !typesLoading && (
-                <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  Could not load the parameter types.
-                </div>
-              )}
-              {!typesLoading && !typesError && typeOptions.length === 0 && (
-                <div className="rounded-md border border-dashed py-6 text-center text-sm text-muted-foreground">
-                  There are no parameter types yet. Add them under Parameter Types.
-                </div>
-              )}
-
-              {typeOptions.length > 0 && (
-                <fieldset className="space-y-2">
-                  <legend className="sr-only">Parameter type</legend>
-                  {typeOptions.map((type) => {
-                    const empty = type.parameter_count === 0;
-                    const inputId = `production-qc-type-${type.id}`;
-                    return (
-                      <label
-                        key={type.id}
-                        htmlFor={inputId}
-                        className={cn(
-                          'flex items-center gap-3 rounded-md border p-3 transition-colors',
-                          empty
-                            ? 'cursor-not-allowed opacity-60'
-                            : 'cursor-pointer hover:bg-muted/50',
-                          chosenTypeId === type.id && 'border-primary bg-primary/5',
-                        )}
-                      >
-                        <input
-                          id={inputId}
-                          type="radio"
-                          name="production-qc-type"
-                          value={type.id}
-                          checked={chosenTypeId === type.id}
-                          disabled={empty}
-                          onChange={() => setTypeId(type.id)}
-                          className="h-4 w-4"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-medium">{type.name}</span>
-                          <span className="block font-mono text-xs text-muted-foreground">
-                            {type.code}
-                          </span>
-                        </span>
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">
-                          {empty
-                            ? 'no parameters yet'
-                            : `${type.parameter_count} parameter${type.parameter_count === 1 ? '' : 's'}`}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </fieldset>
-              )}
-            </>
+          {shown.length > 0 && (
+            <fieldset className="space-y-2">
+              <legend className="sr-only">Document</legend>
+              {shown.map((doc) => {
+                const empty = doc.parameter_count === 0;
+                const inputId = `qc-document-${doc.id}`;
+                return (
+                  <label
+                    key={doc.id}
+                    htmlFor={inputId}
+                    className={cn(
+                      'flex items-center gap-3 rounded-md border p-3 transition-colors',
+                      empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-muted/50',
+                      chosenId === doc.id && 'border-primary bg-primary/5',
+                    )}
+                  >
+                    <input
+                      id={inputId}
+                      type="radio"
+                      name="qc-document"
+                      value={doc.id}
+                      checked={chosenId === doc.id}
+                      disabled={empty}
+                      onChange={() => setTypeId(doc.id)}
+                      className="h-4 w-4"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{doc.name}</span>
+                      <span className="block font-mono text-xs text-muted-foreground">
+                        {doc.print_document_id || doc.code}
+                      </span>
+                    </span>
+                    <span className="whitespace-nowrap text-xs text-muted-foreground">
+                      {empty
+                        ? 'no parameters yet'
+                        : `${doc.parameter_count} parameter${doc.parameter_count === 1 ? '' : 's'}`}
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
           )}
         </DialogBody>
 
         <DialogFooter className="gap-2">
-          {line ? (
-            <>
-              <Button variant="outline" onClick={reset}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Change line
-              </Button>
-              <Button onClick={handleContinue} disabled={!canContinue}>
-                Continue
-              </Button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancel
-            </Button>
-          )}
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleContinue} disabled={!canContinue}>
+            Continue
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -14,7 +14,6 @@ import type {
   ProductionQCEntryCounts,
   ProductionQCEntryListItem,
   ProductionQCEntryListParams,
-  ProductionRunningLine,
   UpdateProductionQCEntryRequest,
 } from '../../types/productionQC.types';
 
@@ -30,15 +29,6 @@ function cleanParams(params?: object): Record<string, string | number | boolean>
 }
 
 export const productionQCApi = {
-  // ==================== Running lines ====================
-
-  async getRunningLines(): Promise<ProductionRunningLine[]> {
-    const response = await apiClient.get<ProductionRunningLine[]>(
-      ENDPOINTS.PRODUCTION_QC_RUNNING_LINES,
-    );
-    return response.data;
-  },
-
   // ==================== Entries ====================
 
   async listEntries(params?: ProductionQCEntryListParams): Promise<ProductionQCEntryListItem[]> {

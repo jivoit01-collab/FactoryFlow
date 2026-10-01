@@ -1,12 +1,13 @@
 /**
- * Production QC — checks QC makes on a running line, approved in one step by a
- * QC lead. Mirrors `quality_control/serializers_production_qc.py`.
+ * QC Documents ("production QC" in code) — the records QC maintains, each a
+ * paper form; an entry is one filled-in copy, approved in one step by a QC lead.
+ * Mirrors `quality_control/serializers_production_qc.py`.
  *
- * A *parameter type* plays the part an arrival slip's material type does: it
- * carries its own list of parameters. Unlike a material type it is not tied to
- * products: any type can be checked on any running line. Its parameters'
- * `value_type` is the kind of reading they take (the arrival-slip master calls
- * that `parameter_type`).
+ * A *parameter type* is a document type: one form and the parameters it
+ * records. Documents are not tied to lines, runs or products — whatever the
+ * paper header asks for (product, line, batch...) is one of its parameters. A
+ * parameter's `value_type` is the kind of reading it takes (the arrival-slip
+ * master calls that `parameter_type`).
  */
 
 import type { ParameterType } from './qc.types';
@@ -22,36 +23,10 @@ export interface ProductionParameterTypeRef {
   name: string;
 }
 
-// ==================== Running lines ====================
-
-/**
- * A line a check can be made on: its IN_PROGRESS run whose latest segment
- * started in the last 24h or is open now. `is_running_now=false` means the line
- * is stopped (a breakdown, the lunch stop) since `stopped_at`.
- */
-export interface ProductionRunningLine {
-  line_id: number;
-  line_name: string;
-  run_id: number;
-  run_number: number;
-  run_date: string;
-  item_code: string;
-  product: string;
-  is_running_now: boolean;
-  last_started_at: string;
-  stopped_at: string | null;
-}
-
 // ==================== Entries ====================
 
 export interface ProductionQCEntryListItem {
   id: number;
-  line_id: number;
-  line_name: string;
-  run_id: number;
-  run_number: number;
-  item_code: string;
-  product: string;
   parameter_type: ProductionParameterTypeRef;
   checked_at: string;
   status: ProductionQCStatus;
@@ -107,7 +82,7 @@ export interface ProductionQCEntryCounts {
 
 export interface ProductionQCEntryListParams {
   status?: ProductionQCStatus;
-  line_id?: number;
+  parameter_type_id?: number;
   /** One day (YYYY-MM-DD): that day's entries, every status. */
   date?: string;
   from_date?: string;
@@ -132,7 +107,6 @@ export interface ProductionQCReading {
 }
 
 export interface CreateProductionQCEntryRequest {
-  run_id: number;
   parameter_type_id: number;
   remarks: string;
   results: ProductionQCReading[];

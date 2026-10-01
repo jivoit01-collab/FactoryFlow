@@ -1,5 +1,5 @@
 /**
- * The Production QC dashboard is one day at a time, with a List / Sheet toggle.
+ * The Documents page is one day at a time, with a List / Sheet toggle.
  * The day and the view live in the address.
  */
 
@@ -60,12 +60,6 @@ const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 const entry = (id: number): ProductionQCEntry =>
   ({
     id,
-    line_id: 1,
-    line_name: '10 Head',
-    run_id: 1,
-    run_number: 1,
-    item_code: 'FG0000121',
-    product: 'CANOLA OIL 1 LTR 20 PCS',
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: `${today}T12:24:00Z`,
     status: 'APPROVED',
@@ -88,12 +82,12 @@ function Where() {
   return <div data-testid="where">{search}</div>;
 }
 
-function renderAt(url = '/qc/production') {
+function renderAt(url = '/qc/documents') {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route
-          path="/qc/production"
+          path="/qc/documents"
           element={
             <>
               <ProductionQCDashboardPage />
@@ -149,11 +143,32 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
   it('shows the list by default and fetches no readings for it', () => {
     renderAt();
     expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('table')).toHaveTextContent('CANOLA OIL 1 LTR 20 PCS');
+    expect(screen.getByRole('table')).toHaveTextContent('Oil Plant On-line Monitoring');
+    expect(screen.queryByRole('columnheader', { name: 'Line' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Product' })).not.toBeInTheDocument();
     expect(data.sheetCalls.every((call) => !call.enabled)).toBe(true);
   });
 
-  it('switches to the sheet, one per parameter type, and remembers it', () => {
+  it('filters the day by document', () => {
+    data.entries = [
+      entry(4),
+      {
+        ...entry(5),
+        parameter_type: { id: 9, code: 'BACKWASHING', name: 'Backwashing Record' },
+      } as ProductionQCEntry,
+    ];
+    renderAt();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by document' }), {
+      target: { value: '9' },
+    });
+
+    expect(where()).toBe('?doc=9');
+    expect(screen.getAllByRole('row')).toHaveLength(2); // header + the one entry
+    expect(screen.getByRole('table')).toHaveTextContent('Backwashing Record');
+  });
+
+  it('switches to the sheet, one per document, and remembers it', () => {
     renderAt();
     fireEvent.click(screen.getByRole('button', { name: 'Sheet' }));
 
@@ -167,7 +182,7 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
   });
 
   it('opens straight on the sheet from the address', () => {
-    renderAt(`/qc/production?view=sheet&date=${yesterday}`);
+    renderAt(`/qc/documents?view=sheet&date=${yesterday}`);
     expect(screen.getByRole('button', { name: 'Sheet' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Day')).toHaveValue(yesterday);
   });

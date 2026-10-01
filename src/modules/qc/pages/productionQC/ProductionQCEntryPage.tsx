@@ -21,7 +21,6 @@ import {
   useProductionParameters,
   useProductionParameterType,
   useProductionQCEntry,
-  useProductionQCRunningLines,
   useUpdateProductionQCEntry,
 } from '../../api/productionQC/productionQC.queries';
 import { PARAMETER_TYPE_LABELS } from '../../constants';
@@ -29,18 +28,13 @@ import type {
   DecimalValue,
   ProductionQCEntry,
   ProductionQCReading,
-  ProductionRunningLine,
 } from '../../types/productionQC.types';
 import type { ParameterType } from '../../types/qc.types';
 import { formatDateTime } from '../../utils/productionQCFormat';
 import { describeSpec, judgeReading } from '../../utils/productionQCSpec';
-import {
-  LineRunningBadge,
-  ProductionQCStatusBadge,
-  SentBackBanner,
-} from './ProductionQCStatusBadge';
+import { ProductionQCStatusBadge, SentBackBanner } from './ProductionQCStatusBadge';
 
-const LIST_PATH = '/qc/production';
+const LIST_PATH = '/qc/documents';
 
 /** One parameter to read, from the type's master (new) or the entry's snapshot (edit). */
 interface ReadingRow {
@@ -64,14 +58,8 @@ interface ReadingState {
 }
 
 interface EntryHeader {
-  lineName: string;
-  product: string;
-  itemCode: string;
-  runNumber: number;
   typeName: string;
   typeCode: string;
-  /** New entries: the line as it is now. */
-  runningLine?: ProductionRunningLine;
   /** Edits: where the entry stands. */
   entry?: ProductionQCEntry;
 }
@@ -107,7 +95,7 @@ function readApiErrors(error: unknown): FieldErrors {
     const message = messages.join(' ');
     const key = field.startsWith('results')
       ? 'results'
-      : ['remarks', 'run_id', 'parameter_type_id'].includes(field)
+      : ['remarks', 'parameter_type_id'].includes(field)
         ? field
         : 'general';
     next[key] = next[key] ? `${next[key]} ${message}` : message;
@@ -121,8 +109,8 @@ function readApiErrors(error: unknown): FieldErrors {
 // ==================== Page ====================
 
 /**
- * The reading form: `/qc/production/new?run=&type=` for a new check, and
- * `/qc/production/entries/:entryId/edit` to correct one pending or sent back.
+ * The reading form: `/qc/documents/new?type=` for a new entry of a document, and
+ * `/qc/documents/entries/:entryId/edit` to correct one pending or sent back.
  * Saving sends it for approval either way — there are no drafts.
  */
 export default function ProductionQCEntryPage() {
@@ -134,24 +122,18 @@ export default function ProductionQCEntryPage() {
 function NewEntry() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const runId = Number(searchParams.get('run')) || null;
   const typeId = Number(searchParams.get('type')) || null;
 
-  const {
-    data: lines,
-    isLoading: linesLoading,
-    error: linesError,
-  } = useProductionQCRunningLines(!!runId && !!typeId);
   const {
     data: parameterType,
     isLoading: typeLoading,
     error: typeError,
-  } = useProductionParameterType(runId ? typeId : null);
+  } = useProductionParameterType(typeId);
   const {
     data: parameters,
     isLoading: parametersLoading,
     error: parametersError,
-  } = useProductionParameters(runId ? typeId : null);
+  } = useProductionParameters(typeId);
   const createEntry = useCreateProductionQCEntry();
 
   const rows = useMemo<ReadingRow[]>(
@@ -173,46 +155,35 @@ function NewEntry() {
     [parameters],
   );
 
-  const backToList = { label: 'Back to Production QC', onClick: () => navigate(LIST_PATH) };
+  const backToList = { label: 'Back to Documents', onClick: () => navigate(LIST_PATH) };
 
-  if (!runId || !typeId) {
+  if (!typeId) {
     return (
       <EntryProblem
-        title="Pick a line and a parameter type first"
-        message="Open New on the Production QC page and choose the running line and the parameter type to check."
+        title="Pick a document first"
+        message="Open New on the Documents page and choose the document to fill."
         action={backToList}
       />
     );
   }
-  if (linesLoading || typeLoading || parametersLoading) return <EntryLoading />;
-  if (linesError || typeError || parametersError) {
+  if (typeLoading || parametersLoading) return <EntryLoading />;
+  if (typeError || parametersError) {
     return (
       <EntryProblem
         title="Could not open the entry form"
         message={
-          ((linesError || typeError || parametersError) as ApiError | null)?.message ||
-          'The line or the parameter type could not be loaded.'
+          ((typeError || parametersError) as ApiError | null)?.message ||
+          'The document could not be loaded.'
         }
         action={backToList}
-      />
-    );
-  }
-
-  const line = (lines ?? []).find((candidate) => candidate.run_id === runId);
-  if (!line) {
-    return (
-      <EntryProblem
-        title="This line is not running any more"
-        message="The run you picked is not on a running line now. Pick the line again."
-        action={{ label: 'Pick the line again', onClick: () => navigate(LIST_PATH) }}
       />
     );
   }
   if (!parameterType || !parameterType.is_active) {
     return (
       <EntryProblem
-        title="That parameter type is not available"
-        message="It may have been removed. Pick the parameter type again."
+        title="That document is not available"
+        message="It may have been removed. Pick the document again."
         action={backToList}
       />
     );
@@ -220,8 +191,8 @@ function NewEntry() {
   if (rows.length === 0) {
     return (
       <EntryProblem
-        title="This parameter type has no parameters yet"
-        message="Add its parameters under Parameter Types first."
+        title="This document has no parameters yet"
+        message="Add its parameters under Document Types first."
         action={backToList}
       />
     );
@@ -230,20 +201,11 @@ function NewEntry() {
   return (
     <EntryForm
       mode="new"
-      header={{
-        lineName: line.line_name,
-        product: line.product,
-        itemCode: line.item_code,
-        runNumber: line.run_number,
-        typeName: parameterType.name,
-        typeCode: parameterType.code,
-        runningLine: line,
-      }}
+      header={{ typeName: parameterType.name, typeCode: parameterType.code }}
       rows={rows}
       cancelTo={LIST_PATH}
       onSave={async (data) => {
         const created = await createEntry.mutateAsync({
-          run_id: line.run_id,
           parameter_type_id: parameterType.id,
           ...data,
         });
@@ -257,7 +219,7 @@ function EditEntry({ entryId }: { entryId: number }) {
   const navigate = useNavigate();
   const { data: entry, isLoading, error } = useProductionQCEntry(entryId || null);
   const updateEntry = useUpdateProductionQCEntry();
-  const detailPath = `/qc/production/entries/${entryId}`;
+  const detailPath = `/qc/documents/entries/${entryId}`;
 
   const rows = useMemo<ReadingRow[]>(
     () =>
@@ -284,7 +246,7 @@ function EditEntry({ entryId }: { entryId: number }) {
       <EntryProblem
         title="Could not load the entry"
         message={(error as ApiError | null)?.message || 'The entry could not be found.'}
-        action={{ label: 'Back to Production QC', onClick: () => navigate(LIST_PATH) }}
+        action={{ label: 'Back to Documents', onClick: () => navigate(LIST_PATH) }}
       />
     );
   }
@@ -313,10 +275,6 @@ function EditEntry({ entryId }: { entryId: number }) {
     <EntryForm
       mode="edit"
       header={{
-        lineName: entry.line_name,
-        product: entry.product,
-        itemCode: entry.item_code,
-        runNumber: entry.run_number,
         typeName: entry.parameter_type.name,
         typeCode: entry.parameter_type.code,
         entry,
@@ -421,7 +379,7 @@ function EntryForm({
         results: rows.map((row) => toReading(row, readingOf(row))),
       });
       toast.success(`Entry #${id} saved and sent for approval`);
-      navigate(`/qc/production/entries/${id}`, { replace: true });
+      navigate(`/qc/documents/entries/${id}`, { replace: true });
     } catch (error) {
       showErrors(readApiErrors(error));
     } finally {
@@ -430,7 +388,7 @@ function EntryForm({
   };
 
   const entry = header.entry;
-  const title = mode === 'new' ? 'New Production QC Entry' : `Correct Entry #${entry?.id}`;
+  const title = mode === 'new' ? 'New Entry' : `Correct Entry #${entry?.id}`;
 
   return (
     <div className="space-y-6 pb-6">
@@ -449,20 +407,18 @@ function EntryForm({
         {entry && <ProductionQCStatusBadge status={entry.status} label={entry.status_label} />}
       </div>
 
-      {(errors.general || errors.run_id || errors.parameter_type_id) && (
+      {(errors.general || errors.parameter_type_id) && (
         <div
           data-error="true"
           className="flex items-start gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <div className="flex-1 space-y-1">
-            {[errors.run_id, errors.parameter_type_id, errors.general]
-              .filter(Boolean)
-              .map((message) => (
-                <p key={message}>{message}</p>
-              ))}
+            {[errors.parameter_type_id, errors.general].filter(Boolean).map((message) => (
+              <p key={message}>{message}</p>
+            ))}
           </div>
-          {(errors.run_id || errors.parameter_type_id) && (
+          {errors.parameter_type_id && (
             <Button variant="outline" size="sm" onClick={() => navigate(LIST_PATH)}>
               Pick again
             </Button>
@@ -478,21 +434,10 @@ function EntryForm({
         />
       )}
 
-      {/* What is being checked */}
+      {/* The document being filled */}
       <Card>
-        <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-5">
-          <InfoItem label="Line">
-            <div className="flex flex-wrap items-center gap-2">
-              {header.lineName}
-              {header.runningLine && <LineRunningBadge line={header.runningLine} />}
-            </div>
-          </InfoItem>
-          <InfoItem label="Product">{header.product || '-'}</InfoItem>
-          <InfoItem label="Item Code">
-            <span className="font-mono">{header.itemCode || '-'}</span>
-          </InfoItem>
-          <InfoItem label="Run No.">#{header.runNumber}</InfoItem>
-          <InfoItem label="Parameter Type">
+        <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
+          <InfoItem label="Document">
             {header.typeName}
             <div className="font-mono text-xs text-muted-foreground">{header.typeCode}</div>
           </InfoItem>

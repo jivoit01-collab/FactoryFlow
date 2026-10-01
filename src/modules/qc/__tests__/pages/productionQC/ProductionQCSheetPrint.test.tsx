@@ -1,5 +1,5 @@
 /**
- * The printed production QC sheet: the paper form it replaces — controlled
+ * The printed document sheet: the paper form it replaces — controlled
  * header and footer, ten time columns a page, blank columns to fill the page.
  */
 
@@ -38,12 +38,6 @@ const result = (overrides: Partial<ProductionQCResult> = {}): ProductionQCResult
 const entry = (id: number, overrides: Partial<ProductionQCEntry> = {}): ProductionQCEntry =>
   ({
     id,
-    line_id: 1,
-    line_name: '10 Head',
-    run_id: 1,
-    run_number: 1,
-    item_code: 'FG0000121',
-    product: 'CANOLA OIL 1 LTR 20 PCS',
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: new Date(Date.UTC(2026, 8, 29, 4, id)).toISOString(),
     status: 'APPROVED',

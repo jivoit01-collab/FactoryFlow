@@ -75,14 +75,14 @@ export default function ProductionQCEntryDetailPage() {
             </p>
             <p className="text-sm text-muted-foreground">
               {apiError?.status === 404
-                ? `There is no production QC entry #${entryId}.`
+                ? `There is no document entry #${entryId}.`
                 : apiError?.message || 'Please try again.'}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/qc/production')}>
+            <Button variant="outline" onClick={() => navigate('/qc/documents')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Production QC
+              Back to Documents
             </Button>
             {apiError?.status !== 404 && <Button onClick={() => refetch()}>Retry</Button>}
           </div>
@@ -104,28 +104,24 @@ export default function ProductionQCEntryDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/qc/production')}
-            aria-label="Back to Production QC"
+            onClick={() => navigate('/qc/documents')}
+            aria-label="Back to Documents"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Production QC #{entry.id}
-              </h2>
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Entry #{entry.id}</h2>
               <ProductionQCStatusBadge status={entry.status} label={entry.status_label} />
             </div>
-            <p className="text-sm text-muted-foreground">
-              {entry.line_name} · {entry.parameter_type.name}
-            </p>
+            <p className="text-sm text-muted-foreground">{entry.parameter_type.name}</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {showEdit && (
             <Button
               variant="outline"
-              onClick={() => navigate(`/qc/production/entries/${entry.id}/edit`)}
+              onClick={() => navigate(`/qc/documents/entries/${entry.id}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
               {entry.status === 'SENT_BACK' ? 'Correct' : 'Edit'}
@@ -154,18 +150,10 @@ export default function ProductionQCEntryDetailPage() {
         />
       )}
 
-      {/* The check */}
+      {/* The entry */}
       <Card>
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoItem label="Line">
-            {entry.line_name}
-            <div className="text-xs text-muted-foreground">Run #{entry.run_number}</div>
-          </InfoItem>
-          <InfoItem label="Product">
-            {entry.product || '-'}
-            <div className="font-mono text-xs text-muted-foreground">{entry.item_code || '-'}</div>
-          </InfoItem>
-          <InfoItem label="Parameter Type">
+          <InfoItem label="Document">
             {entry.parameter_type.name}
             <div className="font-mono text-xs text-muted-foreground">
               {entry.parameter_type.code}

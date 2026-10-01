@@ -1,6 +1,7 @@
 /**
- * The sheet view: a day's checks laid out as the paper record — a column per
- * check, the product / SKU / line on top, each parameter with its unit.
+ * The sheet view: a day's entries of a document laid out as the paper record —
+ * a column per entry, each parameter with its unit. Whatever the paper header
+ * asks for (product, line, batch...) is one of the document's parameters.
  */
 
 import { render, screen, within } from '@testing-library/react';
@@ -34,12 +35,6 @@ const result = (overrides: Partial<ProductionQCResult>): ProductionQCResult =>
 const entry = (overrides: Partial<ProductionQCEntry>): ProductionQCEntry =>
   ({
     id: 3,
-    line_id: 1,
-    line_name: 'Water Line',
-    run_id: 4,
-    run_number: 4,
-    item_code: '',
-    product: 'REFINED COTTON SEED OIL 13 KGS',
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: '2026-09-29T12:00:00Z',
     status: 'APPROVED',
@@ -93,37 +88,47 @@ describe('ProductionQCSheet', () => {
     expect(sheet).toHaveTextContent('QA-FRM-14-01-05-02');
   });
 
-  it('puts each check in its own column, in time order, linked to the entry', () => {
+  it('puts each entry in its own column, in time order, linked to the entry', () => {
     renderSheet([
-      entry({ id: 4, checked_at: '2026-09-29T12:24:00Z', line_name: '10 Head' }),
+      entry({
+        id: 4,
+        checked_at: '2026-09-29T12:24:00Z',
+        results: [
+          result({
+            id: 41,
+            parameter_code: 'BATCH_NO',
+            parameter_name: 'Batch No.',
+            uom: '',
+            sequence: 1,
+            parameter_type: 'TEXT',
+            result_value: 'B-18',
+          }),
+          result({ id: 42 }),
+        ],
+      }),
       entry({ id: 3, checked_at: '2026-09-29T12:00:00Z' }),
     ]);
     const links = screen.getAllByRole('link');
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '/qc/production/entries/3',
-      '/qc/production/entries/4',
+      '/qc/documents/entries/3',
+      '/qc/documents/entries/4',
     ]);
-    const line = within(rowOf('LINE ID'))
+    const batch = within(rowOf('Batch No.'))
       .getAllByRole('cell')
       .map((c) => c.textContent);
-    expect(line.slice(3)).toEqual(['Water Line', '10 Head']);
+    expect(batch.slice(3)).toEqual(['B-17', 'B-18']);
   });
 
-  it('lists product, SKU and line first, then the parameters in their order with units', () => {
-    renderSheet([entry({ item_code: 'FG0000121' })]);
-    const names = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => within(row).getAllByRole('cell')[1].textContent);
-    expect(names.slice(0, 5)).toEqual([
-      'PRODUCT',
-      'SKU',
-      'LINE ID',
-      'Batch No.',
-      'Free Fatty Acids',
-    ]);
+  it('lists the parameters in their order, numbered from 1, with units', () => {
+    renderSheet([entry({})]);
+    const rows = screen.getAllByRole('row').slice(1);
+    const names = rows.map((row) => within(row).getAllByRole('cell')[1].textContent);
+    expect(names.slice(0, 2)).toEqual(['Batch No.', 'Free Fatty Acids']);
+    expect(within(rows[0]).getAllByRole('cell')[0]).toHaveTextContent('1');
     expect(within(rowOf('Free Fatty Acids')).getAllByRole('cell')[2]).toHaveTextContent('%');
-    expect(within(rowOf('SKU')).getAllByRole('cell')[3]).toHaveTextContent('FG0000121');
+    // The run no longer adds its own rows: the header is the document's to ask for.
+    expect(screen.queryByRole('cell', { name: 'LINE ID' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('cell', { name: 'PRODUCT' })).not.toBeInTheDocument();
   });
 
   it('marks an out-of-spec reading', () => {

@@ -13,7 +13,6 @@ import { productionQCApi } from './productionQC.api';
 
 export const PRODUCTION_QC_QUERY_KEYS = {
   all: ['productionQC'] as const,
-  runningLines: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'runningLines'] as const,
   /** Lists, counts (and so the sidebar badge) and details: what a decision changes. */
   entries: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'entries'] as const,
   entryList: (params?: ProductionQCEntryListParams) =>
@@ -32,17 +31,6 @@ export const PRODUCTION_QC_QUERY_KEYS = {
   parameters: (typeId: number) =>
     [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'parameters', typeId] as const,
 };
-
-// ==================== Running lines ====================
-
-export function useProductionQCRunningLines(enabled = true) {
-  return useQuery({
-    queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines(),
-    queryFn: () => productionQCApi.getRunningLines(),
-    enabled,
-    staleTime: 30 * 1000,
-  });
-}
 
 // ==================== Entries ====================
 
@@ -169,12 +157,11 @@ export function useProductionParameterType(id: number | null) {
   });
 }
 
-/** Everything a master edit can change: the types, their parameters, and which lines offer which type. */
+/** Everything a master edit can change: the types and their parameters. */
 function useInvalidateMasters() {
   const queryClient = useQueryClient();
   return () => {
     queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.parameterTypes() });
-    queryClient.invalidateQueries({ queryKey: PRODUCTION_QC_QUERY_KEYS.runningLines() });
     // A type's form number is its Print Documents row (Master Data): refresh that
     // list too. Its key is PRINT_DOCUMENT_QUERY_KEYS.all, spelled out here because
     // the print-document hooks import these.

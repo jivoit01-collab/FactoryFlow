@@ -50,12 +50,6 @@ const LABELS: Record<ProductionQCStatus, string> = {
 
 const entry = (status: ProductionQCStatus): ProductionQCEntry => ({
   id: 7,
-  line_id: 1,
-  line_name: 'Line 1',
-  run_id: 11,
-  run_number: 3,
-  item_code: 'FG0001',
-  product: 'Jivo Canola 1L PET',
   parameter_type: { id: 1, code: 'PET_1L', name: '1 L PET Oil' },
   checked_at: '2026-09-29T08:00:00+05:30',
   status,
@@ -114,9 +108,9 @@ function Where() {
 
 function renderPage() {
   render(
-    <MemoryRouter initialEntries={['/qc/production/entries/7']}>
+    <MemoryRouter initialEntries={['/qc/documents/entries/7']}>
       <Routes>
-        <Route path="/qc/production/entries/:entryId" element={<ProductionQCEntryDetailPage />} />
+        <Route path="/qc/documents/entries/:entryId" element={<ProductionQCEntryDetailPage />} />
         <Route path="*" element={<Where />} />
       </Routes>
     </MemoryRouter>,
@@ -181,7 +175,7 @@ describe('the entry', () => {
     expect(screen.getByText('Recheck the net weight')).toBeInTheDocument();
     expect(screen.getByText(/Sent back by QC Lead/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Correct' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/production/entries/7/edit');
+    expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/7/edit');
   });
 });
 

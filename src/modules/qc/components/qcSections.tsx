@@ -13,7 +13,7 @@ export function ArrivalSlipTabs() {
   );
 }
 
-/** Production QC: the entries and, for whoever maintains them, the parameter types. */
+/** Documents: the entries and, for whoever maintains them, the document types. */
 export function ProductionQCTabs() {
   return <QCSectionTabs tabs={PRODUCTION_QC_TABS} />;
 }

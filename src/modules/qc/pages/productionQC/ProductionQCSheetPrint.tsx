@@ -107,17 +107,6 @@ export function ProductionQCSheetPrintView({
           const blanks = COLUMNS_PER_PAGE - page.length;
           const fill = (key: string) =>
             Array.from({ length: blanks }, (_, i) => <td key={`${key}-blank-${i}`} />);
-          const idRow = (sr: number, label: string, value: (e: ProductionQCEntry) => string) => (
-            <tr key={label}>
-              <td className="pqc-sr">{sr}</td>
-              <td className="pqc-label">{label}</td>
-              <td />
-              {page.map((entry) => (
-                <td key={entry.id}>{value(entry) || '-'}</td>
-              ))}
-              {fill(label)}
-            </tr>
-          );
           const footRow = (label: string, value: (e: ProductionQCEntry) => string) => (
             <tr key={label}>
               <td />
@@ -151,12 +140,9 @@ export function ProductionQCSheetPrintView({
                   </tr>
                 </thead>
                 <tbody>
-                  {idRow(1, 'PRODUCT', (entry) => entry.product)}
-                  {idRow(2, 'SKU', (entry) => entry.item_code)}
-                  {idRow(3, 'LINE ID', (entry) => entry.line_name)}
                   {rows.map((row, index) => (
                     <tr key={row.key}>
-                      <td className="pqc-sr">{index + 4}</td>
+                      <td className="pqc-sr">{index + 1}</td>
                       <td>{row.name}</td>
                       <td>{row.uom || '---'}</td>
                       {page.map((entry) => {
