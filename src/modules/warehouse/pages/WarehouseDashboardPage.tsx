@@ -2,161 +2,74 @@ import {
   ArrowLeftRight,
   Boxes,
   CheckCheck,
+  ClipboardCheck,
   ClipboardList,
   FileCheck,
+  FileMinus,
   FileText,
+  LayoutGrid,
+  type LucideIcon,
   PackageCheck,
   PackageMinus,
   PackageOpen,
   PackagePlus,
+  PackageSearch,
   Receipt,
   Repeat,
   Scale,
-  ScanLine,
   Truck,
 } from 'lucide-react';
 
-import {
-  AR_INVOICE_PERMISSIONS,
-  DISPATCH_PERMISSIONS,
-  GATE_PERMISSIONS,
-  GRPO_PERMISSIONS,
-  INVOICE_APPROVAL_PERMISSIONS,
-  SHORT_DISPATCH_ACCESS,
-  WAREHOUSE_PERMISSIONS,
-} from '@/config/permissions';
-import { usePermission } from '@/core/auth';
+import { useAuth, usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { ModuleTile, ModuleTileGrid, tileAccentByIndex } from '@/shared/components/navigation';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui';
 
+import { warehouseModuleConfig } from '../module.config';
+
 /**
- * Warehouse landing sections — one card per child of the "Warehouse" sidebar group,
- * in the same order the sidebar lists them. Each card is shown only when the user
- * holds one of its permissions; the dashboard itself is reachable by everyone (see
- * the `/warehouse` route in module.config). Keep this list in step with the
- * `children` array there — a submodule added to the sidebar belongs here too.
+ * The tiles are the "Warehouse" sidebar group's children, read from module.config —
+ * same list, same order, same permission and company checks as the sidebar — so a
+ * page added to the sidebar shows up here without anyone remembering to. This page
+ * only picks the icon; a path missing from the map gets the generic one.
  */
-const WAREHOUSE_SECTIONS = [
-  {
-    title: 'Bill Summaries',
-    description: 'Pick against the warehouse sheet for a dispatch plan',
-    icon: FileText,
-    path: '/warehouse/bill-summaries',
-    // The picking sheet is warehouse work, but its permissions name the Django
-    // app it lives in (`dispatch_plans`) — same list the sidebar child uses.
-    permissions: [
-      DISPATCH_PERMISSIONS.VIEW_BILL_SUMMARY,
-      DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
-      DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
-    ],
-  },
-  {
-    title: 'Short Dispatch',
-    description: 'Put back stock a posted bill says went out but which never left',
-    icon: PackageMinus,
-    path: '/warehouse/short-dispatch',
-    permissions: SHORT_DISPATCH_ACCESS,
-  },
-  {
-    title: 'Dispatch Loading',
-    description: 'Scan pallets onto a docked truck against its bills',
-    icon: Truck,
-    path: '/warehouse/dispatch-loading',
-    permissions: [GATE_PERMISSIONS.SALES_DISPATCH.VIEW],
-  },
-  {
-    title: 'Receive Barcodes',
-    description: 'Turn printed labels into stock at the godown gate',
-    icon: ScanLine,
-    path: '/warehouse/receive',
-    permissions: [WAREHOUSE_PERMISSIONS.RECEIVE_BARCODES],
-  },
-  {
-    title: 'Raw Material Stock',
-    description: 'Set the quantity of each raw material your store is holding',
-    icon: Scale,
-    path: '/warehouse/rm-stock',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_RM_STOCK],
-  },
-  {
-    title: 'Godown Movements',
-    description: 'Record what leaves your floor, and where it is going',
-    icon: PackageOpen,
-    path: '/warehouse/godown-movements',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_PF_MOVEMENT],
-  },
-  {
-    title: 'BOM Requests',
-    description: 'Review and approve material requests from production',
-    icon: ClipboardList,
-    path: '/warehouse/bom-requests',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_BOM_REQUEST],
-  },
-  {
-    title: 'FG Receipts',
-    description: 'Receive finished goods and post them to SAP',
-    icon: PackageCheck,
-    path: '/warehouse/fg-receipts',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_FG_RECEIPT],
-  },
-  {
-    title: 'Inventory Transfer',
-    description: 'Raise, approve and print stock transfers between warehouses',
-    icon: Repeat,
-    path: '/warehouse/inventory-transfer',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
-  },
-  {
-    title: 'BST Scanning',
-    description: 'Scan branch stock transfers out, and receive them in',
-    icon: ArrowLeftRight,
-    path: '/warehouse/bst',
-    permissions: [WAREHOUSE_PERMISSIONS.VIEW_BST],
-  },
-  {
-    title: 'BST Approvals',
-    description: 'Approve short-scanned branch transfers so they can seal',
-    icon: CheckCheck,
-    path: '/warehouse/bst/partial-approvals',
-    permissions: [WAREHOUSE_PERMISSIONS.APPROVE_BST_PARTIAL],
-  },
-  {
-    title: 'Material GRPO',
-    description: 'Post goods receipts against purchase orders',
-    icon: Boxes,
-    path: '/warehouse/grpo/material',
-    permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-  },
-  {
-    title: 'Finished Goods GRPO',
-    description: 'Post goods receipts for traded and purchased finished goods',
-    icon: PackagePlus,
-    path: '/warehouse/grpo/fg',
-    permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
-  },
-  {
-    title: 'Invoice Approval',
-    description: 'Approve the purchase invoices waiting on the warehouse',
-    icon: FileCheck,
-    path: '/warehouse/invoice-approval',
-    permissions: [INVOICE_APPROVAL_PERMISSIONS.VIEW_INVOICE],
-  },
-  {
-    title: 'AR Invoices',
-    description: 'Raise sales invoices from open sales-order lines',
-    icon: Receipt,
-    path: '/warehouse/ar-invoices',
-    permissions: [AR_INVOICE_PERMISSIONS.VIEW],
-  },
-] as const;
+const TILE_ICONS: Record<string, LucideIcon> = {
+  '/warehouse/bill-summaries': FileText,
+  '/warehouse/bill-summaries/approvals': ClipboardCheck,
+  '/warehouse/short-dispatch': PackageMinus,
+  '/warehouse/dispatch-loading': Truck,
+  '/warehouse/rm-stock': Scale,
+  '/warehouse/godown-movements': PackageOpen,
+  '/warehouse/bom-requests': ClipboardList,
+  '/warehouse/fg-receipts': PackageCheck,
+  '/warehouse/inventory-transfer': Repeat,
+  '/warehouse/inventory-transfer/request': PackageSearch,
+  '/warehouse/bst': ArrowLeftRight,
+  '/warehouse/bst/partial-approvals': CheckCheck,
+  '/warehouse/grpo/material': Boxes,
+  '/warehouse/grpo/fg': PackagePlus,
+  '/warehouse/invoice-approval': FileCheck,
+  '/warehouse/credit-note-approval': FileMinus,
+  '/warehouse/ar-invoices': Receipt,
+};
+
+const WAREHOUSE_CHILDREN =
+  warehouseModuleConfig.navigation?.find((item) => item.path === '/warehouse')?.children ?? [];
 
 export default function WarehouseDashboardPage() {
   const { hasAnyPermission, permissionsLoaded } = usePermission();
+  const { currentCompany } = useAuth();
 
   if (!permissionsLoaded) return null;
 
-  const sections = WAREHOUSE_SECTIONS.filter((section) => hasAnyPermission(section.permissions));
+  // The sidebar's child filter (app/layouts/components/Sidebar.tsx), kept identical.
+  const sections = WAREHOUSE_CHILDREN.filter((child) => {
+    if (child.companies && !child.companies.includes(currentCompany?.company_code ?? '')) {
+      return false;
+    }
+    if (!child.permissions || child.permissions.length === 0) return true;
+    return hasAnyPermission(child.permissions);
+  });
 
   return (
     <div className="space-y-6">
@@ -176,7 +89,7 @@ export default function WarehouseDashboardPage() {
       ) : (
         <ModuleTileGrid>
           {sections.map((section, index) => {
-            const Icon = section.icon;
+            const Icon = TILE_ICONS[section.path] ?? LayoutGrid;
 
             return (
               <ModuleTile
