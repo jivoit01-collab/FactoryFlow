@@ -216,10 +216,45 @@ export interface WarehouseStockItem {
   [key: string]: unknown;
 }
 
-/** Prefill for a direct-sale line: what this customer last paid for the item. */
+/** One past A/R invoice line for an item, as the price guide shows it. */
+export interface PastSale {
+  doc_entry: number;
+  doc_num: number | null;
+  doc_date: string | null;
+  customer_code: string;
+  customer_name: string;
+  quantity: number;
+  /** Pre-tax unit price. */
+  price: number | null;
+  /** Unit price including tax, as SAP worked it out on the bill. */
+  price_incl_tax: number | null;
+  tax_code: string;
+  warehouse_code: string;
+}
+
+/** The item's price on the customer's SAP price list. */
+export interface PriceListPrice {
+  list_num: number;
+  list_name: string;
+  /** As the list holds it — including tax when `includes_tax`. */
+  price: number;
+  includes_tax: boolean;
+  /** Pre-tax; null when the list includes tax and there is no tax code to take off. */
+  net_price: number | null;
+}
+
+/**
+ * Prefill for a direct-sale line and what it came from: the customer's price
+ * list, else their last bill for the item. `recent` is the item's latest bills
+ * to anyone, so the going rate is visible next to the prefill.
+ */
 export interface LineDefaults {
   price?: number | null;
   tax_code?: string;
+  source?: 'price_list' | 'last_sale' | null;
+  price_list?: PriceListPrice | null;
+  last_sale?: PastSale | null;
+  recent?: PastSale[];
 }
 
 /** A free line of a direct (cash/counter) sale being composed. */

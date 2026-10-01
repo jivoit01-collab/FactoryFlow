@@ -11,10 +11,11 @@ import { toastSuccessMark } from '@/shared/utils/toasts';
 
 import { arInvoiceApi } from '../api/ar-invoice.api';
 import { useCreateArInvoice, useWarehouseItems } from '../api/ar-invoice.queries';
-import type { DirectSaleLine, WarehouseStockItem } from '../types';
+import type { DirectSaleLine, LineDefaults, WarehouseStockItem } from '../types';
 import { heldForApprovalMessage, warehousesNeedingApproval } from '../utils/warehouseApproval';
 import { CustomerCreditPanel } from './CustomerCreditPanel';
 import { CustomerSelect } from './CustomerSelect';
+import { LinePriceGuide } from './LinePriceGuide';
 
 /** The org's tax codes embed their rate ("CG+SG@5", "IGST@12") — parse it to
  * estimate the gross. SAP's own computation at posting stays authoritative. */
@@ -31,8 +32,10 @@ function lineGross(line: DirectSaleLine): number {
 
 /**
  * Direct (cash/counter) sale: no Sales Order — the operator builds the lines
- * by hand against a warehouse's stock. Price and tax prefill from what the
- * customer last paid for the item; both stay editable. Any warehouse may be
+ * by hand against a warehouse's stock. The price prefills from the customer's
+ * price list, else their last bill for the item, and the tax code from that
+ * bill; both stay editable, with the item's latest bills to anyone alongside.
+ * Any warehouse may be
  * billed from; one the operator does not manage sends the bill to its manager
  * on the Invoice Approval page first, and it is created in SAP once approved.
  */
@@ -45,6 +48,10 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
   const [quantity, setQuantity] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
   const [taxCode, setTaxCode] = useState('');
+  const [priceGuide, setPriceGuide] = useState<LineDefaults | null>(null);
+  const [priceGuideLoading, setPriceGuideLoading] = useState(false);
+  // Bumped on every pick, so a slow answer for an earlier item is dropped.
+  const pickSeq = useRef(0);
   const [cart, setCart] = useState<DirectSaleLine[]>([]);
 
   const [customerRef, setCustomerRef] = useState('');
@@ -74,19 +81,30 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
     0,
   );
   const cartGross = cart.reduce((sum, line) => sum + lineGross(line), 0);
+  const unitRate = taxRate(taxCode);
+  const unitGross =
+    unitPrice !== '' && unitRate != null ? Number(unitPrice) * (1 + unitRate / 100) : null;
 
   const pickItem = async (item: WarehouseStockItem | null) => {
+    const seq = ++pickSeq.current;
     setPickedItem(item);
     setUnitPrice('');
     setTaxCode('');
+    setPriceGuide(null);
+    setPriceGuideLoading(false);
     if (!item || !customerCode) return;
-    // Prefill from the customer's last purchase of this item (best-effort).
+    // Prefill from the customer's price list, else their last bill (best-effort).
+    setPriceGuideLoading(true);
     try {
       const defaults = await arInvoiceApi.getLineDefaults(customerCode, item.item_code);
+      if (seq !== pickSeq.current) return;
+      setPriceGuide(defaults);
       if (defaults.price != null) setUnitPrice(String(defaults.price));
       if (defaults.tax_code) setTaxCode(defaults.tax_code);
     } catch {
       // No history — the operator types both.
+    } finally {
+      if (seq === pickSeq.current) setPriceGuideLoading(false);
     }
   };
 
@@ -116,10 +134,13 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
         warehouse_code: warehouse,
       },
     ]);
+    pickSeq.current += 1;
     setPickedItem(null);
     setQuantity('');
     setUnitPrice('');
     setTaxCode('');
+    setPriceGuide(null);
+    setPriceGuideLoading(false);
   };
 
   const reset = () => {
@@ -296,6 +317,11 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
                     value={unitPrice}
                     onChange={(e) => setUnitPrice(e.target.value)}
                   />
+                  {unitGross != null ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ≈ {formatCurrency(unitGross)} incl. tax
+                    </p>
+                  ) : null}
                 </div>
                 <div>
                   <Label htmlFor="direct-tax">Tax code</Label>
@@ -307,6 +333,16 @@ export function DirectSaleForm({ onCreated }: { onCreated: () => void }) {
                   />
                 </div>
               </div>
+              {pickedItem && priceGuideLoading ? (
+                <p className="text-xs text-muted-foreground">Loading prices…</p>
+              ) : null}
+              {pickedItem && priceGuide ? (
+                <LinePriceGuide
+                  guide={priceGuide}
+                  customerCode={customerCode}
+                  onUsePrice={(price) => setUnitPrice(String(price))}
+                />
+              ) : null}
               <Button variant="outline" onClick={addLine}>
                 <Plus className="mr-1 h-4 w-4" /> Add line
               </Button>

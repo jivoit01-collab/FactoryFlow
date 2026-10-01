@@ -46,7 +46,8 @@ export const arInvoiceApi = {
     return response.data;
   },
 
-  /** Price/tax the customer last paid for an item, to prefill a direct line. */
+  /** Price/tax to prefill a direct line with, what they came from, and the
+   * item's latest bills to anyone. */
   async getLineDefaults(customerCode: string, itemCode: string): Promise<LineDefaults> {
     const response = await apiClient.get<LineDefaults>(API_ENDPOINTS.AR_INVOICE.LINE_DEFAULTS, {
       params: { customer_code: customerCode, item_code: itemCode },
