@@ -47,6 +47,34 @@ const BEVERAGES: ElectricityBoard = {
     },
   ],
   supply: { units: '2000.00', cost: '18000.00' },
+  tree: [
+    {
+      id: 1,
+      name: 'Ground Floor',
+      depth: 0,
+      parent_id: null,
+      units: '800.00',
+      sub_metered_units: '80.00',
+      own_units: '720.00',
+      own_cost: '6480.00',
+      company_units: '720.00',
+      company_cost: '6480.00',
+      company_share_pct: '100.0',
+    },
+    {
+      id: 2,
+      name: 'Lab',
+      depth: 1,
+      parent_id: 1,
+      units: '80.00',
+      sub_metered_units: '0.00',
+      own_units: '80.00',
+      own_cost: '720.00',
+      company_units: '40.00',
+      company_cost: '360.00',
+      company_share_pct: '50.0',
+    },
+  ],
   warnings: ['HP-512: 4 readings did not start from the previous closing.'],
 };
 
@@ -71,9 +99,6 @@ const renderBoard = () =>
     </MemoryRouter>,
   );
 
-const meterRow = (name: string) =>
-  within(screen.getAllByText(name).at(-1)?.closest('tr') as HTMLElement);
-
 describe('Electricity board', () => {
   beforeEach(() => {
     asked.length = 0;
@@ -93,10 +118,19 @@ describe('Electricity board', () => {
     expect(screen.getByText('2 days')).toBeInTheDocument();
   });
 
-  it('shows a shared meter at the share Electricity++ gives it, not at half by rule', () => {
+  it('shows each meter as its reading less its sub-meters, and the company’s part', () => {
     renderBoard();
-    expect(meterRow('Lab').getByText('50%')).toBeInTheDocument();
-    expect(meterRow('Ground Floor').getByText('All')).toBeInTheDocument();
+    const row = (name: string) =>
+      within(screen.getByText(name, { selector: 'td span' }).closest('tr') as HTMLElement);
+    expect(row('Ground Floor').getByText('800')).toBeInTheDocument(); // reading
+    expect(row('Ground Floor').getByText('80')).toBeInTheDocument(); // − sub-meters
+    expect(row('Ground Floor').getAllByText('720').length).toBeGreaterThan(0); // = own
+    expect(row('Lab').getByText('40 (50%)')).toBeInTheDocument();
+  });
+
+  it('never shows a main meter', () => {
+    renderBoard();
+    expect(screen.queryByText('KWH')).not.toBeInTheDocument();
   });
 
   it('offers the meters Electricity++ has for the company', () => {
@@ -133,6 +167,7 @@ describe('Electricity board', () => {
       ...BEVERAGES,
       meters: [],
       days: [],
+      tree: [],
       units: '0.00',
       cost: '0.00',
       warnings: [],

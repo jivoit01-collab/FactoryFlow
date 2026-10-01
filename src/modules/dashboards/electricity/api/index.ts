@@ -24,6 +24,23 @@ export interface ElectricityBoardDay {
   by_meter: Record<string, Amount>;
 }
 
+/** One meter of the tree: what it read, what its sub-meters read, the rest its own. */
+export interface ElectricityTreeRow {
+  id: number;
+  name: string;
+  /** 0 = top (a meter straight under the supply); mains are not shown */
+  depth: number;
+  parent_id: number | null;
+  units: Amount | null;
+  sub_metered_units: Amount | null;
+  own_units: Amount | null;
+  own_cost: Amount | null;
+  /** The company's part of the meter's own units; the whole own load on the campus view */
+  company_units: Amount | null;
+  company_cost: Amount | null;
+  company_share_pct: Amount | null;
+}
+
 export interface ElectricityBoard {
   date_from: string;
   date_to: string;
@@ -36,6 +53,8 @@ export interface ElectricityBoard {
   days: ElectricityBoardDay[];
   /** What the main meters measured, for reference */
   supply: { units: Amount; cost: Amount };
+  /** Reading − sub-meters = own, meter by meter, in tree order */
+  tree: ElectricityTreeRow[];
   /** What Electricity++ says is wrong with the readings behind the figures */
   warnings: string[];
 }

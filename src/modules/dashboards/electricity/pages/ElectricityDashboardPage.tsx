@@ -34,6 +34,7 @@ import {
   NativeSelect,
   SelectOption,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { localISODate } from '../../utils/month';
 import { useElectricityBoard } from '../api';
@@ -152,6 +153,11 @@ export default function ElectricityDashboardPage() {
     [board, shown, topNames, meters.length],
   );
   const days = board?.days_with_units ?? 0;
+  const tree = useMemo(
+    () =>
+      meterFilter ? (board?.tree ?? []).filter((r) => r.name === meterFilter) : (board?.tree ?? []),
+    [board, meterFilter],
+  );
   const warnings = board?.warnings ?? [];
 
   return (
@@ -418,10 +424,10 @@ export default function ElectricityDashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Meter detail</CardTitle>
+          <CardTitle className="text-base">Meter tree</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {meters.length === 0 ? (
+          {tree.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">
               {isLoading ? 'Loading…' : 'No electricity in this range.'}
             </p>
@@ -431,36 +437,88 @@ export default function ElectricityDashboardPage() {
                 <thead>
                   <tr className="border-b bg-muted/50 text-left">
                     <th className="px-3 py-2 font-medium">Meter</th>
-                    <th className="px-3 py-2 text-right font-medium">Share of meter</th>
-                    <th className="px-3 py-2 text-right font-medium">Rate</th>
-                    <th className="px-3 py-2 text-right font-medium">Units</th>
+                    <th className="px-3 py-2 text-right font-medium">Reading</th>
+                    <th className="px-3 py-2 text-right font-medium">− Sub-meters</th>
+                    <th className="px-3 py-2 text-right font-medium">= Own</th>
+                    {companyFilter && (
+                      <th className="px-3 py-2 text-right font-medium">
+                        {COMPANY_LABELS[companyFilter]}
+                      </th>
+                    )}
                     <th className="px-3 py-2 text-right font-medium">Cost</th>
-                    <th className="px-3 py-2 text-right font-medium">Days</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {meters.map((row) => (
-                    <tr key={row.name} className="border-b last:border-0">
-                      <td className="px-3 py-2">
-                        <span className="flex items-center gap-2">
+                  {tree.map((row) => {
+                    const sub = num(row.sub_metered_units);
+                    const mine = companyFilter ? row.company_units : row.own_units;
+                    return (
+                      <tr
+                        key={row.id}
+                        className={cn('border-b last:border-0', row.depth === 0 && 'font-medium')}
+                      >
+                        <td className="px-3 py-2">
                           <span
-                            className="h-2.5 w-2.5 rounded-sm"
-                            style={{ background: colourOf.get(row.name) ?? OTHERS }}
-                          />
-                          {row.name}
-                        </span>
-                      </td>
+                            className="flex items-center gap-2"
+                            style={{ paddingLeft: `${row.depth * 1.25}rem` }}
+                          >
+                            {row.depth > 0 && (
+                              <span aria-hidden className="text-muted-foreground">
+                                └
+                              </span>
+                            )}
+                            {row.name}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {units(num(row.units))}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {sub ? units(sub) : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {units(num(row.own_units))}
+                        </td>
+                        {companyFilter && (
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {row.company_units == null
+                              ? '—'
+                              : `${units(num(row.company_units))}${
+                                  row.company_share_pct && num(row.company_share_pct) < 100
+                                    ? ` (${num(row.company_share_pct).toFixed(0)}%)`
+                                    : ''
+                                }`}
+                          </td>
+                        )}
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {mine == null
+                            ? '—'
+                            : money(num(companyFilter ? row.company_cost : row.own_cost))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="border-t bg-muted/30 font-medium">
+                    <td className="px-3 py-2">Total</td>
+                    <td className="px-3 py-2" />
+                    <td className="px-3 py-2" />
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {units(tree.reduce((sum, r) => sum + num(r.own_units), 0))}
+                    </td>
+                    {companyFilter && (
                       <td className="px-3 py-2 text-right tabular-nums">
-                        {row.share_pct == null ? 'All' : `${Number(row.share_pct).toFixed(0)}%`}
+                        {units(tree.reduce((sum, r) => sum + num(r.company_units), 0))}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {row.rate == null ? '—' : num(row.rate).toFixed(2)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{units(num(row.units))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{money(num(row.cost))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{row.days}</td>
-                    </tr>
-                  ))}
+                    )}
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {money(
+                        tree.reduce(
+                          (sum, r) => sum + num(companyFilter ? r.company_cost : r.own_cost),
+                          0,
+                        ),
+                      )}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
