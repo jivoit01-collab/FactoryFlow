@@ -3,19 +3,22 @@
  * (documents.html `openDetail` / `docHeaderHtml`) on JI's components.
  *
  * Header facts with codes resolved to names and the partner's own GSTIN (never
- * our branch's), lines with account / SAC / warehouse / dimension names, the
+ * our branch's), lines one column per field as the portal's approvals showed
+ * them (`utils/lineColumns.ts`) with a copy for Excel, the
  * amounts down to the balance still due, withholding tax, the documents the
  * lines were copied from, the journal SAP posted (or, for a draft, the
  * reconstruction), and the attachments — the document's own and its base
  * documents', downloadable only with the download right.
  */
-import { TriangleAlert } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Copy, TriangleAlert } from 'lucide-react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { SAP_DOCUMENTS_DOWNLOAD_ACCESS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { StatusPill, type StatusTone } from '@/shared/components/page';
 import {
+  Button,
   Dialog,
   DialogBody,
   DialogContent,
@@ -23,10 +26,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
+import { buildTsv, copyToClipboard } from '@/shared/utils';
 
-import { type DocumentDetail, type DocumentLine, type DocumentTypeInfo, useDocumentDetail } from '../api';
+import { type DocumentDetail, type DocumentTypeInfo, useDocumentDetail } from '../api';
 import { type BaseDocumentOpener, useBaseDocumentOpener } from '../hooks/useBaseDocumentOpener';
-import { cleanAddress, money, quantity, sapDate } from '../utils/format';
+import { cleanAddress, money, sapDate } from '../utils/format';
+import { LAYOUT_TITLES, type LineColumn, lineColumns, lineLayout, linesToClipboardRows } from '../utils/lineColumns';
 import { AttachmentList } from './AttachmentList';
 import { JournalEntryTable } from './JournalEntryTable';
 
@@ -50,10 +55,13 @@ function Fact({ label, value, mono }: { label: string; value: ReactNode; mono?: 
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -250,107 +258,115 @@ function Remarks({ doc }: { doc: DocumentDetail }) {
 // Lines
 // ---------------------------------------------------------------------------
 
-function LineExtras({ line }: { line: DocumentLine }) {
-  const extras = [
-    line.received_qty !== null && ['Received', quantity(line.received_qty)],
-    line.dispatched_qty !== null && ['Dispatched', quantity(line.dispatched_qty)],
-    !!line.litres && ['Litres', quantity(line.litres)],
-    !!line.bilty_no && ['Bilty', line.bilty_no],
-    !!line.bilty_date && ['Bilty date', sapDate(line.bilty_date)],
-    line.wtax_liable !== null && line.wtax_liable !== undefined && ['WTax liable', line.wtax_liable ? 'Yes' : 'No'],
-    !!line.ar_no && ['AR no.', line.ar_no],
-    !!line.sub_account && ['Sub-account', line.sub_account],
-    !!line.udf_card_code && ['Party', line.udf_card_code],
-    !!line.purpose && ['Purpose', line.purpose],
-    !!line.base_label && ['From', `${line.base_label} ${line.base_ref || line.base_entry || ''}`.trim()],
-    !!line.location_name && ['Loc.', line.location_name],
-    !!line.project && ['Project', line.project],
-  ].filter(Boolean) as [string, string][];
-  if (!extras.length && !line.remarks) return null;
-  return (
-    <div className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
-      {extras.map(([label, value]) => (
-        <span key={label}>
-          {label}: <span className="text-foreground">{value}</span>
-        </span>
-      ))}
-      {line.remarks && <span className="italic">{line.remarks}</span>}
-    </div>
-  );
+// Every layer is opaque (card body, muted heading, background on hover), so
+// the pinned line number never shows the columns scrolling under it.
+const PINNED = 'sticky left-0 z-10 shadow-[inset_-1px_0_0_hsl(var(--border))]';
+
+function cellClass(column: LineColumn, pinned: boolean): string {
+  return [
+    'whitespace-nowrap px-3 py-1.5',
+    column.align === 'right' ? 'text-right tabular-nums' : 'text-left',
+    pinned ? PINNED : '',
+  ].join(' ');
 }
 
+/** Whether a sideways-scrolling frame has more to show on its right. */
+function useMoreToTheRight(ref: RefObject<HTMLDivElement | null>): boolean {
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const frame = ref.current;
+    if (!frame) return;
+    const update = () => setMore(frame.scrollLeft + frame.clientWidth < frame.scrollWidth - 1);
+    update();
+    frame.addEventListener('scroll', update, { passive: true });
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    resize?.observe(frame);
+    return () => {
+      frame.removeEventListener('scroll', update);
+      resize?.disconnect();
+    };
+  }, [ref]);
+  return more;
+}
+
+/**
+ * One column per field, as the portal's approvals showed them; the copy is what
+ * the table shows. The table is as wide as its columns and scrolls inside its
+ * own frame, so the sheet or dialog around it never scrolls sideways; a fade on
+ * the right says there are more columns, since touchpads and phones hide the
+ * scrollbar until you scroll. Cells stay on one line, long text wraps past
+ * 20rem, so a row stays one line high.
+ */
 function Lines({ doc }: { doc: DocumentDetail }) {
   if (!doc.lines.length) return null;
-  const transfer = doc.kind === 'transfer';
+  return <LinesTable doc={doc} />;
+}
+
+function LinesTable({ doc }: { doc: DocumentDetail }) {
+  const frame = useRef<HTMLDivElement>(null);
+  const more = useMoreToTheRight(frame);
+  const layout = lineLayout(doc.kind, doc.lines);
+  const columns = lineColumns(layout, doc.lines);
+  const count = doc.lines.length;
+
+  const copyLines = async () => {
+    const copied = await copyToClipboard(buildTsv(linesToClipboardRows(columns, doc.lines)));
+    if (!copied) {
+      toast.error('The browser would not let us reach the clipboard.');
+      return;
+    }
+    toast.success(`${count} line${count === 1 ? '' : 's'} copied with the headings — paste into your sheet.`);
+  };
+
   return (
-    <Section title={`Lines (${doc.lines.length})`}>
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40 text-muted-foreground">
-            <tr>
-              <th className="px-3 py-1.5 text-left font-medium">#</th>
-              <th className="px-3 py-1.5 text-left font-medium">Item / description</th>
-              <th className="px-3 py-1.5 text-right font-medium">Qty</th>
-              {transfer && <th className="px-3 py-1.5 text-left font-medium">From</th>}
-              <th className="px-3 py-1.5 text-left font-medium">{transfer ? 'To' : 'Warehouse'}</th>
-              {!transfer && <th className="px-3 py-1.5 text-left font-medium">G/L account</th>}
-              {!transfer && <th className="px-3 py-1.5 text-left font-medium">Tax / SAC</th>}
-              {!transfer && <th className="px-3 py-1.5 text-left font-medium">Dimensions</th>}
-              <th className="px-3 py-1.5 text-right font-medium">Price</th>
-              <th className="px-3 py-1.5 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {doc.lines.map((line, index) => (
-              <tr key={line.line_num ?? index} className="border-t align-top">
-                <td className="px-3 py-1.5 tabular-nums">{(line.line_num ?? index) + 1}</td>
-                <td className="px-3 py-1.5">
-                  {line.item_code && <span className="font-mono font-medium">{line.item_code} </span>}
-                  <span>{line.description}</span>
-                  <LineExtras line={line} />
-                </td>
-                <td className="px-3 py-1.5 text-right tabular-nums">
-                  {quantity(line.quantity)} {line.uom}
-                </td>
-                {transfer && (
-                  <td className="px-3 py-1.5" title={line.from_warehouse_name}>
-                    {line.from_warehouse_code}
-                  </td>
-                )}
-                <td className="px-3 py-1.5">
-                  {line.warehouse_code}
-                  {line.warehouse_name && <div className="text-muted-foreground">{line.warehouse_name}</div>}
-                </td>
-                {!transfer && (
-                  <td className="px-3 py-1.5">
-                    {line.account_code}
-                    {line.account_name && <div className="text-muted-foreground">{line.account_name}</div>}
-                  </td>
-                )}
-                {!transfer && (
-                  <td className="px-3 py-1.5">
-                    {line.tax_code}
-                    {line.sac_code && (
-                      <div className="text-muted-foreground" title={line.sac_name}>
-                        SAC {line.sac_code}
-                      </div>
-                    )}
-                  </td>
-                )}
-                {!transfer && (
-                  <td className="px-3 py-1.5 text-muted-foreground">
-                    {line.dimensions
-                      .filter((d) => d.code)
-                      .map((d) => d.name || d.code)
-                      .join(' · ')}
-                  </td>
-                )}
-                <td className="px-3 py-1.5 text-right tabular-nums">{money(line.unit_price, true)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{money(line.line_total, true)}</td>
+    <Section
+      title={`${LAYOUT_TITLES[layout]} (${count})`}
+      action={
+        <Button variant="outline" size="sm" onClick={copyLines}>
+          <Copy className="mr-2 h-4 w-4" /> Copy for Excel
+        </Button>
+      }
+    >
+      <div className="relative">
+        <div ref={frame} className="max-w-full overflow-x-auto rounded-lg border [scrollbar-width:thin]">
+          <table className="w-max min-w-full bg-card text-xs">
+            <thead className="text-muted-foreground">
+              <tr className="border-b">
+                {columns.map((column, i) => (
+                  <th key={column.label} className={`${cellClass(column, i === 0)} bg-muted font-medium`}>
+                    {column.label}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {doc.lines.map((line, index) => (
+                <tr key={line.line_num ?? index} className="group border-b align-top last:border-0">
+                  {columns.map((column, i) => {
+                    const text = column.text(line, index);
+                    return (
+                      <td
+                        key={column.label}
+                        className={`${cellClass(column, i === 0)} bg-card group-hover:bg-background`}
+                      >
+                        {!text ? (
+                          <span className="text-muted-foreground/50">—</span>
+                        ) : column.wrap ? (
+                          <div className="min-w-32 max-w-xs whitespace-normal">{text}</div>
+                        ) : (
+                          text
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {more && (
+          <div className="pointer-events-none absolute inset-y-px right-px w-10 rounded-r-lg bg-gradient-to-l from-card to-transparent" />
+        )}
       </div>
     </Section>
   );

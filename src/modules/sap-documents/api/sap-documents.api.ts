@@ -99,6 +99,7 @@ export interface DocumentLine {
   quantity: number | null;
   uom: string;
   unit_price: number | null;
+  discount_percent: number | null;
   line_total: number | null;
   tax_code: string;
   tax_percent: number | null;
