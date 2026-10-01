@@ -20,7 +20,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
-import { DocumentCodeBadge, RecordTimestamps, SearchableSelect } from '@/shared/components';
+import {
+  confirmDialog,
+  DocumentCodeBadge,
+  RecordTimestamps,
+  SearchableSelect,
+} from '@/shared/components';
 import {
   Badge,
   Button,
@@ -799,11 +804,34 @@ export default function InspectionDetailPage() {
   const handleSendBack = async () => {
     if (!arrivalSlipId) return;
 
+    const remarks = sendBackRemarks.trim();
+    const confirmed = await confirmDialog({
+      title: 'Send this arrival slip back to the gate?',
+      description: 'The gate person will be notified to correct and resubmit it.',
+      body: (
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          {remarks ? (
+            <>
+              <span className="font-medium">Remarks: </span>
+              {remarks}
+            </>
+          ) : (
+            <span className="text-muted-foreground">
+              No remarks — the gate person won't be told what to correct.
+            </span>
+          )}
+        </div>
+      ),
+      confirmLabel: 'Send Back',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
     try {
       setApiErrors({});
       await sendBackArrivalSlip.mutateAsync({
         slipId: arrivalSlipId,
-        data: sendBackRemarks.trim() ? { remarks: sendBackRemarks.trim() } : undefined,
+        data: remarks ? { remarks } : undefined,
       });
       navigate('/qc/arrival-slips');
     } catch (error) {
