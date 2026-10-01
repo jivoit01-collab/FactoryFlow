@@ -125,7 +125,10 @@ export default function BoardCarouselPage() {
   }, [hasAnyPermission, builtBoards.data]);
 
   const rotation = useBoardRotation(slides.length);
-  const { visible } = useIdleChrome(rotation.paused);
+  // The strip's control row: the pointer reaching the very top brings the
+  // strip up, and moving back down off this row puts it away.
+  const stripRowRef = useRef<HTMLDivElement>(null);
+  const { visible } = useIdleChrome(stripRowRef);
   // Only ever set on a television that crops what it is sent; see useOverscan.
   const overscan = useOverscan();
 
@@ -240,6 +243,7 @@ export default function BoardCarouselPage() {
         dwellSeconds={rotation.dwellSeconds}
         overscanPercent={overscan.percent}
         visible={visible}
+        rowRef={stripRowRef}
         isFullscreen={isFullscreen}
         onGoTo={rotation.goTo}
         onPrevious={rotation.previous}

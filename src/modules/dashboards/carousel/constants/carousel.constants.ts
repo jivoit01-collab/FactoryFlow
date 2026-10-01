@@ -161,6 +161,17 @@ export const TICK_MS = 250;
 export const CHROME_IDLE_MS = 4_000;
 
 /**
+ * How close to the top the pointer has to come for the strip to show, in px
+ * below the strip's own top edge.
+ *
+ * Only the very top, by request: the strip floats over each board's header,
+ * and when any movement summoned it, reaching for the header's month arrows
+ * brought the strip up over the arrows every time. A tap there counts too, so
+ * a touch screen still has a way in.
+ */
+export const CHROME_REVEAL_PX = 24;
+
+/**
  * How much of each edge the screen is eating, as a percentage.
  *
  * WHAT THIS IS FOR — TV OVERSCAN, WHICH IS NOT A CSS PROBLEM

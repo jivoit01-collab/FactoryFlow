@@ -85,6 +85,8 @@ export interface CarouselStripProps {
   /** How much of each edge the television is eating, as a percentage. */
   overscanPercent: number;
   visible: boolean;
+  /** The control row, measured to decide when the pointer has left it. */
+  rowRef?: React.Ref<HTMLDivElement>;
   isFullscreen: boolean;
   onGoTo: (index: number) => void;
   onPrevious: () => void;
@@ -121,6 +123,7 @@ export function CarouselStrip({
   dwellSeconds,
   overscanPercent,
   visible,
+  rowRef,
   isFullscreen,
   onGoTo,
   onPrevious,
@@ -141,7 +144,7 @@ export function CarouselStrip({
         <i style={{ width: `${Math.round(progress * 100)}%` }} />
       </div>
 
-      <div className="bcx-row">
+      <div className="bcx-row" ref={rowRef}>
         <div className="bcx-state" data-paused={paused ? 'yes' : 'no'}>
           <i />
           {paused ? 'HELD' : 'ROTATING'}

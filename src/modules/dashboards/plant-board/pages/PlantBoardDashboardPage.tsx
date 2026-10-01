@@ -17,7 +17,6 @@ import {
   OpsMeter,
   type OpsMonthControl,
   OpsTopbar,
-  useBoardEmbed,
 } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import type { WorkforceStrip } from '../../logistics-control/types';
@@ -222,11 +221,10 @@ export default function PlantBoardDashboardPage() {
   /**
    * This month, or an ended one somebody stepped back to. The month figures
    * then run to that month's last day while the live tiles — stock, what came
-   * in, ran and shipped today — go on reading today, tagged "now". A carousel
-   * slide is pinned to the current month: see BoardEmbed.
+   * in, ran and shipped today — go on reading today, tagged "now". In the
+   * carousel too: every slide follows the carousel page's `?month=`.
    */
-  const embedded = useBoardEmbed();
-  const month = useBoardMonth({ locked: embedded });
+  const month = useBoardMonth();
   const boardPeriod = boardPeriodFor(month);
   const monthControl: OpsMonthControl = {
     label: month.label,

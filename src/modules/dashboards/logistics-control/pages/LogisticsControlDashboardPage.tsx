@@ -18,7 +18,6 @@ import {
   OpsPair,
   type OpsSegment,
   OpsTopbar,
-  useBoardEmbed,
 } from '../components';
 import {
   LOGISTICS_CONTROL_DISPATCH_PERMISSIONS,
@@ -117,10 +116,10 @@ export function LogisticsControlDashboardPage({
 
   /**
    * The month the month figures belong to — this one, or one somebody stepped
-   * back to. A carousel slide is pinned to the current month: see BoardEmbed.
+   * back to. In the carousel too: the month is the carousel page's own
+   * `?month=`, so every slide follows the same one.
    */
-  const embedded = useBoardEmbed();
-  const month = useBoardMonth({ locked: embedded });
+  const month = useBoardMonth();
   /** An ended month is on the board: every live tile says it is live. */
   const past = !month.isCurrent;
 

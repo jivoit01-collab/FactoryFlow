@@ -214,16 +214,19 @@ describe('the wall header month control', () => {
     expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
   });
 
-  it('draws no arrows on a carousel slide', () => {
+  it('steps on a carousel slide too', () => {
+    // The carousel used to pin its slides to the current month; the month is
+    // now the carousel page's own ?month=, so the arrows work there as well.
+    const control = month();
     render(
       <MemoryRouter>
         <BoardEmbedProvider>
-          <OpsTopbar title="Board" scope="" month={month()} chips={[]} totals={[]} />
+          <OpsTopbar title="Board" scope="" month={control} chips={[]} totals={[]} />
         </BoardEmbedProvider>
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Previous month' })).toBeNull();
-    expect(screen.getByText('September 2026')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(control.onPrevious).toHaveBeenCalledOnce();
   });
 });

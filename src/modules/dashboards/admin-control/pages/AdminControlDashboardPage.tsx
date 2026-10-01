@@ -16,7 +16,6 @@ import {
   OpsMeter,
   OpsPair,
   OpsTopbar,
-  useBoardEmbed,
 } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useAdminBoard } from '../api';
@@ -77,11 +76,10 @@ export default function AdminControlDashboardPage() {
   const shellRef = useRef<HTMLDivElement>(null);
   /**
    * This month, or an ended one somebody stepped back to — read as of that
-   * month's last day, so its "today" figures are that day's. A carousel slide
-   * is pinned to the current month: see BoardEmbed.
+   * month's last day, so its "today" figures are that day's. In the carousel
+   * too: every slide follows the carousel page's `?month=`.
    */
-  const embedded = useBoardEmbed();
-  const month = useBoardMonth({ locked: embedded });
+  const month = useBoardMonth();
   const past = !month.isCurrent;
   const boardPeriod = boardPeriodFor(month);
   const monthControl = {

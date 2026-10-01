@@ -27,8 +27,8 @@ export interface OpsTopbarProps {
   scope: string;
   /**
    * The board's month, as a stepper at the head of the chips. Omitted on a
-   * board that is not monthly. Inside the carousel it is drawn without its
-   * arrows: a slide is always the current month.
+   * board that is not monthly. It steps inside the carousel too: the month is
+   * the carousel page's own `?month=`, so every slide follows it.
    */
   month?: OpsMonthControl;
   chips: { label: string; value: string }[];
@@ -140,25 +140,21 @@ export function OpsTopbar({
             data-past={month.isCurrent ? undefined : '1'}
             title={month.isCurrent ? `${month.label}, month to date` : `${month.label} — not the current month`}
           >
-            {!embedded && (
-              <button type="button" onClick={month.onPrevious} aria-label="Previous month">
-                ‹
-              </button>
-            )}
+            <button type="button" onClick={month.onPrevious} aria-label="Previous month">
+              ‹
+            </button>
             {/* No "Month"/"Showing" word in front: the arrows say it is a
                 month control, the amber says it is not this one, and the room
                 in this row belongs to the month's name. */}
             <span>{month.label}</span>
-            {!embedded && (
-              <button
-                type="button"
-                onClick={month.onNext}
-                disabled={!month.canGoForward}
-                aria-label="Next month"
-              >
-                ›
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={month.onNext}
+              disabled={!month.canGoForward}
+              aria-label="Next month"
+            >
+              ›
+            </button>
           </div>
         )}
         {chips.map((chip) => (
