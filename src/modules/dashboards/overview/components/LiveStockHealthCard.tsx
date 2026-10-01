@@ -2,9 +2,20 @@ import { AlertTriangle, ArrowUpRight, Boxes, PackageCheck, PackageX } from 'luci
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { useWMSItemGroups } from '@/modules/warehouse/api';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useStockLevels } from '../../stock-level/api';
+import {
+  DEFAULT_STOCK_MOVEMENT_FILTER,
+  DEFAULT_STOCK_WAREHOUSE_FILTER,
+  STOCK_BENCHMARK_STATS_STATUS_FILTER,
+} from '../../stock-level/constants';
+import type { StockDashboardFilters } from '../../stock-level/types';
+import {
+  DEFAULT_MATERIAL_TYPE_NAME,
+  findDefaultMaterialGroup,
+} from '../../utils/itemGroupDefaults';
 import { ACCENTS, formatCount } from '../constants';
 import { KpiStat } from './KpiStat';
 
@@ -12,11 +23,36 @@ import { KpiStat } from './KpiStat';
  * Live stock-health KPIs on the overview — tracked items and the healthy / low
  * / critical split vs benchmark minimums. Reuses the stock-benchmark hook; a
  * tiny page size keeps the payload minimal (the counts live in response meta).
+ *
+ * It sends the same filters as the Stock Benchmark page's own cards, so the
+ * two agree. With none, the API judged every item in every warehouse on its
+ * own: SAP keeps Oil's packaging benchmarks on BH-PM while the stock sits in
+ * BH-PC, so the card read 131,308 tracked and 51 critical against the page's
+ * 120 and 9.
  */
 export function LiveStockHealthCard() {
   const navigate = useNavigate();
-  const filters = useMemo(() => ({ page: 1, page_size: 1 }), []);
-  const query = useStockLevels(filters);
+  const itemGroupsQuery = useWMSItemGroups();
+  const itemGroup = useMemo(
+    () =>
+      findDefaultMaterialGroup(
+        itemGroupsQuery.data?.item_groups.map((group) => group.name).filter(Boolean) ?? [],
+        (name) => name,
+      ) ?? DEFAULT_MATERIAL_TYPE_NAME,
+    [itemGroupsQuery.data],
+  );
+  const filters = useMemo<StockDashboardFilters>(
+    () => ({
+      item_group: itemGroup,
+      warehouse: [...DEFAULT_STOCK_WAREHOUSE_FILTER],
+      status: [...STOCK_BENCHMARK_STATS_STATUS_FILTER],
+      movement_status: [...DEFAULT_STOCK_MOVEMENT_FILTER],
+      page: 1,
+      page_size: 1,
+    }),
+    [itemGroup],
+  );
+  const query = useStockLevels(filters, Boolean(itemGroupsQuery.data) || itemGroupsQuery.isError);
   const meta = query.data?.meta;
 
   const goToStock = () => navigate('/planning-purchase/stock-benchmark');
@@ -38,7 +74,7 @@ export function LiveStockHealthCard() {
         </button>
       </header>
 
-      {query.isLoading ? (
+      {query.isLoading || itemGroupsQuery.isLoading ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/50" />
@@ -53,7 +89,9 @@ export function LiveStockHealthCard() {
           <KpiStat
             icon={Boxes}
             label="Tracked items"
-            value={formatCount(meta.total_items)}
+            value={formatCount(
+              meta.healthy_count + meta.low_stock_count + meta.critical_stock_count,
+            )}
             accent={ACCENTS.indigo}
             onClick={goToStock}
             delayMs={0}

@@ -34,9 +34,13 @@ export const stockLevelApi = {
     return response.data;
   },
 
-  async getItemDetail(itemCode: string, warehouses: string[]): Promise<StockItemDetailResponse> {
+  async getItemDetail(
+    itemCode: string,
+    warehouses: string[],
+    asOfDate?: string,
+  ): Promise<StockItemDetailResponse> {
     const response = await apiClient.get<StockItemDetailResponse>(EP.ITEM_DETAIL(itemCode), {
-      params: { warehouse: warehouses.join(',') },
+      params: { warehouse: warehouses.join(','), ...(asOfDate ? { as_of_date: asOfDate } : {}) },
     });
     return response.data;
   },

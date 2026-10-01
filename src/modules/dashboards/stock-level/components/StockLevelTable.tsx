@@ -22,6 +22,7 @@ interface StockLevelTableProps {
   totalItems: number;
   onPageChange: (page: number) => void;
   selectedWarehouses?: string[];
+  asOfDate?: string;
   sortCol: StockSortCol;
   sortDir: 'asc' | 'desc';
   onSortChange: (col: StockSortCol, dir: 'asc' | 'desc') => void;
@@ -88,6 +89,7 @@ export function StockLevelTable({
   totalItems,
   onPageChange,
   selectedWarehouses = [],
+  asOfDate,
   sortCol,
   sortDir,
   onSortChange,
@@ -286,6 +288,7 @@ export function StockLevelTable({
                           <StockItemDetailPanel
                             itemCode={item.item_code}
                             warehouses={selectedWarehouses}
+                            asOfDate={asOfDate}
                           />
                         </td>
                       </tr>

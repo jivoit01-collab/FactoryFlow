@@ -17,8 +17,14 @@ export const STOCK_LEVEL_QUERY_KEYS = {
     return [...STOCK_LEVEL_QUERY_KEYS.all, 'list', companyId, filters ?? {}] as const;
   },
 
-  itemDetail: (itemCode: string, warehouses: string[]) => {
-    return [...STOCK_LEVEL_QUERY_KEYS.all, 'item-detail', itemCode, warehouses] as const;
+  itemDetail: (itemCode: string, warehouses: string[], asOfDate?: string) => {
+    return [
+      ...STOCK_LEVEL_QUERY_KEYS.all,
+      'item-detail',
+      itemCode,
+      warehouses,
+      asOfDate ?? null,
+    ] as const;
   },
 };
 
@@ -48,10 +54,14 @@ export function useStockLevels(filters?: StockDashboardFilters, enabled = true) 
   });
 }
 
-export function useStockItemDetail(itemCode: string | null, warehouses: string[]) {
+export function useStockItemDetail(
+  itemCode: string | null,
+  warehouses: string[],
+  asOfDate?: string,
+) {
   return useQuery({
-    queryKey: STOCK_LEVEL_QUERY_KEYS.itemDetail(itemCode!, warehouses),
-    queryFn: () => stockLevelApi.getItemDetail(itemCode!, warehouses),
+    queryKey: STOCK_LEVEL_QUERY_KEYS.itemDetail(itemCode!, warehouses, asOfDate),
+    queryFn: () => stockLevelApi.getItemDetail(itemCode!, warehouses, asOfDate),
     enabled: !!itemCode && warehouses.length >= 2,
     staleTime: STOCK_LEVEL_STALE_TIME,
     retry: false,

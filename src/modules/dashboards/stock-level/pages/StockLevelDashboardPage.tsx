@@ -209,6 +209,7 @@ export default function StockLevelDashboardPage() {
             totalItems={meta?.total_items ?? 0}
             onPageChange={setPage}
             selectedWarehouses={filters.warehouse}
+            asOfDate={effectiveFilters.as_of_date}
             sortCol={sort.col}
             sortDir={sort.dir}
             onSortChange={handleSortChange}

@@ -9,6 +9,8 @@ import type { StockItem } from '../types';
 interface StockItemDetailPanelProps {
   itemCode: string;
   warehouses: string[];
+  /** The table's As of Date, so the breakdown adds up to the row above it. */
+  asOfDate?: string;
 }
 
 function StatusBadge({ status }: { status: StockItem['stock_status'] }) {
@@ -54,8 +56,12 @@ function stockDifference(item: StockItem): number {
   return item.on_hand - item.min_stock;
 }
 
-export function StockItemDetailPanel({ itemCode, warehouses }: StockItemDetailPanelProps) {
-  const { data, isLoading, error } = useStockItemDetail(itemCode, warehouses);
+export function StockItemDetailPanel({
+  itemCode,
+  warehouses,
+  asOfDate,
+}: StockItemDetailPanelProps) {
+  const { data, isLoading, error } = useStockItemDetail(itemCode, warehouses, asOfDate);
 
   if (isLoading) {
     return (
