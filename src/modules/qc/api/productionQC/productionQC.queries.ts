@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateProductionQCEntryRequest,
   ProductionParameterRequest,
+  ProductionParameterTypeDefaultRequest,
   ProductionParameterTypeListParams,
   ProductionParameterTypeRequest,
   ProductionQCDateRangeParams,
@@ -22,7 +23,7 @@ export const PRODUCTION_QC_QUERY_KEYS = {
   entryCounts: (params?: ProductionQCDateRangeParams) =>
     [...PRODUCTION_QC_QUERY_KEYS.entries(), 'counts', params ?? {}] as const,
   entry: (id: number) => [...PRODUCTION_QC_QUERY_KEYS.entries(), 'detail', id] as const,
-  /** The masters: types and their parameters. */
+  /** The masters: types, their parameters and their defaults. */
   parameterTypes: () => [...PRODUCTION_QC_QUERY_KEYS.all, 'parameterTypes'] as const,
   parameterTypeList: (params?: ProductionParameterTypeListParams) =>
     [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'list', params ?? {}] as const,
@@ -30,6 +31,11 @@ export const PRODUCTION_QC_QUERY_KEYS = {
     [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'detail', id] as const,
   parameters: (typeId: number) =>
     [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'parameters', typeId] as const,
+  /** Under the types, so a default's change also refreshes the types' default counts. */
+  defaults: (typeId: number) =>
+    [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'defaults', typeId] as const,
+  defaultDetail: (id: number) =>
+    [...PRODUCTION_QC_QUERY_KEYS.parameterTypes(), 'default', id] as const,
 };
 
 // ==================== Entries ====================
@@ -227,5 +233,63 @@ export function useDeleteProductionParameter() {
   return useMutation({
     mutationFn: (id: number) => productionQCApi.deleteParameter(id),
     onSuccess: invalidate,
+  });
+}
+
+// ==================== Defaults ====================
+
+export function useProductionParameterTypeDefaults(typeId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.defaults(typeId ?? 0),
+    queryFn: () => productionQCApi.listDefaults(typeId!),
+    enabled: !!typeId && enabled,
+  });
+}
+
+export function useProductionParameterTypeDefault(id: number | null) {
+  return useQuery({
+    queryKey: PRODUCTION_QC_QUERY_KEYS.defaultDetail(id ?? 0),
+    queryFn: () => productionQCApi.getDefault(id!),
+    enabled: !!id,
+  });
+}
+
+export function useCreateProductionParameterTypeDefault() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({
+      typeId,
+      data,
+    }: {
+      typeId: number;
+      data: ProductionParameterTypeDefaultRequest;
+    }) => productionQCApi.createDefault(typeId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateProductionParameterTypeDefault() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ProductionParameterTypeDefaultRequest }) =>
+      productionQCApi.updateDefault(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteProductionParameterTypeDefault() {
+  const invalidate = useInvalidateMasters();
+  return useMutation({
+    mutationFn: (id: number) => productionQCApi.deleteDefault(id),
+    onSuccess: invalidate,
+  });
+}
+
+/** The entries sent together, with their readings — to correct them as one. */
+export function useProductionQCSubmissionEntries(submissionId: number | null) {
+  return useQuery({
+    queryKey: [...PRODUCTION_QC_QUERY_KEYS.entries(), 'submission', submissionId ?? 0] as const,
+    queryFn: () => productionQCApi.listEntriesWithResults({ submission_id: submissionId! }),
+    enabled: !!submissionId,
   });
 }

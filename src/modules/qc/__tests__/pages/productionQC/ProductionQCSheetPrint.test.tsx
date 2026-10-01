@@ -38,6 +38,7 @@ const result = (overrides: Partial<ProductionQCResult> = {}): ProductionQCResult
 const entry = (id: number, overrides: Partial<ProductionQCEntry> = {}): ProductionQCEntry =>
   ({
     id,
+    submission_entry_ids: [id],
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: new Date(Date.UTC(2026, 8, 29, 4, id)).toISOString(),
     status: 'APPROVED',

@@ -12,6 +12,7 @@ import type { ProductionParameterType } from '@/modules/qc/types/productionQC.ty
 
 const data = vi.hoisted(() => ({
   types: [] as ProductionParameterType[],
+  defaults: [] as unknown[],
   updateType: null as unknown as ReturnType<typeof vi.fn>,
 }));
 
@@ -35,6 +36,8 @@ vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
   useCreateProductionParameter: mutation,
   useUpdateProductionParameter: mutation,
   useDeleteProductionParameter: mutation,
+  useProductionParameterTypeDefaults: () => ({ data: data.defaults, isLoading: false }),
+  useDeleteProductionParameterTypeDefault: mutation,
 }));
 vi.mock('@/modules/qc/components/qcSections', () => ({ ProductionQCTabs: () => null }));
 
@@ -51,6 +54,7 @@ const type = (id: number, overrides: Partial<ProductionParameterType> = {}) =>
     description: '',
     is_active: true,
     parameter_count: 2,
+    default_count: 0,
     print_document_id: '',
     revision: '',
     revision_date: null,
@@ -79,6 +83,7 @@ function renderAt(url: string) {
 const where = () => screen.getByTestId('where').textContent;
 
 beforeEach(() => {
+  data.defaults = [];
   data.updateType = vi.fn().mockResolvedValue({});
   data.types = Array.from({ length: 30 }, (_, i) => type(i + 1));
 });
@@ -149,13 +154,56 @@ describe('the type dialog', () => {
 });
 
 describe('a document type page', () => {
-  it('shows its parameters, with no products tab', () => {
+  it('opens on its parameters, its defaults on their own tab', () => {
     renderAt('/qc/qa-reports/types/3');
 
     expect(screen.getByRole('heading', { name: 'TYPE3 Type 3' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Parameters/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
     expect(screen.getByRole('button', { name: /Add Parameter/ })).toBeInTheDocument();
-    expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.queryByText(/Linked Products|Link a product/)).toBeNull();
+  });
+
+  it('lists its defaults, each opening its own page', () => {
+    data.types = [type(3, { default_count: 2 })];
+    data.defaults = [
+      {
+        id: 21,
+        parameter_type_id: 3,
+        name: '1 L PET Canola',
+        is_active: true,
+        values: [
+          {
+            parameter_id: 1,
+            standard_value: '1000 ± 5',
+            min_value: null,
+            max_value: null,
+            value: '',
+          },
+          { parameter_id: 2, standard_value: '', min_value: null, max_value: null, value: 'L2' },
+        ],
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+    renderAt('/qc/qa-reports/types/3?view=defaults');
+
+    expect(screen.getByRole('tab', { name: 'Defaults (2)' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const row = screen.getByRole('row', { name: /1 L PET Canola/ });
+    expect(row).toHaveTextContent('1 L PET Canola11'); // one standard, one value filled in
+    fireEvent.click(row);
+    expect(where()).toBe('/qc/qa-reports/types/3/defaults/21');
+  });
+
+  it('adds a default on its own page', () => {
+    renderAt('/qc/qa-reports/types/3?view=defaults');
+    fireEvent.click(screen.getByRole('button', { name: /Add Default/ }));
+    expect(where()).toBe('/qc/qa-reports/types/3/defaults/new');
   });
 
   it('still opens on the parameters from an old products address', () => {

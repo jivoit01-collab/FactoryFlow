@@ -1,4 +1,14 @@
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Save, XCircle } from 'lucide-react';
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Copy,
+  Loader2,
+  Plus,
+  Save,
+  X,
+  XCircle,
+} from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -20,7 +30,9 @@ import {
   useCreateProductionQCEntry,
   useProductionParameters,
   useProductionParameterType,
+  useProductionParameterTypeDefault,
   useProductionQCEntry,
+  useProductionQCSubmissionEntries,
   useUpdateProductionQCEntry,
 } from '../../api/productionQC/productionQC.queries';
 import { PARAMETER_TYPE_LABELS } from '../../constants';
@@ -30,6 +42,7 @@ import type {
   ProductionQCReading,
 } from '../../types/productionQC.types';
 import type { ParameterType } from '../../types/qc.types';
+import { specWithDefault } from '../../utils/productionQCDefaults';
 import { formatDateTime } from '../../utils/productionQCFormat';
 import { describeSpec, judgeReading } from '../../utils/productionQCSpec';
 import { ProductionQCStatusBadge, SentBackBanner } from './ProductionQCStatusBadge';
@@ -60,6 +73,8 @@ interface ReadingState {
 interface EntryHeader {
   typeName: string;
   typeCode: string;
+  /** The default the entry is made with, if any. */
+  defaultName?: string;
   /** Edits: where the entry stands. */
   entry?: ProductionQCEntry;
 }
@@ -95,7 +110,7 @@ function readApiErrors(error: unknown): FieldErrors {
     const message = messages.join(' ');
     const key = field.startsWith('results')
       ? 'results'
-      : ['remarks', 'parameter_type_id'].includes(field)
+      : ['remarks', 'parameter_type_id', 'default_id'].includes(field)
         ? field
         : 'general';
     next[key] = next[key] ? `${next[key]} ${message}` : message;
@@ -109,7 +124,8 @@ function readApiErrors(error: unknown): FieldErrors {
 // ==================== Page ====================
 
 /**
- * The reading form: `/qc/qa-reports/new?type=` for a new entry of a report, and
+ * The reading form: `/qc/qa-reports/new?type=[&default=]` for a new entry of a
+ * report (with one of its defaults: its standards, its values filled in), and
  * `/qc/qa-reports/entries/:entryId/edit` to correct one pending or sent back.
  * Saving sends it for approval either way — there are no drafts.
  */
@@ -123,6 +139,7 @@ function NewEntry() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const typeId = Number(searchParams.get('type')) || null;
+  const defaultId = Number(searchParams.get('default')) || null;
 
   const {
     data: parameterType,
@@ -134,8 +151,19 @@ function NewEntry() {
     isLoading: parametersLoading,
     error: parametersError,
   } = useProductionParameters(typeId);
+  const {
+    data: chosenDefault,
+    isLoading: defaultLoading,
+    error: defaultError,
+  } = useProductionParameterTypeDefault(defaultId);
   const createEntry = useCreateProductionQCEntry();
 
+  // The default's spec, where it sets one, is the one the entry is judged on —
+  // the same rule the backend snapshots.
+  const defaultValues = useMemo(
+    () => new Map((chosenDefault?.values ?? []).map((value) => [value.parameter_id, value])),
+    [chosenDefault],
+  );
   const rows = useMemo<ReadingRow[]>(
     () =>
       (parameters ?? [])
@@ -144,16 +172,22 @@ function NewEntry() {
           parameterId: parameter.id,
           code: parameter.parameter_code,
           name: parameter.parameter_name,
-          standard_value: parameter.standard_value,
+          ...specWithDefault(parameter, defaultValues.get(parameter.id)),
           value_type: parameter.value_type,
-          min_value: parameter.min_value,
-          max_value: parameter.max_value,
           uom: parameter.uom,
           is_mandatory: parameter.is_mandatory,
           sequence: parameter.sequence,
         })),
-    [parameters],
+    [parameters, defaultValues],
   );
+  // Its values are filled in, and can still be changed.
+  const prefilled = useMemo(() => {
+    const readings: Record<number, ReadingState> = {};
+    defaultValues.forEach((value, parameterId) => {
+      if (value.value.trim()) readings[parameterId] = { ...EMPTY_READING, value: value.value };
+    });
+    return readings;
+  }, [defaultValues]);
 
   const backToList = { label: 'Back to QA Reports', onClick: () => navigate(LIST_PATH) };
 
@@ -166,7 +200,16 @@ function NewEntry() {
       />
     );
   }
-  if (typeLoading || parametersLoading) return <EntryLoading />;
+  if (typeLoading || parametersLoading || (defaultId && defaultLoading)) return <EntryLoading />;
+  if (defaultId && (defaultError || !chosenDefault || chosenDefault.parameter_type_id !== typeId)) {
+    return (
+      <EntryProblem
+        title="That default is not available"
+        message="It may have been removed. Pick the report and its default again."
+        action={backToList}
+      />
+    );
+  }
   if (typeError || parametersError) {
     return (
       <EntryProblem
@@ -201,13 +244,24 @@ function NewEntry() {
   return (
     <EntryForm
       mode="new"
-      header={{ typeName: parameterType.name, typeCode: parameterType.code }}
+      header={{
+        typeName: parameterType.name,
+        typeCode: parameterType.code,
+        defaultName: chosenDefault?.name,
+      }}
       rows={rows}
+      initialSamples={[prefilled]}
+      freshSample={() => ({ ...prefilled })}
       cancelTo={LIST_PATH}
-      onSave={async (data) => {
+      onSave={async ({ remarks, samples }) => {
         const created = await createEntry.mutateAsync({
           parameter_type_id: parameterType.id,
-          ...data,
+          default_id: chosenDefault?.id ?? null,
+          remarks,
+          // Several samples are one entry each, sent and decided together.
+          ...(samples.length === 1
+            ? { results: samples[0] }
+            : { samples: samples.map((results) => ({ results })) }),
         });
         return created.id;
       }}
@@ -218,6 +272,13 @@ function NewEntry() {
 function EditEntry({ entryId }: { entryId: number }) {
   const navigate = useNavigate();
   const { data: entry, isLoading, error } = useProductionQCEntry(entryId || null);
+  // Entries sent together are corrected together, all on one form.
+  const together = (entry?.submission_entry_ids.length ?? 0) > 1;
+  const {
+    data: siblings,
+    isLoading: siblingsLoading,
+    error: siblingsError,
+  } = useProductionQCSubmissionEntries(together ? (entry?.submission_id ?? null) : null);
   const updateEntry = useUpdateProductionQCEntry();
   const detailPath = `/qc/qa-reports/entries/${entryId}`;
 
@@ -240,17 +301,20 @@ function EditEntry({ entryId }: { entryId: number }) {
     [entry],
   );
 
-  if (isLoading) return <EntryLoading />;
-  if (error || !entry) {
+  if (isLoading || (together && siblingsLoading)) return <EntryLoading />;
+  if (error || !entry || (together && (siblingsError || !siblings?.length))) {
     return (
       <EntryProblem
         title="Could not load the entry"
-        message={(error as ApiError | null)?.message || 'The entry could not be found.'}
+        message={
+          ((error || siblingsError) as ApiError | null)?.message || 'The entry could not be found.'
+        }
         action={{ label: 'Back to QA Reports', onClick: () => navigate(LIST_PATH) }}
       />
     );
   }
-  if (entry.status === 'APPROVED') {
+  const entries = together ? [...siblings!].sort((a, b) => a.id - b.id) : [entry];
+  if (entries.some((item) => item.status === 'APPROVED')) {
     return (
       <EntryProblem
         title="An approved entry cannot be changed"
@@ -262,13 +326,16 @@ function EditEntry({ entryId }: { entryId: number }) {
     );
   }
 
-  const initialReadings: Record<number, ReadingState> = {};
-  entry.results.forEach((result) => {
-    initialReadings[result.parameter_id] = {
-      value: result.result_value ?? '',
-      withinSpec: result.is_within_spec ?? true,
-      remarks: result.remarks ?? '',
-    };
+  const initialSamples = entries.map((item) => {
+    const readings: Record<number, ReadingState> = {};
+    item.results.forEach((result) => {
+      readings[result.parameter_id] = {
+        value: result.result_value ?? '',
+        withinSpec: result.is_within_spec ?? true,
+        remarks: result.remarks ?? '',
+      };
+    });
+    return readings;
   });
 
   return (
@@ -277,14 +344,27 @@ function EditEntry({ entryId }: { entryId: number }) {
       header={{
         typeName: entry.parameter_type.name,
         typeCode: entry.parameter_type.code,
+        defaultName: entry.default_name,
         entry,
       }}
       rows={rows}
-      initialReadings={initialReadings}
+      initialSamples={initialSamples}
+      sampleEntryIds={entries.map((item) => item.id)}
       initialRemarks={entry.remarks}
       cancelTo={detailPath}
-      onSave={async (data) => {
-        await updateEntry.mutateAsync({ id: entry.id, data });
+      onSave={async ({ remarks, samples }) => {
+        await updateEntry.mutateAsync({
+          id: entry.id,
+          data: together
+            ? {
+                remarks,
+                samples: entries.map((item, index) => ({
+                  entry_id: item.id,
+                  results: samples[index],
+                })),
+              }
+            : { remarks, results: samples[0] },
+        });
         return entry.id;
       }}
     />
@@ -297,50 +377,93 @@ function EntryForm({
   mode,
   header,
   rows,
-  initialReadings,
+  initialSamples,
   initialRemarks = '',
+  sampleEntryIds,
+  freshSample,
   cancelTo,
   onSave,
 }: {
   mode: 'new' | 'edit';
   header: EntryHeader;
   rows: ReadingRow[];
-  initialReadings?: Record<number, ReadingState>;
+  /** One map of readings per sample: one entry each, sent and decided together. */
+  initialSamples?: Record<number, ReadingState>[];
   initialRemarks?: string;
+  /** Edits: the entries being corrected, one per sample (a correction cannot add or drop one). */
+  sampleEntryIds?: number[];
+  /** New entries: what a sample added with Add sample starts with (the default's values). */
+  freshSample?: () => Record<number, ReadingState>;
   cancelTo: string;
-  /** Saves and returns the entry's id. */
-  onSave: (data: { remarks: string; results: ProductionQCReading[] }) => Promise<number>;
+  /** Saves and returns the (first) entry's id. */
+  onSave: (data: { remarks: string; samples: ProductionQCReading[][] }) => Promise<number>;
 }) {
   const navigate = useNavigate();
-  const [readings, setReadings] = useState<Record<number, ReadingState>>(
-    () => initialReadings ?? {},
+  const [samples, setSamples] = useState<Record<number, ReadingState>[]>(() =>
+    initialSamples && initialSamples.length > 0 ? initialSamples : [{}],
   );
   const [remarks, setRemarks] = useState(initialRemarks);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
-  const readingOf = (row: ReadingRow) => readings[row.parameterId] ?? EMPTY_READING;
+  const many = samples.length > 1;
+  const canAddSamples = mode === 'new';
+  const readingOf = (sample: number, row: ReadingRow) =>
+    samples[sample]?.[row.parameterId] ?? EMPTY_READING;
 
-  const outOfSpec = rows.filter((row) => verdictOf(row, readingOf(row)) === false);
+  const outOfSpecCount = samples.reduce(
+    (total, _, sample) =>
+      total + rows.filter((row) => verdictOf(row, readingOf(sample, row)) === false).length,
+    0,
+  );
 
   const clearError = (key: string) => {
-    if (!errors[key]) return;
     setErrors((prev) => {
+      if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
       return next;
     });
   };
 
-  const change = (row: ReadingRow, patch: Partial<ReadingState>) => {
-    setReadings((prev) => ({
-      ...prev,
-      [row.parameterId]: { ...(prev[row.parameterId] ?? EMPTY_READING), ...patch },
-    }));
+  const change = (sample: number, row: ReadingRow, patch: Partial<ReadingState>) => {
+    setSamples((prev) =>
+      prev.map((readings, index) =>
+        index === sample
+          ? {
+              ...readings,
+              [row.parameterId]: { ...(readings[row.parameterId] ?? EMPTY_READING), ...patch },
+            }
+          : readings,
+      ),
+    );
     if (patch.value !== undefined) {
-      clearError(`param_${row.parameterId}`);
+      clearError(`param_${sample}_${row.parameterId}`);
       clearError('results');
     }
+  };
+
+  // Sample 1's value, in every other sample — for what is the same across them (the SKU, say).
+  const copyAcross = (row: ReadingRow) => {
+    const first = readingOf(0, row);
+    setSamples((prev) =>
+      prev.map((readings, index) =>
+        index === 0 ? readings : { ...readings, [row.parameterId]: { ...first, remarks: '' } },
+      ),
+    );
+    setErrors((prev) => {
+      const next = { ...prev };
+      Object.keys(next)
+        .filter((key) => key.endsWith(`_${row.parameterId}`) || key === 'results')
+        .forEach((key) => delete next[key]);
+      return next;
+    });
+  };
+
+  const addSample = () => setSamples((prev) => [...prev, freshSample ? freshSample() : {}]);
+  const removeSample = (sample: number) => {
+    setSamples((prev) => prev.filter((_, index) => index !== sample));
+    setErrors({});
   };
 
   const showErrors = (next: FieldErrors) => {
@@ -354,16 +477,23 @@ function EntryForm({
 
   const handleSave = async () => {
     const next: FieldErrors = {};
-    const missing = rows.filter((row) => row.is_mandatory && !readingOf(row).value.trim());
-    missing.forEach((row) => {
-      next[`param_${row.parameterId}`] = 'Enter a value — this parameter is mandatory.';
+    const short: string[] = [];
+    samples.forEach((_, sample) => {
+      const missing = rows.filter(
+        (row) => row.is_mandatory && !readingOf(sample, row).value.trim(),
+      );
+      missing.forEach((row) => {
+        next[`param_${sample}_${row.parameterId}`] = 'Enter a value — this parameter is mandatory.';
+      });
+      if (missing.length > 0) {
+        const names = missing.map((row) => row.name).join(', ');
+        short.push(many ? `Sample ${sample + 1}: ${names}` : names);
+      }
     });
-    if (missing.length > 0) {
-      next.results = `Enter a value for every mandatory parameter: ${missing
-        .map((row) => row.name)
-        .join(', ')}.`;
+    if (short.length > 0) {
+      next.results = `Enter a value for every mandatory parameter: ${short.join('; ')}.`;
     }
-    if (outOfSpec.length > 0 && !remarks.trim()) {
+    if (outOfSpecCount > 0 && !remarks.trim()) {
       next.remarks = 'A remark is required when any parameter is out of spec.';
     }
     if (Object.keys(next).length > 0) {
@@ -376,9 +506,15 @@ function EntryForm({
     try {
       const id = await onSave({
         remarks: remarks.trim(),
-        results: rows.map((row) => toReading(row, readingOf(row))),
+        samples: samples.map((_, sample) =>
+          rows.map((row) => toReading(row, readingOf(sample, row))),
+        ),
       });
-      toast.success(`Entry #${id} saved and sent for approval`);
+      toast.success(
+        many
+          ? `${samples.length} entries saved and sent for approval together`
+          : `Entry #${id} saved and sent for approval`,
+      );
       navigate(`/qc/qa-reports/entries/${id}`, { replace: true });
     } catch (error) {
       showErrors(readApiErrors(error));
@@ -388,7 +524,14 @@ function EntryForm({
   };
 
   const entry = header.entry;
-  const title = mode === 'new' ? 'New Entry' : `Correct Entry #${entry?.id}`;
+  const title =
+    mode === 'new'
+      ? many
+        ? `New Entries (${samples.length})`
+        : 'New Entry'
+      : sampleEntryIds && sampleEntryIds.length > 1
+        ? `Correct Entries #${sampleEntryIds.join(', #')}`
+        : `Correct Entry #${entry?.id}`;
 
   return (
     <div className="space-y-6 pb-6">
@@ -400,25 +543,29 @@ function EntryForm({
           <div>
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
             <p className="text-sm text-muted-foreground">
-              Saving sends the entry to a QC lead for approval.
+              {many
+                ? 'Each sample is its own entry; saving sends them to a QC lead for approval together.'
+                : 'Saving sends the entry to a QC lead for approval.'}
             </p>
           </div>
         </div>
         {entry && <ProductionQCStatusBadge status={entry.status} label={entry.status_label} />}
       </div>
 
-      {(errors.general || errors.parameter_type_id) && (
+      {(errors.general || errors.parameter_type_id || errors.default_id || errors.samples) && (
         <div
           data-error="true"
           className="flex items-start gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm text-destructive"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <div className="flex-1 space-y-1">
-            {[errors.parameter_type_id, errors.general].filter(Boolean).map((message) => (
-              <p key={message}>{message}</p>
-            ))}
+            {[errors.parameter_type_id, errors.default_id, errors.samples, errors.general]
+              .filter(Boolean)
+              .map((message) => (
+                <p key={message}>{message}</p>
+              ))}
           </div>
-          {errors.parameter_type_id && (
+          {(errors.parameter_type_id || errors.default_id) && (
             <Button variant="outline" size="sm" onClick={() => navigate(LIST_PATH)}>
               Pick again
             </Button>
@@ -441,17 +588,26 @@ function EntryForm({
             {header.typeName}
             <div className="font-mono text-xs text-muted-foreground">{header.typeCode}</div>
           </InfoItem>
+          {header.defaultName && <InfoItem label="Default">{header.defaultName}</InfoItem>}
           {entry && <InfoItem label="Checked At">{formatDateTime(entry.checked_at)}</InfoItem>}
         </CardContent>
       </Card>
 
       {/* Readings */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0">
           <CardTitle>Parameters ({rows.length})</CardTitle>
-          <span className="text-xs text-muted-foreground">
-            <span className="text-destructive">*</span> mandatory
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              <span className="text-destructive">*</span> mandatory
+            </span>
+            {canAddSamples && (
+              <Button size="sm" variant="outline" onClick={addSample} disabled={saving}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add sample
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {errors.results && (
@@ -464,16 +620,30 @@ function EntryForm({
               {errors.results}
             </div>
           )}
-          {rows.map((row) => (
-            <ReadingRowInput
-              key={row.parameterId}
-              row={row}
-              reading={readingOf(row)}
-              error={errors[`param_${row.parameterId}`]}
+          {many ? (
+            <SampleGrid
+              rows={rows}
+              sampleCount={samples.length}
+              sampleEntryIds={sampleEntryIds}
+              readingOf={readingOf}
+              errors={errors}
               disabled={saving}
-              onChange={(patch) => change(row, patch)}
+              onChange={change}
+              onCopyAcross={copyAcross}
+              onRemoveSample={canAddSamples ? removeSample : undefined}
             />
-          ))}
+          ) : (
+            rows.map((row) => (
+              <ReadingRowInput
+                key={row.parameterId}
+                row={row}
+                reading={readingOf(0, row)}
+                error={errors[`param_0_${row.parameterId}`]}
+                disabled={saving}
+                onChange={(patch) => change(0, row, patch)}
+              />
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -482,7 +652,7 @@ function EntryForm({
         <CardContent className="space-y-2 pt-6">
           <Label htmlFor="production-qc-remarks">
             Remarks
-            {outOfSpec.length > 0 && <span className="text-destructive"> *</span>}
+            {outOfSpecCount > 0 && <span className="text-destructive"> *</span>}
           </Label>
           <Textarea
             id="production-qc-remarks"
@@ -502,12 +672,14 @@ function EntryForm({
             <p
               className={cn(
                 'text-xs',
-                outOfSpec.length > 0 ? 'text-destructive' : 'text-muted-foreground',
+                outOfSpecCount > 0 ? 'text-destructive' : 'text-muted-foreground',
               )}
             >
-              {outOfSpec.length > 0
-                ? `${outOfSpec.length} parameter${outOfSpec.length === 1 ? ' is' : 's are'} out of spec — a remark is required.`
-                : 'Required when any parameter is out of spec.'}
+              {outOfSpecCount > 0
+                ? `${outOfSpecCount} reading${outOfSpecCount === 1 ? ' is' : 's are'} out of spec — a remark is required.`
+                : many
+                  ? 'One remark for every sample; required when any reading is out of spec.'
+                  : 'Required when any parameter is out of spec.'}
             </p>
           )}
         </CardContent>
@@ -526,6 +698,213 @@ function EntryForm({
           {saving ? 'Saving…' : 'Save & Send for Approval'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Several samples at once, as on the paper: a row per parameter, a column per sample. */
+function SampleGrid({
+  rows,
+  sampleCount,
+  sampleEntryIds,
+  readingOf,
+  errors,
+  disabled,
+  onChange,
+  onCopyAcross,
+  onRemoveSample,
+}: {
+  rows: ReadingRow[];
+  sampleCount: number;
+  sampleEntryIds?: number[];
+  readingOf: (sample: number, row: ReadingRow) => ReadingState;
+  errors: FieldErrors;
+  disabled: boolean;
+  onChange: (sample: number, row: ReadingRow, patch: Partial<ReadingState>) => void;
+  onCopyAcross: (row: ReadingRow) => void;
+  onRemoveSample?: (sample: number) => void;
+}) {
+  const sampleIndexes = Array.from({ length: sampleCount }, (_, index) => index);
+  return (
+    <div className="max-w-full overflow-x-auto rounded-md border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="sticky left-0 z-10 min-w-[220px] bg-muted p-3 text-left font-medium">
+              Parameter
+            </th>
+            {sampleIndexes.map((sample) => (
+              <th key={sample} className="min-w-[190px] p-3 text-left font-medium">
+                <div className="flex items-center justify-between gap-2">
+                  <span>
+                    Sample {sample + 1}
+                    {sampleEntryIds?.[sample] && (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        #{sampleEntryIds[sample]}
+                      </span>
+                    )}
+                  </span>
+                  {onRemoveSample && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      aria-label={`Remove sample ${sample + 1}`}
+                      onClick={() => onRemoveSample(sample)}
+                      disabled={disabled}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.parameterId} className="border-t align-top">
+              <td className="sticky left-0 z-10 bg-card p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium">
+                      {row.name}
+                      {row.is_mandatory && <span className="text-destructive"> *</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Spec: {describeSpec(row)}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 flex-shrink-0 p-0 text-muted-foreground"
+                    title="Copy Sample 1's value to every sample"
+                    aria-label={`Copy ${row.name} from Sample 1 to every sample`}
+                    onClick={() => onCopyAcross(row)}
+                    disabled={disabled}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </td>
+              {sampleIndexes.map((sample) => (
+                <td key={sample} className="p-2">
+                  <GridCell
+                    row={row}
+                    sample={sample}
+                    reading={readingOf(sample, row)}
+                    error={errors[`param_${sample}_${row.parameterId}`]}
+                    disabled={disabled}
+                    onChange={(patch) => onChange(sample, row, patch)}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function GridCell({
+  row,
+  sample,
+  reading,
+  error,
+  disabled,
+  onChange,
+}: {
+  row: ReadingRow;
+  sample: number;
+  reading: ReadingState;
+  error?: string;
+  disabled: boolean;
+  onChange: (patch: Partial<ReadingState>) => void;
+}) {
+  const value = reading.value;
+  const hasValue = value.trim() !== '';
+  const judged = hasValue ? judgeReading(row, value) : null;
+  const verdict = verdictOf(row, reading);
+  const isNumeric = row.value_type === 'NUMERIC' || row.value_type === 'RANGE';
+  const judgedByHand = hasValue && judged === null && row.value_type !== 'BOOLEAN';
+  const label = `${row.name}, sample ${sample + 1}`;
+
+  return (
+    <div
+      data-error={error ? 'true' : undefined}
+      className={cn(
+        'space-y-1 rounded-md p-1',
+        verdict === false && 'bg-destructive/5',
+        error && 'ring-1 ring-destructive',
+      )}
+    >
+      {row.value_type === 'BOOLEAN' ? (
+        <select
+          aria-label={label}
+          value={value}
+          onChange={(event) => onChange({ value: event.target.value })}
+          disabled={disabled}
+          className={cn(
+            'flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm',
+            error && 'border-destructive',
+          )}
+        >
+          <option value="">—</option>
+          <option value="Pass">Pass</option>
+          <option value="Fail">Fail</option>
+        </select>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <Input
+            aria-label={label}
+            type={isNumeric ? 'number' : 'text'}
+            step={isNumeric ? 'any' : undefined}
+            inputMode={isNumeric ? 'decimal' : undefined}
+            value={value}
+            onChange={(event) => onChange({ value: event.target.value })}
+            disabled={disabled}
+            className={cn('h-9', error && 'border-destructive')}
+          />
+          {row.uom && <span className="text-xs text-muted-foreground">{row.uom}</span>}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 text-xs">
+        {verdict === true && !judgedByHand && (
+          <span className="flex items-center gap-1 font-medium text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Within spec
+          </span>
+        )}
+        {verdict === false && !judgedByHand && (
+          <span className="flex items-center gap-1 font-medium text-destructive">
+            <XCircle className="h-3.5 w-3.5" />
+            Out of spec
+          </span>
+        )}
+        {judgedByHand && (
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={reading.withinSpec}
+              onChange={(event) => onChange({ withinSpec: event.target.checked })}
+              disabled={disabled}
+              aria-label={`${label} within spec`}
+              className="h-3.5 w-3.5 rounded border-gray-300 dark:border-border"
+            />
+            <span className={cn(!reading.withinSpec && 'font-medium text-destructive')}>
+              Within spec
+            </span>
+          </label>
+        )}
+      </div>
+      <Input
+        aria-label={`${label} remark`}
+        value={reading.remarks}
+        onChange={(event) => onChange({ remarks: event.target.value })}
+        disabled={disabled}
+        placeholder="Remark"
+        className="h-7 text-xs"
+      />
     </div>
   );
 }

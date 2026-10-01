@@ -6,6 +6,8 @@ import type {
   ProductionParameter,
   ProductionParameterRequest,
   ProductionParameterType,
+  ProductionParameterTypeDefault,
+  ProductionParameterTypeDefaultRequest,
   ProductionParameterTypeListParams,
   ProductionParameterTypeRequest,
   ProductionQCDateRangeParams,
@@ -176,5 +178,48 @@ export const productionQCApi = {
 
   async deleteParameter(id: number): Promise<void> {
     await apiClient.delete(ENDPOINTS.PRODUCTION_QC_PARAMETER_BY_ID(id));
+  },
+
+  // ==================== Defaults ====================
+
+  async listDefaults(typeId: number): Promise<ProductionParameterTypeDefault[]> {
+    const response = await apiClient.get<ProductionParameterTypeDefault[]>(
+      ENDPOINTS.PRODUCTION_QC_TYPE_DEFAULTS(typeId),
+    );
+    return response.data;
+  },
+
+  async getDefault(id: number): Promise<ProductionParameterTypeDefault> {
+    const response = await apiClient.get<ProductionParameterTypeDefault>(
+      ENDPOINTS.PRODUCTION_QC_DEFAULT_BY_ID(id),
+    );
+    return response.data;
+  },
+
+  async createDefault(
+    typeId: number,
+    data: ProductionParameterTypeDefaultRequest,
+  ): Promise<ProductionParameterTypeDefault> {
+    const response = await apiClient.post<ProductionParameterTypeDefault>(
+      ENDPOINTS.PRODUCTION_QC_TYPE_DEFAULTS(typeId),
+      data,
+    );
+    return response.data;
+  },
+
+  /** The editor sends the whole default: its name and every value it sets. */
+  async updateDefault(
+    id: number,
+    data: ProductionParameterTypeDefaultRequest,
+  ): Promise<ProductionParameterTypeDefault> {
+    const response = await apiClient.put<ProductionParameterTypeDefault>(
+      ENDPOINTS.PRODUCTION_QC_DEFAULT_BY_ID(id),
+      data,
+    );
+    return response.data;
+  },
+
+  async deleteDefault(id: number): Promise<void> {
+    await apiClient.delete(ENDPOINTS.PRODUCTION_QC_DEFAULT_BY_ID(id));
   },
 };

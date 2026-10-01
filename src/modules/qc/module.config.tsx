@@ -46,6 +46,9 @@ const ProductionParameterTypesPage = lazy(
 const ProductionParameterTypePage = lazy(
   () => import('./pages/productionQC/ProductionParameterTypePage'),
 );
+const ProductionParameterTypeDefaultPage = lazy(
+  () => import('./pages/productionQC/ProductionParameterTypeDefaultPage'),
+);
 
 // QA Procedures — controlled documents kept as the original PDF file
 const QAProceduresPage = lazy(() => import('./pages/qaProcedures/QAProceduresPage'));
@@ -192,6 +195,22 @@ export const qcModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
       breadcrumb: { label: 'Type' },
+    },
+    {
+      // The breadcrumb's link up from a default: the type page's Defaults tab.
+      path: '/qc/qa-reports/types/:typeId/defaults',
+      element: <ProductionParameterTypeDefaultPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
+      breadcrumb: { label: 'Defaults' },
+    },
+    {
+      // One default of a report type (per SKU, say): `new`, or its id.
+      path: '/qc/qa-reports/types/:typeId/defaults/:defaultId',
+      element: <ProductionParameterTypeDefaultPage />,
+      layout: 'main',
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
+      breadcrumb: { label: 'Default' },
     },
     // The submodule was Production QC at /qc/production, then Documents at
     // /qc/documents; both sets of old addresses redirect.

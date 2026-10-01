@@ -1,6 +1,6 @@
 import { AlertCircle, ArrowLeft, Edit, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { confirmDialog } from '@/shared/components';
@@ -18,6 +18,10 @@ import {
   DialogTitle,
   Input,
   Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '@/shared/components/ui';
 
 import {
@@ -43,13 +47,24 @@ import {
 } from '../../utils/productionQCMaster';
 import { describeSpec, formatDecimal } from '../../utils/productionQCSpec';
 import { Field } from './MasterField';
+import { ProductionParameterTypeDefaultsCard } from './ProductionParameterTypeDefaultsCard';
 
-/** One report type and its parameters. The list of types is its own page. */
+type View = 'parameters' | 'defaults';
+
+/**
+ * One report type: its parameters, or its defaults (one per SKU, say) — one at a
+ * time, on tabs. The list of types is its own page.
+ */
 export default function ProductionParameterTypePage() {
   const navigate = useNavigate();
   const { typeId } = useParams<{ typeId: string }>();
   const id = Number(typeId) || null;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view: View = searchParams.get('view') === 'defaults' ? 'defaults' : 'parameters';
   const { data: type, isLoading, error } = useProductionParameterType(id);
+
+  const setView = (next: string) =>
+    setSearchParams(next === 'defaults' ? { view: 'defaults' } : {}, { replace: true });
 
   return (
     <div className="space-y-6 pb-6">
@@ -91,7 +106,18 @@ export default function ProductionParameterTypePage() {
           This report type could not be found. It may have been removed.
         </div>
       ) : (
-        <ParametersCard type={type} />
+        <Tabs value={view} onValueChange={setView} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="parameters">Parameters ({type.parameter_count})</TabsTrigger>
+            <TabsTrigger value="defaults">Defaults ({type.default_count})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="parameters" className="mt-0">
+            <ParametersCard type={type} />
+          </TabsContent>
+          <TabsContent value="defaults" className="mt-0">
+            <ProductionParameterTypeDefaultsCard type={type} />
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

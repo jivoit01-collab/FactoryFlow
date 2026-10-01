@@ -117,6 +117,11 @@ export function ProductionQCSheet({
                   >
                     #{entry.id} · {STATUS_TEXT[entry.status].label}
                   </span>
+                  {entry.default_name && (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      {entry.default_name}
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>

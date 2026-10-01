@@ -50,6 +50,10 @@ const LABELS: Record<ProductionQCStatus, string> = {
 
 const entry = (status: ProductionQCStatus): ProductionQCEntry => ({
   id: 7,
+  default_id: null,
+  default_name: '',
+  submission_id: 70,
+  submission_entry_ids: [7],
   parameter_type: { id: 1, code: 'PET_1L', name: '1 L PET Oil' },
   checked_at: '2026-09-29T08:00:00+05:30',
   status,
@@ -210,5 +214,32 @@ describe('deciding', () => {
     await waitFor(() =>
       expect(state.sendBack).toHaveBeenCalledWith({ id: 7, remarks: 'Recheck the net weight' }),
     );
+  });
+});
+
+describe('an entry sent with others', () => {
+  beforeEach(() => {
+    state.perms = new Set([FILL, APPROVE]);
+    state.entry = { ...entry('PENDING'), submission_entry_ids: [7, 8, 9] };
+  });
+
+  it('names the entries sent with it, and decides them all', async () => {
+    renderPage();
+
+    expect(screen.getByText(/Sent with/)).toHaveTextContent('Sent with #8, #9');
+    expect(screen.getByRole('link', { name: '#8' })).toHaveAttribute(
+      'href',
+      '/qc/qa-reports/entries/8',
+    );
+    expect(screen.getByRole('button', { name: /Edit all 3/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Send back all 3/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Approve all 3/ }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading')).toHaveTextContent(
+      'Approve all 3 entries (#7, #8, #9)?',
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(state.approve).toHaveBeenCalledWith({ id: 7, remarks: '' }));
   });
 });

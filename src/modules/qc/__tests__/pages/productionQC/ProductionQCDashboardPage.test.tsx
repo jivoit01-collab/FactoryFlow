@@ -60,6 +60,8 @@ const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 const entry = (id: number): ProductionQCEntry =>
   ({
     id,
+    submission_id: id,
+    submission_entry_ids: [id],
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: `${today}T12:24:00Z`,
     status: 'APPROVED',
@@ -147,6 +149,17 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
     expect(screen.queryByRole('columnheader', { name: 'Line' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Product' })).not.toBeInTheDocument();
     expect(data.sheetCalls.every((call) => !call.enabled)).toBe(true);
+  });
+
+  it('marks entries sent together, each still a row of its own', () => {
+    data.entries = [
+      { ...entry(4), submission_entry_ids: [4, 5] } as ProductionQCEntry,
+      { ...entry(5), submission_entry_ids: [4, 5] } as ProductionQCEntry,
+    ];
+    renderAt();
+    expect(screen.getAllByRole('row')).toHaveLength(3); // header + both entries
+    expect(screen.getByRole('row', { name: /#4/ })).toHaveTextContent('1 of 2');
+    expect(screen.getByRole('row', { name: /#5/ })).toHaveTextContent('2 of 2');
   });
 
   it('filters the day by document', () => {

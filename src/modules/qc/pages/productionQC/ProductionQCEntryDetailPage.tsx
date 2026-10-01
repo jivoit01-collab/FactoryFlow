@@ -9,7 +9,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
@@ -94,6 +94,9 @@ export default function ProductionQCEntryDetailPage() {
   const isUnfinished = entry.status === 'PENDING' || entry.status === 'SENT_BACK';
   const showEdit = canFill && isUnfinished;
   const showDecision = canApprove && entry.status === 'PENDING';
+  // Entries sent together are decided and corrected as one.
+  const sentWith = entry.submission_entry_ids.filter((id) => id !== entry.id);
+  const all = sentWith.length > 0 ? ` all ${sentWith.length + 1}` : '';
   const results = [...entry.results].sort((a, b) => a.sequence - b.sequence || a.id - b.id);
 
   return (
@@ -115,6 +118,20 @@ export default function ProductionQCEntryDetailPage() {
               <ProductionQCStatusBadge status={entry.status} label={entry.status_label} />
             </div>
             <p className="text-sm text-muted-foreground">{entry.parameter_type.name}</p>
+            {sentWith.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Sent with{' '}
+                {sentWith.map((id, index) => (
+                  <span key={id}>
+                    {index > 0 && ', '}
+                    <Link to={`/qc/qa-reports/entries/${id}`} className="font-medium underline">
+                      #{id}
+                    </Link>
+                  </span>
+                ))}{' '}
+                — approved, sent back and corrected together.
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -125,17 +142,18 @@ export default function ProductionQCEntryDetailPage() {
             >
               <Edit className="mr-2 h-4 w-4" />
               {entry.status === 'SENT_BACK' ? 'Correct' : 'Edit'}
+              {all}
             </Button>
           )}
           {showDecision && (
             <>
               <Button variant="outline" onClick={() => setDecision('send-back')}>
                 <Undo2 className="mr-2 h-4 w-4" />
-                Send back
+                Send back{all}
               </Button>
               <Button onClick={() => setDecision('approve')}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                Approve
+                Approve{all}
               </Button>
             </>
           )}
@@ -159,6 +177,7 @@ export default function ProductionQCEntryDetailPage() {
               {entry.parameter_type.code}
             </div>
           </InfoItem>
+          {entry.default_name && <InfoItem label="Default">{entry.default_name}</InfoItem>}
           <InfoItem label="Checked At">{formatDateTime(entry.checked_at)}</InfoItem>
           <InfoItem label="Submitted By">
             {entry.submitted_by_name || '-'}
@@ -309,6 +328,11 @@ function DecisionDialog({
   const [error, setError] = useState('');
   const isSendBack = decision === 'send-back';
   const isPending = approve.isPending || sendBack.isPending;
+  // The entries sent with it are decided with it.
+  const ids = entry.submission_entry_ids;
+  const together = ids.length > 1;
+  const label = `Entries #${ids.join(', #')}`;
+  const what = together ? `all ${ids.length} entries (#${ids.join(', #')})` : `entry #${entry.id}`;
 
   const close = () => {
     if (isPending) return;
@@ -327,10 +351,10 @@ function DecisionDialog({
     try {
       if (isSendBack) {
         await sendBack.mutateAsync({ id: entry.id, remarks: trimmed });
-        toast.success(`Entry #${entry.id} sent back`);
+        toast.success(together ? `${label} sent back` : `Entry #${entry.id} sent back`);
       } else {
         await approve.mutateAsync({ id: entry.id, remarks: trimmed });
-        toast.success(`Entry #${entry.id} approved`);
+        toast.success(together ? `${label} approved` : `Entry #${entry.id} approved`);
       }
       setRemarks('');
       onClose();
@@ -346,15 +370,16 @@ function DecisionDialog({
     <Dialog open={decision !== null} onOpenChange={(open) => !open && close()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isSendBack ? `Send back entry #${entry.id}?` : `Approve entry #${entry.id}?`}
-          </DialogTitle>
+          <DialogTitle>{isSendBack ? `Send back ${what}?` : `Approve ${what}?`}</DialogTitle>
           <DialogDescription>
+            {together && 'They were sent together, so they are decided together. '}
             {isSendBack
-              ? 'It goes back to QC to correct and save again.'
+              ? `${together ? 'They go' : 'It goes'} back to QC to correct and save again.`
               : entry.out_of_spec_count > 0
-                ? `${entry.out_of_spec_count} parameter${entry.out_of_spec_count === 1 ? ' is' : 's are'} out of spec.`
-                : 'Every judged parameter is within spec.'}
+                ? `On #${entry.id}, ${entry.out_of_spec_count} parameter${entry.out_of_spec_count === 1 ? ' is' : 's are'} out of spec.`
+                : together
+                  ? `On #${entry.id}, every judged parameter is within spec.`
+                  : 'Every judged parameter is within spec.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">

@@ -35,6 +35,7 @@ const result = (overrides: Partial<ProductionQCResult>): ProductionQCResult =>
 const entry = (overrides: Partial<ProductionQCEntry>): ProductionQCEntry =>
   ({
     id: 3,
+    submission_entry_ids: [3],
     parameter_type: { id: 3, code: 'OIL_ONLINE_MONITORING', name: 'Oil Plant On-line Monitoring' },
     checked_at: '2026-09-29T12:00:00Z',
     status: 'APPROVED',

@@ -475,7 +475,18 @@ export default function ProductionQCDashboardPage() {
                       className="cursor-pointer border-t transition-colors hover:bg-muted/50"
                       onClick={() => navigate(`/qc/qa-reports/entries/${entry.id}`)}
                     >
-                      <td className="whitespace-nowrap p-3 text-sm font-medium">#{entry.id}</td>
+                      <td className="whitespace-nowrap p-3 text-sm font-medium">
+                        #{entry.id}
+                        {entry.submission_entry_ids.length > 1 && (
+                          <div
+                            className="text-xs font-normal text-muted-foreground"
+                            title="Sent together: approved and sent back together"
+                          >
+                            {entry.submission_entry_ids.indexOf(entry.id) + 1} of{' '}
+                            {entry.submission_entry_ids.length}
+                          </div>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">
                         {formatDateTime(entry.checked_at)}
                       </td>
@@ -483,6 +494,9 @@ export default function ProductionQCDashboardPage() {
                         {entry.parameter_type.name}
                         <div className="font-mono text-xs text-muted-foreground">
                           {entry.parameter_type.code}
+                          {entry.default_name && (
+                            <span className="font-sans"> · {entry.default_name}</span>
+                          )}
                         </div>
                       </td>
                       <td className="p-3 text-sm">

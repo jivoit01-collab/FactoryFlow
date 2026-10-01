@@ -94,9 +94,18 @@ QA Reports, in `types/productionQC.types.ts` (mirrors
   (`ProductionParameter`: spec text, min / max, uom, sequence, mandatory, and
   `value_type` — the kind of reading, NUMERIC / TEXT / BOOLEAN / RANGE), plus the form's
   number (`print_document_id`) and revision. `parameter_count` counts active
-  parameters; a type with none cannot be filled. Not tied to products, and not the
-  arrival-slip parameters.
-- **`ProductionQCEntry`** — one filled-in copy: the report type, `checked_at`,
+  parameters; a type with none cannot be filled; `default_count` its active defaults.
+  Not tied to products, and not the arrival-slip parameters.
+- **`ProductionParameterTypeDefault`** — a named set of values for one report type,
+  e.g. one SKU's ("1 L PET Canola"): standards differ by SKU. Per parameter
+  (`ProductionParameterDefaultValue`) it may set the spec — standard, min, max, which
+  replace the report's together when any of the three is set (a blank standard reads
+  "-"; all three blank keeps the report's) — and a `value` that pre-fills the reading.
+  The rule is `utils/productionQCDefaults.ts`, as the backend snapshots it.
+- **`ProductionQCEntry`** — one filled-in copy: the report type, the default it was
+  made with (`default_id`, and `default_name`, kept if the default goes), the entries
+  sent with it (`submission_id`, `submission_entry_ids` — itself included; decided and
+  corrected as one, separate everywhere else), `checked_at`,
   `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
   (`ProductionQCResult`, the parameter's spec snapshotted onto each reading). No line,
   run or product.
@@ -184,9 +193,13 @@ footer; its revision / revision date come from the type.
    product or batch typed into a report finds it). A row opens the entry.
 2. **New** (FILL only, `NewProductionQCEntryDialog`) — pick the report (searchable
    once there are more than six); the only usable one is preselected and one with no
-   parameters is disabled. Continue opens `/qc/qa-reports/new?type=<id>`.
+   parameters is disabled. A report with defaults then asks which (searchable too), or
+   **None** for the report's own standards — optional, but nothing is preselected.
+   Continue opens `/qc/qa-reports/new?type=<id>[&default=<id>]`.
 3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/qa-reports/entries/:id/edit`)
-   — the report, then one row per parameter: name, spec, the input by value kind
+   — the report (and the default, if one was picked: its specs replace the report's
+   where it sets them, its values are filled in and stay editable, and it is saved with
+   the entry), then one row per parameter: name, spec, the input by value kind
    (number; text; a Pass / Fail select), an optional row remark, and a live within /
    out-of-spec hint. The hint is `utils/productionQCSpec.ts`, a port of the backend's
    `spec_evaluation.py` (min / max first, else the spec text: `910±5`, `NLT 20`,
@@ -194,19 +207,31 @@ footer; its revision / revision date come from the type.
    cannot judge (text, a spec without numbers) gets a hand-set *Within spec* box.
    **Save** is also *send for approval* — there are no drafts. The form blocks a missing
    mandatory value and an out-of-spec reading with no entry remark; the backend's own
-   400s land on the field (`remarks`, `results`, `parameter_type_id` with a *Pick again*
-   button, or `detail`).
+   400s land on the field (`remarks`, `results`, `parameter_type_id` / `default_id` with
+   a *Pick again* button, or `detail`).
+   **Add sample** (new entries only) turns the form into a grid as on the paper — a row
+   per parameter, a column per sample (`SampleGrid` / `GridCell`), each new column
+   starting with the default's values, a copy button per row to repeat Sample 1's value
+   (the SKU, say) across, and × to drop a column. Each sample saves as its own entry
+   (`samples: [{results}]`), one remark for all; a missing value is named by sample.
+   Correcting an entry sent with others loads them all
+   (`useProductionQCSubmissionEntries`, `?submission_id=`) into the same grid and sends
+   them all back (`samples: [{entry_id, results}]`); no column can be added or dropped.
 4. **Entry detail** (`/qc/qa-reports/entries/:entryId`, `ProductionQCEntryDetailPage`) —
-   status, the report, the results (value, spec, in-spec ✓/✗), remarks, and a
+   status, the report, the entries sent with it (linked; *Approve / Send back / Correct
+   all N* then act on them all), the results (value, spec, in-spec ✓/✗), remarks, and a
    highlighted banner with the send-back remark while SENT_BACK. **Edit** (FILL) while
    PENDING or SENT_BACK → the form in edit mode → `PATCH`, which puts it back to
    PENDING. **Approve** (optional remark) and **Send back** (remark required) for
    APPROVE while PENDING. Mutations invalidate the entry lists, the counts and the badge.
 5. **Report Types** (`/qc/qa-reports/types`, `ProductionParameterTypesPage`, MANAGE) —
    search / add / edit / remove types (a soft delete: saved entries keep their
-   readings); a type opens on its own page (`/qc/qa-reports/types/:id`) with its
-   parameters (add / edit / remove: code, name, standard value, value type, min / max
-   for numeric kinds, uom, sequence, mandatory).
+   readings); a type opens on its own page (`/qc/qa-reports/types/:id`) with two tabs:
+   its **Parameters** (add / edit / remove: code, name, standard value, value type,
+   min / max for numeric kinds, uom, sequence, mandatory) and its **Defaults**
+   (`?view=defaults`; each opens on `/qc/qa-reports/types/:id/defaults/:defaultId`, or
+   `/new` — a table of the report's parameters, its spec beside the default's standard,
+   min, max and pre-filled value; removing one is soft, entries keep its name).
 
 The old addresses — `/qc/production`, `/new`, `/entries/…`, `/parameter-types[/:id]`, and
 the brief `/qc/documents…` ones — redirect, keeping the rest of the path and the query

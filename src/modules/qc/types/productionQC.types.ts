@@ -28,6 +28,12 @@ export interface ProductionParameterTypeRef {
 export interface ProductionQCEntryListItem {
   id: number;
   parameter_type: ProductionParameterTypeRef;
+  /** The default the entry was made with, if any (its name is kept even if it is removed). */
+  default_id: number | null;
+  default_name: string;
+  /** The entries sent with this one, itself included, in order: approved, sent back and corrected as one. */
+  submission_id: number | null;
+  submission_entry_ids: number[];
   checked_at: string;
   status: ProductionQCStatus;
   status_label: string;
@@ -83,6 +89,8 @@ export interface ProductionQCEntryCounts {
 export interface ProductionQCEntryListParams {
   status?: ProductionQCStatus;
   parameter_type_id?: number;
+  /** The entries sent together, whatever their date. */
+  submission_id?: number;
   /** One day (YYYY-MM-DD): that day's entries, every status. */
   date?: string;
   from_date?: string;
@@ -108,13 +116,21 @@ export interface ProductionQCReading {
 
 export interface CreateProductionQCEntryRequest {
   parameter_type_id: number;
+  /** One of the report's defaults; left out, the entry uses the report's own standards. */
+  default_id?: number | null;
   remarks: string;
-  results: ProductionQCReading[];
+  /** One entry's readings — or, for several samples filled together, `samples`. */
+  results?: ProductionQCReading[];
+  /** One entry per sample, sent and decided together. */
+  samples?: { results: ProductionQCReading[] }[];
 }
 
 export interface UpdateProductionQCEntryRequest {
   remarks: string;
-  results: ProductionQCReading[];
+  /** The entry's own readings, when it was sent on its own. */
+  results?: ProductionQCReading[];
+  /** Every entry sent with it, each by its id: they are corrected as one. */
+  samples?: { entry_id: number; results: ProductionQCReading[] }[];
 }
 
 export interface ProductionQCDecisionRequest {
@@ -137,6 +153,8 @@ export interface ProductionParameterType {
   is_active: boolean;
   /** Active parameters only; a type with none cannot be used for a check. */
   parameter_count: number;
+  /** Active defaults: when there are any, New asks which to use (or none). */
+  default_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -181,4 +199,43 @@ export interface ProductionParameterRequest {
   uom: string;
   sequence: number;
   is_mandatory: boolean;
+}
+
+// ==================== Defaults ====================
+
+/**
+ * What one default sets for one parameter. The spec — standard, min, max —
+ * replaces the parameter's own when any of the three is set (a blank standard
+ * then reads "-"); all three blank keeps the parameter's. `value` pre-fills the
+ * reading, which stays editable.
+ */
+export interface ProductionParameterDefaultValue {
+  parameter_id: number;
+  standard_value: string;
+  min_value: DecimalValue | null;
+  max_value: DecimalValue | null;
+  value: string;
+}
+
+/** A named set of values for one report type — e.g. one SKU's standards. */
+export interface ProductionParameterTypeDefault {
+  id: number;
+  parameter_type_id: number;
+  name: string;
+  is_active: boolean;
+  values: ProductionParameterDefaultValue[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductionParameterTypeDefaultRequest {
+  name: string;
+  /** The whole default: rows that set nothing may be left out. */
+  values: {
+    parameter_id: number;
+    standard_value: string;
+    min_value: number | null;
+    max_value: number | null;
+    value: string;
+  }[];
 }

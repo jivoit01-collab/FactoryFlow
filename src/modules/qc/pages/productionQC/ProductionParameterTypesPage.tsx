@@ -229,6 +229,7 @@ export default function ProductionParameterTypesPage() {
                       <th className="p-3 text-left font-medium">Code</th>
                       <th className="p-3 text-left font-medium">Name</th>
                       <th className="p-3 text-center font-medium">Parameters</th>
+                      <th className="p-3 text-center font-medium">Defaults</th>
                       <th className="p-3 text-center font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -263,6 +264,7 @@ export default function ProductionParameterTypesPage() {
                         >
                           {type.parameter_count}
                         </td>
+                        <td className="p-3 text-center">{type.default_count}</td>
                         <td className="p-3 text-center">
                           <div className="flex justify-center gap-2">
                             <Button
