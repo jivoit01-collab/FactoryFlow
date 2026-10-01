@@ -63,6 +63,7 @@ const BSTPartialApprovalsPage = lazy(() => import('./pages/bst/BSTPartialApprova
 // deliberately kept apart.
 const TransferRequestListPage = lazy(() => import('./pages/transfer/TransferRequestListPage'));
 const TransferRequestNewPage = lazy(() => import('./pages/transfer/TransferRequestNewPage'));
+const TransferStockRequestPage = lazy(() => import('./pages/transfer/TransferStockRequestPage'));
 const TransferRequestDetailPage = lazy(() => import('./pages/transfer/TransferRequestDetailPage'));
 const TransferRequestEditPage = lazy(() => import('./pages/transfer/TransferRequestEditPage'));
 
@@ -185,6 +186,14 @@ export const warehouseModuleConfig: ModuleConfig = {
     {
       path: '/warehouse/inventory-transfer/new',
       element: <TransferRequestNewPage />,
+      layout: 'main',
+      permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
+    },
+    {
+      // The receiving warehouse asking for stock — the production floor asking
+      // BH-LO for oil. Registered before `:requestId` so it isn't captured.
+      path: '/warehouse/inventory-transfer/request',
+      element: <TransferStockRequestPage />,
       layout: 'main',
       permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
     },
@@ -338,6 +347,11 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/inventory-transfer',
           title: 'Inventory Transfer',
           permissions: [WAREHOUSE_PERMISSIONS.VIEW_TRANSFER_REQUEST],
+        },
+        {
+          path: '/warehouse/inventory-transfer/request',
+          title: 'Request Stock',
+          permissions: [WAREHOUSE_PERMISSIONS.CREATE_TRANSFER_REQUEST],
         },
         {
           path: '/warehouse/bst',

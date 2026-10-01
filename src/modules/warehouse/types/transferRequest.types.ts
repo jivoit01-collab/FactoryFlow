@@ -11,6 +11,12 @@
 
 export type TransferRouteType = 'INTRA_BRANCH' | 'CROSS_BRANCH';
 
+/** Which side raised the request. The OTHER side approves or rejects it:
+ *  stock offered by the sender is accepted by the receiver, and stock asked
+ *  for by the receiver (the production floor asking BH-LO for oil) is agreed
+ *  to by the sender. */
+export type TransferRaisedBy = 'SENDER' | 'RECEIVER';
+
 export type TransferRequestStatus =
   | 'PENDING'
   | 'APPROVED'
@@ -60,6 +66,10 @@ export interface TransferRequestListItem {
   entry_no: string;
   from_warehouse: string;
   to_warehouse: string;
+  /** Absent from a backend older than requests raised by the receiver. */
+  raised_by_side?: TransferRaisedBy;
+  /** The warehouse whose manager approves or rejects it. */
+  deciding_warehouse?: string;
   route_type: TransferRouteType;
   intransit_warehouse: string;
   status: TransferRequestStatus;
@@ -122,6 +132,7 @@ export interface TransferRequestCreatePayload {
   from_warehouse: string;
   to_warehouse: string;
   remarks?: string;
+  raised_by_side?: TransferRaisedBy;
   lines: TransferRequestLineInput[];
 }
 

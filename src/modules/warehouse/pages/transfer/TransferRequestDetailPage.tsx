@@ -115,9 +115,13 @@ export default function TransferRequestDetailPage() {
   }
 
   const r: TransferRequestDetail = request;
-  const managesDestination = scope.manages(r.to_warehouse);
+  // The side that did not raise it decides: the receiver accepts stock that was
+  // offered, the sender agrees to stock that was asked for.
+  const askedFor = r.raised_by_side === 'RECEIVER';
+  const decidingWarehouse = r.deciding_warehouse || (askedFor ? r.from_warehouse : r.to_warehouse);
+  const managesDecidingSide = scope.manages(decidingWarehouse);
   const canApprove =
-    hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) && managesDestination;
+    hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) && managesDecidingSide;
   const isPending = r.status === 'PENDING';
   const isApproved = r.status === 'APPROVED' || r.status === 'PARTIALLY_APPROVED';
   const notPosted = r.posting_status === 'NOT_POSTED' || r.posting_status === 'FAILED';
@@ -173,6 +177,11 @@ export default function TransferRequestDetailPage() {
               <Route from={r.from_warehouse} to={r.to_warehouse} />
               <RouteBadge routeType={r.route_type} />
             </div>
+            {askedFor && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Asked for by {r.to_warehouse} · {r.from_warehouse} decides
+              </p>
+            )}
           </Field>
           <Field label="Approval">
             <ApprovalBadge status={r.status} />
@@ -358,11 +367,21 @@ export default function TransferRequestDetailPage() {
           otherwise just find the buttons missing, which reads as a bug. */}
       {isPending &&
         hasPermission(WAREHOUSE_PERMISSIONS.APPROVE_TRANSFER_REQUEST) &&
-        !managesDestination && (
+        !managesDecidingSide && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-            This request is coming into <strong>{r.to_warehouse}</strong>, which you do not
-            manage — its own manager decides on it. You can follow it here but not approve or
-            reject it.
+            {askedFor ? (
+              <>
+                This stock was asked for by <strong>{r.to_warehouse}</strong>, so{' '}
+                <strong>{r.from_warehouse}</strong>, which you do not manage, decides whether to
+                send it.
+              </>
+            ) : (
+              <>
+                This request is coming into <strong>{r.to_warehouse}</strong>, which you do not
+                manage — its own manager decides on it.
+              </>
+            )}{' '}
+            You can follow it here but not approve or reject it.
           </div>
         )}
 

@@ -203,6 +203,16 @@ export default function TransferRequestListPage() {
             below, and are the ones most often waiting to be printed. */}
         <PrintTransferAction />
         {canCreate && (
+          <Button
+            variant="outline"
+            onClick={() => navigate('/warehouse/inventory-transfer/request')}
+            title="Ask another warehouse to send stock to one you manage"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Request stock
+          </Button>
+        )}
+        {canCreate && (
           <Button onClick={() => navigate('/warehouse/inventory-transfer/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Raise a request

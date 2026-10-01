@@ -33,6 +33,9 @@ export interface TransferRequestListParams {
   posting_status?: string;
   from_warehouse?: string;
   to_warehouse?: string;
+  raised_by_side?: string;
+  /** Only requests the signed-in user raised. */
+  mine?: '1';
 }
 
 export const transferRequestApi = {
