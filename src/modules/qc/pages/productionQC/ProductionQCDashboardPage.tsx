@@ -109,8 +109,8 @@ export default function ProductionQCDashboardPage() {
       }
     : {};
 
-  // The document filter runs here rather than on the server, so its options are
-  // the documents in the list the other filters give — and never go stale.
+  // The report filter runs here rather than on the server, so its options are
+  // the reports in the list the other filters give — and never go stale.
   const docOptions = useMemo(() => {
     const byId = new Map<number, string>();
     (view === 'sheet' ? sheetEntries : entries).forEach((entry) =>
@@ -162,7 +162,7 @@ export default function ProductionQCDashboardPage() {
     if (view === 'sheet') refetchSheet();
   };
 
-  // One sheet per document — each is its own paper form — with the day's entries
+  // One sheet per report — each is its own paper form — with the day's entries
   // as its columns.
   const sheets = useMemo(() => {
     const byType = new Map<number, ProductionQCEntry[]>();
@@ -202,7 +202,7 @@ export default function ProductionQCDashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="mb-1 text-3xl font-bold tracking-tight">Documents</h2>
+          <h2 className="mb-1 text-3xl font-bold tracking-tight">QA Reports</h2>
           <p className="text-muted-foreground">The records QC maintains, approved by a QC lead</p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
@@ -301,11 +301,11 @@ export default function ProductionQCDashboardPage() {
         <div className="relative max-w-xl">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search this day by entry no., document, or anything entered..."
+            placeholder="Search this day by entry no., report, or anything entered..."
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="pl-10"
-            aria-label="Search document entries"
+            aria-label="Search QA report entries"
           />
         </div>
       )}
@@ -341,19 +341,19 @@ export default function ProductionQCDashboardPage() {
             })}
         </div>
         <select
-          aria-label="Filter by document"
+          aria-label="Filter by report"
           value={docFilter}
           onChange={(event) => updateParam('doc', event.target.value)}
           className="h-8 max-w-[260px] rounded-md border border-input bg-background px-3 text-sm"
         >
-          <option value="">All documents</option>
+          <option value="">All reports</option>
           {docOptions.map((doc) => (
             <option key={doc.id} value={doc.id}>
               {doc.name}
             </option>
           ))}
           {docFilter && !docOptions.some((doc) => String(doc.id) === docFilter) && (
-            <option value={docFilter}>Document #{docFilter}</option>
+            <option value={docFilter}>Report #{docFilter}</option>
           )}
         </select>
       </div>
@@ -365,7 +365,7 @@ export default function ProductionQCDashboardPage() {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-destructive">Permission Denied</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {apiError?.message || 'You do not have permission to view document entries.'}
+              {apiError?.message || 'You do not have permission to view QA report entries.'}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -381,7 +381,7 @@ export default function ProductionQCDashboardPage() {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-yellow-800 dark:text-yellow-400">Failed to Load</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {apiError?.message || 'An error occurred while loading document entries.'}
+              {apiError?.message || 'An error occurred while loading QA report entries.'}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -399,8 +399,8 @@ export default function ProductionQCDashboardPage() {
         ) : sheets.length === 0 ? (
           <div className="flex h-24 items-center justify-center rounded-lg border text-sm text-muted-foreground">
             {sheetEntries.length > 0
-              ? 'No entries of this document on this day'
-              : `No document entries on ${dayLabel(day)}`}
+              ? 'No entries of this report on this day'
+              : `No QA report entries on ${dayLabel(day)}`}
           </div>
         ) : (
           <div className="space-y-6">
@@ -432,9 +432,9 @@ export default function ProductionQCDashboardPage() {
           {debouncedSearch
             ? `No entries on this day match "${debouncedSearch}"`
             : entries.length > 0
-              ? 'No entries of this document'
+              ? 'No entries of this report'
               : statusFilter === 'ALL'
-                ? `No document entries on ${dayLabel(day)}`
+                ? `No QA report entries on ${dayLabel(day)}`
                 : `No ${statusLabel.toLowerCase()} entries on ${dayLabel(day)}`}
         </div>
       )}
@@ -453,7 +453,7 @@ export default function ProductionQCDashboardPage() {
                     {[
                       '#',
                       'Checked At',
-                      'Document',
+                      'Report',
                       'Status',
                       'Out of Spec',
                       'Submitted By',
@@ -473,7 +473,7 @@ export default function ProductionQCDashboardPage() {
                     <tr
                       key={entry.id}
                       className="cursor-pointer border-t transition-colors hover:bg-muted/50"
-                      onClick={() => navigate(`/qc/documents/entries/${entry.id}`)}
+                      onClick={() => navigate(`/qc/qa-reports/entries/${entry.id}`)}
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">#{entry.id}</td>
                       <td className="whitespace-nowrap p-3 text-sm text-muted-foreground">

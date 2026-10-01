@@ -110,8 +110,8 @@ describe('ProductionQCSheet', () => {
     ]);
     const links = screen.getAllByRole('link');
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '/qc/documents/entries/3',
-      '/qc/documents/entries/4',
+      '/qc/qa-reports/entries/3',
+      '/qc/qa-reports/entries/4',
     ]);
     const batch = within(rowOf('Batch No.'))
       .getAllByRole('cell')

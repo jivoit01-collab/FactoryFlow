@@ -1,5 +1,5 @@
 /**
- * QC document types, one thing per screen: the list shows the document types
+ * QA report types, one thing per screen: the list shows the document types
  * only, and a type opens on its own page with its parameters. Types are not
  * tied to products, so neither screen shows any.
  */
@@ -68,8 +68,8 @@ function renderAt(url: string) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <Routes>
-        <Route path="/qc/documents/types" element={<ProductionParameterTypesPage />} />
-        <Route path="/qc/documents/types/:typeId" element={<ProductionParameterTypePage />} />
+        <Route path="/qc/qa-reports/types" element={<ProductionParameterTypesPage />} />
+        <Route path="/qc/qa-reports/types/:typeId" element={<ProductionParameterTypePage />} />
       </Routes>
       <Where />
     </MemoryRouter>,
@@ -85,7 +85,7 @@ beforeEach(() => {
 
 describe('the document types list', () => {
   it('shows the types and nothing else', () => {
-    renderAt('/qc/documents/types');
+    renderAt('/qc/qa-reports/types');
 
     expect(screen.getAllByRole('row')).toHaveLength(31); // header + 30
     expect(screen.queryByRole('button', { name: /Add Parameter$/ })).toBeNull();
@@ -93,24 +93,24 @@ describe('the document types list', () => {
   });
 
   it('opens a type on its own page', () => {
-    renderAt('/qc/documents/types');
+    renderAt('/qc/qa-reports/types');
 
     fireEvent.click(screen.getByRole('link', { name: 'TYPE27' }));
 
-    expect(where()).toBe('/qc/documents/types/27');
+    expect(where()).toBe('/qc/qa-reports/types/27');
   });
 
   it('opens a type when its row is clicked', () => {
-    renderAt('/qc/documents/types');
+    renderAt('/qc/qa-reports/types');
 
     fireEvent.click(screen.getByRole('cell', { name: 'Type 4' }));
 
-    expect(where()).toBe('/qc/documents/types/4');
+    expect(where()).toBe('/qc/qa-reports/types/4');
   });
 
   it('sends an address from the earlier layout to the type page', () => {
-    renderAt('/qc/documents/types?type=12');
-    expect(where()).toBe('/qc/documents/types/12');
+    renderAt('/qc/qa-reports/types?type=12');
+    expect(where()).toBe('/qc/qa-reports/types/12');
   });
 });
 
@@ -125,7 +125,7 @@ describe('the type dialog', () => {
         revision_date: '2026-05-22',
       }),
     ];
-    renderAt('/qc/documents/types');
+    renderAt('/qc/qa-reports/types');
     fireEvent.click(screen.getByRole('button', { name: 'Edit OIL_ONLINE_MONITORING' }));
 
     const number = screen.getByLabelText('Document number');
@@ -150,7 +150,7 @@ describe('the type dialog', () => {
 
 describe('a document type page', () => {
   it('shows its parameters, with no products tab', () => {
-    renderAt('/qc/documents/types/3');
+    renderAt('/qc/qa-reports/types/3');
 
     expect(screen.getByRole('heading', { name: 'TYPE3 Type 3' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add Parameter/ })).toBeInTheDocument();
@@ -159,20 +159,20 @@ describe('a document type page', () => {
   });
 
   it('still opens on the parameters from an old products address', () => {
-    renderAt('/qc/documents/types/3?view=products');
+    renderAt('/qc/qa-reports/types/3?view=products');
     expect(screen.getByRole('button', { name: /Add Parameter/ })).toBeInTheDocument();
   });
 
   it('goes back to the list', () => {
-    renderAt('/qc/documents/types/3');
+    renderAt('/qc/qa-reports/types/3');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Document Types' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Report Types' }));
 
-    expect(where()).toBe('/qc/documents/types');
+    expect(where()).toBe('/qc/qa-reports/types');
   });
 
   it('says so when the type is gone', () => {
-    renderAt('/qc/documents/types/999');
+    renderAt('/qc/qa-reports/types/999');
     expect(screen.getByText(/could not be found/)).toBeInTheDocument();
   });
 });

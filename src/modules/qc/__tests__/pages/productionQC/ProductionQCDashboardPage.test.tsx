@@ -82,12 +82,12 @@ function Where() {
   return <div data-testid="where">{search}</div>;
 }
 
-function renderAt(url = '/qc/documents') {
+function renderAt(url = '/qc/qa-reports') {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route
-          path="/qc/documents"
+          path="/qc/qa-reports"
           element={
             <>
               <ProductionQCDashboardPage />
@@ -159,7 +159,7 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
     ];
     renderAt();
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by document' }), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by report' }), {
       target: { value: '9' },
     });
 
@@ -182,7 +182,7 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
   });
 
   it('opens straight on the sheet from the address', () => {
-    renderAt(`/qc/documents?view=sheet&date=${yesterday}`);
+    renderAt(`/qc/qa-reports?view=sheet&date=${yesterday}`);
     expect(screen.getByRole('button', { name: 'Sheet' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByLabelText('Day')).toHaveValue(yesterday);
   });

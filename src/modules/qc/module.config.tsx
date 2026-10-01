@@ -32,7 +32,7 @@ const InspectionDetailPage = lazy(() => import('./pages/InspectionDetailPage'));
 const ApprovalQueuePage = lazy(() => import('./pages/ApprovalQueuePage'));
 const DecisionChangedInspectionsPage = lazy(() => import('./pages/DecisionChangedInspectionsPage'));
 
-// Documents submodule — the records QC maintains, approved by a QC lead
+// QA Reports submodule — the records QC maintains, approved by a QC lead
 const ProductionQCDashboardPage = lazy(
   () => import('./pages/productionQC/ProductionQCDashboardPage'),
 );
@@ -83,7 +83,7 @@ const QC_MODULE_PERMISSIONS = [
  * them, see constants/qcSections.ts):
  * 1. Arrival Slips — inspections, the chemist / QAM approval queues, decision
  *    changes, and the masters they run on: material types and QC parameters
- * 2. Documents — the records QC maintains and their approval; the document types
+ * 2. QA Reports — the records QC maintains and their approval; the report types
  * 3. Line Clearance — QA approval of pre-production line clearances
  * 4. QA Procedures — controlled procedures kept as the original PDF
  * 5. Master Data — print documents: every printed form's document number
@@ -146,25 +146,25 @@ export const qcModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'QC Parameters' },
     },
 
-    // ==================== Documents Submodule ====================
+    // ==================== QA Reports Submodule ====================
     // The records QC maintains ("production QC" in code). Not tied to production.
     {
-      path: '/qc/documents',
+      path: '/qc/qa-reports',
       element: <ProductionQCDashboardPage />,
       layout: 'main',
       permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
-      breadcrumb: { label: 'Documents' },
+      breadcrumb: { label: 'QA Reports' },
     },
     {
-      // Opened from the New dialog as ?type=<document type id>
-      path: '/qc/documents/new',
+      // Opened from the New dialog as ?type=<report type id>
+      path: '/qc/qa-reports/new',
       element: <ProductionQCEntryPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.FILL],
       breadcrumb: { label: 'New Entry' },
     },
     {
-      path: '/qc/documents/entries/:entryId',
+      path: '/qc/qa-reports/entries/:entryId',
       element: <ProductionQCEntryDetailPage />,
       layout: 'main',
       permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
@@ -172,28 +172,46 @@ export const qcModuleConfig: ModuleConfig = {
     },
     {
       // The same form as a new entry; saving sends it back for approval.
-      path: '/qc/documents/entries/:entryId/edit',
+      path: '/qc/qa-reports/entries/:entryId/edit',
       element: <ProductionQCEntryPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.FILL],
       breadcrumb: { label: 'Edit' },
     },
     {
-      path: '/qc/documents/types',
+      path: '/qc/qa-reports/types',
       element: <ProductionParameterTypesPage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
-      breadcrumb: { label: 'Document Types' },
+      breadcrumb: { label: 'Report Types' },
     },
     {
-      // One document type and its parameters.
-      path: '/qc/documents/types/:typeId',
+      // One report type and its parameters.
+      path: '/qc/qa-reports/types/:typeId',
       element: <ProductionParameterTypePage />,
       layout: 'main',
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
       breadcrumb: { label: 'Type' },
     },
-    // The submodule was Production QC at /qc/production; its old addresses redirect.
+    // The submodule was Production QC at /qc/production, then Documents at
+    // /qc/documents; both sets of old addresses redirect.
+    ...[
+      '/qc/documents',
+      '/qc/documents/new',
+      '/qc/documents/entries/:entryId',
+      '/qc/documents/entries/:entryId/edit',
+    ].map((path) => ({
+      path,
+      element: <RedirectPathPrefix from="/qc/documents" to="/qc/qa-reports" />,
+      layout: 'main' as const,
+      permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
+    })),
+    ...['/qc/documents/types', '/qc/documents/types/:typeId'].map((path) => ({
+      path,
+      element: <RedirectPathPrefix from="/qc/documents" to="/qc/qa-reports" />,
+      layout: 'main' as const,
+      permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
+    })),
     ...[
       '/qc/production',
       '/qc/production/new',
@@ -201,14 +219,14 @@ export const qcModuleConfig: ModuleConfig = {
       '/qc/production/entries/:entryId/edit',
     ].map((path) => ({
       path,
-      element: <RedirectPathPrefix from="/qc/production" to="/qc/documents" />,
+      element: <RedirectPathPrefix from="/qc/production" to="/qc/qa-reports" />,
       layout: 'main' as const,
       permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
     })),
     ...['/qc/production/parameter-types', '/qc/production/parameter-types/:typeId'].map((path) => ({
       path,
       element: (
-        <RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/documents/types" />
+        <RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/qa-reports/types" />
       ),
       layout: 'main' as const,
       permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
@@ -324,8 +342,8 @@ export const qcModuleConfig: ModuleConfig = {
           badge: PendingApprovalsBadge,
         },
         {
-          path: '/qc/documents',
-          title: 'Documents',
+          path: '/qc/qa-reports',
+          title: 'QA Reports',
           permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
           badge: ProductionQCBadge,
         },

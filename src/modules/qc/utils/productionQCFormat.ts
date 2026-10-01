@@ -1,4 +1,4 @@
-/** Date and time labels for the QC Documents screens. */
+/** Date and time labels for the QA Reports screens. */
 
 function parse(value: string | null | undefined): Date | null {
   if (!value) return null;

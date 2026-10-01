@@ -71,7 +71,7 @@ export const PRINT_DOCUMENT_PERMISSIONS = [
   QC_PERMISSIONS.MASTER_DATA.MANAGE_QC_PARAMETERS,
 ] as const;
 
-/** Whoever fills, approves or only reads document entries sees the list. */
+/** Whoever fills, approves or only reads QA report entries sees the list. */
 export const PRODUCTION_QC_ENTRY_PERMISSIONS = [
   QC_PERMISSIONS.PRODUCTION_QC.VIEW,
   QC_PERMISSIONS.PRODUCTION_QC.FILL,
@@ -80,13 +80,13 @@ export const PRODUCTION_QC_ENTRY_PERMISSIONS = [
 
 export const PRODUCTION_QC_TABS = [
   {
-    path: '/qc/documents',
+    path: '/qc/qa-reports',
     label: 'Entries',
     permissions: PRODUCTION_QC_ENTRY_PERMISSIONS,
   },
   {
-    path: '/qc/documents/types',
-    label: 'Document Types',
+    path: '/qc/qa-reports/types',
+    label: 'Report Types',
     permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
   },
 ] as const satisfies readonly QCSectionTab[];
@@ -98,12 +98,12 @@ export const PRODUCTION_QC_TABS = [
  */
 export const QC_HOME_CANDIDATES = [
   ...ARRIVAL_SLIP_TABS,
-  { path: '/qc/documents', permissions: PRODUCTION_QC_ENTRY_PERMISSIONS },
+  { path: '/qc/qa-reports', permissions: PRODUCTION_QC_ENTRY_PERMISSIONS },
   { path: '/qc/line-clearance', permissions: LINE_CLEARANCE_QC_PERMISSIONS },
   { path: '/qc/qa-procedures', permissions: QA_PROCEDURES_PERMISSIONS },
-  // The documents' own master, ahead of the arrival-slip ones.
+  // The reports' own master, ahead of the arrival-slip ones.
   {
-    path: '/qc/documents/types',
+    path: '/qc/qa-reports/types',
     permissions: [QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS],
   },
   ...MASTER_TABS,

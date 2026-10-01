@@ -44,7 +44,7 @@ import {
 import { describeSpec, formatDecimal } from '../../utils/productionQCSpec';
 import { Field } from './MasterField';
 
-/** One document type and its parameters. The list of types is its own page. */
+/** One report type and its parameters. The list of types is its own page. */
 export default function ProductionParameterTypePage() {
   const navigate = useNavigate();
   const { typeId } = useParams<{ typeId: string }>();
@@ -58,10 +58,10 @@ export default function ProductionParameterTypePage() {
           variant="ghost"
           size="sm"
           className="-ml-2 text-muted-foreground"
-          onClick={() => navigate('/qc/documents/types')}
+          onClick={() => navigate('/qc/qa-reports/types')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Document Types
+          Report Types
         </Button>
         {type && (
           <div className="space-y-1">
@@ -88,7 +88,7 @@ export default function ProductionParameterTypePage() {
       ) : error || !type ? (
         <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          This document type could not be found. It may have been removed.
+          This report type could not be found. It may have been removed.
         </div>
       ) : (
         <ParametersCard type={type} />
@@ -229,7 +229,7 @@ function ParametersCard({ type }: { type: ProductionParameterType }) {
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
         <CardDescription>
           {parameters.length} parameter{parameters.length === 1 ? '' : 's'} — what an entry of this
-          document records, in this order.
+          report records, in this order.
         </CardDescription>
         <Button size="sm" onClick={() => openDialog()}>
           <Plus className="mr-2 h-4 w-4" />
@@ -243,7 +243,7 @@ function ParametersCard({ type }: { type: ProductionParameterType }) {
           </div>
         ) : parameters.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            No parameters yet — this document cannot be filled until it has some.
+            No parameters yet — this report cannot be filled until it has some.
           </div>
         ) : (
           <div className="overflow-x-auto">

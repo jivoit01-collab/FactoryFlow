@@ -15,10 +15,11 @@
 > line, one-step approval). None of the old session-based pages, routes, endpoints or
 > permissions came back with it.
 >
-> **2026-10-01:** Production QC is now **Documents** (`/qc/documents`; the old
-> `/qc/production…` addresses redirect) and is **not tied to production**: an entry is
-> a filled-in copy of a document QC maintains — no line, run or product — see
-> [Flow D](#flow-d--documents). The code keeps its `productionQC` names.
+> **2026-10-01:** Production QC is now **QA Reports** (`/qc/qa-reports`; the old
+> `/qc/production…` and `/qc/documents…` addresses redirect — it was briefly
+> "Documents") and is **not tied to production**: an entry is
+> a filled-in copy of a report QC maintains — no line, run or product — see
+> [Flow D](#flow-d--qa-reports). The code keeps its `productionQC` names.
 
 ---
 
@@ -39,12 +40,12 @@ opens the first page the user may see (`pages/QCSectionRedirect.tsx`).
    create an inspection against a submitted arrival slip, enter parameter readings, and
    route it through **QA Chemist → QA Manager**. The sidebar item carries a red count of
    inspections waiting for *this* user's sign-off (`PendingApprovalsBadge`).
-2. **Documents** — the records QC maintains (on-line monitoring, water testing, net
-   content, checklists…), each a paper form. Tabs: **Entries** (`/qc/documents`) and
-   **Document Types** (`/qc/documents/types`, the masters; manage-only). An entry is a
+2. **QA Reports** — the records QC maintains (on-line monitoring, water testing, net
+   content, checklists…), each a paper form. Tabs: **Entries** (`/qc/qa-reports`) and
+   **Report Types** (`/qc/qa-reports/types`, the masters; manage-only). An entry is a
    filled-in copy of one document, one value per parameter; saving it sends it to a QC
    lead, who approves it or sends it back. Nothing ties it to a line, run or product:
-   whatever the paper header asks for is one of the document's parameters. Its badge
+   whatever the paper header asks for is one of the report's parameters. Its badge
    counts entries pending approval, for approvers only (`ProductionQCBadge`).
 3. **Line Clearance** (`/qc/line-clearance`) — approve pre-production line clearances
    (the data comes from the `production/execution` module; QC just reviews/approves).
@@ -53,7 +54,7 @@ opens the first page the user may see (`pages/QCSectionRedirect.tsx`).
    (`/qc/qa-procedures`), with an audit log of who changed which procedure.
 5. **Master Data** (`/qc/master` → `/qc/master/print-documents`) — one tab for now,
    **Print Documents**: where every printed form's document number lives — the two
-   arrival-slip reports and each QC document's sheet (one row per document type;
+   arrival-slip reports and each QA report's sheet (one row per report type;
    ETP keeps its own, `etp.EtpPrintDocument`).
 
 A tab bar shows only the tabs the user may open, and none at all when that is one.
@@ -86,16 +87,16 @@ Defined in `types/qc.types.ts`:
 - **`ParameterType`** — NUMERIC / TEXT / BOOLEAN / RANGE (drives the result input:
   number field, text, Pass/Fail dropdown, number-within-range).
 
-Documents, in `types/productionQC.types.ts` (mirrors
+QA Reports, in `types/productionQC.types.ts` (mirrors
 `quality_control/serializers_production_qc.py`):
 
-- **`ProductionParameterType`** — a *document type*: one paper form and its parameters
+- **`ProductionParameterType`** — a *report type*: one paper form and its parameters
   (`ProductionParameter`: spec text, min / max, uom, sequence, mandatory, and
   `value_type` — the kind of reading, NUMERIC / TEXT / BOOLEAN / RANGE), plus the form's
   number (`print_document_id`) and revision. `parameter_count` counts active
   parameters; a type with none cannot be filled. Not tied to products, and not the
   arrival-slip parameters.
-- **`ProductionQCEntry`** — one filled-in copy: the document type, `checked_at`,
+- **`ProductionQCEntry`** — one filled-in copy: the report type, `checked_at`,
   `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
   (`ProductionQCResult`, the parameter's spec snapshotted onto each reading). No line,
   run or product.
@@ -163,7 +164,7 @@ optional remark. On success it navigates back to the list; the gate is notified.
 "Pending Approval") from the `production/execution` API, with a review dialog to
 Approve/Reject. Approving requires `can_approve_line_clearance_qc`.
 
-### Flow D — Documents
+### Flow D — QA Reports
 
 **The page is one day at a time** (`?date=YYYY-MM-DD`, default today; the list, the
 counts on the status chips and the search are that day's). A notice points at entries
@@ -177,15 +178,15 @@ readings bold red with `*`. The form's number comes from Master Data > Print Doc
 (the type's `print_document_id`) and is printed above "Controlled Document" in the
 footer; its revision / revision date come from the type.
 
-1. **List** (`/qc/documents`, `ProductionQCDashboardPage`) — status chips with the
-   day's counts (`?status=`), a document filter (`?doc=`, client-side over the loaded
-   day), and a search over the entry no., the document and every value entered (so a
-   product or batch typed into a document finds it). A row opens the entry.
-2. **New** (FILL only, `NewProductionQCEntryDialog`) — pick the document (searchable
+1. **List** (`/qc/qa-reports`, `ProductionQCDashboardPage`) — status chips with the
+   day's counts (`?status=`), a report filter (`?doc=`, client-side over the loaded
+   day), and a search over the entry no., the report and every value entered (so a
+   product or batch typed into a report finds it). A row opens the entry.
+2. **New** (FILL only, `NewProductionQCEntryDialog`) — pick the report (searchable
    once there are more than six); the only usable one is preselected and one with no
-   parameters is disabled. Continue opens `/qc/documents/new?type=<id>`.
-3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/documents/entries/:id/edit`)
-   — the document, then one row per parameter: name, spec, the input by value kind
+   parameters is disabled. Continue opens `/qc/qa-reports/new?type=<id>`.
+3. **Entry form** (`ProductionQCEntryPage`, shared with `/qc/qa-reports/entries/:id/edit`)
+   — the report, then one row per parameter: name, spec, the input by value kind
    (number; text; a Pass / Fail select), an optional row remark, and a live within /
    out-of-spec hint. The hint is `utils/productionQCSpec.ts`, a port of the backend's
    `spec_evaluation.py` (min / max first, else the spec text: `910±5`, `NLT 20`,
@@ -195,21 +196,21 @@ footer; its revision / revision date come from the type.
    mandatory value and an out-of-spec reading with no entry remark; the backend's own
    400s land on the field (`remarks`, `results`, `parameter_type_id` with a *Pick again*
    button, or `detail`).
-4. **Entry detail** (`/qc/documents/entries/:entryId`, `ProductionQCEntryDetailPage`) —
-   status, the document, the results (value, spec, in-spec ✓/✗), remarks, and a
+4. **Entry detail** (`/qc/qa-reports/entries/:entryId`, `ProductionQCEntryDetailPage`) —
+   status, the report, the results (value, spec, in-spec ✓/✗), remarks, and a
    highlighted banner with the send-back remark while SENT_BACK. **Edit** (FILL) while
    PENDING or SENT_BACK → the form in edit mode → `PATCH`, which puts it back to
    PENDING. **Approve** (optional remark) and **Send back** (remark required) for
    APPROVE while PENDING. Mutations invalidate the entry lists, the counts and the badge.
-5. **Document Types** (`/qc/documents/types`, `ProductionParameterTypesPage`, MANAGE) —
+5. **Report Types** (`/qc/qa-reports/types`, `ProductionParameterTypesPage`, MANAGE) —
    search / add / edit / remove types (a soft delete: saved entries keep their
-   readings); a type opens on its own page (`/qc/documents/types/:id`) with its
+   readings); a type opens on its own page (`/qc/qa-reports/types/:id`) with its
    parameters (add / edit / remove: code, name, standard value, value type, min / max
    for numeric kinds, uom, sequence, mandatory).
 
-The old addresses (`/qc/production`, `/qc/production/new`, `/qc/production/entries/…`,
-`/qc/production/parameter-types[/:id]`) redirect, keeping the rest of the path and the
-query (`components/RedirectPathPrefix.tsx`).
+The old addresses — `/qc/production`, `/new`, `/entries/…`, `/parameter-types[/:id]`, and
+the brief `/qc/documents…` ones — redirect, keeping the rest of the path and the query
+(`components/RedirectPathPrefix.tsx`).
 
 ---
 
@@ -334,15 +335,15 @@ codenames. Routes and sidebar entries in `module.config.tsx` gate on them.
 | Send slip back | `can_send_back_arrival_slip` | qc_store / qam |
 | Line Clearance QA | `can_(view/approve)_line_clearance_qc` | Production-QC group |
 | Master data | `can_manage_material_types`, `can_manage_qc_parameters` | qam / admins |
-| Documents — see entries | `can_view_production_qc_entries` (FILL / APPROVE see them too) | QC |
-| Documents — fill / correct an entry | `can_fill_production_qc_entries` | QC chemist |
-| Documents — approve / send back | `can_approve_production_qc_entries` | QC lead |
-| Documents — document types | `can_manage_production_qc_parameters` | qam / admins |
+| QA Reports — see entries | `can_view_production_qc_entries` (FILL / APPROVE see them too) | QC |
+| QA Reports — fill / correct an entry | `can_fill_production_qc_entries` | QC chemist |
+| QA Reports — approve / send back | `can_approve_production_qc_entries` | QC lead |
+| QA Reports — report types | `can_manage_production_qc_parameters` | qam / admins |
 
 `QC_PERMISSIONS.PRODUCTION_QC = { VIEW, FILL, APPROVE, MANAGE_PARAMETERS }` (the
-codenames kept their production-QC names when the area became Documents). The sidebar
-item and `/qc/documents` open to VIEW / FILL / APPROVE; New and edit need FILL. A user
-holding only MANAGE_PARAMETERS has no Documents sidebar item and lands on Document Types
+codenames kept their production-QC names when the area became QA Reports). The sidebar
+item and `/qc/qa-reports` open to VIEW / FILL / APPROVE; New and edit need FILL. A user
+holding only MANAGE_PARAMETERS has no QA Reports sidebar item and lands on Report Types
 from `/qc`. These are new
 codenames: the removed session-based ones (`can_view_production_qc`,
 `can_create_production_qc`, …) must not come back (the permission and module-config
@@ -369,7 +370,7 @@ permission sees the module with no items and lands on the log from `/qc`.
 - `module.config.tsx` — routes (incl. legacy redirects), sidebar, permission gates.
 - `constants/qcSections.ts` — the areas' tabs, their permissions, where `/qc` lands.
 - `components/QCSectionTabs.tsx`, `components/qcSections.tsx` — the tab bars.
-- `components/QCSidebarBadges.tsx` — the Arrival Slips / Documents / Line Clearance counts.
+- `components/QCSidebarBadges.tsx` — the Arrival Slips / QA Reports / Line Clearance counts.
 - `pages/QCSectionRedirect.tsx` — `/qc` and `/qc/master` open the first allowed page.
 - `pages/PendingInspectionsPage.tsx` — arrival-slip list, tabs, search, Excel export.
 - `pages/InspectionDetailPage.tsx` — create/edit/submit/approve/send-back/print.
@@ -384,10 +385,10 @@ permission sees the module with no items and lands on the log from `/qc`.
 - `api/` — `inspection/`, `arrivalSlip/`, `materialType/`, `qcParameter/`,
   `parameterSet/`, `printDocument/`, `qcDocumentFile/`, `qcDocumentFileAudit/`,
   `productionQC/` (each `*.api.ts` + `*.queries.ts`).
-- `constants/productionQC.ts` — Documents status labels / colours and filter chips.
+- `constants/productionQC.ts` — QA Reports status labels / colours and filter chips.
 - `utils/productionQCSpec.ts` — judging a reading against its spec (port of the
   backend's `spec_evaluation.py`); `utils/productionQCFormat.ts` — date / time labels.
-- `types/productionQC.types.ts` — Documents types ("production QC" in code).
+- `types/productionQC.types.ts` — QA Reports types ("production QC" in code).
 - `hooks/useInspectionPermissions.ts` — permission × workflow-state flags.
 - `constants/qc.constants.ts` — status/decision label & colour maps.
 - `types/qc.types.ts` — all module types.

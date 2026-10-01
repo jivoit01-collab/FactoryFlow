@@ -108,9 +108,9 @@ function Where() {
 
 function renderPage() {
   render(
-    <MemoryRouter initialEntries={['/qc/documents/entries/7']}>
+    <MemoryRouter initialEntries={['/qc/qa-reports/entries/7']}>
       <Routes>
-        <Route path="/qc/documents/entries/:entryId" element={<ProductionQCEntryDetailPage />} />
+        <Route path="/qc/qa-reports/entries/:entryId" element={<ProductionQCEntryDetailPage />} />
         <Route path="*" element={<Where />} />
       </Routes>
     </MemoryRouter>,
@@ -175,7 +175,7 @@ describe('the entry', () => {
     expect(screen.getByText('Recheck the net weight')).toBeInTheDocument();
     expect(screen.getByText(/Sent back by QC Lead/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Correct' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/7/edit');
+    expect(screen.getByTestId('where').textContent).toBe('/qc/qa-reports/entries/7/edit');
   });
 });
 

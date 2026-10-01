@@ -98,8 +98,8 @@ function renderAt(path: string) {
   render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/qc/documents/new" element={<ProductionQCEntryPage />} />
-        <Route path="/qc/documents/entries/:entryId/edit" element={<ProductionQCEntryPage />} />
+        <Route path="/qc/qa-reports/new" element={<ProductionQCEntryPage />} />
+        <Route path="/qc/qa-reports/entries/:entryId/edit" element={<ProductionQCEntryPage />} />
         <Route path="*" element={<Where />} />
       </Routes>
     </MemoryRouter>,
@@ -120,7 +120,7 @@ beforeEach(() => {
 
 describe('a new entry', () => {
   it('shows the document being filled, and nothing about lines or runs', () => {
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
 
     expect(screen.getByText('1 L PET Oil')).toBeInTheDocument();
     expect(screen.getByText('PET_1L')).toBeInTheDocument();
@@ -128,14 +128,14 @@ describe('a new entry', () => {
   });
 
   it('asks for the document first when the address has none', () => {
-    renderAt('/qc/documents/new');
-    expect(screen.getByText('Pick a document first')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Documents' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/documents');
+    renderAt('/qc/qa-reports/new');
+    expect(screen.getByText('Pick a report first')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to QA Reports' }));
+    expect(screen.getByTestId('where').textContent).toBe('/qc/qa-reports');
   });
 
   it('will not save with a mandatory parameter missing', () => {
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     save();
 
@@ -147,7 +147,7 @@ describe('a new entry', () => {
   });
 
   it('asks for a remark when a reading is out of spec, then sends Pass / Fail as strings', async () => {
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     expect(screen.getByText('Within spec')).toBeInTheDocument();
 
@@ -176,12 +176,12 @@ describe('a new entry', () => {
       ],
     });
     await waitFor(() =>
-      expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/99'),
+      expect(screen.getByTestId('where').textContent).toBe('/qc/qa-reports/entries/99'),
     );
   });
 
   it('sends Pass for a passing check, and the hand-set verdict for a text reading', async () => {
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '909' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     fireEvent.change(screen.getByLabelText('Label Print'), { target: { value: 'Smudged' } });
@@ -203,7 +203,7 @@ describe('a new entry', () => {
       message: 'remarks: A remark is required when any parameter is out of spec.',
       errors: { remarks: ['A remark is required when any parameter is out of spec.'] },
     });
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
@@ -217,17 +217,17 @@ describe('a new entry', () => {
   it('says so, with a way back, when the document was removed before the save', async () => {
     state.create = vi.fn().mockRejectedValue({
       status: 400,
-      message: 'parameter type id: Pick a document.',
-      errors: { parameter_type_id: ['Pick a document.'] },
+      message: 'parameter type id: Pick a report.',
+      errors: { parameter_type_id: ['Pick a report.'] },
     });
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
 
-    expect(await screen.findByText('Pick a document.')).toBeInTheDocument();
+    expect(await screen.findByText('Pick a report.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Pick again' }));
-    expect(screen.getByTestId('where').textContent).toBe('/qc/documents');
+    expect(screen.getByTestId('where').textContent).toBe('/qc/qa-reports');
   });
 
   it('shows a detail error from the backend as it is', async () => {
@@ -235,7 +235,7 @@ describe('a new entry', () => {
       status: 400,
       message: 'This parameter type has no parameters yet.',
     });
-    renderAt('/qc/documents/new?type=1');
+    renderAt('/qc/qa-reports/new?type=1');
     fireEvent.change(netWeight(), { target: { value: '912' } });
     fireEvent.change(leakTest(), { target: { value: 'Pass' } });
     save();
@@ -287,7 +287,7 @@ describe('correcting an entry', () => {
 
   it('opens with the saved readings and the send-back remark, and PATCHes the correction', async () => {
     state.entry = entry();
-    renderAt('/qc/documents/entries/7/edit');
+    renderAt('/qc/qa-reports/entries/7/edit');
 
     expect(screen.getByText('Recheck the weight')).toBeInTheDocument();
     expect(netWeight()).toHaveValue(900);
@@ -305,7 +305,7 @@ describe('correcting an entry', () => {
       },
     });
     await waitFor(() =>
-      expect(screen.getByTestId('where').textContent).toBe('/qc/documents/entries/7'),
+      expect(screen.getByTestId('where').textContent).toBe('/qc/qa-reports/entries/7'),
     );
   });
 
@@ -315,7 +315,7 @@ describe('correcting an entry', () => {
       status_label: 'Approved',
       approved_by_name: 'QC Lead',
     });
-    renderAt('/qc/documents/entries/7/edit');
+    renderAt('/qc/qa-reports/entries/7/edit');
 
     expect(screen.getByText('An approved entry cannot be changed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Save/ })).not.toBeInTheDocument();

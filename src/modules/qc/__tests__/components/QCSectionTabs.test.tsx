@@ -155,15 +155,15 @@ describe('MasterDataTabs', () => {
 });
 
 describe('ProductionQCTabs', () => {
-  it('shows Entries and Document Types to someone who fills and manages', () => {
+  it('shows Entries and Report Types to someone who fills and manages', () => {
     granted.perms = new Set([PRODUCTION_QC.FILL, PRODUCTION_QC.MANAGE_PARAMETERS]);
-    renderAt('/qc/documents/types', <ProductionQCTabs />);
+    renderAt('/qc/qa-reports/types', <ProductionQCTabs />);
 
     expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual([
       'Entries',
-      'Document Types',
+      'Report Types',
     ]);
-    expect(screen.getByRole('tab', { name: 'Document Types' })).toHaveAttribute(
+    expect(screen.getByRole('tab', { name: 'Report Types' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
@@ -173,7 +173,7 @@ describe('ProductionQCTabs', () => {
     'renders no bar for %s without the masters',
     (perm) => {
       granted.perms = new Set([perm]);
-      renderAt('/qc/documents', <ProductionQCTabs />);
+      renderAt('/qc/qa-reports', <ProductionQCTabs />);
 
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     },
@@ -184,12 +184,12 @@ describe('QCSectionRedirect from /qc', () => {
   it.each([
     [[INSPECTION.VIEW], '/qc/arrival-slips'],
     [[APPROVAL.APPROVE_AS_CHEMIST], '/qc/arrival-slips/approvals'],
-    [[PRODUCTION_QC.VIEW], '/qc/documents'],
-    [[PRODUCTION_QC.FILL], '/qc/documents'],
-    [[PRODUCTION_QC.APPROVE, LINE_CLEARANCE_QC.APPROVE], '/qc/documents'],
+    [[PRODUCTION_QC.VIEW], '/qc/qa-reports'],
+    [[PRODUCTION_QC.FILL], '/qc/qa-reports'],
+    [[PRODUCTION_QC.APPROVE, LINE_CLEARANCE_QC.APPROVE], '/qc/qa-reports'],
     [[LINE_CLEARANCE_QC.APPROVE], '/qc/line-clearance'],
     [[DOCUMENT_FILE.VIEW], '/qc/qa-procedures'],
-    [[PRODUCTION_QC.MANAGE_PARAMETERS], '/qc/documents/types'],
+    [[PRODUCTION_QC.MANAGE_PARAMETERS], '/qc/qa-reports/types'],
     // Arrival Slips comes first in the sidebar, masters tabs included.
     [
       [PRODUCTION_QC.MANAGE_PARAMETERS, MASTER_DATA.MANAGE_MATERIAL_TYPES],

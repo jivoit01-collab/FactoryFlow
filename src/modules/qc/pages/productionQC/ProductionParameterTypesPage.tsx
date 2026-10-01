@@ -32,7 +32,7 @@ import type { ProductionParameterType } from '../../types/productionQC.types';
 import { type Errors, readApiErrors, upperCode, withoutKey } from '../../utils/productionQCMaster';
 import { Field } from './MasterField';
 
-/** The document types, and nothing else: each one opens on its own page. */
+/** The report types, and nothing else: each one opens on its own page. */
 export default function ProductionParameterTypesPage() {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
@@ -65,7 +65,7 @@ export default function ProductionParameterTypesPage() {
   const [errors, setErrors] = useState<Errors>({});
   const [pageError, setPageError] = useState('');
 
-  const openType = (id: number) => navigate(`/qc/documents/types/${id}`);
+  const openType = (id: number) => navigate(`/qc/qa-reports/types/${id}`);
 
   const openDialog = (type?: ProductionParameterType) => {
     setEditingType(type ?? null);
@@ -114,7 +114,7 @@ export default function ProductionParameterTypesPage() {
       }
       closeDialog();
     } catch (err) {
-      setErrors(readApiErrors(err, 'Failed to save the document type'));
+      setErrors(readApiErrors(err, 'Failed to save the report type'));
     }
   };
 
@@ -132,7 +132,7 @@ export default function ProductionParameterTypesPage() {
       await deleteType.mutateAsync(type.id);
       toast.success(`${type.code} removed`);
     } catch (err) {
-      setPageError((err as ApiError)?.message || 'Failed to remove the document type');
+      setPageError((err as ApiError)?.message || 'Failed to remove the report type');
     }
   };
 
@@ -140,7 +140,7 @@ export default function ProductionParameterTypesPage() {
   const isSearching = !isLoading && (search.trim() !== searchTerm || isFetching);
 
   if (legacyTypeId) {
-    return <Navigate to={`/qc/documents/types/${legacyTypeId}`} replace />;
+    return <Navigate to={`/qc/qa-reports/types/${legacyTypeId}`} replace />;
   }
 
   return (
@@ -152,22 +152,22 @@ export default function ProductionParameterTypesPage() {
         <div className="space-y-1">
           <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
             <ListChecks className="h-8 w-8" />
-            Document Types
+            Report Types
           </h2>
           <p className="text-muted-foreground">
-            The documents QC fills, each with the parameters it records
+            The reports QC fills, each with the parameters it records
           </p>
         </div>
         <Button onClick={() => openDialog()}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Document Type
+          Add Report Type
         </Button>
       </div>
 
       {(error || pageError) && (
         <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
-          {pageError || 'Failed to load document types. Please try again.'}
+          {pageError || 'Failed to load report types. Please try again.'}
         </div>
       )}
 
@@ -175,7 +175,7 @@ export default function ProductionParameterTypesPage() {
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Document Types ({types.length})</CardTitle>
+              <CardTitle>Report Types ({types.length})</CardTitle>
               <div className="relative w-full sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -187,7 +187,7 @@ export default function ProductionParameterTypesPage() {
                     if (event.key === 'Escape' && search) setSearch('');
                   }}
                   placeholder="Search types"
-                  aria-label="Search document types by code or name"
+                  aria-label="Search report types by code or name"
                   className={cn('pl-9', search || isSearching ? 'pr-16' : 'pr-3')}
                 />
                 {isSearching && (
@@ -218,8 +218,8 @@ export default function ProductionParameterTypesPage() {
             ) : types.length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
                 {searchTerm
-                  ? 'No document types match your search.'
-                  : 'No document types yet. Click "Add Document Type" to create one.'}
+                  ? 'No report types match your search.'
+                  : 'No report types yet. Click "Add Report Type" to create one.'}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -242,7 +242,7 @@ export default function ProductionParameterTypesPage() {
                         <td className="p-3 font-medium">
                           {/* A real link, so the row opens from the keyboard too. */}
                           <Link
-                            to={`/qc/documents/types/${type.id}`}
+                            to={`/qc/qa-reports/types/${type.id}`}
                             onClick={(event) => event.stopPropagation()}
                             className="hover:underline"
                           >
@@ -304,7 +304,7 @@ export default function ProductionParameterTypesPage() {
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingType ? 'Edit Document Type' : 'Add Document Type'}</DialogTitle>
+            <DialogTitle>{editingType ? 'Edit Report Type' : 'Add Report Type'}</DialogTitle>
           </DialogHeader>
           {errors.general && (
             <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">

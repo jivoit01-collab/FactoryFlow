@@ -75,14 +75,14 @@ export default function ProductionQCEntryDetailPage() {
             </p>
             <p className="text-sm text-muted-foreground">
               {apiError?.status === 404
-                ? `There is no document entry #${entryId}.`
+                ? `There is no QA report entry #${entryId}.`
                 : apiError?.message || 'Please try again.'}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/qc/documents')}>
+            <Button variant="outline" onClick={() => navigate('/qc/qa-reports')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Documents
+              Back to QA Reports
             </Button>
             {apiError?.status !== 404 && <Button onClick={() => refetch()}>Retry</Button>}
           </div>
@@ -104,8 +104,8 @@ export default function ProductionQCEntryDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/qc/documents')}
-            aria-label="Back to Documents"
+            onClick={() => navigate('/qc/qa-reports')}
+            aria-label="Back to QA Reports"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -121,7 +121,7 @@ export default function ProductionQCEntryDetailPage() {
           {showEdit && (
             <Button
               variant="outline"
-              onClick={() => navigate(`/qc/documents/entries/${entry.id}/edit`)}
+              onClick={() => navigate(`/qc/qa-reports/entries/${entry.id}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
               {entry.status === 'SENT_BACK' ? 'Correct' : 'Edit'}
@@ -153,7 +153,7 @@ export default function ProductionQCEntryDetailPage() {
       {/* The entry */}
       <Card>
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoItem label="Document">
+          <InfoItem label="Report">
             {entry.parameter_type.name}
             <div className="font-mono text-xs text-muted-foreground">
               {entry.parameter_type.code}

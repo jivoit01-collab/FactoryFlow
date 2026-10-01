@@ -52,7 +52,7 @@ export function LineClearanceQABadge({ className }: { className?: string }) {
   );
 }
 
-/** Document entries waiting for a QC lead's approval (shown to approvers only). */
+/** QA report entries waiting for a QC lead's approval (shown to approvers only). */
 export function ProductionQCBadge({ className }: { className?: string }) {
   const { hasPermission } = usePermission();
   const canApprove = hasPermission(QC_PERMISSIONS.PRODUCTION_QC.APPROVE);
@@ -62,7 +62,7 @@ export function ProductionQCBadge({ className }: { className?: string }) {
   return (
     <CountPill
       count={count}
-      label={`${count} document entr${count === 1 ? 'y' : 'ies'} awaiting approval`}
+      label={`${count} QA report entr${count === 1 ? 'y' : 'ies'} awaiting approval`}
       className={className}
     />
   );

@@ -135,21 +135,24 @@ describe('module.config — Routes', () => {
     expect(content).toContain("path: '/qc/master/print-documents'");
   });
 
-  it('has the Documents pages on their own routes', () => {
+  it('has the QA Reports pages on their own routes', () => {
     const content = readSource();
-    expect(content).toContain("path: '/qc/documents'");
-    expect(content).toContain("path: '/qc/documents/new'");
-    expect(content).toContain("path: '/qc/documents/entries/:entryId'");
-    expect(content).toContain("path: '/qc/documents/entries/:entryId/edit'");
-    expect(content).toContain("path: '/qc/documents/types'");
-    expect(content).toContain("path: '/qc/documents/types/:typeId'");
+    expect(content).toContain("path: '/qc/qa-reports'");
+    expect(content).toContain("path: '/qc/qa-reports/new'");
+    expect(content).toContain("path: '/qc/qa-reports/entries/:entryId'");
+    expect(content).toContain("path: '/qc/qa-reports/entries/:entryId/edit'");
+    expect(content).toContain("path: '/qc/qa-reports/types'");
+    expect(content).toContain("path: '/qc/qa-reports/types/:typeId'");
   });
 
-  it('sends the old Production QC addresses to Documents', () => {
+  it('sends the old Production QC and Documents addresses to QA Reports', () => {
     const content = readSource();
-    expect(content).toContain('<RedirectPathPrefix from="/qc/production" to="/qc/documents" />');
+    expect(content).toContain('<RedirectPathPrefix from="/qc/production" to="/qc/qa-reports" />');
+    expect(content).toContain('<RedirectPathPrefix from="/qc/documents" to="/qc/qa-reports" />');
+    expect(content).toContain("'/qc/documents/entries/:entryId/edit'");
+    expect(content).toContain("'/qc/documents/types/:typeId'");
     expect(content).toContain(
-      '<RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/documents/types" />',
+      '<RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/qa-reports/types" />',
     );
   });
 
@@ -159,14 +162,14 @@ describe('module.config — Routes', () => {
       const start = content.indexOf(`path: '${path}'`);
       return content.slice(start, content.indexOf('}', start));
     };
-    expect(route('/qc/documents/new')).toContain('QC_PERMISSIONS.PRODUCTION_QC.FILL');
-    expect(route('/qc/documents/entries/:entryId/edit')).toContain(
+    expect(route('/qc/qa-reports/new')).toContain('QC_PERMISSIONS.PRODUCTION_QC.FILL');
+    expect(route('/qc/qa-reports/entries/:entryId/edit')).toContain(
       'QC_PERMISSIONS.PRODUCTION_QC.FILL',
     );
-    expect(route('/qc/documents/types')).toContain(
+    expect(route('/qc/qa-reports/types')).toContain(
       'QC_PERMISSIONS.PRODUCTION_QC.MANAGE_PARAMETERS',
     );
-    expect(route('/qc/documents/entries/:entryId')).toContain('PRODUCTION_QC_ENTRY_PERMISSIONS');
+    expect(route('/qc/qa-reports/entries/:entryId')).toContain('PRODUCTION_QC_ENTRY_PERMISSIONS');
   });
 
   it('lazy loads all page components', () => {
@@ -211,7 +214,7 @@ describe('module.config — Navigation', () => {
     expect(titles).toEqual([
       'Quality Control',
       'Arrival Slips',
-      'Documents',
+      'QA Reports',
       'Line Clearance',
       'QA Procedures',
       'Master Data',
@@ -227,7 +230,7 @@ describe('module.config — Navigation', () => {
 
   it('has no dashboard', () => {
     const content = readSource();
-    // The whole word: the Documents list page is ProductionQCDashboardPage.
+    // The whole word: the QA Reports list page is ProductionQCDashboardPage.
     expect(content).not.toMatch(/\bQCDashboardPage\b/);
     expect(content).not.toContain("title: 'Dashboard'");
   });
@@ -239,7 +242,7 @@ describe('module.config — Navigation', () => {
 // Online Quality Monitoring, Customer Return QC and the old Documents (record
 // sheet) sub-module were removed; their backend is gone, so no route, sidebar
 // item or permission gate may point at them. Production QC was removed too and
-// rebuilt from scratch — it is the new Documents, at /qc/documents — and nothing
+// rebuilt from scratch — it is QA Reports now, at /qc/qa-reports — and nothing
 // of the old session-based one or the old record sheets may come back with it.
 // ═══════════════════════════════════════════════════════════════
 

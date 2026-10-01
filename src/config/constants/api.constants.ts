@@ -375,7 +375,7 @@ export const API_ENDPOINTS = {
     MANAGER_DECISION: (id: number) => `/quality-control/inspections/${id}/manager-decision/`,
     REJECT_INSPECTION: (id: number) => `/quality-control/inspections/${id}/reject/`,
 
-    // QC Documents ("production QC" in code) — records QC maintains, approved in one step by a QC lead
+    // QA Reports ("production QC" in code) — records QC maintains, approved in one step by a QC lead
     PRODUCTION_QC_ENTRIES: '/quality-control/production-qc/entries/',
     PRODUCTION_QC_ENTRY_COUNTS: '/quality-control/production-qc/entries/counts/',
     PRODUCTION_QC_ENTRY_BY_ID: (id: number) => `/quality-control/production-qc/entries/${id}/`,

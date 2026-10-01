@@ -1,10 +1,10 @@
 /**
- * QC Documents ("production QC" in code) — the records QC maintains, each a
+ * QA Reports ("production QC" in code) — the records QC maintains, each a
  * paper form; an entry is one filled-in copy, approved in one step by a QC lead.
  * Mirrors `quality_control/serializers_production_qc.py`.
  *
- * A *parameter type* is a document type: one form and the parameters it
- * records. Documents are not tied to lines, runs or products — whatever the
+ * A *parameter type* is a report type: one form and the parameters it
+ * records. Reports are not tied to lines, runs or products — whatever the
  * paper header asks for (product, line, batch...) is one of its parameters. A
  * parameter's `value_type` is the kind of reading it takes (the arrival-slip
  * master calls that `parameter_type`).

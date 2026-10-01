@@ -1,6 +1,6 @@
 /**
- * Old Production QC addresses land on their Documents page, keeping the rest of
- * the path (an entry's id) and the query.
+ * Old Production QC and Documents addresses land on their QA Reports page,
+ * keeping the rest of the path (an entry's id) and the query.
  */
 
 import { render, screen } from '@testing-library/react';
@@ -21,12 +21,16 @@ function renderAt(url: string) {
         <Route
           path="/qc/production/parameter-types/*"
           element={
-            <RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/documents/types" />
+            <RedirectPathPrefix from="/qc/production/parameter-types" to="/qc/qa-reports/types" />
           }
         />
         <Route
           path="/qc/production/*"
-          element={<RedirectPathPrefix from="/qc/production" to="/qc/documents" />}
+          element={<RedirectPathPrefix from="/qc/production" to="/qc/qa-reports" />}
+        />
+        <Route
+          path="/qc/documents/*"
+          element={<RedirectPathPrefix from="/qc/documents" to="/qc/qa-reports" />}
         />
         <Route path="*" element={<Where />} />
       </Routes>
@@ -37,13 +41,17 @@ function renderAt(url: string) {
 
 describe('RedirectPathPrefix', () => {
   it.each([
-    ['/qc/production', '/qc/documents'],
-    ['/qc/production?date=2026-09-29&view=sheet', '/qc/documents?date=2026-09-29&view=sheet'],
-    ['/qc/production/entries/7', '/qc/documents/entries/7'],
-    ['/qc/production/entries/7/edit', '/qc/documents/entries/7/edit'],
-    ['/qc/production/new?run=11&type=3', '/qc/documents/new?run=11&type=3'],
-    ['/qc/production/parameter-types', '/qc/documents/types'],
-    ['/qc/production/parameter-types/3', '/qc/documents/types/3'],
+    ['/qc/production', '/qc/qa-reports'],
+    ['/qc/production?date=2026-09-29&view=sheet', '/qc/qa-reports?date=2026-09-29&view=sheet'],
+    ['/qc/production/entries/7', '/qc/qa-reports/entries/7'],
+    ['/qc/production/entries/7/edit', '/qc/qa-reports/entries/7/edit'],
+    ['/qc/production/new?run=11&type=3', '/qc/qa-reports/new?run=11&type=3'],
+    ['/qc/production/parameter-types', '/qc/qa-reports/types'],
+    ['/qc/production/parameter-types/3', '/qc/qa-reports/types/3'],
+    ['/qc/documents?date=2026-10-01', '/qc/qa-reports?date=2026-10-01'],
+    ['/qc/documents/entries/7/edit', '/qc/qa-reports/entries/7/edit'],
+    ['/qc/documents/new?type=3', '/qc/qa-reports/new?type=3'],
+    ['/qc/documents/types/3', '/qc/qa-reports/types/3'],
   ])('sends %s to %s', (from, to) => {
     expect(renderAt(from)).toBe(to);
   });

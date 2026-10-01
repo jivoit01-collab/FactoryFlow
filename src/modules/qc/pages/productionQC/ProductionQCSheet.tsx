@@ -106,7 +106,7 @@ export function ProductionQCSheet({
               {columns.map((entry) => (
                 <th key={entry.id} className={cn(cell, valueCell, 'text-left font-semibold')}>
                   <Link
-                    to={`/qc/documents/entries/${entry.id}`}
+                    to={`/qc/qa-reports/entries/${entry.id}`}
                     className="hover:underline"
                     aria-label={`Entry #${entry.id} at ${time(entry.checked_at)}`}
                   >

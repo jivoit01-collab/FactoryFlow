@@ -39,7 +39,7 @@ function Where() {
 
 function renderDialog() {
   render(
-    <MemoryRouter initialEntries={['/qc/documents']}>
+    <MemoryRouter initialEntries={['/qc/qa-reports']}>
       <Routes>
         <Route
           path="*"
@@ -74,7 +74,7 @@ describe('picking the document', () => {
   it('offers every document straight away — no line to pick first', () => {
     renderDialog();
 
-    expect(screen.getByRole('heading', { name: 'Pick a document' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Pick a report' })).toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(3);
     expect(screen.queryByText(/running/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Change line/ })).not.toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('picking the document', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Backwashing Record/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(where()).toBe('/qc/documents/new?type=2');
+    expect(where()).toBe('/qc/qa-reports/new?type=2');
   });
 
   it('picks the only usable document for you', () => {
@@ -106,7 +106,7 @@ describe('picking the document', () => {
 
     expect(screen.getByRole('radio', { name: /Oil Plant On-line Monitoring/ })).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(where()).toBe('/qc/documents/new?type=1');
+    expect(where()).toBe('/qc/qa-reports/new?type=1');
   });
 
   it('disables a document with no parameters yet', () => {
@@ -135,7 +135,7 @@ describe('picking the document', () => {
     );
     renderDialog();
 
-    fireEvent.change(screen.getByRole('textbox', { name: /Search documents/ }), {
+    fireEvent.change(screen.getByRole('textbox', { name: /Search reports/ }), {
       target: { value: 'ro test' },
     });
 

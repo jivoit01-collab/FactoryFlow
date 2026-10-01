@@ -34,7 +34,7 @@ import { formatDateTime } from '../../utils/productionQCFormat';
 import { describeSpec, judgeReading } from '../../utils/productionQCSpec';
 import { ProductionQCStatusBadge, SentBackBanner } from './ProductionQCStatusBadge';
 
-const LIST_PATH = '/qc/documents';
+const LIST_PATH = '/qc/qa-reports';
 
 /** One parameter to read, from the type's master (new) or the entry's snapshot (edit). */
 interface ReadingRow {
@@ -109,8 +109,8 @@ function readApiErrors(error: unknown): FieldErrors {
 // ==================== Page ====================
 
 /**
- * The reading form: `/qc/documents/new?type=` for a new entry of a document, and
- * `/qc/documents/entries/:entryId/edit` to correct one pending or sent back.
+ * The reading form: `/qc/qa-reports/new?type=` for a new entry of a report, and
+ * `/qc/qa-reports/entries/:entryId/edit` to correct one pending or sent back.
  * Saving sends it for approval either way — there are no drafts.
  */
 export default function ProductionQCEntryPage() {
@@ -155,13 +155,13 @@ function NewEntry() {
     [parameters],
   );
 
-  const backToList = { label: 'Back to Documents', onClick: () => navigate(LIST_PATH) };
+  const backToList = { label: 'Back to QA Reports', onClick: () => navigate(LIST_PATH) };
 
   if (!typeId) {
     return (
       <EntryProblem
-        title="Pick a document first"
-        message="Open New on the Documents page and choose the document to fill."
+        title="Pick a report first"
+        message="Open New on the QA Reports page and choose the report to fill."
         action={backToList}
       />
     );
@@ -173,7 +173,7 @@ function NewEntry() {
         title="Could not open the entry form"
         message={
           ((typeError || parametersError) as ApiError | null)?.message ||
-          'The document could not be loaded.'
+          'The report could not be loaded.'
         }
         action={backToList}
       />
@@ -182,8 +182,8 @@ function NewEntry() {
   if (!parameterType || !parameterType.is_active) {
     return (
       <EntryProblem
-        title="That document is not available"
-        message="It may have been removed. Pick the document again."
+        title="That report is not available"
+        message="It may have been removed. Pick the report again."
         action={backToList}
       />
     );
@@ -191,8 +191,8 @@ function NewEntry() {
   if (rows.length === 0) {
     return (
       <EntryProblem
-        title="This document has no parameters yet"
-        message="Add its parameters under Document Types first."
+        title="This report has no parameters yet"
+        message="Add its parameters under Report Types first."
         action={backToList}
       />
     );
@@ -219,7 +219,7 @@ function EditEntry({ entryId }: { entryId: number }) {
   const navigate = useNavigate();
   const { data: entry, isLoading, error } = useProductionQCEntry(entryId || null);
   const updateEntry = useUpdateProductionQCEntry();
-  const detailPath = `/qc/documents/entries/${entryId}`;
+  const detailPath = `/qc/qa-reports/entries/${entryId}`;
 
   const rows = useMemo<ReadingRow[]>(
     () =>
@@ -246,7 +246,7 @@ function EditEntry({ entryId }: { entryId: number }) {
       <EntryProblem
         title="Could not load the entry"
         message={(error as ApiError | null)?.message || 'The entry could not be found.'}
-        action={{ label: 'Back to Documents', onClick: () => navigate(LIST_PATH) }}
+        action={{ label: 'Back to QA Reports', onClick: () => navigate(LIST_PATH) }}
       />
     );
   }
@@ -379,7 +379,7 @@ function EntryForm({
         results: rows.map((row) => toReading(row, readingOf(row))),
       });
       toast.success(`Entry #${id} saved and sent for approval`);
-      navigate(`/qc/documents/entries/${id}`, { replace: true });
+      navigate(`/qc/qa-reports/entries/${id}`, { replace: true });
     } catch (error) {
       showErrors(readApiErrors(error));
     } finally {
@@ -434,10 +434,10 @@ function EntryForm({
         />
       )}
 
-      {/* The document being filled */}
+      {/* The report being filled */}
       <Card>
         <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
-          <InfoItem label="Document">
+          <InfoItem label="Report">
             {header.typeName}
             <div className="font-mono text-xs text-muted-foreground">{header.typeCode}</div>
           </InfoItem>

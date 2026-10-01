@@ -92,7 +92,7 @@ export type QCPrintDocumentKey =
 export interface QCPrintDocument {
   id: number;
   document_key: QCPrintDocumentKey;
-  /** The form's name: the key's, or "Document — <type>" for a QC document's sheet. */
+  /** The form's name: the key's, or "QA Report — <type>" for a QA report's sheet. */
   document_key_label: string;
   /** Set for a production QC sheet: which parameter type (form) it is. */
   production_parameter_type: number | null;
