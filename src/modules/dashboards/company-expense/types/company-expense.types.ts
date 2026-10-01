@@ -52,12 +52,9 @@ export interface ExpenseRow {
 /**
  * The sum of the sub-meters, checked against the meter the bill comes from.
  *
- * The electricity column reads sub-meters only: the site's mains (`KWH`, and
- * `KVAH` which is the same supply as apparent energy) measure the whole supply
- * that every other meter is a part of, so counting both reported roughly three
- * times the electricity the factory used. This is what lets a reader confirm
- * the breakdown is complete without trusting that claim — if the parts stop
- * adding up to the incomer, a sub-meter is unread or one is being counted twice.
+ * The electricity column is Daily Electricity++'s allocation, each unit once.
+ * This is what lets a reader confirm it is complete: if the companies and
+ * Shared stop adding up to the incomer, a meter is unread or misread.
  *
  * Null when the incomer was not read in the span: "no drift" and "no reading"
  * must not look the same.

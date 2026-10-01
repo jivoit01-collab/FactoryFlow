@@ -51,7 +51,7 @@ describe('ExpenseGrid', () => {
     expect(screen.getByText('Electricity')).toBeInTheDocument();
     // The source line is what stops "Salary" being read as a payroll figure.
     expect(
-      screen.getByText('Daily Electricity register · mains counted in Shared'),
+      screen.getByText('Daily Electricity++ · each company’s share'),
     ).toBeInTheDocument();
     expect(screen.getByText('Gate headcount by department × contract rate')).toBeInTheDocument();
   });

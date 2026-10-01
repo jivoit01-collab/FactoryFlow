@@ -429,9 +429,8 @@ export interface AdminCostSlice {
    * production(oil), Warehouse Basement, Dock, Scrap, Boiling Floor 1 — while
    * the Factory Expense wall board prices every department AND the gate tally
    * that re-describes those same people; and on electricity, which this tile
-   * prices over Jivo Oil's SUB-meters, halving one shared with Beverages,
-   * while the wall board adds up every meter on the campus, mains included and
-   * nothing halved.
+   * prices at the signed-in company's Daily Electricity++ share while the wall
+   * board shows the whole campus.
    *
    * On labour the note also says what share of the gate the line covers. It is
    * a subset by design, and a figure that silently omitted half the people who
@@ -458,14 +457,9 @@ export interface AdminCost {
   /**
    * Which meters the electricity slice is.
    *
-   * Jivo Oil's SUB-meters, added up. The mains are left out: the supply they
-   * measure is the same electricity these meters slice up, so a figure holding
-   * both prices it twice — which is what the Factory Expense wall does on
-   * purpose, because what the campus drew is a campus question. A sub-meter
-   * shared with Beverages counts half; the register holds one reading a day
-   * per meter with nothing behind it to divide by, so the equal split is this
-   * board's convention rather than a measurement, and the note is where it
-   * says so.
+   * The signed-in company's share of every meter, from Daily Electricity++:
+   * a main is never added to the sub-meters it feeds, and a meter shared with
+   * another company counts at the share Electricity++ gives it.
    */
   electricity_note: string;
 }

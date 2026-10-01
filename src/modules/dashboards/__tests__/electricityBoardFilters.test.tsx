@@ -1,105 +1,68 @@
 /**
- * What the Electricity board is showing before anybody touches a control.
+ * The Electricity board reads Daily Electricity++.
  *
- * It opens on Jivo Beverages, and the meter picker offers that company's meters
- * only — the campus runs Oil and Beverages off one supply, so "all companies"
- * as an opening state mixes the two plants together in the very first figure a
- * reader sees.
+ * It opens on Jivo Beverages and asks Electricity++ for that company; every
+ * figure — the tiles, the meters, the share of a meter two companies draw on —
+ * is Electricity++'s, so it agrees with Admin Control and the expense boards.
  */
-
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { COMPANY_CODES } from '@/config/constants';
 
+import type { ElectricityBoard } from '../electricity/api';
 import ElectricityDashboardPage from '../electricity/pages/ElectricityDashboardPage';
 
-const BEVERAGES_METER = {
-  id: 8,
-  name: 'Boiler',
-  meter_number: '',
-  location: 'Near Boiler',
-  company_codes: [COMPANY_CODES.JIVO_BEVERAGES],
-  companies_display: 'Jivo Beverages',
-  is_main: false,
-  supply_source: '',
-  supply_source_display: '',
-  counts_as_supply: true,
-  rate_per_unit: '7.0000',
-  multiplying_factor: '20.0000',
-  last_reading_date: '2026-09-21',
-  last_closing_reading: '453.00',
-  readings_count: 21,
-  is_active: true,
-  created_at: '',
-  updated_at: '',
+const BEVERAGES: ElectricityBoard = {
+  date_from: '2026-09-01',
+  date_to: '2026-09-30',
+  company: 'JIVO_BEVERAGES',
+  units: '1120.00',
+  cost: '10080.00',
+  days_with_units: 2,
+  meters: [
+    {
+      name: 'Ground Floor',
+      units: '720.00',
+      cost: '6480.00',
+      rate: '9.00',
+      share_pct: null,
+      days: 2,
+    },
+    { name: 'Lab', units: '400.00', cost: '3600.00', rate: '9.00', share_pct: '50.00', days: 2 },
+  ],
+  days: [
+    {
+      date: '2026-09-01',
+      units: '560.00',
+      cost: '5040.00',
+      by_meter: { 'Ground Floor': '360.00', Lab: '200.00' },
+    },
+    {
+      date: '2026-09-02',
+      units: '560.00',
+      cost: '5040.00',
+      by_meter: { 'Ground Floor': '360.00', Lab: '200.00' },
+    },
+  ],
+  supply: { units: '2000.00', cost: '18000.00' },
+  warnings: ['HP-512: 4 readings did not start from the previous closing.'],
 };
 
-/** Oil's own meter — Beverages must never be offered it. */
-const OIL_METER = {
-  ...BEVERAGES_METER,
-  id: 6,
-  name: 'HP-196',
-  company_codes: [COMPANY_CODES.JIVO_OIL],
-  companies_display: 'Jivo Oil',
-};
+const asked = vi.hoisted(() => [] as unknown[]);
+const answer = vi.hoisted(() => ({ board: null as unknown }));
 
-/** A sub-meter feeding both plants, so it answers to each company. */
-const SHARED_METER = {
-  ...BEVERAGES_METER,
-  id: 16,
-  name: 'TR 125',
-  location: 'Terrace',
-  company_codes: [COMPANY_CODES.JIVO_OIL, COMPANY_CODES.JIVO_BEVERAGES],
-  companies_display: 'Jivo Oil, Jivo Beverages',
-};
-
-/** The campus incomer. The board reports the slices, not the supply. */
-const MAIN_METER = {
-  ...BEVERAGES_METER,
-  id: 11,
-  name: 'KWH',
-  location: 'Near Boundary Wall',
-  company_codes: [COMPANY_CODES.JIVO_OIL, COMPANY_CODES.JIVO_BEVERAGES],
-  companies_display: 'Jivo Oil, Jivo Beverages',
-  is_main: true,
-  supply_source: 'GRID',
-  supply_source_display: 'Grid',
-};
-
-/** Not attributed yet, so it belongs to no company filter. */
-const UNTAGGED_METER = {
-  ...BEVERAGES_METER,
-  id: 10,
-  name: 'STP',
-  company_codes: [],
-  companies_display: '',
-};
-
-const readingFilters = vi.hoisted(() => ({ current: undefined as unknown }));
-
-vi.mock('@/modules/maintenance/api', () => ({
-  useElectricityMeters: () => ({
-    data: [BEVERAGES_METER, OIL_METER, SHARED_METER, MAIN_METER, UNTAGGED_METER],
-    isLoading: false,
-  }),
-  useDailyElectricityReadings: (filters: unknown) => {
-    readingFilters.current = filters;
-    return { data: [], isLoading: false };
+vi.mock('../electricity/api', () => ({
+  useElectricityBoard: (params: unknown) => {
+    asked.push(params);
+    return { data: answer.board, isLoading: false };
   },
 }));
 
 vi.mock('@/core/auth', () => ({
   useAuth: () => ({ currentCompany: { company_code: COMPANY_CODES.JIVO_BEVERAGES } }),
 }));
-
-const companySelect = () => screen.getByLabelText('Company') as HTMLSelectElement;
-const meterSelect = () => screen.getByLabelText('Meter') as HTMLSelectElement;
-const meterOptions = () =>
-  within(meterSelect())
-    .getAllByRole('option')
-    .map((option) => option.textContent);
 
 const renderBoard = () =>
   render(
@@ -108,65 +71,73 @@ const renderBoard = () =>
     </MemoryRouter>,
   );
 
-describe('Electricity board — opening filters', () => {
-  it('opens on Jivo Beverages and asks the server for that company', () => {
-    renderBoard();
+const meterRow = (name: string) =>
+  within(screen.getAllByText(name).at(-1)?.closest('tr') as HTMLElement);
 
-    expect(companySelect().value).toBe(COMPANY_CODES.JIVO_BEVERAGES);
-    expect(readingFilters.current).toMatchObject({ company: COMPANY_CODES.JIVO_BEVERAGES });
+describe('Electricity board', () => {
+  beforeEach(() => {
+    asked.length = 0;
+    answer.board = BEVERAGES;
   });
 
-  it('offers the Beverages sub-meters, shared ones included, and nothing else', () => {
+  it('opens on Jivo Beverages and asks Electricity++ for that company', () => {
     renderBoard();
-
-    const options = meterOptions();
-    expect(options).toContain('Boiler');
-    expect(options).toContain('TR 125');
-    expect(options).not.toContain('HP-196');
-    expect(options).not.toContain('STP');
+    expect(screen.getByLabelText('Company')).toHaveValue(COMPANY_CODES.JIVO_BEVERAGES);
+    expect(asked[0]).toMatchObject({ company: COMPANY_CODES.JIVO_BEVERAGES });
   });
 
-  it('never offers a main meter — the board reports the slices, not the supply', () => {
+  it('shows Electricity++’s units and cost', () => {
     renderBoard();
-
-    expect(meterOptions()).not.toContain('KWH');
-
-    fireEvent.change(companySelect(), { target: { value: '' } });
-    expect(meterOptions()).not.toContain('KWH');
+    expect(screen.getAllByText('1,120').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('₹10,080').length).toBeGreaterThan(0);
+    expect(screen.getByText('2 days')).toBeInTheDocument();
   });
 
-  it('offers every other plant’s meters once the company filter is cleared', () => {
+  it('shows a shared meter at the share Electricity++ gives it, not at half by rule', () => {
     renderBoard();
-
-    fireEvent.change(companySelect(), { target: { value: '' } });
-
-    expect(meterOptions()).toEqual(
-      expect.arrayContaining(['All meters', 'Boiler', 'HP-196', 'TR 125', 'STP']),
-    );
-    expect(readingFilters.current).toMatchObject({ company: undefined });
+    expect(meterRow('Lab').getByText('50%')).toBeInTheDocument();
+    expect(meterRow('Ground Floor').getByText('All')).toBeInTheDocument();
   });
 
-  it('drops a meter the newly chosen company does not feed', () => {
+  it('offers the meters Electricity++ has for the company', () => {
     renderBoard();
-
-    fireEvent.change(meterSelect(), { target: { value: String(BEVERAGES_METER.id) } });
-    expect(readingFilters.current).toMatchObject({ meter: BEVERAGES_METER.id });
-
-    fireEvent.change(companySelect(), { target: { value: COMPANY_CODES.JIVO_OIL } });
-
-    expect(meterSelect().value).toBe('');
-    expect(readingFilters.current).toMatchObject({
-      company: COMPANY_CODES.JIVO_OIL,
-      meter: undefined,
-    });
+    const options = within(screen.getByLabelText('Meter'))
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(options).toEqual(['All meters', 'Ground Floor', 'Lab']);
   });
 
-  it('keeps a shared meter selected across a company change', () => {
+  it('narrows the figures to one meter', () => {
     renderBoard();
+    fireEvent.change(screen.getByLabelText('Meter'), { target: { value: 'Lab' } });
+    expect(screen.getAllByText('400').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Ground Floor', { selector: 'td span' })).not.toBeInTheDocument();
+  });
 
-    fireEvent.change(meterSelect(), { target: { value: String(SHARED_METER.id) } });
-    fireEvent.change(companySelect(), { target: { value: COMPANY_CODES.JIVO_OIL } });
+  it('asks for the whole campus when the company is cleared, and drops the meter', () => {
+    renderBoard();
+    fireEvent.change(screen.getByLabelText('Meter'), { target: { value: 'Lab' } });
+    fireEvent.change(screen.getByLabelText('Company'), { target: { value: '' } });
+    expect(asked.at(-1)).toMatchObject({ company: '' });
+    expect(screen.getByLabelText('Meter')).toHaveValue('');
+  });
 
-    expect(meterSelect().value).toBe(String(SHARED_METER.id));
+  it('says what Electricity++ flags about the readings', () => {
+    renderBoard();
+    expect(screen.getByText('1 reading problem in Electricity++')).toBeInTheDocument();
+    expect(screen.getByText(/HP-512: 4 readings/)).toBeInTheDocument();
+  });
+
+  it('says so when there is no electricity in the range', () => {
+    answer.board = {
+      ...BEVERAGES,
+      meters: [],
+      days: [],
+      units: '0.00',
+      cost: '0.00',
+      warnings: [],
+    };
+    renderBoard();
+    expect(screen.getAllByText('No electricity in this range.').length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,4 @@
-import { BarChart3, IndianRupee, Zap } from 'lucide-react';
+import { AlertTriangle, BarChart3, IndianRupee, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -22,7 +22,6 @@ import {
   type CompanyCode,
 } from '@/config/constants';
 import { useAuth } from '@/core/auth';
-import { useDailyElectricityReadings, useElectricityMeters } from '@/modules/maintenance/api';
 import { ACCENTS, DashboardHeader, KpiStat } from '@/shared/components/dashboard';
 import {
   Button,
@@ -37,25 +36,14 @@ import {
 } from '@/shared/components/ui';
 
 import { localISODate } from '../../utils/month';
-import {
-  apportionToCompany,
-  companyShare,
-  dailySeries,
-  rollupByMeter,
-  splitBySupply,
-} from '../utils/electricityAnalytics';
+import { useElectricityBoard } from '../api';
 
-/** One colour per meter, cycled — the same meter keeps its colour everywhere. */
-const SERIES = [
-  ACCENTS.emerald.hex,
-  ACCENTS.orange.hex,
-  ACCENTS.blue.hex,
-  ACCENTS.amber.hex,
-  ACCENTS.violet.hex,
-  ACCENTS.pink.hex,
-  ACCENTS.teal.hex,
-  ACCENTS.rose.hex,
-];
+/**
+ * One colour per meter, in a fixed order by size: the seven biggest get their
+ * own, the rest are "Others". Never cycled, so no two meters share a colour.
+ */
+const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7'];
+const OTHERS = ACCENTS.slate.hex;
 
 const TOOLTIP_STYLE = {
   borderRadius: 12,
@@ -63,6 +51,7 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 } as const;
 
+const num = (value: string | null | undefined) => (value == null ? 0 : Number(value));
 const units = (value: number) => Math.round(value).toLocaleString('en-IN');
 const money = (value: number) =>
   `₹${Math.round(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -87,104 +76,92 @@ function dayTick(date: string) {
 }
 
 /**
- * Reads the daily electricity register back as a board: where the units went,
- * what they cost, and what is wrong with the readings themselves. Nothing is
- * entered here — the register at /maintenance/daily-electricity stays the only
- * place a reading is keyed.
+ * Electricity from Daily Electricity++: what each company used, meter by
+ * meter and day by day — the same figures Admin Control, the expense wall and
+ * the company matrix show. A meter two companies draw on is at the share
+ * Electricity++ gives the company, and a main is never added to its sub-meters.
  */
 export default function ElectricityDashboardPage() {
-  // The register itself is a Maintenance page, and Maintenance is rolled out
-  // for Jivo Oil alone — so the link to it is offered only where it opens.
+  // Daily Electricity++ is a Maintenance page, rolled out for Jivo Oil, so the
+  // link to it is offered only where it opens.
   const { currentCompany } = useAuth();
   const canOpenRegister = currentCompany?.company_code === COMPANY_CODES.JIVO_OIL;
 
   const [dateFrom, setDateFrom] = useState(firstOfMonthISO());
   const [dateTo, setDateTo] = useState(todayISO());
-  // Opens on Beverages: it is the plant this board was asked for, and "all
-  // companies" mixes its meters with Oil's own before anybody has chosen.
   const [companyFilter, setCompanyFilter] = useState<CompanyCode | ''>(
     COMPANY_CODES.JIVO_BEVERAGES,
   );
   const [meterFilter, setMeterFilter] = useState('');
 
-  const { data: meters = [], isLoading: metersLoading } = useElectricityMeters();
-  const { data: readings = [], isLoading } = useDailyElectricityReadings({
-    date_from: dateFrom || undefined,
-    date_to: dateTo || undefined,
-    meter: meterFilter ? Number(meterFilter) : undefined,
-    company: companyFilter || undefined,
+  const { data: board, isLoading } = useElectricityBoard({
+    date_from: dateFrom,
+    date_to: dateTo,
+    company: companyFilter,
   });
 
-  // The picker offers the chosen company's meters only — a shared meter counts
-  // for each company it feeds, and an untagged one belongs to none of them, the
-  // same rule the readings query applies on the server. Mains are left out
-  // altogether: this board reports the sub-meters, so picking one would open an
-  // empty page.
-  const pickableMeters = useMemo(
-    () =>
-      meters
-        .filter((m) => !m.is_main)
-        .filter((m) => !companyFilter || m.company_codes.includes(companyFilter)),
-    [meters, companyFilter],
+  const allMeters = useMemo(() => board?.meters ?? [], [board]);
+  const meters = useMemo(
+    () => (meterFilter ? allMeters.filter((m) => m.name === meterFilter) : allMeters),
+    [allMeters, meterFilter],
+  );
+  const total = useMemo(
+    () => ({
+      units: meters.reduce((sum, m) => sum + num(m.units), 0),
+      cost: meters.reduce((sum, m) => sum + num(m.cost), 0),
+    }),
+    [meters],
   );
 
-  /** Switching company drops a meter that the new one does not feed. */
-  const onSelectCompany = (code: CompanyCode | '') => {
-    setCompanyFilter(code);
-    const stillOffered =
-      !meterFilter ||
-      !code ||
-      meters.some((m) => m.id === Number(meterFilter) && m.company_codes.includes(code));
-    if (!stillOffered) setMeterFilter('');
-  };
-
-  const window = useMemo(() => ({ from: dateFrom, to: dateTo }), [dateFrom, dateTo]);
-
-  // Under a company, a meter feeding two plants shows that company's half.
-  // The raw rows stay in hand for the data-quality panel, which reads dials.
-  const attributed = useMemo(
-    () => apportionToCompany(readings, meters, companyFilter),
-    [readings, meters, companyFilter],
-  );
-  const sharedMeters = useMemo(
-    () =>
-      companyFilter
-        ? meters.filter((m) => companyShare(m, companyFilter) < 1).map((m) => m.id)
-        : [],
-    [meters, companyFilter],
-  );
-  const isShared = (meterId: number) => sharedMeters.includes(meterId);
-
-  const split = useMemo(() => splitBySupply(attributed), [attributed]);
-  const rollups = useMemo(
-    () => rollupByMeter(attributed, meters, window),
-    [attributed, meters, window],
-  );
-  const subRollups = useMemo(() => rollups.filter((r) => !r.isMain), [rollups]);
+  const named = meters.slice(0, SERIES.length);
   const colourOf = useMemo(() => {
     const map = new Map<string, string>();
-    subRollups.forEach((r, i) => map.set(r.name, SERIES[i % SERIES.length]));
+    named.forEach((m, i) => map.set(m.name, SERIES[i]));
     return map;
-  }, [subRollups]);
+  }, [named]);
+  const pie = useMemo(() => {
+    const rows = named.map((m) => ({ name: m.name, value: num(m.units), cost: num(m.cost) }));
+    const rest = meters.slice(SERIES.length);
+    if (rest.length) {
+      rows.push({
+        name: 'Others',
+        value: rest.reduce((s, m) => s + num(m.units), 0),
+        cost: rest.reduce((s, m) => s + num(m.cost), 0),
+      });
+    }
+    return rows;
+  }, [named, meters]);
 
-  // Three named lines and one "Others" keeps the trend readable on a plant with
-  // nineteen meters; the table below carries every one of them.
-  const topNames = useMemo(() => subRollups.slice(0, 3).map((r) => r.name), [subRollups]);
-  const trend = useMemo(() => dailySeries(split.subs, topNames), [split.subs, topNames]);
-  const hasOthers = subRollups.length > topNames.length;
-
-  const daysWithReadings = new Set(readings.map((r) => r.date)).size;
+  // Three named lines and one "Others" keeps the trend readable; the table
+  // below carries every meter.
+  const topNames = useMemo(() => meters.slice(0, 3).map((m) => m.name), [meters]);
+  const shown = useMemo(() => new Set(meters.map((m) => m.name)), [meters]);
+  const trend = useMemo(
+    () =>
+      (board?.days ?? []).map((day) => {
+        const point: Record<string, number | string> = { date: day.date };
+        let others = 0;
+        for (const [name, value] of Object.entries(day.by_meter)) {
+          if (!shown.has(name)) continue;
+          if (topNames.includes(name)) point[name] = num(value);
+          else others += num(value);
+        }
+        if (meters.length > topNames.length) point.Others = others;
+        return point;
+      }),
+    [board, shown, topNames, meters.length],
+  );
+  const days = board?.days_with_units ?? 0;
+  const warnings = board?.warnings ?? [];
 
   return (
     <div className="space-y-6">
-      <DashboardHeader
-        title="Electricity Dashboard"
-      >
+      <DashboardHeader title="Electricity Dashboard">
         {canOpenRegister && (
           <Button asChild variant="outline" size="sm" className="gap-2">
-            <Link to="/maintenance/daily-electricity">
+            <Link to="/maintenance/daily-electricity-plus">
               <Zap className="h-4 w-4" />
-              Daily register
+              Daily Electricity++
             </Link>
           </Button>
         )}
@@ -215,7 +192,10 @@ export default function ElectricityDashboardPage() {
             <NativeSelect
               id="elec-dash-company"
               value={companyFilter}
-              onChange={(e) => onSelectCompany(e.target.value as CompanyCode | '')}
+              onChange={(e) => {
+                setCompanyFilter(e.target.value as CompanyCode | '');
+                setMeterFilter('');
+              }}
             >
               <SelectOption value="">All companies</SelectOption>
               {COMPANY_CODE_LIST.map((code) => (
@@ -233,55 +213,58 @@ export default function ElectricityDashboardPage() {
               onChange={(e) => setMeterFilter(e.target.value)}
             >
               <SelectOption value="">All meters</SelectOption>
-              {pickableMeters.map((meter) => (
-                <SelectOption key={meter.id} value={String(meter.id)}>
+              {allMeters.map((meter) => (
+                <SelectOption key={meter.name} value={meter.name}>
                   {meter.name}
                 </SelectOption>
               ))}
             </NativeSelect>
           </div>
-          <p className="ml-auto max-w-sm text-xs text-muted-foreground">
-            {companyFilter
-              ? 'A meter feeding two plants is counted at half here — nothing in the register says how its load divides, so each company carries an equal share.'
-              : 'Every meter at its full reading. Pick a company to see its share of the ones two plants share.'}
-          </p>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <KpiStat
           icon={Zap}
-          label="Sub-meter units"
-          value={units(split.subTotal.units)}
-          sub={
-            sharedMeters.length
-              ? `${daysWithReadings} day${daysWithReadings === 1 ? '' : 's'} · shared meters at 50%`
-              : `${daysWithReadings} day${daysWithReadings === 1 ? '' : 's'} with readings`
-          }
+          label="Units"
+          value={units(total.units)}
+          sub={`${days} day${days === 1 ? '' : 's'}`}
           accent={ACCENTS.blue}
-          delayMs={0}
         />
         <KpiStat
           icon={IndianRupee}
-          label="Sub-meter cost"
-          value={money(split.subTotal.cost)}
-          sub={
-            sharedMeters.length
-              ? 'This company\u2019s share, as keyed'
-              : 'Priced as keyed on each row'
-          }
+          label="Cost"
+          value={money(total.cost)}
           accent={ACCENTS.emerald}
           delayMs={60}
         />
         <KpiStat
           icon={BarChart3}
           label="Avg daily load"
-          value={units(daysWithReadings ? split.subTotal.units / daysWithReadings : 0)}
-          sub="Units per day with a reading"
+          value={units(days ? total.units / days : 0)}
+          sub="Units a day"
           accent={ACCENTS.violet}
           delayMs={120}
         />
       </div>
+
+      {warnings.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium">
+              <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden />
+              {warnings.length} reading {warnings.length === 1 ? 'problem' : 'problems'} in
+              Electricity++
+            </p>
+            <ul className="list-disc space-y-1 pl-6 text-xs text-muted-foreground">
+              {warnings.slice(0, 5).map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+              {warnings.length > 5 && <li>…and {warnings.length - 5} more.</li>}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-2">
@@ -289,29 +272,30 @@ export default function ElectricityDashboardPage() {
             <CardTitle className="text-base">Units and cost by meter</CardTitle>
           </CardHeader>
           <CardContent>
-            {subRollups.length === 0 ? (
+            {meters.length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">
-                No sub-meter readings in this range.
+                {isLoading ? 'Loading…' : 'No electricity in this range.'}
               </p>
             ) : (
               <>
-                <div className="h-[200px]">
+                <div className="h-[200px]" role="img" aria-label="Units by meter">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={subRollups.map((r) => ({
-                          name: r.name,
-                          value: Math.max(0, r.units),
-                          cost: r.cost,
-                        }))}
+                        data={pie}
                         dataKey="value"
                         nameKey="name"
                         innerRadius={52}
                         outerRadius={82}
                         paddingAngle={2}
+                        isAnimationActive={false}
                       >
-                        {subRollups.map((r) => (
-                          <Cell key={r.meterId} fill={colourOf.get(r.name)} stroke="none" />
+                        {pie.map((row) => (
+                          <Cell
+                            key={row.name}
+                            fill={colourOf.get(row.name) ?? OTHERS}
+                            stroke="none"
+                          />
                         ))}
                       </Pie>
                       <Tooltip
@@ -326,27 +310,21 @@ export default function ElectricityDashboardPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-
-                {/* The legend carries the money, so the split and what it cost
-                    are read in one place rather than two cards. */}
                 <ul className="mt-3 space-y-1.5">
-                  {subRollups.map((row) => (
-                    <li key={row.meterId} className="flex items-center gap-2 text-xs">
+                  {pie.map((row) => (
+                    <li key={row.name} className="flex items-center gap-2 text-xs">
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                        style={{ background: colourOf.get(row.name) }}
+                        style={{ background: colourOf.get(row.name) ?? OTHERS }}
                       />
                       <span className="min-w-0 flex-1 truncate" title={row.name}>
                         {row.name}
-                        {isShared(row.meterId) && (
-                          <span className="ml-1 text-muted-foreground">(50%)</span>
-                        )}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
-                        {row.share.toFixed(0)}%
+                        {total.units ? ((row.value / total.units) * 100).toFixed(0) : 0}%
                       </span>
                       <span className="w-20 shrink-0 text-right tabular-nums">
-                        {units(row.units)}
+                        {units(row.value)}
                       </span>
                       <span className="w-20 shrink-0 text-right font-medium tabular-nums">
                         {money(row.cost)}
@@ -356,12 +334,11 @@ export default function ElectricityDashboardPage() {
                   <li className="flex items-center gap-2 border-t pt-2 text-xs font-medium">
                     <span className="h-2.5 w-2.5 shrink-0" />
                     <span className="min-w-0 flex-1">Total</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">100%</span>
                     <span className="w-20 shrink-0 text-right tabular-nums">
-                      {units(split.subTotal.units)}
+                      {units(total.units)}
                     </span>
                     <span className="w-20 shrink-0 text-right tabular-nums">
-                      {money(split.subTotal.cost)}
+                      {money(total.cost)}
                     </span>
                   </li>
                 </ul>
@@ -377,7 +354,7 @@ export default function ElectricityDashboardPage() {
           <CardContent>
             {trend.length === 0 ? (
               <p className="py-16 text-center text-sm text-muted-foreground">
-                No sub-meter readings in this range.
+                {isLoading ? 'Loading…' : 'No electricity in this range.'}
               </p>
             ) : (
               <div className="h-[260px]">
@@ -416,17 +393,19 @@ export default function ElectricityDashboardPage() {
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
+                        isAnimationActive={false}
                       />
                     ))}
-                    {hasOthers && (
+                    {meters.length > topNames.length && (
                       <Line
                         type="monotone"
                         dataKey="Others"
                         name="Others"
-                        stroke={ACCENTS.slate.hex}
+                        stroke={OTHERS}
                         strokeWidth={2}
                         strokeDasharray="5 4"
                         dot={false}
+                        isAnimationActive={false}
                       />
                     )}
                   </LineChart>
@@ -442,11 +421,9 @@ export default function ElectricityDashboardPage() {
           <CardTitle className="text-base">Meter detail</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading || metersLoading ? (
-            <p className="p-8 text-center text-sm text-muted-foreground">Loading readings…</p>
-          ) : subRollups.length === 0 ? (
+          {meters.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">
-              No readings in this range.
+              {isLoading ? 'Loading…' : 'No electricity in this range.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -454,73 +431,40 @@ export default function ElectricityDashboardPage() {
                 <thead>
                   <tr className="border-b bg-muted/50 text-left">
                     <th className="px-3 py-2 font-medium">Meter</th>
-                    <th className="px-3 py-2 font-medium">Location</th>
-                    <th className="px-3 py-2 font-medium">Company</th>
-                    <th className="px-3 py-2 text-right font-medium">MF</th>
+                    <th className="px-3 py-2 text-right font-medium">Share of meter</th>
                     <th className="px-3 py-2 text-right font-medium">Rate</th>
-                    <th className="px-3 py-2 text-right font-medium">Last closing</th>
                     <th className="px-3 py-2 text-right font-medium">Units</th>
                     <th className="px-3 py-2 text-right font-medium">Cost</th>
-                    <th className="px-3 py-2 text-right font-medium">Share</th>
-                    <th className="px-3 py-2 text-right font-medium">Readings</th>
+                    <th className="px-3 py-2 text-right font-medium">Days</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {subRollups.map((row) => (
-                    <tr key={row.meterId} className="border-b last:border-0">
+                  {meters.map((row) => (
+                    <tr key={row.name} className="border-b last:border-0">
                       <td className="px-3 py-2">
                         <span className="flex items-center gap-2">
                           <span
                             className="h-2.5 w-2.5 rounded-sm"
-                            style={{ background: colourOf.get(row.name) ?? ACCENTS.slate.hex }}
+                            style={{ background: colourOf.get(row.name) ?? OTHERS }}
                           />
                           {row.name}
-                          {isShared(row.meterId) && (
-                            <span
-                              className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
-                              title="Feeds two plants — shown at this company's half"
-                            >
-                              50%
-                            </span>
-                          )}
-                          {row.negativeDays > 0 && (
-                            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
-                              Check
-                            </span>
-                          )}
                         </span>
                       </td>
-                      <td className="px-3 py-2">{row.location}</td>
-                      <td className="px-3 py-2">
-                        {row.companies || <span className="text-muted-foreground">Not set</span>}
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {row.share_pct == null ? 'All' : `${Number(row.share_pct).toFixed(0)}%`}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
-                        ×{parseFloat(row.multiplyingFactor)}
+                        {row.rate == null ? '—' : num(row.rate).toFixed(2)}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {parseFloat(row.ratePerUnit).toFixed(2)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {row.lastClosing ?? '—'}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{units(row.units)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{money(row.cost)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{row.share.toFixed(1)}%</td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {row.readings} / {row.due}
-                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{units(num(row.units))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{money(num(row.cost))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{row.days}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-          <p className="px-3 py-3 text-xs text-muted-foreground">
-            MF and rate shown are the meter master's. Units and cost are the figures stored on each
-            reading, which carry the factor and rate typed that day.
-            {sharedMeters.length > 0 &&
-              ' A meter marked 50% feeds two plants and is shown at this company\u2019s half; the register itself holds the whole figure.'}
-          </p>
         </CardContent>
       </Card>
     </div>

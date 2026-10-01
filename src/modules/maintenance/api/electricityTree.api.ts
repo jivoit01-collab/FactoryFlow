@@ -32,6 +32,8 @@ export const ELECTRICITY_TREE_ENDPOINTS = {
   SETUP_DETAIL: (setupId: number) => `/maintenance/electricity-meter-setups/${setupId}/`,
   DAY_SHEET: '/maintenance/electricity-day-sheet/',
   ALLOCATION: '/maintenance/electricity-allocation/',
+  /** One company's (or the campus's) Electricity++, as the Electricity dashboard reads it. */
+  BOARD: '/maintenance/electricity-board/',
   RUN_SOURCES: '/maintenance/electricity-run-sources/',
 } as const;
 
@@ -71,7 +73,9 @@ export const electricityTreeApi = {
   // ---- readings, held to the chain ----
 
   async getReadings(filters?: DailyElectricityReadingFilters): Promise<TreeReading[]> {
-    const response = await apiClient.get<TreeReading[]>(EP.READINGS, { params: cleanFilters(filters) });
+    const response = await apiClient.get<TreeReading[]>(EP.READINGS, {
+      params: cleanFilters(filters),
+    });
     return response.data;
   },
 
@@ -81,7 +85,10 @@ export const electricityTreeApi = {
   },
 
   /** A corrected closing moves the next reading's opening with it. */
-  async updateReading(readingId: number, payload: Partial<TreeReadingPayload>): Promise<TreeReading> {
+  async updateReading(
+    readingId: number,
+    payload: Partial<TreeReadingPayload>,
+  ): Promise<TreeReading> {
     const response = await apiClient.patch<TreeReading>(EP.READING_DETAIL(readingId), payload);
     return response.data;
   },
@@ -122,8 +129,16 @@ export const electricityTreeApi = {
   },
 
   /** All of them or none — a half-saved round leaves parents and sub-meters out of step. */
-  async saveDaySheet(date: string, shift: ReadingShift, entries: DaySheetEntryPayload[]): Promise<DaySheetSaveResult> {
-    const response = await apiClient.post<DaySheetSaveResult>(EP.DAY_SHEET, { date, shift, entries });
+  async saveDaySheet(
+    date: string,
+    shift: ReadingShift,
+    entries: DaySheetEntryPayload[],
+  ): Promise<DaySheetSaveResult> {
+    const response = await apiClient.post<DaySheetSaveResult>(EP.DAY_SHEET, {
+      date,
+      shift,
+      entries,
+    });
     return response.data;
   },
 

@@ -77,11 +77,9 @@ export const COLUMN_ACCENT: Record<ExpenseColumnKey, string> = {
  */
 export const COLUMN_SOURCE: Record<ExpenseColumnKey, string> = {
   SALARY: 'Cost Master monthly rates, accrued per day',
-  // The mains (KWH, KVAH, LP-196) sit in the Shared row by the user's choice.
-  // They measure the whole supply the other meters break down, so the column
-  // knowingly counts the same electricity about three times — said plainly here
-  // and in a board warning, rather than left for a reader to discover.
-  ELECTRICITY: 'Daily Electricity register · mains counted in Shared',
+  // Each company's share from Daily Electricity++, every unit once; what no
+  // company pays for (a consumer, an unassigned main) is in Shared.
+  ELECTRICITY: 'Daily Electricity++ · each company’s share',
   MAINTENANCE: 'Spares issued + committed indents',
   // "By department" is the important half. The register's own company field
   // says Oil on every department row, Warehouse Gupta included, so a reader who
