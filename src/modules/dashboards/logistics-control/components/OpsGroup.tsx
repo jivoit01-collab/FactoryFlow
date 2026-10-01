@@ -8,6 +8,14 @@ export type OpsTagTone = 'neut' | 'ok' | 'warn' | 'bad' | 'nil';
 export interface OpsGroupProps {
   /** The tile's name. */
   name: string;
+  /**
+   * A live figure on a board showing an ended month.
+   *
+   * Stock, what is pending, today's counts: none of it is kept by month, so it
+   * goes on showing now while the month tiles around it show last month. The
+   * tag is what stops "Stock on hand" being read as September's.
+   */
+  now?: boolean;
   /** The pill top-right — a share, a comparison, or why the tile is empty. */
   tag?: { label: string; tone?: OpsTagTone };
   /** The line under the name. Always rendered, even empty, to hold the grid row. */
@@ -80,6 +88,7 @@ const TAG_CLASS: Record<OpsTagTone, string> = {
  */
 export function OpsGroup({
   name,
+  now = false,
   tag,
   sub,
   value,
@@ -125,6 +134,15 @@ export function OpsGroup({
       }
     >
       {corner}
+
+      {/* A tab hung from the card's top edge, outside the four rows: beside
+          the name it wrapped long names onto a third line, and in the
+          subtitle it pushed the subtitle into the figure. */}
+      {now && (
+        <span className="ops-livetag" title="A live figure — not kept by month">
+          now
+        </span>
+      )}
 
       <div className="ops-grow">
         <b className="ops-nm">{name}</b>

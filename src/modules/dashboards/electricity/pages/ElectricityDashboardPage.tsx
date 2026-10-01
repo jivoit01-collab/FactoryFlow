@@ -36,6 +36,7 @@ import {
   SelectOption,
 } from '@/shared/components/ui';
 
+import { localISODate } from '../../utils/month';
 import {
   apportionToCompany,
   companyShare,
@@ -66,8 +67,13 @@ const units = (value: number) => Math.round(value).toLocaleString('en-IN');
 const money = (value: number) =>
   `₹${Math.round(value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
+/**
+ * Local today. Not `toISOString()`, which is UTC: from midnight to 05:30 IST it
+ * names yesterday, and on the 1st that put To on the 30th behind a From on the
+ * 1st — a backwards range on exactly the morning somebody wants last month.
+ */
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return localISODate(new Date());
 }
 
 function firstOfMonthISO() {

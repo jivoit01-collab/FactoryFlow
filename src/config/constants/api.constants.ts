@@ -583,6 +583,12 @@ export const API_ENDPOINTS = {
      */
     WAREHOUSE_SETTINGS: '/dashboards/stock/warehouse-settings/',
     /**
+     * Every warehouse the operations board could count, with its settings and
+     * its finished-goods tonnage today. `on_board=true` answers the ticked ones
+     * only, from Postgres with no SAP call — the board's own read.
+     */
+    BOARD_WAREHOUSES: '/dashboards/stock/board-warehouses/',
+    /**
      * Company-level operations-board figures nothing derives: the owned vehicle
      * count, and the per-section employee headcount and salary. Ownership is not
      * a field on the vehicle master, and the board's section names appear in

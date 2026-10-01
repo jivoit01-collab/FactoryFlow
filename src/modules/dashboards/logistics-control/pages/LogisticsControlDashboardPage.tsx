@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 import { usePermission } from '@/core/auth';
 
 import { useFullscreen } from '../../dispatch/hooks';
-import { useWarehouseSettings } from '../api';
+import { useBoardMonth } from '../../hooks/useBoardMonth';
 import {
   BoardDrill,
   type DrillKey,
@@ -16,7 +16,9 @@ import {
   OpsMatrix,
   OpsMeter,
   OpsPair,
+  type OpsSegment,
   OpsTopbar,
+  useBoardEmbed,
 } from '../components';
 import {
   LOGISTICS_CONTROL_DISPATCH_PERMISSIONS,
@@ -29,6 +31,7 @@ import {
   type LogisticsHiddenTile,
 } from '../constants';
 import { useFullBleed, useLogisticsControlBoard, useLogisticsControlScope } from '../hooks';
+import { companyLabel, warehouseCaption } from '../utils';
 
 /** Whole number, Indian grouping. */
 function whole(value: number): string {
@@ -42,11 +45,6 @@ function money(value: number | null): string {
   if (Math.abs(value) >= 1_00_000) return `₹${(value / 1_00_000).toFixed(2)} L`;
   if (Math.abs(value) >= 1_000) return `₹${(value / 1_000).toFixed(1)}k`;
   return `₹${Math.round(value)}`;
-}
-
-/** `JIVO_OIL` reads as "Oil" on a board where every company shares the prefix. */
-function companyLabel(code: string): string {
-  return code.replace(/^JIVO[_\s-]*/i, '').replace(/_/g, ' ') || code;
 }
 
 /** One decimal — where the fraction still carries meaning. */
@@ -117,7 +115,21 @@ export function LogisticsControlDashboardPage({
   const canSeeFreight = hasAnyPermission(LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS);
   const canSeeWorkforce = hasAnyPermission(LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS);
 
-  const board = useLogisticsControlBoard(scope);
+  /**
+   * The month the month figures belong to — this one, or one somebody stepped
+   * back to. A carousel slide is pinned to the current month: see BoardEmbed.
+   */
+  const embedded = useBoardEmbed();
+  const month = useBoardMonth({ locked: embedded });
+  /** An ended month is on the board: every live tile says it is live. */
+  const past = !month.isCurrent;
+
+  const board = useLogisticsControlBoard(scope, {
+    from: month.from,
+    to: month.to,
+    today: month.today,
+    isCurrent: month.isCurrent,
+  });
 
   // Fullscreen targets the board itself, not the document, so the app shell
   // drops away and the `--u` clamp gets the real viewport to scale against.
@@ -136,12 +148,17 @@ export function LogisticsControlDashboardPage({
   const [drill, setDrill] = useState<DrillKey | null>(null);
   const open = (key: DrillKey) => () => setDrill(key);
 
-  // The two facts SAP does not hold, typed in on the settings screen. Read for
-  // the board's own company, not the viewer's: capacity is stored per (company,
-  // warehouse) and a wall must show the same rating to everyone in front of it.
-  const settings = useWarehouseSettings(scope.warehouse, canSeeWarehouse, scope.settingsCompany);
-
   const stock = board.warehouse.stockTonnage;
+  /**
+   * The warehouse band's halves. Two print Oil | Mart under each combined
+   * figure; one is a single-company board, whose tiles read as they always did.
+   */
+  const sides = board.warehouse.sides;
+  const split = sides.length > 1;
+  const warehouseCodes = board.warehouse.codes;
+  /** Every side's stock read failed — the band has no figure, not a zero one. */
+  const stockUnread = sides.length > 0 && board.warehouse.unread.length === sides.length;
+  const idleUnread = sides.length > 0 && board.warehouse.idleUnread.length === sides.length;
   const space = board.warehouse.space;
   /** Why there are no pallet slots behind this scope, where that is settled. */
   const nonMoving = board.warehouse.nonMoving;
@@ -192,20 +209,46 @@ export function LogisticsControlDashboardPage({
   // normal for this week" rather than pretending to a target.
   const peakTonnes = bars.reduce((peak, day) => Math.max(peak, day.tonnes), 0);
 
-  const capacityTonnes = settings.data?.capacity_tonnes ?? null;
+  const capacityTonnes = board.warehouse.capacityTonnes;
   /**
    * How full, by tonnage against the rated capacity.
    *
+   * Over the ticked warehouses that HAVE a capacity: one nobody rated has no
+   * room to compare its stock against, and is named under the bar instead.
    * Null until somebody sets a capacity — the tile then says so rather than
    * falling back to a percentage of something else and labelling it "full".
    * Deliberately not clamped: a warehouse over its rating is a real and
    * interesting state, and capping it at 100% would hide exactly the situation
    * worth seeing.
    */
-  const fillPct =
-    capacityTonnes !== null && capacityTonnes > 0 && hasTonnage
-      ? (stock.tonnes / capacityTonnes) * 100
-      : null;
+  const fillPct = hasTonnage ? board.warehouse.fillPct : null;
+
+  /**
+   * The stock bar, split by company.
+   *
+   * Each company's rated tonnage as its share of the combined capacity, then
+   * what is free. Scaled down together where the floors are over their rating,
+   * so the bar stays one bar: the percentage in the tag is the unclamped truth.
+   */
+  const stockSegments: OpsSegment[] = (() => {
+    if (fillPct === null || capacityTonnes === null || capacityTonnes <= 0) return [];
+    const scale = fillPct > 100 ? 100 / fillPct : 1;
+    const fills = ['main', 'light'] as const;
+    return [
+      ...sides.map((side, index) => ({
+        fill: fills[index % fills.length],
+        pct: (side.ratedTonnes / capacityTonnes) * 100 * scale,
+        label: companyLabel(side.companyCode),
+        figure: side.configured ? `${whole(side.stockTonnage.tonnes)} T` : 'none ticked',
+      })),
+      {
+        fill: 'mute' as const,
+        pct: Math.max(0, 100 - fillPct),
+        label: 'Free',
+        figure: `${whole(Math.max(0, capacityTonnes - board.warehouse.ratedTonnes))} T`,
+      },
+    ];
+  })();
 
   /**
    * How much of the warehouse the idle stock is occupying.
@@ -223,8 +266,8 @@ export function LogisticsControlDashboardPage({
   const nonMovingSpacePct =
     nonMovingSpaceBasis === null ? null : (nonMoving.tonnes / nonMovingSpaceBasis) * 100;
 
-  const lastAudit = settings.data?.last_audit_date
-    ? format(new Date(settings.data.last_audit_date), 'd MMM')
+  const lastAudit = board.warehouse.oldestAudit
+    ? format(new Date(board.warehouse.oldestAudit), 'd MMM')
     : null;
 
   return (
@@ -234,18 +277,29 @@ export function LogisticsControlDashboardPage({
           title={scope.title}
           scope={
             board.dispatch.companies.length > 0
-              ? `${scope.warehouse} · ${board.dispatch.companies.join(' | ')}`
-              : `${scope.warehouse} terminal`
+              ? `${warehouseCaption(warehouseCodes)} · ${board.dispatch.companies.join(' | ')}`
+              : warehouseCaption(warehouseCodes)
           }
           busy={board.isFetching}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggle}
           settingsTo={scope.settingsPath}
+          month={{
+            label: month.label,
+            isCurrent: month.isCurrent,
+            canGoForward: month.canGoForward,
+            onPrevious: month.previous,
+            onNext: month.next,
+          }}
           chips={[
-            { label: 'Month', value: format(new Date(board.monthStart), 'MMMM yyyy') },
             {
               label: 'Dispatching days',
-              value: mtd.activeDays > 0 ? `${mtd.activeDays} so far` : 'none yet',
+              value:
+                mtd.activeDays > 0
+                  ? `${mtd.activeDays}${past ? '' : ' so far'}`
+                  : past
+                    ? 'none'
+                    : 'none yet',
             },
           ]}
           /* Stock on hand and Dispatched this month were dropped from here:
@@ -298,12 +352,14 @@ export function LogisticsControlDashboardPage({
             domain="warehouse"
             title="Warehouse"
             columns={bandColumns(['allocated'])}
-            scope={scope.warehouse}
+            scope={warehouseCaption(warehouseCodes)}
             people={canSeeWorkforce ? board.workforce.warehouse : undefined}
+            peopleSplit={split ? board.workforce.warehouseSplit : undefined}
             unavailable={canSeeWarehouse ? undefined : 'No access to warehouse stock.'}
           >
             <OpsGroup
               name="Stock on hand"
+              now={past}
               onOpen={open('stock')}
               tag={
                 fillPct !== null
@@ -312,53 +368,102 @@ export function LogisticsControlDashboardPage({
               }
               sub={[
                 capacityTonnes === null ? null : `${whole(capacityTonnes)} T capacity`,
-                lastAudit ? `last audit ${lastAudit}` : null,
+                // The oldest of several: how stale the least recently counted
+                // floor on the band might be.
+                lastAudit
+                  ? `${warehouseCodes.length > 1 ? 'oldest audit' : 'last audit'} ${lastAudit}`
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
               value={hasTonnage ? whole(stock.tonnes) : undefined}
               unit="tonnes"
-              missing={hasTonnage ? undefined : 'No weighable stock rows in this warehouse'}
+              loading={board.warehouse.loading && !hasTonnage}
+              missing={
+                hasTonnage
+                  ? undefined
+                  : warehouseCodes.length === 0
+                    ? 'No warehouse is ticked for this board — tick them on its settings screen.'
+                    : stockUnread
+                      ? 'SAP unreachable — stock not read'
+                      : 'No weighable stock rows in these warehouses'
+              }
               viz={
-                // Tonnage against the rated capacity someone typed in, which is
-                // the question the tile asks. Pallet slots answer a different
-                // one — a half-empty pallet still occupies a whole slot — so
-                // they are the fallback, not the preference.
-                fillPct !== null && capacityTonnes !== null ? (
-                  <OpsMeter
-                    segments={[
-                      { fill: 'main', pct: fillPct, label: 'Stored' },
-                      {
-                        fill: 'mute',
-                        pct: Math.max(0, 100 - fillPct),
-                        label: 'Free',
-                        figure: `${whole(Math.max(0, capacityTonnes - stock.tonnes))} T`,
-                      },
-                    ]}
-                  />
-                ) : space && space.total > 0 ? (
-                  <OpsMeter
-                    segments={[
-                      { fill: 'main', pct: space.utilisationPct, label: 'Slots used' },
-                      {
-                        fill: 'mute',
-                        pct: 100 - space.utilisationPct,
-                        label: 'Free',
-                        figure: `${whole(space.total - space.used)} slots`,
-                      },
-                    ]}
-                  />
-                ) : // Neither a rated capacity nor slots to fall back on, so
-                // there is nothing to draw. The tile says so in its tag — "capacity
-                // not set" — and leaves the visualisation row empty rather than
-                // filling it with a paragraph: the tonnage above is still the
-                // answer, and on a wall a block of prose is read as an error.
-                undefined
+                <>
+                  {
+                    // Tonnage against the rated capacity someone typed in, which
+                    // is the question the tile asks. Pallet slots answer a
+                    // different one — a half-empty pallet still occupies a whole
+                    // slot — so they are the fallback, not the preference.
+                    stockSegments.length > 0 ? (
+                      split ? (
+                        // The bar IS the split: each company's share of the
+                        // combined capacity, then what is free.
+                        <OpsMeter segments={stockSegments} />
+                      ) : (
+                        <OpsMeter
+                          segments={[
+                            { fill: 'main', pct: fillPct ?? 0, label: 'Stored' },
+                            {
+                              fill: 'mute',
+                              pct: Math.max(0, 100 - (fillPct ?? 0)),
+                              label: 'Free',
+                              figure: stockSegments[stockSegments.length - 1].figure,
+                            },
+                          ]}
+                        />
+                      )
+                    ) : split ? (
+                      // No capacity anywhere: the split still stands on its own.
+                      <div className="ops-duo">
+                        {sides.map((side) => (
+                          <div key={side.companyCode}>
+                            <span className="k">{companyLabel(side.companyCode)}</span>
+                            <span className="v">
+                              {side.configured ? `${whole(side.stockTonnage.tonnes)} T` : '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : space && space.total > 0 ? (
+                      <OpsMeter
+                        segments={[
+                          { fill: 'main', pct: space.utilisationPct, label: 'Slots used' },
+                          {
+                            fill: 'mute',
+                            pct: 100 - space.utilisationPct,
+                            label: 'Free',
+                            figure: `${whole(space.total - space.used)} slots`,
+                          },
+                        ]}
+                      />
+                    ) : // Neither a rated capacity nor slots to fall back on, so
+                    // there is nothing to draw. The tile says so in its tag —
+                    // "capacity not set" — and leaves the visualisation row
+                    // empty rather than filling it with a paragraph: the tonnage
+                    // above is still the answer, and on a wall a block of prose
+                    // is read as an error.
+                    null
+                  }
+                  {/* A partial figure says which half it is missing, and a
+                      "% full" over some floors says which it left out. */}
+                  {board.warehouse.unread.length > 0 && !stockUnread ? (
+                    <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
+                      {board.warehouse.unread.map(companyLabel).join(' and ')} could not be read —
+                      its stock is missing.
+                    </p>
+                  ) : stockSegments.length > 0 && board.warehouse.unrated.length > 0 ? (
+                    <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
+                      No capacity for {board.warehouse.unrated.join(', ')}, so it is outside % full.
+                    </p>
+                  ) : null}
+                </>
               }
             />
 
             <OpsGroup
               name="Non-moving stock"
+              now={past}
               onOpen={open('non-moving')}
               tag={
                 // Share of the warehouse this stock is sitting on. Against the
@@ -372,38 +477,69 @@ export function LogisticsControlDashboardPage({
                       tone: nonMovingSpacePct >= 10 ? 'warn' : 'neut',
                     }
               }
-              sub={`${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days`}
+              sub={
+                // With the split in the tile, the older band moves up here: the
+                // company is what the floor acts on, the age is what escalates.
+                split
+                  ? `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days · ${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days ${decimal(nonMoving.ageingTonnes)} T`
+                  : `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days`
+              }
               value={decimal(nonMoving.tonnes)}
               unit="tonnes"
+              loading={board.warehouse.loading && nonMoving.items === 0}
+              // An empty answer from a failed SAP read is not an idle-free floor.
+              missing={idleUnread ? 'SAP unreachable — idle stock not read' : undefined}
               viz={
                 <>
-                  <OpsMeter
-                    segments={[
-                      {
-                        fill: 'light',
-                        pct:
-                          nonMoving.tonnes > 0
-                            ? (nonMoving.recentTonnes / nonMoving.tonnes) * 100
-                            : 0,
-                        label: `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}–${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS} days`,
-                        figure: `${decimal(nonMoving.recentTonnes)} T`,
-                      },
-                      {
-                        fill: 'main',
-                        pct:
-                          nonMoving.tonnes > 0
-                            ? (nonMoving.ageingTonnes / nonMoving.tonnes) * 100
-                            : 0,
-                        label: `${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days`,
-                        figure: `${decimal(nonMoving.ageingTonnes)} T`,
-                      },
-                    ]}
-                  />
-                  {nonMoving.unweighed > 0 && (
-                    <p className="ops-note">
-                      {whole(nonMoving.unweighed)} of {whole(nonMoving.items)} items have no case
-                      weight in SAP, so this is a floor.
+                  {split ? (
+                    <div className="ops-duo">
+                      {sides.map((side) => (
+                        <div key={side.companyCode}>
+                          <span className="k">{companyLabel(side.companyCode)}</span>
+                          <span className="v">
+                            {side.configured && !side.idleError
+                              ? `${decimal(side.nonMoving.tonnes)} T`
+                              : '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <OpsMeter
+                      segments={[
+                        {
+                          fill: 'light',
+                          pct:
+                            nonMoving.tonnes > 0
+                              ? (nonMoving.recentTonnes / nonMoving.tonnes) * 100
+                              : 0,
+                          label: `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}–${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS} days`,
+                          figure: `${decimal(nonMoving.recentTonnes)} T`,
+                        },
+                        {
+                          fill: 'main',
+                          pct:
+                            nonMoving.tonnes > 0
+                              ? (nonMoving.ageingTonnes / nonMoving.tonnes) * 100
+                              : 0,
+                          label: `${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days`,
+                          figure: `${decimal(nonMoving.ageingTonnes)} T`,
+                        },
+                      ]}
+                    />
+                  )}
+                  {board.warehouse.idleUnread.length > 0 ? (
+                    <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
+                      {board.warehouse.idleUnread.map(companyLabel).join(' and ')} could not be
+                      read — its idle stock is missing.
                     </p>
+                  ) : (
+                    nonMoving.unweighed > 0 && (
+                      <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
+                        {whole(nonMoving.unweighed)} of {whole(nonMoving.items)} items have no case
+                        weight in SAP, so this is a floor.
+                      </p>
+                    )
                   )}
                 </>
               }
@@ -411,6 +547,7 @@ export function LogisticsControlDashboardPage({
 
             <OpsGroup
               name="Pending dispatch"
+              now={past}
               onOpen={open('pending')}
               tag={{ label: `${whole(pending.invoices)} invoices`, tone: 'neut' }}
               value={decimal(pending.tonnes)}
@@ -443,21 +580,33 @@ export function LogisticsControlDashboardPage({
             {shows('allocated') && (
               <OpsGroup
                 name="Allocated stock"
+                now={past}
                 onOpen={open('allocated')}
                 tag={
                   allocated.movements > 0
                     ? { label: `${whole(allocated.movements)} consignments`, tone: 'neut' }
                     : { label: 'none today', tone: 'ok' }
                 }
+                // Pieces and litres, never weight: the Godown Movements register
+                // carries no per-item weight, so this tile cannot be stated in
+                // tonnes the way the rest of the band is. Split by company, the
+                // litres move up to the subtitle.
+                sub={split ? `${whole(allocated.litres)} litres` : undefined}
                 value={whole(allocated.pieces)}
                 unit="pieces"
                 viz={
                   allocated.error ? (
                     <p className="ops-note">Could not read the godown movement register.</p>
+                  ) : split ? (
+                    <div className="ops-duo">
+                      {allocated.sides.map((side) => (
+                        <div key={side.companyCode}>
+                          <span className="k">{companyLabel(side.companyCode)}</span>
+                          <span className="v">{whole(side.pieces)}</span>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    // Pieces and litres, never weight: the Godown Movements
-                    // register carries no per-item weight, so this tile cannot be
-                    // stated in tonnes the way the rest of the band is.
                     <div className="ops-duo">
                       <div>
                         <span className="k">Pieces</span>
@@ -489,6 +638,7 @@ export function LogisticsControlDashboardPage({
           >
             <OpsGroup
               name="Dispatched today"
+              now={past}
               onOpen={open('dispatched-today')}
               /* Yesterday, not a target: the day plan is already the bar
                  underneath, and a tile carrying the same comparison twice
@@ -555,7 +705,7 @@ export function LogisticsControlDashboardPage({
             />
 
             <OpsGroup
-              name="Month to date"
+              name={past ? 'Month total' : 'Month to date'}
               onOpen={open('dispatched-month')}
               tag={
                 targetPct === null
@@ -563,7 +713,7 @@ export function LogisticsControlDashboardPage({
                   : { label: `${decimal(targetPct, 0)}% of target`, tone: 'neut' }
               }
               sub={`${format(new Date(board.monthStart), 'd MMM')} – ${format(
-                new Date(board.today),
+                new Date(board.monthEnd),
                 'd MMM',
               )}${
                 mtd.averagePerActiveDay === null
@@ -575,6 +725,7 @@ export function LogisticsControlDashboardPage({
               viz={
                 bars.length > 0 ? (
                   <OpsBars
+                    lastIsToday={!past}
                     days={bars.map((day) => ({
                       label: format(new Date(day.date), 'dd'),
                       pct: peakTonnes > 0 ? (day.tonnes / peakTonnes) * 100 : 0,
@@ -584,13 +735,16 @@ export function LogisticsControlDashboardPage({
                     }))}
                   />
                 ) : (
-                  <p className="ops-note">No dispatching days yet this month.</p>
+                  <p className="ops-note">
+                    {past ? `No dispatching days in ${month.label}.` : 'No dispatching days yet this month.'}
+                  </p>
                 )
               }
             />
 
             <OpsGroup
               name="Planned against booked"
+              now={past}
               onOpen={open('planned')}
               tag={
                 pending.plannedBills === 0
@@ -696,6 +850,7 @@ export function LogisticsControlDashboardPage({
           >
             <OpsGroup
               name="Owned vehicles"
+              now={past}
               onOpen={open('fleet')}
               tag={
                 !fleet.configured && fleet.owned === null
@@ -770,6 +925,7 @@ export function LogisticsControlDashboardPage({
 
             <OpsGroup
               name="Transport account"
+              now={past}
               onOpen={open('freight-vendors')}
               /* The oldest unpaid freight invoice, which is the fact that
                  decides whether this tile needs acting on today. Amber past a
@@ -840,7 +996,7 @@ export function LogisticsControlDashboardPage({
                 costLitre === null
                   ? 'Freight and litres from the same bilties'
                   : `${format(new Date(costLitre.windowStart), 'd MMM')} – ${format(
-                      new Date(board.today),
+                      new Date(board.monthEnd),
                       'd MMM',
                     )} · ${whole(costLitre.coveredLitres)} L dispatched`
               }
@@ -880,6 +1036,7 @@ export function LogisticsControlDashboardPage({
 
             <OpsGroup
               name="Stock in transit"
+              now={past}
               onOpen={transit.absent === null ? open('transit') : undefined}
               tag={
                 transit.absent !== null

@@ -1,3 +1,4 @@
+import { useBoardPeriod } from '../../../hooks/boardPeriod.context';
 import { DrillSub, OpsDrill, useExpandedRow } from '../../../logistics-control/components';
 import type { OpenPoRow, PlantBoardPurchase, PurchaseWorstRow } from '../../types';
 import { decimal, money, shortDate, whole } from './format';
@@ -61,13 +62,15 @@ export function PurchasePlanDrill({
   purchase: PlantBoardPurchase | null;
   onClose: () => void;
 }) {
+  // "this month", or "in Sep" on a board stepped back to an ended month.
+  const { monthWord } = useBoardPeriod();
   const { openKey, toggle } = useExpandedRow();
   const isPlan = which === 'plan';
   const orders = purchase?.open_po_rows ?? [];
 
   return (
     <OpsDrill<PurchaseWorstRow>
-      title={isPlan ? 'Plan this month' : 'Against benchmark'}
+      title={isPlan ? `Plan ${monthWord}` : 'Against benchmark'}
       subtitle={
         isPlan
           ? 'The packing material the plan needs, and what is left to buy — open one for its orders'
@@ -333,6 +336,8 @@ export function OpenPosDrill({
   purchase: PlantBoardPurchase | null;
   onClose: () => void;
 }) {
+  // "this month", or "in Sep" on a board stepped back to an ended month.
+  const { monthWord } = useBoardPeriod();
   const { openKey, toggle } = useExpandedRow();
   const open = purchase?.open_po_rows ?? [];
   const families = purchase?.open_po_families ?? [];
@@ -365,7 +370,7 @@ export function OpenPosDrill({
         // receipt's own amount — what the company was billed — while the
         // open figure beside it is priced at the item master. Two kinds of
         // rupee, never added together.
-        { label: 'Received this month', value: money(purchase?.pm_received_value) },
+        { label: `Received ${monthWord}`, value: money(purchase?.pm_received_value) },
       ]}
       breakdown={[
         {

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useBoardPeriod } from '../../hooks/boardPeriod.context';
 import { ADMIN_COST_COLOURS } from '../constants';
 import type { AdminCostSlice } from '../types';
 import { money, num, pctRough, whole } from '../utils';
@@ -60,12 +61,14 @@ export interface AdminDonutProps {
  *  - Nil today on a line that is nil all month: nothing. Its share column
  *    already says "no rate" or "nil", and a second nil under it adds nothing.
  */
-function todayLabel(slice: AdminCostSlice): string | null {
+function todayLabel(slice: AdminCostSlice, dayWord = 'today'): string | null {
   const today = num(slice.today);
   if (today === null) return null;
-  if (today > 0) return `${money(today)}${todayCount(slice)} today`;
+  // `dayWord` is "today", or an ended month's last day — "30 Sep" — on a
+  // board stepped back to it, whose "today" figures are that day's.
+  if (today > 0) return `${money(today)}${todayCount(slice)} ${dayWord === 'today' ? 'today' : `on ${dayWord}`}`;
   if (slice.amount <= 0) return null;
-  return slice.today_detail ?? 'nothing today';
+  return slice.today_detail ?? (dayWord === 'today' ? 'nothing today' : `nothing on ${dayWord}`);
 }
 
 /**
@@ -105,6 +108,8 @@ function todayCount(slice: AdminCostSlice): string {
  * separates weakly are still told apart by the words beside them.
  */
 export function AdminDonut({ slices, total, period, foot, openHint }: AdminDonutProps) {
+  // The board's period words: "today", or an ended month's last day.
+  const boardPeriod = useBoardPeriod();
   /*
    * Which line the pointer is over — an arc or its legend row, either way.
    *
@@ -185,7 +190,7 @@ export function AdminDonut({ slices, total, period, foot, openHint }: AdminDonut
       <div className="adm-legend" data-hover={hovered ? '1' : undefined}>
         {slices.map((slice) => {
           const nil = slice.amount <= 0;
-          const today = todayLabel(slice);
+          const today = todayLabel(slice, boardPeriod.dayWord);
           // Whether `today` is a figure or the reason there isn't one, which
           // decides where the line's unit count goes.
           const spentToday = (num(slice.today) ?? 0) > 0;

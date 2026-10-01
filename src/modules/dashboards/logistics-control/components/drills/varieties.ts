@@ -92,6 +92,35 @@ export interface IdleVariety {
   unweighed: number;
 }
 
+/** The company a row was read from, where the band tagged it. */
+function companyOf(row: object): string {
+  return (row as { company_code?: string }).company_code ?? '';
+}
+
+/**
+ * Idle rows weighed against their own company's stock rows, then added.
+ *
+ * The same split the tile's sides make: an item code means one weight in Oil's
+ * item master and possibly another in Mart's, so a Mart row is never weighed
+ * by an Oil row. Untagged rows all fall in one group, as before.
+ */
+function weighPerCompany(
+  items: readonly NonMovingItem[],
+  stockRows: readonly WarehouseOccupancyItem[],
+): { tonnes: number; unweighed: number } {
+  let tonnes = 0;
+  let unweighed = 0;
+  for (const company of new Set(items.map(companyOf))) {
+    const weighed = weighItems(
+      items.filter((row) => companyOf(row) === company),
+      stockRows.filter((row) => companyOf(row) === company),
+    );
+    tonnes += weighed.tonnes;
+    unweighed += weighed.unweighed;
+  }
+  return { tonnes, unweighed };
+}
+
 /**
  * Idle stock rolled up by variety, heaviest first.
  *
@@ -107,7 +136,7 @@ export function idleVarieties(
 ): IdleVariety[] {
   return [...collect(rows, varietyOf).entries()]
     .map(([variety, group]) => {
-      const weighed = weighItems(group, stockRows);
+      const weighed = weighPerCompany(group, stockRows);
       return {
         variety,
         items: group.length,

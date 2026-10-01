@@ -56,17 +56,49 @@ export const LOGISTICS_CONTROL_VIEW_PERMISSIONS: readonly string[] = [
 // ============================================================================
 
 /**
- * The warehouse the board reports on.
+ * The company whose typed-in board figures the Oil board reads — owned fleet,
+ * section salaries, the labour rate.
  *
- * `BH-BT` (Bhakharpur New Basement) is the finished-goods floor dispatch runs
- * out of. It exists in exactly one company's chart of warehouses, hence the
- * pinned company below — read through any other schema the card comes back
- * empty rather than wrong, which is harder to notice on a wall.
+ * Pinned rather than following the viewer: a wall must show the same fleet to
+ * everybody in front of it. The warehouse band's per-company figures are the
+ * exception, and live with each side below.
  */
-export const LOGISTICS_CONTROL_WAREHOUSE = 'BH-BT';
+export const LOGISTICS_CONTROL_SETTINGS_COMPANY: string = COMPANY_CODES.JIVO_OIL;
 
-/** The company whose SAP schema holds `BH-BT`. */
-export const LOGISTICS_CONTROL_WAREHOUSE_COMPANY: string = COMPANY_CODES.JIVO_OIL;
+/** One company's half of the warehouse band. */
+export interface LogisticsWarehouseSide {
+  /**
+   * Whose warehouses, capacity and warehouse staffing this half reads.
+   *
+   * Which warehouses is not a constant: it is the list ticked for this company
+   * on the settings screen. A warehouse code alone means nothing — Oil and
+   * Mart each have a BH-GR, and read through the wrong schema a warehouse
+   * comes back empty rather than wrong, which is harder to notice on a wall.
+   */
+  companyCode: string;
+  /**
+   * Gate labour departments working this company's floors.
+   *
+   * The labour gate knows departments, not companies, so this is what puts a
+   * day's intake on one half or the other.
+   */
+  labourDepartments: readonly string[];
+}
+
+/**
+ * The warehouse band's two halves: Oil, then Mart.
+ *
+ * Oil's floor is the basement, BH-BT, so its labour is the gate's "Warehouse
+ * Basement". Mart's is the Gupta godown — GP-FGM holds nearly all of Mart's
+ * finished goods, and Oil keeps only a few tonnes in GP-FG beside it — so
+ * "Warehouse Gupta" is Mart's. "Warehouse Gupta ( Tin )" and "FG Godown" are
+ * left out by decision: both had a single day's entries in September 2026.
+ * "Warehouse Beverage" is another plant altogether and must not be folded in.
+ */
+export const LOGISTICS_CONTROL_WAREHOUSE_SIDES: readonly LogisticsWarehouseSide[] = [
+  { companyCode: COMPANY_CODES.JIVO_OIL, labourDepartments: ['Warehouse Basement'] },
+  { companyCode: COMPANY_CODES.JIVO_MART, labourDepartments: ['Warehouse Gupta'] },
+];
 
 /**
  * The companies whose dispatch is ADDED together on this board.
@@ -228,15 +260,14 @@ export const LOGISTICS_CONTROL_LOADING_COST_PER_LITRE = 0.8;
  * Names are matched case-insensitively against the labour department labels the
  * factory-expense board reports. Leave a list empty and that card's strip says
  * it is unassigned rather than showing a zero that looks like an answer.
+ *
+ * The warehouse card's departments are per company and live on its sides —
+ * see `LOGISTICS_CONTROL_WAREHOUSE_SIDES`.
  */
 export const LOGISTICS_CONTROL_SECTION_DEPARTMENTS: Record<
-  'warehouse' | 'dispatch' | 'transport',
+  'dispatch' | 'transport',
   readonly string[]
 > = {
-  // BH-BT is the basement floor, so its labour is the gate's "Warehouse
-  // Basement" department. Note the neighbouring names — "Warehouse Beverage"
-  // and "Warehouse Gupta" are different floors and must not be folded in.
-  warehouse: ['Warehouse Basement'],
   dispatch: [],
   transport: [],
 };
@@ -281,7 +312,8 @@ export const LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS: Record<
   'warehouse' | 'dispatch' | 'transport',
   readonly string[]
 > = {
-  // The FG basement — BH-BT, the floor this card is headed with. Note the
+  // Oil's FG basement, BH-BT. Mart's roll has no departments at all, so its
+  // half of the card always reads the settings screen. Note the
   // truncated code: the column is 30 characters and the generated name ran past
   // it, so it is `..._BASEMEN` and not `..._BASEMENT`.
   warehouse: ['WAREHOUSE_FG_WAREHOUSE_BASEMEN', 'FG_WAREHOUSE_BASEMENT'],

@@ -1,3 +1,4 @@
+import { useBoardPeriod } from '../../../hooks/boardPeriod.context';
 import { DrillSub, OpsDrill, useExpandedRow } from '../../../logistics-control/components';
 import type { DailyQty, PlantBoardProduction, WasteDay } from '../../types';
 import { decimal, money, NO_ROWS, shortDate, whole } from './format';
@@ -58,6 +59,8 @@ export function MonthlyPlanningDrill({
   production: PlantBoardProduction | null;
   onClose: () => void;
 }) {
+  // "this month", or "in Sep" on a board stepped back to an ended month.
+  const { monthWord } = useBoardPeriod();
   return (
     <OpsDrill<DailyQty>
       title="Monthly planning"
@@ -77,7 +80,7 @@ export function MonthlyPlanningDrill({
       ]}
       rows={production?.daily ?? []}
       rowKey={(row) => row.date}
-      empty="Nothing has been received from production this month."
+      empty={`Nothing has been received from production ${monthWord}.`}
       columns={[
         { label: 'Day', cell: (row) => shortDate(row.date) },
         { label: 'Pieces', cell: (row) => whole(row.qty), numeric: true },
@@ -233,6 +236,8 @@ export function WastageDrill({
   production: PlantBoardProduction | null;
   onClose: () => void;
 }) {
+  // "this month", or "in Sep" on a board stepped back to an ended month.
+  const { monthWord } = useBoardPeriod();
   const { openKey, toggle } = useExpandedRow();
   const waste = production?.wastage;
 
@@ -243,7 +248,7 @@ export function WastageDrill({
       domain="production"
       onClose={onClose}
       stats={[
-        { label: 'Packing this month', value: money(waste?.pm_logged_value) },
+        { label: `Packing ${monthWord}`, value: money(waste?.pm_logged_value) },
         { label: 'Raw material', value: money(waste?.rm_logged_value) },
         { label: 'Rows logged', value: whole(waste?.pm_log_count) },
         { label: 'Approved', value: whole(waste?.pm_approved_count) },

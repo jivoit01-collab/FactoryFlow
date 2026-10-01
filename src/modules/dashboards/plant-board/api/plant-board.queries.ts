@@ -9,7 +9,9 @@ import { plantBoardApi, plantBoardSpaceApi } from './plant-board.api';
 
 export const PLANT_BOARD_QUERY_KEYS = {
   all: ['plant-board'] as const,
-  board: (companyId?: number | string) => ['plant-board', 'board', companyId] as const,
+  /** `month` is an ended month, or null for the current one. */
+  board: (companyId?: number | string, month: string | null = null) =>
+    ['plant-board', 'board', companyId, month ?? 'current'] as const,
   workforce: (companyId?: number | string) =>
     ['plant-board', 'workforce', companyId] as const,
   space: (companyId?: number | string) => ['plant-board', 'space', companyId] as const,
@@ -32,12 +34,13 @@ export const PLANT_BOARD_QUERY_KEYS = {
  *    rendered — the header carries the staleness — because a board that blanks
  *    on one bad round trip is worse than one that says how old it is.
  */
-export function usePlantBoard(enabled = true) {
+export function usePlantBoard(enabled = true, month: string | null = null) {
   const { currentCompany } = useAuth();
+  const queryKey = PLANT_BOARD_QUERY_KEYS.board(currentCompany?.company_id, month);
 
   return useQuery({
-    queryKey: PLANT_BOARD_QUERY_KEYS.board(currentCompany?.company_id),
-    queryFn: () => plantBoardApi.getBoard(),
+    queryKey,
+    queryFn: () => plantBoardApi.getBoard(month),
     enabled,
     staleTime: PLANT_BOARD_REFRESH_MS,
     refetchInterval: (query) => {
@@ -45,7 +48,11 @@ export function usePlantBoard(enabled = true) {
       return seconds && seconds > 0 ? seconds * 1000 : PLANT_BOARD_REFRESH_MS;
     },
     refetchIntervalInBackground: true,
-    placeholderData: (previous) => previous,
+    // The last response stays up through a refresh, never across a change of
+    // month — one month's figures under another month's header is the one
+    // wrong answer the board must not give, even for the second a read takes.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[3] === queryKey[3] ? previous : undefined,
     retry: 1,
   });
 }

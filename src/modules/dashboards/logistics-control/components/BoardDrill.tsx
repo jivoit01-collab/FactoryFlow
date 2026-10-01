@@ -1,4 +1,5 @@
 import { LOGISTICS_CONTROL_OIL_SCOPE, type LogisticsControlScope } from '../constants';
+import { warehouseCaption } from '../utils';
 import {
   AllocatedDrill,
   type Board,
@@ -73,7 +74,8 @@ export function BoardDrill({
     case 'stock':
       return (
         <StockDrill
-          warehouse={scope.warehouse}
+          caption={warehouseCaption(board.warehouse.codes)}
+          sides={board.warehouse.sides}
           stockTonnage={board.warehouse.stockTonnage}
           stockRows={board.warehouse.stockRows}
           loading={board.warehouse.loading}
@@ -84,7 +86,8 @@ export function BoardDrill({
     case 'non-moving':
       return (
         <NonMovingDrill
-          warehouse={scope.warehouse}
+          caption={warehouseCaption(board.warehouse.codes)}
+          sides={board.warehouse.sides}
           nonMoving={board.warehouse.nonMoving}
           stockRows={board.warehouse.stockRows}
           loading={board.warehouse.loading}
@@ -105,7 +108,7 @@ export function BoardDrill({
     case 'allocated':
       return (
         <AllocatedDrill
-          warehouse={scope.warehouse}
+          warehouse={warehouseCaption(board.warehouse.codes)}
           allocated={board.warehouse.allocated}
           onClose={onClose}
         />

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { getErrorMessage } from '@/shared/utils';
 
 import { OpsDrill } from '../../logistics-control/components';
+import { useBoardPeriod } from '../../hooks/boardPeriod.context';
 import { useAdminDispatchBills } from '../api';
 import type { AdminDispatchBill, AdminDispatchBills, AdminDispatchCompany } from '../types';
 import { money, NO_VALUE, tons, whole } from '../utils';
@@ -73,15 +74,17 @@ export function AdminDispatchBillsDrill({
   onBack,
   onClose,
 }: AdminDispatchBillsDrillProps) {
+  // "today" and "this month", or an ended month's last day and its name.
+  const { monthWord } = useBoardPeriod();
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   const notes = bills
     ? [
         bills.earlier_bills.bills > 0 && {
           key: 'earlier',
-          label: 'Raised before this month',
+          label: monthWord === 'this month' ? 'Raised before this month' : 'Raised before the month',
           value: `${plural(bills.earlier_bills.bills, 'bill')} · ${tons(bills.earlier_bills.tons)} T`,
-          sub: `billed before ${shortDate(bills.from)}, out this month`,
+          sub: `billed before ${shortDate(bills.from)}, out ${monthWord}`,
         },
         bills.unweighed_bills > 0 && {
           key: 'unweighed',
@@ -127,7 +130,7 @@ export function AdminDispatchBillsDrill({
       loading={loading}
       rows={error ? [] : (bills?.rows ?? [])}
       rowKey={(bill: AdminDispatchBill) => bill.key}
-      empty={error ?? `No ${name} truck left the gate this month.`}
+      empty={error ?? `No ${name} truck left the gate ${monthWord}.`}
       onRowClick={(bill: AdminDispatchBill) =>
         setOpenKey((current) => (current === bill.key ? null : bill.key))
       }
@@ -235,7 +238,9 @@ export function AdminDispatchBillsPanel({
   onBack,
   onClose,
 }: Pick<AdminDispatchBillsDrillProps, 'company' | 'name' | 'period' | 'onBack' | 'onClose'>) {
-  const query = useAdminDispatchBills(company.company_code);
+  // The board's own month: the rows behind September's tile are September's bills.
+  const { pastMonth } = useBoardPeriod();
+  const query = useAdminDispatchBills(company.company_code, pastMonth);
 
   return (
     <AdminDispatchBillsDrill

@@ -11,9 +11,26 @@ export interface OpsTotal {
   missing?: boolean;
 }
 
+/** The month a monthly board is showing, and the two ways to move it. */
+export interface OpsMonthControl {
+  /** "September 2026". */
+  label: string;
+  /** The month today is in — drawn plainly; an ended one is marked. */
+  isCurrent: boolean;
+  canGoForward: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
 export interface OpsTopbarProps {
   title: string;
   scope: string;
+  /**
+   * The board's month, as a stepper at the head of the chips. Omitted on a
+   * board that is not monthly. Inside the carousel it is drawn without its
+   * arrows: a slide is always the current month.
+   */
+  month?: OpsMonthControl;
   chips: { label: string; value: string }[];
   totals: OpsTotal[];
   /** A background refresh is in flight — the pill goes amber and says so. */
@@ -74,6 +91,7 @@ function FullscreenIcon({ exit }: { exit: boolean }) {
 export function OpsTopbar({
   title,
   scope,
+  month,
   chips,
   totals,
   busy = false,
@@ -112,6 +130,37 @@ export function OpsTopbar({
           to run past its ceiling. The wall cannot hover, but the desks with the
           same URL open can, and they are where somebody acts on it. */}
       <div className="ops-chips">
+        {month && (
+          // Marked when it is not the current month, because every figure on
+          // the board below that is not tagged "now" belongs to it — and a
+          // wall that has quietly been left on last month looks exactly like
+          // a slow one.
+          <div
+            className="ops-chip ops-month"
+            data-past={month.isCurrent ? undefined : '1'}
+            title={month.isCurrent ? `${month.label}, month to date` : `${month.label} — not the current month`}
+          >
+            {!embedded && (
+              <button type="button" onClick={month.onPrevious} aria-label="Previous month">
+                ‹
+              </button>
+            )}
+            {/* No "Month"/"Showing" word in front: the arrows say it is a
+                month control, the amber says it is not this one, and the room
+                in this row belongs to the month's name. */}
+            <span>{month.label}</span>
+            {!embedded && (
+              <button
+                type="button"
+                onClick={month.onNext}
+                disabled={!month.canGoForward}
+                aria-label="Next month"
+              >
+                ›
+              </button>
+            )}
+          </div>
+        )}
         {chips.map((chip) => (
           <div key={chip.label} className="ops-chip" title={`${chip.label} ${chip.value}`}>
             <em>{chip.label}</em> {chip.value}

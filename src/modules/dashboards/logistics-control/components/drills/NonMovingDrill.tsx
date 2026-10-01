@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 
-import type { NonMovingItem } from '../../../non-moving/types';
 import {
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
 } from '../../constants';
+import { idleByWarehouse, type SideIdleRow } from '../../utils';
 import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
 import { useExpandedRow } from '../useExpandedRow';
 import type { Board } from './board';
-import { collect, decimal, money, shortDate, whole } from './format';
+import { collect, companyLabel, decimal, money, shortDate, whole } from './format';
 import { idleVarieties, varietyOf } from './varieties';
 
 /**
@@ -20,7 +20,15 @@ import { idleVarieties, varietyOf } from './varieties';
  * chain beside the one the variety above it was totalled with. The variety
  * states the tonnage; these state what is in it and how long it has stood.
  */
-function IdleItems({ variety, items }: { variety: string; items: NonMovingItem[] }) {
+function IdleItems({
+  variety,
+  items,
+  named,
+}: {
+  variety: string;
+  items: SideIdleRow[];
+  named: boolean;
+}) {
   const sorted = [...items].sort(
     (a, b) => (b.days_since_last_movement ?? 0) - (a.days_since_last_movement ?? 0),
   );
@@ -40,12 +48,21 @@ function IdleItems({ variety, items }: { variety: string; items: NonMovingItem[]
         </>
       }
       rows={sorted}
-      rowKey={(row) => `${row.item_code}|${row.warehouse}`}
+      // The same warehouse code can stand in both companies.
+      rowKey={(row) => `${row.company_code}|${row.item_code}|${row.warehouse}`}
       empty="Nothing under this variety has been idle this long."
       columns={[
         { label: 'Code', cell: (row) => row.item_code, width: '13%' },
         { label: 'Item', cell: (row) => row.item_name, width: '33%' },
-        { label: 'Warehouse', cell: (row) => row.warehouse || '—', dim: true, width: '11%' },
+        {
+          label: 'Warehouse',
+          cell: (row) =>
+            named
+              ? `${companyLabel(row.company_code)} ${row.warehouse || '—'}`
+              : row.warehouse || '—',
+          dim: true,
+          width: '11%',
+        },
         { label: 'Quantity', cell: (row) => whole(row.quantity ?? 0), numeric: true, width: '11%' },
         { label: 'Value', cell: (row) => money(row.value), numeric: true, width: '13%' },
         {
@@ -69,13 +86,16 @@ function IdleItems({ variety, items }: { variety: string; items: NonMovingItem[]
 
 /** What has not moved, by variety, and the SKUs under any one. */
 export function NonMovingDrill({
-  warehouse,
+  caption,
+  sides,
   nonMoving,
   stockRows,
   loading,
   onClose,
 }: {
-  warehouse: string;
+  /** The band's warehouses, as its rail names them. */
+  caption: string;
+  sides: Board['warehouse']['sides'];
   nonMoving: Board['warehouse']['nonMoving'];
   stockRows: Board['warehouse']['stockRows'];
   loading: boolean;
@@ -88,15 +108,33 @@ export function NonMovingDrill({
     [nonMoving.rows, stockRows],
   );
   const itemsByVariety = useMemo(() => collect(nonMoving.rows, varietyOf), [nonMoving.rows]);
+  const named = sides.length > 1;
+  const byWarehouse = useMemo(() => idleByWarehouse(sides), [sides]);
 
   return (
     <OpsDrill
       title="Non-moving stock"
-      subtitle={`${warehouse} · idle ${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days, by variety — open one for its items`}
+      subtitle={`${caption} · idle ${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days, by variety — open one for its items`}
       domain="warehouse"
       onClose={onClose}
+      breakdown={{
+        title: 'By warehouse',
+        empty: 'No warehouse is ticked for this board.',
+        items: byWarehouse.map((row) => ({
+          key: `${row.companyCode}|${row.warehouse}`,
+          label: named ? `${companyLabel(row.companyCode)} ${row.warehouse}` : row.warehouse,
+          value: `${decimal(row.tonnes)} T`,
+          sub: `${whole(row.items)} ${row.items === 1 ? 'item' : 'items'}`,
+        })),
+      }}
       stats={[
         { label: 'Tonnes', value: decimal(nonMoving.tonnes) },
+        ...(named
+          ? sides.map((side) => ({
+              label: companyLabel(side.companyCode),
+              value: `${decimal(side.nonMoving.tonnes)} T`,
+            }))
+          : []),
         { label: 'Varieties', value: whole(groups.length) },
         { label: 'Items', value: whole(nonMoving.items) },
         {
@@ -111,7 +149,11 @@ export function NonMovingDrill({
       onRowClick={(row) => toggle(row.variety)}
       expandedKey={openKey}
       renderExpanded={(row) => (
-        <IdleItems variety={row.variety} items={itemsByVariety.get(row.variety) ?? []} />
+        <IdleItems
+          variety={row.variety}
+          items={itemsByVariety.get(row.variety) ?? []}
+          named={named}
+        />
       )}
       columns={[
         { label: 'Variety', cell: (row) => row.variety },

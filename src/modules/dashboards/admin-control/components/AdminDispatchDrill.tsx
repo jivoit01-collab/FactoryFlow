@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useBoardPeriod } from '../../hooks/boardPeriod.context';
 import { OpsDrill } from '../../logistics-control/components';
 import type { AdminDispatch, AdminDispatchCompany } from '../types';
 import { NO_VALUE, num, pctRough, tons, whole } from '../utils';
@@ -40,6 +41,8 @@ export interface AdminDispatchDrillProps {
  * table rather than a column in it, because it does not divide by company.
  */
 export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchDrillProps) {
+  // "today" and "this month", or an ended month's last day and its name.
+  const { DayWord, monthWord } = useBoardPeriod();
   // By code, and looked up in the current payload: the board re-reads every
   // minute, and a row held from the click would go stale under the reader.
   const [openCode, setOpenCode] = useState<string | null>(null);
@@ -72,10 +75,10 @@ export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchD
       stats={[
         { label: 'This month', value: `${tons(total)} T` },
         {
-          label: 'Today',
+          label: DayWord,
           // Nothing out yet and nothing readable are different answers, and
           // only the first of them is a fact about the gate.
-          value: dispatch.today_tons > 0 ? `${tons(dispatch.today_tons)} T` : 'nothing out yet',
+          value: dispatch.today_tons > 0 ? `${tons(dispatch.today_tons)} T` : DayWord === 'Today' ? 'nothing out yet' : 'nothing out',
         },
         {
           label: 'Left the gate',
@@ -93,7 +96,7 @@ export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchD
       ]}
       breakdown={{
         title: 'Shipped against billed',
-        empty: 'SAP could not be read, so what was billed this month is unknown.',
+        empty: `SAP could not be read, so what was billed ${monthWord} is unknown.`,
         items:
           invoiced === null
             ? []
@@ -106,7 +109,7 @@ export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchD
                 },
                 {
                   key: 'billed',
-                  label: 'Billed this month',
+                  label: `Billed ${monthWord}`,
                   value: `${tons(invoiced)} T`,
                   sub: 'SAP invoices, intercompany excluded',
                 },
@@ -118,13 +121,18 @@ export function AdminDispatchDrill({ dispatch, period, onClose }: AdminDispatchD
                   // which is normal and must not read as a shortfall.
                   label: invoiced > total ? 'Billed but still here' : 'Shipped on earlier bills',
                   value: `${tons(Math.abs(invoiced - total))} T`,
-                  sub: invoiced > total ? 'raised this month, not yet out' : 'billed before this month',
+                  sub:
+                    invoiced > total
+                      ? `raised ${monthWord}, not yet out`
+                      : monthWord === 'this month'
+                        ? 'billed before this month'
+                        : 'billed before the month',
                 },
               ],
       }}
       rows={dispatch.companies}
       rowKey={(company: AdminDispatchCompany) => company.company_code}
-      empty="No truck left the gate this month."
+      empty={`No truck left the gate ${monthWord}.`}
       // A company opens onto its bills, one row per bill per truck. One that
       // shipped nothing has no list to open.
       onRowClick={(company: AdminDispatchCompany) => setOpenCode(company.company_code)}

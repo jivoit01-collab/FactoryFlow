@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useBoardPeriod } from '../../../hooks/boardPeriod.context';
 import { DrillSub, OpsDrill, useExpandedRow } from '../../../logistics-control/components';
 import type { NonMovingItem, PlantBoardStore } from '../../types';
 import { money, NO_ROWS, shortDate, whole } from './format';
@@ -343,10 +344,12 @@ export function BlowingDrill({
   store: PlantBoardStore | null;
   onClose: () => void;
 }) {
+  // "this month", or "in Sep" on a board stepped back to an ended month.
+  const { monthWord } = useBoardPeriod();
   const blowing = store?.blowing;
   return (
     <OpsDrill<{ date: string; bottles: number }>
-      title="Blowing this month"
+      title={`Blowing ${monthWord}`}
       subtitle={blowing?.basis}
       domain="store"
       onClose={onClose}

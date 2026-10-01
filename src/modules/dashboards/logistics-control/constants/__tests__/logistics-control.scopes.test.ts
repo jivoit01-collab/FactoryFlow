@@ -4,8 +4,7 @@ import { COMPANY_CODES } from '@/config/constants';
 
 import {
   LOGISTICS_CONTROL_DISPATCH_COMPANIES,
-  LOGISTICS_CONTROL_WAREHOUSE,
-  LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
+  LOGISTICS_CONTROL_SETTINGS_COMPANY,
 } from '../logistics-control.constants';
 import {
   LOGISTICS_CONTROL_BEVERAGES_SCOPE,
@@ -15,21 +14,28 @@ import {
 } from '../logistics-control.scopes';
 
 describe('logistics control scopes', () => {
-  describe('the Oil scope is the board as it was', () => {
-    /*
-     * The whole point of the split is that the existing wall does not change.
-     * These pin the Oil scope to the constants the board was hard-wired to
-     * before it took a scope at all — so a future edit to the Beverages side
-     * cannot quietly move BH-BT's board with it.
-     */
-    it('keeps the warehouse, its company and the companies it adds', () => {
-      expect(LOGISTICS_CONTROL_OIL_SCOPE.warehouse).toBe(LOGISTICS_CONTROL_WAREHOUSE);
-      expect(LOGISTICS_CONTROL_OIL_SCOPE.warehouseCompany).toBe(
-        LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
-      );
+  describe('the Oil scope', () => {
+    it('reads the warehouse band as Oil then Mart, each through its own company', () => {
+      // The order is the order they print in, Oil | Mart, and each half's
+      // warehouses are the ones ticked for THAT company — Oil and Mart each
+      // have a BH-GR.
+      expect(LOGISTICS_CONTROL_OIL_SCOPE.warehouseSides.map((side) => side.companyCode)).toEqual([
+        COMPANY_CODES.JIVO_OIL,
+        COMPANY_CODES.JIVO_MART,
+      ]);
       expect(LOGISTICS_CONTROL_OIL_SCOPE.dispatchCompanies).toEqual(
         LOGISTICS_CONTROL_DISPATCH_COMPANIES,
       );
+    });
+
+    it("puts the basement's labour on Oil and the Gupta godown's on Mart", () => {
+      const [oil, mart] = LOGISTICS_CONTROL_OIL_SCOPE.warehouseSides;
+      expect(oil.labourDepartments).toEqual(['Warehouse Basement']);
+      expect(mart.labourDepartments).toEqual(['Warehouse Gupta']);
+      // Beverages' floor is another plant.
+      for (const side of LOGISTICS_CONTROL_OIL_SCOPE.warehouseSides) {
+        expect(side.labourDepartments).not.toContain('Warehouse Beverage');
+      }
     });
 
     it('has every tile sourced, and hides none of them', () => {
@@ -40,17 +46,20 @@ describe('logistics control scopes', () => {
     it('reads its typed-in figures as the warehouse company, not the viewer', () => {
       // The bug this replaced: an empty JIVO_MART settings row, created the
       // first time somebody signed into Mart opened an Oil warehouse's board.
-      expect(LOGISTICS_CONTROL_OIL_SCOPE.settingsCompany).toBe(LOGISTICS_CONTROL_WAREHOUSE_COMPANY);
+      expect(LOGISTICS_CONTROL_OIL_SCOPE.settingsCompany).toBe(LOGISTICS_CONTROL_SETTINGS_COMPANY);
+      expect(LOGISTICS_CONTROL_SETTINGS_COMPANY).toBe(COMPANY_CODES.JIVO_OIL);
     });
   });
 
   describe('the Beverages scope', () => {
-    it('reads BH-FG through the Beverages schema', () => {
-      // Both halves matter. Beverages has its own BH-PF and its own BH-WST, so
-      // a warehouse code read through the wrong company answers empty rather
-      // than erroring — which on a wall is far harder to notice.
-      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouse).toBe('BH-FG');
-      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouseCompany).toBe(COMPANY_CODES.JIVO_BEVERAGES);
+    it('reads one warehouse side, through the Beverages schema', () => {
+      // Beverages has its own BH-PF and its own BH-WST, so a warehouse code
+      // read through the wrong company answers empty rather than erroring —
+      // which on a wall is far harder to notice. Which of its warehouses is
+      // the ticked list; BH-FG was ticked when the list shipped.
+      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouseSides.map((side) => side.companyCode)).toEqual(
+        [COMPANY_CODES.JIVO_BEVERAGES],
+      );
     });
 
     it('adds one company and no others', () => {
@@ -62,12 +71,10 @@ describe('logistics control scopes', () => {
     });
 
     it('counts its own floor labour, not the basement or Gupta', () => {
-      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.sectionDepartments.warehouse).toEqual([
-        'Warehouse Beverage',
-      ]);
-      expect(LOGISTICS_CONTROL_BEVERAGES_SCOPE.sectionDepartments.warehouse).not.toContain(
-        'Warehouse Basement',
-      );
+      const [side] = LOGISTICS_CONTROL_BEVERAGES_SCOPE.warehouseSides;
+      expect(side.labourDepartments).toEqual(['Warehouse Beverage']);
+      expect(side.labourDepartments).not.toContain('Warehouse Basement');
+      expect(side.labourDepartments).not.toContain('Warehouse Gupta');
     });
 
     it('drops the two tiles that ask an Oil question, rather than zeroing them', () => {

@@ -97,7 +97,18 @@ function Field({
  * Oil's salaries — and the two screens look identical, so nobody would notice
  * until the wrong figures appeared on the wrong wall.
  */
-export function BoardFigures({ companyCode }: { companyCode?: string }) {
+export function BoardFigures({
+  companyCode,
+  warehouseLabel = 'Warehouse',
+}: {
+  companyCode?: string;
+  /**
+   * What the warehouse section is called here. "OIL warehouse" where the board
+   * has a second company, whose warehouse staff are typed on a card of their
+   * own — otherwise "Warehouse" reads as covering both.
+   */
+  warehouseLabel?: string;
+}) {
   const settings = useBoardSettings(true, companyCode);
   const save = useSaveBoardSettings(companyCode);
 
@@ -267,7 +278,11 @@ export function BoardFigures({ companyCode }: { companyCode?: string }) {
           Employees by section
         </p>
 
-        {SECTIONS.map((section) => {
+        {SECTIONS.map(({ key, label: sectionLabel }) => {
+          const section = {
+            key,
+            label: key === 'warehouse' ? warehouseLabel : sectionLabel,
+          };
           const countKey = `${section.key}_employees` as keyof Draft;
           const salaryKey = `${section.key}_salary_monthly` as keyof Draft;
           const daily = settings.data?.[`${section.key}_salary_daily` as const];

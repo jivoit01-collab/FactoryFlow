@@ -18,7 +18,7 @@ import {
   PmStockDialog,
   type PmStockView,
 } from '../components';
-import { DEFAULT_TOP_N, monthRange, shiftMonth } from '../constants';
+import { DEFAULT_TOP_N, monthRange } from '../constants';
 import type { PackingMaterialSource } from '../types';
 
 function isSAPError(error: unknown): error is ApiError {
@@ -43,7 +43,14 @@ export default function PackingMaterialDashboardPage() {
   // Fixed at mount rather than recomputed on render, so a board left open
   // overnight does not silently change month underneath the person reading it.
   const [today] = useState(() => new Date());
-  const currentMonth = useMemo(() => shiftMonth(today, 0), [today]);
+  // The month as the reader's own calendar has it. The period helpers work in
+  // UTC, so the anchor is built from LOCAL parts: `shiftMonth(today, 0)` read
+  // UTC ones, and from midnight to 05:30 IST on the 1st that was still last
+  // month — with "next" refused, the new month could not be reached at all.
+  const currentMonth = useMemo(
+    () => new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1)),
+    [today],
+  );
 
   const [month, setMonth] = useState(currentMonth);
   const [top, setTop] = useState(DEFAULT_TOP_N);

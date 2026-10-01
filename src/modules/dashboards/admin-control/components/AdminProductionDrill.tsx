@@ -1,3 +1,4 @@
+import { useBoardPeriod } from '../../hooks/boardPeriod.context';
 import { OpsDrill } from '../../logistics-control/components';
 import type { AdminProduction, AdminTrendDay } from '../types';
 import { NO_VALUE, num, pctRough, tons } from '../utils';
@@ -50,6 +51,8 @@ export interface AdminProductionDrillProps {
  * adding the column up.
  */
 export function AdminProductionDrill({ production, period, onClose }: AdminProductionDrillProps) {
+  // "today" and "this month", or an ended month's last day and its name.
+  const { DayWord, dayWord, monthWord } = useBoardPeriod();
   const average = num(production.avg_tons_per_producing_day);
   const days = production.trend.length;
 
@@ -67,7 +70,7 @@ export function AdminProductionDrill({ production, period, onClose }: AdminProdu
       onClose={onClose}
       stats={[
         { label: 'This month', value: `${tons(production.mtd_tons)} T` },
-        { label: 'Today', value: `${tons(production.today_tons)} T` },
+        { label: DayWord, value: `${tons(production.today_tons)} T` },
         {
           label: 'An average producing day',
           // The denominator travels with the average. "97.8 T" over four days
@@ -93,7 +96,7 @@ export function AdminProductionDrill({ production, period, onClose }: AdminProdu
         // dashes look like a failed read, and this is a plan nobody filed.
         empty: production.plan_name
           ? 'The plan is filed but carries no tonnage.'
-          : 'No plan is filed for this month, so there is nothing to measure against.',
+          : `No plan is filed ${monthWord === 'this month' ? 'for this month' : monthWord}, so there is nothing to measure against.`,
         items:
           production.plan_tons == null
             ? []
@@ -104,7 +107,7 @@ export function AdminProductionDrill({ production, period, onClose }: AdminProdu
                   value: `${tons(production.plan_tons)} T`,
                   sub:
                     production.plan_to_date_tons != null
-                      ? `${tons(production.plan_to_date_tons)} T pro-rated to today`
+                      ? `${tons(production.plan_to_date_tons)} T pro-rated to ${dayWord}`
                       : undefined,
                 },
                 {

@@ -5,7 +5,19 @@ import '../styles/tank-farm.css';
 import { useRef, useState } from 'react';
 
 import { useFullscreen } from '../../dispatch/hooks';
-import { OpsGroup, OpsMeter, OpsPair, OpsTopbar } from '../../logistics-control/components';
+import {
+  BoardPeriodContext,
+  boardPeriodFor,
+  useBoardPeriod,
+} from '../../hooks/boardPeriod.context';
+import { useBoardMonth } from '../../hooks/useBoardMonth';
+import {
+  OpsGroup,
+  OpsMeter,
+  OpsPair,
+  OpsTopbar,
+  useBoardEmbed,
+} from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useAdminBoard } from '../api';
 import {
@@ -63,7 +75,26 @@ import {
  */
 export default function AdminControlDashboardPage() {
   const shellRef = useRef<HTMLDivElement>(null);
-  const { data, error, isFetching, dataUpdatedAt } = useAdminBoard();
+  /**
+   * This month, or an ended one somebody stepped back to — read as of that
+   * month's last day, so its "today" figures are that day's. A carousel slide
+   * is pinned to the current month: see BoardEmbed.
+   */
+  const embedded = useBoardEmbed();
+  const month = useBoardMonth({ locked: embedded });
+  const past = !month.isCurrent;
+  const boardPeriod = boardPeriodFor(month);
+  const monthControl = {
+    label: month.label,
+    isCurrent: month.isCurrent,
+    canGoForward: month.canGoForward,
+    onPrevious: month.previous,
+    onNext: month.next,
+  };
+  const { data, error, isFetching, dataUpdatedAt } = useAdminBoard(
+    true,
+    past ? month.month : null,
+  );
 
   const { isFullscreen, toggle } = useFullscreen(shellRef);
 
@@ -95,6 +126,7 @@ export default function AdminControlDashboardPage() {
           <OpsTopbar
             title="Admin Control"
             scope="Feed unavailable"
+            month={monthControl}
             chips={[{ label: 'Feed', value: 'not answering' }]}
             totals={[]}
             busy
@@ -146,22 +178,26 @@ export default function AdminControlDashboardPage() {
   );
 
   return (
+    <BoardPeriodContext.Provider value={boardPeriod}>
     <div ref={shellRef} className="admin-board ops-board">
       <div className="ops-board__inner">
         <OpsTopbar
           title="Admin Control"
           scope={`${meta?.company_code?.replace('JIVO_', 'Jivo ') ?? 'Jivo Oil'} · Bhakharpur plant`}
+          month={monthControl}
           chips={[
             {
               label: 'Window',
               value: meta ? `${meta.period.from} to ${meta.period.to}` : '—',
             },
-            {
-              label: 'Month',
-              value: meta
-                ? `day ${meta.period.day_of_month} of ${meta.period.days_in_month}`
-                : '—',
-            },
+            past
+              ? { label: 'Days', value: meta ? `all ${meta.period.days_in_month}` : '—' }
+              : {
+                  label: 'Month',
+                  value: meta
+                    ? `day ${meta.period.day_of_month} of ${meta.period.days_in_month}`
+                    : '—',
+                },
           ]}
           totals={[
             {
@@ -183,7 +219,9 @@ export default function AdminControlDashboardPage() {
               missing: !dispatch,
             },
             {
-              caption: 'Open alerts',
+              // On an ended month these are the alerts as they stood on its
+              // last day — what was wrong then, not what is open now.
+              caption: past ? 'Alerts at month end' : 'Open alerts',
               value: String(data?.alerts?.length ?? 0),
               sub: criticals ? `${criticals} need a decision` : 'none critical',
               missing: loading,
@@ -196,7 +234,7 @@ export default function AdminControlDashboardPage() {
 
         <main className="ops-stack">
           {/* ═════ OUTPUT ═════ */}
-          <AdminBand domain="output" title="Output" scope="month to date">
+          <AdminBand domain="output" title="Output" scope={past ? month.label : 'month to date'}>
             <ProductionTile
               production={production}
               elapsedPct={meta?.period.elapsed_pct}
@@ -217,9 +255,9 @@ export default function AdminControlDashboardPage() {
             scope="on hand now"
             columns="minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr)"
           >
-            <FgTile fg={fg} loading={loading} onOpen={() => setOpenTile('fg')} />
-            <PmTile pm={pm} loading={loading} onOpen={() => setOpenTile('pm')} />
-            <OilTile oil={oil} loading={loading} onOpen={() => setOpenTile('oil')} />
+            <FgTile fg={fg} loading={loading} now={past} onOpen={() => setOpenTile('fg')} />
+            <PmTile pm={pm} loading={loading} now={past} onOpen={() => setOpenTile('pm')} />
+            <OilTile oil={oil} loading={loading} now={past} onOpen={() => setOpenTile('oil')} />
           </AdminBand>
 
           {/* ═════ COST & ACTION ═════ */}
@@ -275,7 +313,7 @@ export default function AdminControlDashboardPage() {
                     // entirely on this.
                     foot={
                       cost.avg_per_day != null
-                        ? `${money(cost.avg_per_day)} a day on average this month`
+                        ? `${money(cost.avg_per_day)} a day on average ${boardPeriod.monthWord}`
                         : undefined
                     }
                     // Counted, not asserted. "Open the detail" is worth a click
@@ -326,6 +364,7 @@ export default function AdminControlDashboardPage() {
         )}
       </div>
     </div>
+    </BoardPeriodContext.Provider>
   );
 }
 
@@ -352,6 +391,7 @@ function ProductionTile({
   loading: boolean;
   onOpen: () => void;
 }) {
+  const { DayWord } = useBoardPeriod();
   const planPct = num(production?.plan_pct);
   const elapsed = num(elapsedPct);
 
@@ -394,7 +434,7 @@ function ProductionTile({
       corner={
         production && (
           <AdminCorner
-            label="Today"
+            label={DayWord}
             value={tons(production.today_tons)}
             unit="T"
             note={avg != null ? `against a ${tons(avg)} T average` : undefined}
@@ -461,6 +501,7 @@ function DispatchTile({
   loading: boolean;
   onOpen: () => void;
 }) {
+  const { DayWord, monthWord } = useBoardPeriod();
   const total = dispatch?.mtd_tons ?? 0;
   const oilCo = dispatch?.companies.find((company) => company.company_code === 'JIVO_OIL');
   const martCo = dispatch?.companies.find((company) => company.company_code === 'JIVO_MART');
@@ -503,10 +544,10 @@ function DispatchTile({
       corner={
         dispatch && (
           <AdminCorner
-            label="Today"
+            label={DayWord}
             value={tons(dispatch.today_tons)}
             unit="T"
-            note={dispatch.today_tons > 0 ? undefined : 'nothing out yet'}
+            note={dispatch.today_tons > 0 ? undefined : DayWord === 'Today' ? 'nothing out yet' : 'nothing out'}
           />
         )
       }
@@ -535,8 +576,8 @@ function DispatchTile({
                 plain comparison rather than as a shortfall. */}
             <p className="ops-note">
               {invoiced === null
-                ? 'Billed this month could not be read from SAP.'
-                : `${tons(invoiced)} T billed this month · ${
+                ? `Billed ${monthWord} could not be read from SAP.`
+                : `${tons(invoiced)} T billed ${monthWord} · ${
                     invoiced > total
                       ? `${tons(invoiced - total)} T of it still to ship`
                       : `${tons(total - invoiced)} T of what shipped was billed earlier`
@@ -561,10 +602,13 @@ function DispatchTile({
 function FgTile({
   fg,
   loading,
+  now = false,
   onOpen,
 }: {
   fg: AdminFgStorage | null;
   loading: boolean;
+  /** The board is on an ended month; this figure is live. */
+  now?: boolean;
   onOpen: () => void;
 }) {
   // The fullest rated store decides the tile's condition. A combined percentage
@@ -582,6 +626,7 @@ function FgTile({
 
   return (
     <OpsGroup
+      now={now}
       className="adm-has-corner"
       onOpen={fg && stores > 0 ? onOpen : undefined}
       name="Total FG storage"
@@ -665,10 +710,13 @@ function FgTile({
 function PmTile({
   pm,
   loading,
+  now = false,
   onOpen,
 }: {
   pm: AdminPmStorage | null;
   loading: boolean;
+  /** The board is on an ended month; this figure is live. */
+  now?: boolean;
   onOpen: () => void;
 }) {
   const headline = moneyParts(pm?.total_value);
@@ -677,6 +725,7 @@ function PmTile({
 
   return (
     <OpsGroup
+      now={now}
       className="adm-has-corner"
       onOpen={pm && stores > 0 ? onOpen : undefined}
       name="Total PM storage"
@@ -740,10 +789,13 @@ function PmTile({
 function OilTile({
   oil,
   loading,
+  now = false,
   onOpen,
 }: {
   oil: AdminOilStorage | null;
   loading: boolean;
+  /** The board is on an ended month; this figure is live. */
+  now?: boolean;
   onOpen: () => void;
 }) {
   const top = (oil?.rows ?? []).slice(0, 3);
@@ -769,6 +821,7 @@ function OilTile({
 
   return (
     <OpsGroup
+      now={now}
       className="adm-has-corner"
       // OpsGroup already turns a tile with `onOpen` into a keyboard-reachable
       // button and styles it as drillable — no new affordance needed here.

@@ -112,7 +112,7 @@ export function MonthDrill({
   return (
     <OpsDrill
       title="Month to date"
-      subtitle={`${shortDate(board.monthStart)} – ${shortDate(board.today)} · day by day — open one for its customers`}
+      subtitle={`${shortDate(board.monthStart)} – ${shortDate(board.monthEnd)} · day by day — open one for its customers`}
       domain="dispatch"
       onClose={onClose}
       stats={[

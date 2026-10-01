@@ -3,6 +3,7 @@ import '../styles/expense-board.css';
 import { useMemo, useRef, useState } from 'react';
 
 import { useFullscreen } from '../../dispatch/hooks';
+import { useBoardMonth } from '../../hooks/useBoardMonth';
 // The file directly, not the module's barrel: that barrel also exports
 // `useLogisticsControlBoard`, which drags a whole second board's API layer into
 // this chunk for the sake of one twenty-line hook.
@@ -60,13 +61,35 @@ function orderRows(rows: ExpenseRow[]): ExpenseRow[] {
  * every length is a `calc()` against a board-local unit rather than a `rem`.
  */
 export function CompanyExpenseDashboardPage() {
-  const [span, setSpan] = useState<ExpenseSpanKey>(DEFAULT_SPAN);
+  /**
+   * The month the month span covers: this one, or an ended one stepped back to
+   * (kept in the URL as `?month=`, and dropped after thirty idle minutes so a
+   * wall does not sit on last month — see useBoardMonth).
+   */
+  const month = useBoardMonth();
+  // A link to an ended month opens on the month span, which is the only span
+  // that can show it.
+  const [span, setSpanState] = useState<ExpenseSpanKey>(
+    month.isCurrent ? DEFAULT_SPAN : 'month',
+  );
+  // Choosing Today or 7 days leaves the month behind: both end today, and a
+  // stale month in the URL would come back the next time "month" is picked.
+  const setSpan = (next: ExpenseSpanKey) => {
+    if (next !== 'month') month.resetToCurrent();
+    setSpanState(next);
+  };
 
-  // Recomputed only when the span changes, not on every render: `rangeFor`
-  // reads the clock, and a fresh `to` date on each render would be a new query
-  // key and an endless refetch the moment the board is left running past
-  // midnight.
-  const range = useMemo(() => rangeFor(span), [span]);
+  // Recomputed only when the span or the day changes, not on every render:
+  // `rangeFor` reads the clock, and a fresh `to` date on each render would be a
+  // new query key and an endless refetch. The month span comes from the month
+  // hook, whose clock rolls at midnight.
+  const range = useMemo(
+    () =>
+      span === 'month'
+        ? { from: month.from, to: month.to }
+        : rangeFor(span, new Date(`${month.today}T00:00:00`)),
+    [span, month.from, month.to, month.today],
+  );
 
   const { data, isLoading, isError, error, isFetching, refetch } = useExpenseMatrix(
     range.from,
@@ -97,6 +120,13 @@ export function CompanyExpenseDashboardPage() {
           scope={scope}
           span={span}
           onSpanChange={setSpan}
+          month={{
+            label: month.label,
+            isCurrent: month.isCurrent,
+            canGoForward: month.canGoForward,
+            onPrevious: month.previous,
+            onNext: month.next,
+          }}
           grandTotal={data ? money(grandTotal) : ''}
           grandSub={data ? `${money(perDay)} a day` : 'fetching'}
           busy={isFetching}

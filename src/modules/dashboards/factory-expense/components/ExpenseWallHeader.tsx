@@ -29,6 +29,17 @@ export interface ExpenseWallHeaderProps {
   onApplyPreset: (preset: 'today' | 'week' | 'month') => void;
   /** Which preset the current range happens to match, if any. */
   activePreset: 'today' | 'week' | 'month' | null;
+  /**
+   * The whole month the range is, while the Month preset is lit: its button
+   * names the month and steps it with an arrow either side — back as far as
+   * anyone wants, forward no further than this month.
+   */
+  month?: {
+    label: string;
+    isCurrent: boolean;
+    onPrevious: () => void;
+    onNext: () => void;
+  };
   companyCode: string;
   companyCount: number;
   scope: ExpenseScope;
@@ -71,6 +82,7 @@ export function ExpenseWallHeader({
   onChangeTo,
   onApplyPreset,
   activePreset,
+  month,
   companyCode,
   companyCount,
   scope,
@@ -250,21 +262,50 @@ export function ExpenseWallHeader({
               ['week', '7D'],
               ['month', 'Month'],
             ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onApplyPreset(key)}
-              className={cn(
-                'rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
-                activePreset === key
-                  ? 'bg-black/[0.06] dark:bg-white/[0.1] text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
+          ).map(([key, label]) => {
+            const stepping = key === 'month' && month;
+            const arrow =
+              'rounded-md px-1.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30 disabled:cursor-default disabled:opacity-30';
+            return (
+              <span key={key} className="flex items-center">
+                {stepping && (
+                  <button
+                    type="button"
+                    onClick={month.onPrevious}
+                    aria-label="Previous month"
+                    className={arrow}
+                  >
+                    ‹
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onApplyPreset(key)}
+                  className={cn(
+                    'rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/30',
+                    activePreset === key
+                      ? 'bg-black/[0.06] dark:bg-white/[0.1] text-foreground'
+                      : 'text-muted-foreground hover:text-foreground',
+                    // An ended month, marked so it is not read as this one.
+                    stepping && !month.isCurrent && 'text-amber-700 dark:text-amber-400',
+                  )}
+                >
+                  {stepping ? month.label : label}
+                </button>
+                {stepping && (
+                  <button
+                    type="button"
+                    onClick={month.onNext}
+                    disabled={month.isCurrent}
+                    aria-label="Next month"
+                    className={arrow}
+                  >
+                    ›
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
 
         {!(isToday && isSingleDay) && (

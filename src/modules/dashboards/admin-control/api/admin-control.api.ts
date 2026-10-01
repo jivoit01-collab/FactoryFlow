@@ -12,13 +12,16 @@ export const adminBoardApi = {
    * would be six round trips a minute against HANA for a screen that is mostly
    * looked at rather than interacted with.
    *
-   * Scope is the calendar month to date, computed server-side. There is no date
-   * picker on purpose: every figure here is "this month so far" and a board
-   * whose window can be changed invites two people quoting different months at
-   * each other.
+   * Scope is the calendar month to date, computed server-side. Still no free
+   * date picker, on purpose — a board whose window can be any range invites two
+   * people quoting different ranges at each other. What it does take is a whole
+   * ended month (`YYYY-MM`), read as of that month's last day; omitted, it is
+   * this month so far.
    */
-  async getBoard(): Promise<AdminBoardResponse> {
-    const response = await apiClient.get<AdminBoardResponse>(API_ENDPOINTS.ADMIN_BOARD.BOARD);
+  async getBoard(month?: string | null): Promise<AdminBoardResponse> {
+    const response = await apiClient.get<AdminBoardResponse>(API_ENDPOINTS.ADMIN_BOARD.BOARD, {
+      params: month ? { month } : undefined,
+    });
     return response.data;
   },
 
@@ -29,10 +32,10 @@ export const adminBoardApi = {
    * carrying them on a board that re-reads every minute would be paying for a
    * list almost nobody opens.
    */
-  async getDispatchBills(companyCode: string): Promise<AdminDispatchBills> {
+  async getDispatchBills(companyCode: string, month?: string | null): Promise<AdminDispatchBills> {
     const response = await apiClient.get<AdminDispatchBills>(
       API_ENDPOINTS.ADMIN_BOARD.DISPATCH_BILLS,
-      { params: { company: companyCode } },
+      { params: { company: companyCode, ...(month ? { month } : {}) } },
     );
     return response.data;
   },

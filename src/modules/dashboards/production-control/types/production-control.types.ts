@@ -26,6 +26,9 @@ export interface WarehouseOccupancyItem {
    * volume, and dividing it by a pack factor means nothing.
    */
   gross_weight_per_case: number | null;
+  /** The warehouse the row stands in. A read can name several. */
+  warehouse?: string;
+  warehouse_name?: string;
 }
 
 export interface WarehouseOccupancyMeta {

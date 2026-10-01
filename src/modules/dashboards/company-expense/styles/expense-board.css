@@ -249,6 +249,28 @@
     inset 0 0 0 1px rgba(23, 18, 14, 0.06);
 }
 
+/* The month span's arrows, either side of its button while it is chosen. */
+.exp-span {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.1 * var(--u));
+}
+.exp-spans button.exp-step {
+  padding: calc(0.26 * var(--u)) calc(0.42 * var(--u));
+  font-size: calc(1.15 * var(--u));
+  line-height: 1;
+}
+.exp-spans button.exp-step:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+/* An ended month: amber, the colour every board here uses for "look again". */
+.exp-spans button[data-past='1'] {
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.14);
+}
+
 .exp-grand {
   padding: calc(0.4 * var(--u)) calc(0.85 * var(--u));
   border-radius: calc(0.65 * var(--u));

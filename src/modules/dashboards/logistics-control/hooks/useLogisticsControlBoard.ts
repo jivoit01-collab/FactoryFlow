@@ -1,3 +1,4 @@
+import { useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 
 import { usePermission } from '@/core/auth';
@@ -5,10 +6,11 @@ import { usePFMovements } from '@/modules/warehouse/api/pfMovement.queries';
 
 import { useDispatchFulfilment } from '../../dispatch-fulfilment/api';
 import { useExpenseBoard } from '../../factory-expense/api';
-import { useWarehouseOccupancy } from '../../production-control/api';
-import { useControlNonMovingReport, useControlWmsCollection } from '../../warehouse-control/api';
+import { useControlWmsCollection } from '../../warehouse-control/api';
 import { summarisePalletSpace } from '../../warehouse-control/utils/palletSpace';
 import {
+  boardSettingsApi,
+  LOGISTICS_CONTROL_QUERY_KEYS,
   useApprovedPartialScans,
   useBoardSettings,
   useDayPlanBills,
@@ -27,32 +29,29 @@ import {
   LOGISTICS_CONTROL_LOADING_COST_PER_LITRE,
   LOGISTICS_CONTROL_MAX_ROLLUP_ROWS,
   LOGISTICS_CONTROL_MONTHLY_TARGET_TONNES,
-  LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
-  LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
-  LOGISTICS_CONTROL_NON_MOVING_ITEM_GROUP,
   LOGISTICS_CONTROL_OIL_SCOPE,
   LOGISTICS_CONTROL_PENDING_STATUSES,
   LOGISTICS_CONTROL_PENDING_WINDOW,
   LOGISTICS_CONTROL_REFRESH_MS,
-  LOGISTICS_CONTROL_STOCK_ITEM_GROUPS,
   LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS,
   LOGISTICS_CONTROL_WORKFORCE_PERMISSIONS,
   type LogisticsControlScope,
 } from '../constants';
 import {
+  boardHeadcount,
   buildFunnelColumnFromBuckets,
   buildWorkforceStrip,
+  companyLabel,
   costPerLitre,
   dayOnDay,
   dayPlan,
   gateLabourTotal,
   type LabourDepartment,
   labourForSection,
-  rollUpTonnage,
   sectionHeadcount,
-  boardHeadcount,
-  weighItems,
+  sumWorkforceStrips,
 } from '../utils';
+import { useWarehouseSides } from './useWarehouseSides';
 
 /**
  * Local `YYYY-MM-DD`. Never `toISOString()`, which shifts the day in IST and
@@ -82,8 +81,20 @@ function localDate(date: Date): string {
  * and the tiles with no source on that side of the plant. Defaulted to the
  * original Oil scope so a caller that names none behaves as it always did.
  */
+/** The month the board's month figures are read over. */
+export interface LogisticsBoardPeriod {
+  /** First day of the month. */
+  from: string;
+  /** Today for the current month; the month's last day for an ended one. */
+  to: string;
+  /** The real today, which the live tiles keep reading whatever the month. */
+  today: string;
+  isCurrent: boolean;
+}
+
 export function useLogisticsControlBoard(
   scope: LogisticsControlScope = LOGISTICS_CONTROL_OIL_SCOPE,
+  period?: LogisticsBoardPeriod,
 ) {
   const { hasAnyPermission, hasPermission } = usePermission();
   // The employee roll is the one feed behind a grant this board can check
@@ -96,10 +107,23 @@ export function useLogisticsControlBoard(
   const canSeeFreight = hasAnyPermission(LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS);
 
   // One clock for the whole board, so every card agrees on what "today" is even
-  // if their queries resolve seconds apart.
-  const now = useMemo(() => new Date(), []);
-  const today = localDate(now);
-  const monthStart = `${today.slice(0, 7)}-01`;
+  // if their queries resolve seconds apart. The page's month hook owns it where
+  // there is one — it re-reads the clock every minute, so a wall left running
+  // crosses midnight with every query key — and a caller without one keeps the
+  // old clock, read once at mount.
+  const mountedAt = useMemo(() => new Date(), []);
+  const today = period?.today ?? localDate(mountedAt);
+  /**
+   * The month the month figures belong to.
+   *
+   * Two dates, not one: `today` is what the live tiles read — stock, pending,
+   * what left today — and `monthEnd` is where the month's own figures stop.
+   * They are the same day on the current month and a month apart on an ended
+   * one, which is the whole of what stepping back a month changes.
+   */
+  const monthStart = period?.from ?? `${today.slice(0, 7)}-01`;
+  const monthEnd = period?.to ?? today;
+  const isCurrentMonth = period?.isCurrent ?? true;
   // The calendar day before today — derived from the same clock, so a board
   // that stays open past midnight moves both days together.
   const yesterday = useMemo(() => {
@@ -109,22 +133,11 @@ export function useLogisticsControlBoard(
   }, [today]);
 
   // ---------------------------------------------------------------- warehouse
-  // Finished goods only, filtered in the endpoint's own SQL rather than here —
-  // see LOGISTICS_CONTROL_STOCK_ITEM_GROUPS for why packaging is excluded.
-  const occupancy = useWarehouseOccupancy(
-    scope.warehouse,
-    true,
-    LOGISTICS_CONTROL_STOCK_ITEM_GROUPS,
-  );
-
-  const nonMoving = useControlNonMovingReport(
-    {
-      age: LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
-      item_group: LOGISTICS_CONTROL_NON_MOVING_ITEM_GROUP,
-      warehouse: [scope.warehouse],
-    },
-    scope.warehouseCompany,
-  );
+  // Every warehouse ticked for each side's company, read through that company:
+  // its stock (finished goods only, filtered in the endpoint's own SQL — see
+  // LOGISTICS_CONTROL_STOCK_ITEM_GROUPS for why packaging is excluded) and its
+  // idle stock, rolled up per side and then added.
+  const warehouseBand = useWarehouseSides(scope);
 
   /**
    * Pallet slots, and only where a scope has a WMS floor mapped to it.
@@ -159,11 +172,14 @@ export function useLogisticsControlBoard(
   );
 
   /**
-   * What the production floor has declared into this warehouse today.
+   * What the production floor has declared into the ticked warehouses today.
    *
-   * The Godown Movements register, filtered to consignments whose destination
-   * IS this warehouse. `GODOWN` excludes the direct dispatches that leave the
-   * floor straight onto a customer's truck — those never arrive here.
+   * The Godown Movements register, every godown consignment of the day, narrowed
+   * below to those whose destination is a ticked warehouse of that company —
+   * client-side, because the register filters on one destination at a time and
+   * a day's declarations are a handful of rows. `GODOWN` excludes the direct
+   * dispatches that leave the floor straight onto a customer's truck — those
+   * never arrive in a warehouse.
    *
    * A single day on purpose. The register is a declaration log with no received
    * or closed state, so there is no "outstanding" set to total: a wider window
@@ -171,7 +187,6 @@ export function useLogisticsControlBoard(
    */
   const floorToWarehouse = usePFMovements(
     {
-      toWarehouse: scope.warehouse,
       destinationKind: 'GODOWN',
       dateFrom: today,
       dateTo: today,
@@ -199,7 +214,7 @@ export function useLogisticsControlBoard(
     { refetchIntervalMs: LOGISTICS_CONTROL_REFRESH_MS },
   );
   const dispatchMonth = useDispatchFulfilment(
-    { from: monthStart, to: today, companies: scope.dispatchCompanies },
+    { from: monthStart, to: monthEnd, companies: scope.dispatchCompanies },
     { refetchIntervalMs: LOGISTICS_CONTROL_REFRESH_MS },
   );
 
@@ -300,6 +315,25 @@ export function useLogisticsControlBoard(
   const boardSettings = useBoardSettings(true, scope.settingsCompany);
 
   /**
+   * Each warehouse side's own company's figures, for its head count and salary.
+   *
+   * Keyed exactly as `useBoardSettings` keys them, so the settings company's
+   * read above is the same cache entry as its side's here, and a save on the
+   * settings screen lands in both.
+   */
+  const sideSettings = useQueries({
+    queries: scope.warehouseSides.map((side) => ({
+      queryKey: LOGISTICS_CONTROL_QUERY_KEYS.boardSettings(side.companyCode),
+      queryFn: () => boardSettingsApi.get(side.companyCode),
+      staleTime: 5 * 60 * 1000,
+      enabled: canSeeWorkforce,
+    })),
+  });
+  const sideSettingsData = sideSettings.map((query) => query.data);
+  /** When each side's figures last landed — a fixed-size memo dependency. */
+  const sideSettingsKey = sideSettings.map((query) => query.dataUpdatedAt).join(',');
+
+  /**
    * The permanent staff on the roll, both companies.
    *
    * On-roll, not on shift: the directory counts everyone still employed,
@@ -324,68 +358,21 @@ export function useLogisticsControlBoard(
 
   // ============================================================== derivations
 
-  const stockTonnage = useMemo(() => rollUpTonnage(occupancy.data?.data ?? []), [occupancy.data]);
-
   /**
-   * Non-moving split into the board's two bands.
-   *
-   * The feed is fetched once at the lower threshold and partitioned here,
-   * because the backend supports a single open-ended `> age` filter and no
-   * banding at all — two fetches would be two SAP reads for one answer.
-   */
-  const nonMovingBands = useMemo(() => {
-    // Filtered to this warehouse HERE, not in the request: the non-moving
-    // endpoint takes only `age` and `item_group` and answers for every
-    // (item, warehouse) pair in the company. Passing a warehouse in the filter
-    // object does nothing — the Non-Moving dashboard narrows it client-side too,
-    // and without this the board was weighing idle stock from the whole plant.
-    const rows = (nonMoving.data?.data ?? []).filter(
-      (row) => row.warehouse?.trim().toUpperCase() === scope.warehouse,
-    );
-    const stockRows = occupancy.data?.data ?? [];
-
-    const recent = rows.filter(
-      (row) => row.days_since_last_movement <= LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
-    );
-    const ageing = rows.filter(
-      (row) => row.days_since_last_movement > LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
-    );
-
-    // The non-moving feed serves no unit of measure, so its quantities are
-    // weighable only by looking each item up in the occupancy rows — which now
-    // carry a case weight. Anything the occupancy feed cannot weigh is counted,
-    // not dropped, so the tile can say how much of the answer is missing.
-    const all = weighItems(rows, stockRows);
-
-    return {
-      /**
-       * The idle items themselves, for the drill-down.
-       *
-       * The same filtered set the figures are computed from, so the panel and
-       * the tile cannot disagree — recomputing them separately at the render
-       * site is exactly how a drill-down starts contradicting its own tile.
-       */
-      rows,
-      items: rows.length,
-      recent: recent.length,
-      ageing: ageing.length,
-      tonnes: all.tonnes,
-      recentTonnes: weighItems(recent, stockRows).tonnes,
-      ageingTonnes: weighItems(ageing, stockRows).tonnes,
-      unweighed: all.unweighed,
-      quantity: nonMoving.data?.summary?.total_quantity ?? 0,
-      value: nonMoving.data?.summary?.total_value ?? 0,
-    };
-  }, [nonMoving.data, occupancy.data, scope.warehouse]);
-
-  /**
-   * Filled percentage for the pinned warehouse, by pallet slot.
+   * Filled percentage by pallet slot, over the ticked warehouses WMS maps.
    *
    * Slots rather than tonnage: a half-empty pallet still consumes a whole slot,
    * which is what "full" means to somebody looking for somewhere to put a
-   * pallet down. WMS holds a configured capacity per cell; tonnage capacity
-   * exists nowhere.
+   * pallet down. The fallback for a board with no rated capacity at all; WMS
+   * matches on the code alone, which is safe while it maps only the three
+   * floors it does today.
    */
+  const tickedCodes = warehouseBand.codes.map((code) => code.trim().toUpperCase());
+  const tickedCodesKey = tickedCodes.join(',');
+  /** Which warehouses each side has ticked, as one comparable string. */
+  const tickedKey = warehouseBand.sides
+    .map((side) => `${side.companyCode}:${side.warehouses.map((row) => row.warehouse).join('|')}`)
+    .join(',');
   const palletSpace = useMemo(() => {
     if (!wmsLocations.data || !wmsPallets.data) return null;
 
@@ -396,10 +383,61 @@ export function useLogisticsControlBoard(
       purposes: wmsPurposes.data ?? [],
     });
 
-    return (
-      summary.warehouses.find((row) => row.code.trim().toUpperCase() === scope.warehouse) ?? null
+    const mapped = summary.warehouses.filter((row) =>
+      tickedCodes.includes(row.code.trim().toUpperCase()),
     );
-  }, [wmsWarehouses.data, wmsLocations.data, wmsPallets.data, wmsPurposes.data, scope.warehouse]);
+    if (mapped.length === 0) return null;
+
+    const totalSpace = mapped.reduce((total, row) => total + row.totalSpace, 0);
+    const usedSpace = mapped.reduce((total, row) => total + row.usedSpace, 0);
+    return {
+      totalSpace,
+      usedSpace,
+      unavailableSpace: mapped.reduce((total, row) => total + row.unavailableSpace, 0),
+      utilisationPct: totalSpace > 0 ? (usedSpace / totalSpace) * 100 : 0,
+    };
+    // The codes are a fresh array each render; their joined string is the
+    // real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wmsWarehouses.data, wmsLocations.data, wmsPallets.data, wmsPurposes.data, tickedCodesKey]);
+
+  /**
+   * Today's floor declarations, split by the company whose warehouse took them.
+   *
+   * A consignment counts on a side only where both halves match: the
+   * destination company, and a warehouse ticked for it. Oil's floor declares
+   * into Mart's Gupta godown as well as its own basement, and the register
+   * names the receiving company on every godown row.
+   */
+  const allocated = useMemo(() => {
+    const movements = floorToWarehouse.data?.movements ?? [];
+    const sides = warehouseBand.sides.map((side) => {
+      const codes = new Set(side.warehouses.map((row) => row.warehouse.trim().toUpperCase()));
+      const rows = movements.filter(
+        (movement) =>
+          movement.to_company_code === side.companyCode &&
+          codes.has((movement.to_warehouse ?? '').trim().toUpperCase()),
+      );
+      return {
+        companyCode: side.companyCode,
+        rows,
+        pieces: rows.reduce((total, row) => total + (row.total_pieces ?? 0), 0),
+        litres: rows.reduce((total, row) => total + Number(row.total_litres ?? 0), 0),
+        movements: rows.length,
+      };
+    });
+    return {
+      sides,
+      /** The consignments themselves, for the drill-down. */
+      rows: sides.flatMap((side) => side.rows),
+      pieces: sides.reduce((total, side) => total + side.pieces, 0),
+      litres: sides.reduce((total, side) => total + side.litres, 0),
+      movements: sides.reduce((total, side) => total + side.movements, 0),
+    };
+    // The sides' ticked lists are what decide a row's side; `tickedKey` is
+    // them, as a string, where the sides themselves are new each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [floorToWarehouse.data, tickedKey]);
 
   /**
    * Bills with a dispatch date that have not gone out.
@@ -631,11 +669,14 @@ export function useLogisticsControlBoard(
       names: readonly string[],
       employees: number | null,
       salaryDaily: number | null,
+      // A warehouse side looks up only its own company's directory: the same
+      // department code can exist in both.
+      directory: typeof roll = roll,
     ) => {
       const section = labourForSection(departments, names);
       const onRoll = sectionHeadcount(
         employees,
-        roll,
+        directory,
         scope.sectionEmployeeDepartments[section_],
       );
       // Priced against the gate's own head count when a rate is set, rather
@@ -658,12 +699,30 @@ export function useLogisticsControlBoard(
       });
     };
 
-    const warehouse = strip(
-      'warehouse',
-      scope.sectionDepartments.warehouse,
-      cfg?.warehouse_employees ?? null,
-      cfg?.warehouse_salary_daily ?? null,
-    );
+    /**
+     * The warehouse card, one strip per side and then added.
+     *
+     * Each side's head count and salary are its own company's, typed on the
+     * settings screen; its labour is the gate's departments for its floors,
+     * priced at the board's one rate.
+     */
+    const warehouseSides = scope.warehouseSides.map((side, index) => {
+      const sideCfg = sideSettingsData[index];
+      return {
+        companyCode: side.companyCode,
+        strip: strip(
+          'warehouse',
+          side.labourDepartments,
+          sideCfg?.warehouse_employees ?? null,
+          sideCfg?.warehouse_salary_daily ?? null,
+          roll.filter((row) => row.companyCode === side.companyCode),
+        ),
+      };
+    });
+    const warehouse =
+      warehouseSides.length === 1
+        ? warehouseSides[0].strip
+        : sumWorkforceStrips(warehouseSides.map((side) => side.strip));
     const dispatch = strip(
       'dispatch',
       scope.sectionDepartments.dispatch,
@@ -714,7 +773,8 @@ export function useLogisticsControlBoard(
               : Number(board?.buckets?.LABOUR?.today ?? 0) || 0;
 
         const salaries = [
-          cfg?.warehouse_salary_daily ?? null,
+          // Every side's warehouse salary, not only the settings company's.
+          warehouse.employeeCostPerDay,
           cfg?.dispatch_salary_daily ?? null,
           cfg?.transport_salary_daily ?? null,
         ].filter((value): value is number => value !== null);
@@ -725,6 +785,15 @@ export function useLogisticsControlBoard(
         return (labourCost ?? 0) + (employeeCost ?? 0);
       })(),
       warehouse,
+      /**
+       * The warehouse strip's halves, for the Oil | Mart line under each role.
+       * One entry on a single-company board, which prints no line.
+       */
+      warehouseSplit: warehouseSides.map((side) => ({
+        label: companyLabel(side.companyCode),
+        employees: side.strip.employees,
+        labour: side.strip.labour,
+      })),
       dispatch,
       transport,
       /**
@@ -732,19 +801,32 @@ export function useLogisticsControlBoard(
        *
        * Built from the same strips the bands render, never from the roll
        * beside it, so the headline and the cards under it are one arithmetic.
+       * A warehouse side nobody has configured is named on its own, because
+       * the total is short by exactly it.
        */
       onBoard: boardHeadcount([
-        { name: 'Warehouse', employees: warehouse.employees },
+        ...warehouseSides.map((side) => ({
+          name:
+            warehouseSides.length > 1
+              ? `${companyLabel(side.companyCode)} warehouse`
+              : 'Warehouse',
+          employees: side.strip.employees,
+        })),
         { name: 'Dispatch', employees: dispatch.employees },
         { name: 'Transport', employees: transport.employees },
       ]),
     };
+    // The side settings are read through `sideSettingsKey`, which changes when
+    // any of them lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     expense.data,
     boardSettings.data,
     employeeRoll.data,
     scope.sectionDepartments,
     scope.sectionEmployeeDepartments,
+    scope.warehouseSides,
+    sideSettingsKey,
   ]);
 
   /**
@@ -822,7 +904,7 @@ export function useLogisticsControlBoard(
   const freightRate = useFreightRate(
     scope.dispatchCompanies,
     monthStart,
-    today,
+    monthEnd,
     LOGISTICS_CONTROL_FREIGHT_REFRESH_MS,
     canSeeFreight,
   );
@@ -911,9 +993,11 @@ export function useLogisticsControlBoard(
     scope,
     today,
     monthStart,
+    /** Where the month figures stop: today, or an ended month's last day. */
+    monthEnd,
+    isCurrentMonth,
     isFetching:
-      occupancy.isFetching ||
-      nonMoving.isFetching ||
+      warehouseBand.isFetching ||
       planBills.isFetching ||
       dispatchToday.isFetching ||
       dispatchMonth.isFetching ||
@@ -921,10 +1005,30 @@ export function useLogisticsControlBoard(
       expense.isFetching,
     hasPermission,
     warehouse: {
-      stockTonnage,
-      /** Every stock row behind the tonnage, for the drill-down. */
-      stockRows: occupancy.data?.data ?? [],
-      nonMoving: nonMovingBands,
+      /**
+       * Each company's half: its ticked warehouses and what they hold.
+       *
+       * One entry on a single-company board. The tiles print the combined
+       * figures below as the headline and these beneath it.
+       */
+      sides: warehouseBand.sides,
+      /** Every ticked warehouse code, across the sides, for the band's caption. */
+      codes: warehouseBand.codes,
+      /** Companies whose stock could not be read, and is missing from every figure. */
+      unread: warehouseBand.unread,
+      /** Companies whose idle stock could not be read. */
+      idleUnread: warehouseBand.idleUnread,
+      stockTonnage: warehouseBand.combined.stockTonnage,
+      /** Every stock row behind the tonnage, tagged with its company, for the drill-down. */
+      stockRows: warehouseBand.combined.stockRows,
+      capacityTonnes: warehouseBand.combined.capacityTonnes,
+      /** Tonnage in the warehouses that have a capacity — what "% full" divides. */
+      ratedTonnes: warehouseBand.combined.ratedTonnes,
+      fillPct: warehouseBand.combined.fillPct,
+      unrated: warehouseBand.combined.unrated,
+      oldestAudit: warehouseBand.combined.oldestAudit,
+      unaudited: warehouseBand.combined.unaudited,
+      nonMoving: warehouseBand.combined.nonMoving,
       // Reshaped for the shared CapacityMeter, which takes slot counts rather
       // than a percentage so it can draw used, unusable and free separately.
       space: palletSpace
@@ -964,20 +1068,16 @@ export function useLogisticsControlBoard(
         };
       })(),
       allocated: {
-        /** The consignments themselves, for the drill-down. */
-        rows: floorToWarehouse.data?.movements ?? [],
-        pieces: floorToWarehouse.data?.summary?.to_godown_pieces ?? 0,
-        litres: Number(floorToWarehouse.data?.summary?.to_godown_litres ?? 0),
-        movements: floorToWarehouse.data?.summary?.movements ?? 0,
+        ...allocated,
         loading: floorToWarehouse.isLoading,
         error: floorToWarehouse.error ?? null,
       },
-      loading: occupancy.isLoading || nonMoving.isLoading || planBills.isLoading,
-      isFetching: occupancy.isFetching || nonMoving.isFetching || planBills.isFetching,
+      loading: warehouseBand.loading || planBills.isLoading,
+      isFetching: warehouseBand.isFetching || planBills.isFetching,
       // planBills included deliberately: leaving it out meant a failed bill feed
       // rendered as "0 invoices pending" — the one reading a control board must
       // never mistake for a quiet day.
-      error: occupancy.error ?? nonMoving.error ?? planBills.error ?? null,
+      error: warehouseBand.error ?? planBills.error ?? null,
     },
     dispatch: {
       today: dispatchTodayTile,
@@ -1027,7 +1127,7 @@ export function useLogisticsControlBoard(
           boxes: number;
         }[] = [];
         const cursor = new Date(`${monthStart}T00:00:00`);
-        const end = new Date(`${today}T00:00:00`);
+        const end = new Date(`${monthEnd}T00:00:00`);
         while (cursor <= end) {
           const month = String(cursor.getMonth() + 1).padStart(2, '0');
           const day = String(cursor.getDate()).padStart(2, '0');

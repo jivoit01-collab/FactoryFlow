@@ -7,9 +7,14 @@ import { adminBoardApi } from './admin-control.api';
 
 export const ADMIN_BOARD_QUERY_KEYS = {
   all: ['admin-board'] as const,
-  board: (companyId?: number | string) => ['admin-board', 'board', companyId] as const,
-  dispatchBills: (companyId: number | string | undefined, companyCode: string) =>
-    ['admin-board', 'dispatch-bills', companyId, companyCode] as const,
+  /** `month` is an ended month, or null for this month so far. */
+  board: (companyId?: number | string, month: string | null = null) =>
+    ['admin-board', 'board', companyId, month ?? 'current'] as const,
+  dispatchBills: (
+    companyId: number | string | undefined,
+    companyCode: string,
+    month: string | null = null,
+  ) => ['admin-board', 'dispatch-bills', companyId, companyCode, month ?? 'current'] as const,
 };
 
 /**
@@ -31,12 +36,13 @@ export const ADMIN_BOARD_QUERY_KEYS = {
  * Keyed on the company because the board follows the company switcher: signed
  * into Mart, the same route reports Mart's plant.
  */
-export function useAdminBoard(enabled = true) {
+export function useAdminBoard(enabled = true, month: string | null = null) {
   const { currentCompany } = useAuth();
+  const queryKey = ADMIN_BOARD_QUERY_KEYS.board(currentCompany?.company_id, month);
 
   return useQuery({
-    queryKey: ADMIN_BOARD_QUERY_KEYS.board(currentCompany?.company_id),
-    queryFn: () => adminBoardApi.getBoard(),
+    queryKey,
+    queryFn: () => adminBoardApi.getBoard(month),
     enabled,
     staleTime: ADMIN_BOARD_REFRESH_MS,
     refetchInterval: (query) => {
@@ -44,7 +50,11 @@ export function useAdminBoard(enabled = true) {
       return seconds && seconds > 0 ? seconds * 1000 : ADMIN_BOARD_REFRESH_MS;
     },
     refetchIntervalInBackground: true,
-    placeholderData: (previous) => previous,
+    // The last response stays up through a refresh — but never across a change
+    // of month: September's figures under an October header for the second a
+    // read takes would be the one wrong answer this board can give.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[3] === queryKey[3] ? previous : undefined,
     retry: 1,
   });
 }
@@ -57,12 +67,12 @@ export function useAdminBoard(enabled = true) {
  * A refusal is not retried — "you are not a member of Jivo Mart" is not going
  * to change on the second attempt.
  */
-export function useAdminDispatchBills(companyCode: string) {
+export function useAdminDispatchBills(companyCode: string, month: string | null = null) {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: ADMIN_BOARD_QUERY_KEYS.dispatchBills(currentCompany?.company_id, companyCode),
-    queryFn: () => adminBoardApi.getDispatchBills(companyCode),
+    queryKey: ADMIN_BOARD_QUERY_KEYS.dispatchBills(currentCompany?.company_id, companyCode, month),
+    queryFn: () => adminBoardApi.getDispatchBills(companyCode, month),
     staleTime: ADMIN_BOARD_REFRESH_MS,
     retry: false,
   });

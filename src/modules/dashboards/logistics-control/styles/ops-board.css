@@ -337,6 +337,54 @@
   font-weight: 500;
 }
 
+/*
+ * The month stepper: a chip with an arrow at each end.
+ *
+ * Flex rather than the chips' block, because it holds two buttons and a label
+ * rather than one run of text, and it is never the chip that gives way — the
+ * month is what every untagged figure on the board belongs to. An ended month
+ * turns amber, the colour this board already uses for "look again".
+ */
+.ops-chip.ops-month {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.3 * var(--u));
+  flex: none;
+  max-width: none;
+  padding-left: calc(0.3 * var(--u));
+  padding-right: calc(0.3 * var(--u));
+}
+.ops-month span {
+  padding: 0 calc(0.2 * var(--u));
+}
+.ops-month button {
+  width: calc(1.5 * var(--u));
+  height: calc(1.5 * var(--u));
+  border-radius: calc(0.4 * var(--u));
+  font-size: calc(1.2 * var(--u));
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink-2);
+  background: transparent;
+}
+.ops-month button:hover:not(:disabled) {
+  background: var(--hair);
+  color: var(--ink);
+}
+.ops-month button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ops-chip.ops-month[data-past='1'] {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.4);
+}
+.ops-chip.ops-month[data-past='1'] em,
+.ops-chip.ops-month[data-past='1'] button {
+  color: #b45309;
+}
+
 .ops-totals {
   display: flex;
   gap: calc(0.5 * var(--u));
@@ -366,6 +414,12 @@
   color: var(--ink-2);
   font-weight: 500;
   white-space: nowrap;
+  /* A note, not a figure: it gives way before the month stepper and the
+     clock do. "OIL warehouse and MART warehouse … not set" ran to a third of
+     the header and pushed the month's name out of its chip. */
+  max-width: calc(17 * var(--u));
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* A figure with no source is a rule, not a zero. */
 .ops-nil {
@@ -743,6 +797,25 @@
   color: var(--ink);
   letter-spacing: -0.024em;
   line-height: 1.15;
+}
+/*
+ * A live figure on a board showing an ended month — see OpsGroup's `now`.
+ * A tab hanging from the card's top edge, clear of the name row below it.
+ */
+.ops-livetag {
+  position: absolute;
+  top: 0;
+  left: calc(1.05 * var(--u) + 0.3 * var(--u));
+  padding: calc(0.04 * var(--u)) calc(0.45 * var(--u));
+  border-radius: 0 0 calc(0.35 * var(--u)) calc(0.35 * var(--u));
+  line-height: 1.15;
+  font-size: calc(0.6 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  background: #f1f4f8;
+  box-shadow: inset 0 0 0 1px var(--hair);
 }
 .ops-sub {
   align-self: start;
@@ -1321,6 +1394,15 @@
   font-weight: 500;
   margin-top: calc(0.15 * var(--u));
   padding-left: calc(0.8 * var(--u));
+}
+/* The per-company halves under a role's cost: quieter again, and one line. */
+.ops-prole .sp {
+  margin-top: calc(0.1 * var(--u));
+  font-size: calc(0.92 * var(--u));
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ops-psplit {
   height: calc(0.55 * var(--u));

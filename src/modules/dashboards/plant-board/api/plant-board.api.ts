@@ -12,8 +12,14 @@ export const plantBoardApi = {
    * ends up switched off. Scope is always today and the current plan month,
    * computed server-side — there is nobody at a TV to pick a date.
    */
-  async getBoard(): Promise<PlantBoardResponse> {
-    const response = await apiClient.get<PlantBoardResponse>(API_ENDPOINTS.PLANT_BOARD.BOARD);
+  /**
+   * `month` is an ended month (`YYYY-MM`): the month figures then run to its
+   * last day and the live tiles still read today. Omitted, the current month.
+   */
+  async getBoard(month?: string | null): Promise<PlantBoardResponse> {
+    const response = await apiClient.get<PlantBoardResponse>(API_ENDPOINTS.PLANT_BOARD.BOARD, {
+      params: month ? { month } : undefined,
+    });
     return response.data;
   },
 

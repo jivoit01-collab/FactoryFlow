@@ -1,7 +1,37 @@
 import type { WorkforceStrip } from '../types';
 
+/** One company's half of a strip, for the line under each role. */
+export interface OpsPeopleSplit {
+  label: string;
+  employees: number | null;
+  labour: number | null;
+}
+
 export interface OpsPeopleProps {
   strip: WorkforceStrip;
+  /**
+   * The strip's halves, printed small under each role as "OIL 4 · MART 0".
+   *
+   * The totals above are the halves added, and a half nobody has configured
+   * adds nothing — so the line is what shows which half a total is short by.
+   * Omitted, or with one entry, the strip is a single company's and prints no
+   * line.
+   */
+  split?: readonly OpsPeopleSplit[];
+}
+
+/** "OIL 4 · MART —": each half's figure, a rule where it is unknown. */
+function splitLine(
+  split: readonly OpsPeopleSplit[] | undefined,
+  pick: (half: OpsPeopleSplit) => number | null,
+): string | null {
+  if (!split || split.length < 2) return null;
+  return split
+    .map((half) => {
+      const value = pick(half);
+      return `${half.label} ${value === null ? '—' : value}`;
+    })
+    .join(' · ');
 }
 
 /** Indian-grouped rupees, compacted. A board has no room for paise. */
@@ -19,11 +49,13 @@ function Role({
   count,
   cost,
   dot,
+  split,
 }: {
   label: string;
   count: number | null;
   cost: number | null;
   dot: string;
+  split?: string | null;
 }) {
   const rendered = money(cost);
 
@@ -36,6 +68,7 @@ function Role({
         </span>
       </div>
       <div className="s">{rendered ? `${rendered} a day` : 'Cost unavailable'}</div>
+      {split && <div className="s sp">{split}</div>}
     </div>
   );
 }
@@ -58,7 +91,7 @@ function Role({
  * The split bar is drawn only when both headcounts are known: a bar showing one
  * half of a pair would misstate the ratio it exists to show.
  */
-export function OpsPeople({ strip }: OpsPeopleProps) {
+export function OpsPeople({ strip, split }: OpsPeopleProps) {
   const employees = strip.employees;
   const labour = strip.labour;
   const bothKnown = employees !== null && labour !== null;
@@ -78,8 +111,20 @@ export function OpsPeople({ strip }: OpsPeopleProps) {
         <b>{onShift === null ? <span className="ops-nil">—</span> : onShift}</b>
       </div>
 
-      <Role label="Employees" count={employees} cost={strip.employeeCostPerDay} dot="var(--d1)" />
-      <Role label="Labour" count={labour} cost={strip.labourCostPerDay} dot="var(--d3)" />
+      <Role
+        label="Employees"
+        count={employees}
+        cost={strip.employeeCostPerDay}
+        dot="var(--d1)"
+        split={splitLine(split, (half) => half.employees)}
+      />
+      <Role
+        label="Labour"
+        count={labour}
+        cost={strip.labourCostPerDay}
+        dot="var(--d3)"
+        split={splitLine(split, (half) => half.labour)}
+      />
 
       {bothKnown && total > 0 && (
         <div className="ops-psplit">

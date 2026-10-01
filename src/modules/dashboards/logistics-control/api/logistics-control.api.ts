@@ -4,9 +4,11 @@ import type { DockingPartialScanRequest } from '@/modules/admin/api/partialScanA
 import type { EmployeeMeta } from '@/modules/employees/types';
 
 import type { DispatchBill, DispatchPlansResponse } from '../../dispatch-plans/types';
+import type { WarehouseOccupancyResponse } from '../../production-control/types';
 import type {
   BoardSettings,
   BoardSettingsPayload,
+  BoardWarehouseList,
   FreightRate,
   FreightRateTransporter,
   OwnedVehicleStatus,
@@ -82,6 +84,60 @@ export const logisticsControlApi = {
     return response.data;
   },
 };
+
+/**
+ * One company's warehouses as the board counts them.
+ *
+ * `onBoard` asks for the ticked ones only — straight from Postgres, no SAP
+ * call, which is what the board reads on every refresh. Without it the answer
+ * is the settings screen's list: every warehouse SAP holds stock in for
+ * `itemGroups`, with its tonnage today, plus any ticked one that has emptied.
+ *
+ * Pinned to the company in the header, because a warehouse code means nothing
+ * without one: Oil and Mart each have their own BH-GR.
+ */
+export async function getBoardWarehouses(
+  companyCode: string,
+  options: { onBoard?: boolean; itemGroups?: readonly number[] } = {},
+): Promise<BoardWarehouseList> {
+  const response = await apiClient.get<BoardWarehouseList>(
+    API_ENDPOINTS.STOCK_DASHBOARD.BOARD_WAREHOUSES,
+    {
+      params: {
+        ...(options.onBoard ? { on_board: 'true' } : {}),
+        ...(options.itemGroups?.length ? { item_groups: options.itemGroups.join(',') } : {}),
+      },
+      headers: { 'Company-Code': companyCode },
+    },
+  );
+  return response.data;
+}
+
+/**
+ * What stands in several warehouses of one company, in one SAP read.
+ *
+ * Not Production Control's occupancy call: that one reads a single warehouse
+ * through whichever company the viewer is signed into, which is how a Mart
+ * login came to read BH-BT through Mart's schema and find it empty. This pins
+ * the company, and each row names the warehouse it stands in.
+ */
+export async function getOccupancyForCompany(
+  companyCode: string,
+  warehouses: readonly string[],
+  itemGroups?: readonly number[],
+): Promise<WarehouseOccupancyResponse> {
+  const response = await apiClient.get<WarehouseOccupancyResponse>(
+    API_ENDPOINTS.STOCK_DASHBOARD.OCCUPANCY,
+    {
+      params: {
+        warehouse: warehouses.join(','),
+        ...(itemGroups?.length ? { item_groups: itemGroups.join(',') } : {}),
+      },
+      headers: { 'Company-Code': companyCode },
+    },
+  );
+  return response.data;
+}
 
 /**
  * Bills dated to leave a warehouse, pinned to one company.

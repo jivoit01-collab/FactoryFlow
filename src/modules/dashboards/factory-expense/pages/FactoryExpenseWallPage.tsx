@@ -6,6 +6,7 @@ import { usePermission } from '@/core/auth';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useFullscreen } from '../../dispatch/hooks';
+import { monthFirstDay, monthLabel, monthWindow, shiftMonth } from '../../utils/month';
 import { useExpenseBoard } from '../api';
 import { ExpenseListPanel, ExpenseStat, ExpenseTrendChart, ExpenseWallHeader } from '../components';
 import { BUCKET_META, BUCKET_ORDER, DEFAULT_REFRESH_MS } from '../constants';
@@ -63,16 +64,53 @@ export default function FactoryExpenseWallPage() {
    */
   const changeFrom = (next: string) => {
     if (!next) return;
+    setMonthChosen(false);
     setRange((current) => ({ from: next, to: next > current.to ? next : current.to }));
   };
 
   const changeTo = (next: string) => {
     if (!next) return;
+    setMonthChosen(false);
     setRange((current) => ({ from: next < current.from ? next : current.from, to: next }));
   };
 
+  /**
+   * The calendar month the range is, if it is exactly one: its first day to
+   * its last, or to today for this month. That is when the Month preset is lit
+   * and its arrows step a month at a time.
+   */
+  const rangeMonth = useMemo(() => {
+    const key = range.from.slice(0, 7);
+    if (range.from !== monthFirstDay(key)) return null;
+    return range.to === monthWindow(key, localToday()).to ? key : null;
+  }, [range]);
+
+  /**
+   * One month back or forward, as a whole month — never past this one.
+   * From a range that is not a month, the steps start at this month.
+   */
+  const stepMonth = (by: number) => {
+    const today = localToday();
+    const next = shiftMonth(rangeMonth ?? today.slice(0, 7), by);
+    if (next > today.slice(0, 7)) return;
+    const whole = monthWindow(next, today);
+    setMonthChosen(true);
+    setRange({ from: whole.from, to: whole.to });
+  };
+
+  /**
+   * Whether the range came from the Month preset or its arrows.
+   *
+   * Needed for one day a month: on the 1st, this month so far IS today, and a
+   * range alone cannot say which button made it — so without this the Month
+   * preset never lit on the 1st, and its arrows, the way back to last month,
+   * never appeared on the morning they are wanted most.
+   */
+  const [monthChosen, setMonthChosen] = useState(false);
+
   /** Today, the last week, this month — the three spans anyone actually asks for. */
   const applyPreset = (preset: 'today' | 'week' | 'month') => {
+    setMonthChosen(preset === 'month');
     const today = localToday();
     if (preset === 'today') return setRange({ from: today, to: today });
     if (preset === 'month') return setRange({ from: `${today.slice(0, 7)}-01`, to: today });
@@ -87,15 +125,17 @@ export default function FactoryExpenseWallPage() {
   // report the state rather than only setting it.
   const activePreset = useMemo<'today' | 'week' | 'month' | null>(() => {
     const today = localToday();
+    // Any whole month lights Month, an ended one included: it is the preset
+    // its arrows moved. A one-day month (the 1st) only when Month made it.
+    if (rangeMonth !== null && (range.from !== range.to || monthChosen)) return 'month';
     if (range.to !== today) return null;
     if (range.from === today) return 'today';
-    if (range.from === `${today.slice(0, 7)}-01`) return 'month';
     const weekStart = new Date(`${today}T00:00:00`);
     weekStart.setDate(weekStart.getDate() - 6);
     const month = String(weekStart.getMonth() + 1).padStart(2, '0');
     const day = String(weekStart.getDate()).padStart(2, '0');
     return range.from === `${weekStart.getFullYear()}-${month}-${day}` ? 'week' : null;
-  }, [range]);
+  }, [range, rangeMonth, monthChosen]);
 
   const boardRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggle } = useFullscreen(boardRef);
@@ -141,11 +181,24 @@ export default function FactoryExpenseWallPage() {
         isToday={isToday}
         isSingleDay={isSingleDay}
         days={data?.days ?? 1}
-        onResetToToday={() => setRange({ from: localToday(), to: localToday() })}
+        onResetToToday={() => {
+          setMonthChosen(false);
+          setRange({ from: localToday(), to: localToday() });
+        }}
         onChangeFrom={changeFrom}
         onChangeTo={changeTo}
         onApplyPreset={applyPreset}
         activePreset={activePreset}
+        month={
+          activePreset === 'month' && rangeMonth
+            ? {
+                label: monthLabel(rangeMonth),
+                isCurrent: rangeMonth === localToday().slice(0, 7),
+                onPrevious: () => stepMonth(-1),
+                onNext: () => stepMonth(1),
+              }
+            : undefined
+        }
         companyCode={data?.company_code ?? '—'}
         companyCount={data?.company_count ?? 1}
         scope={scope}

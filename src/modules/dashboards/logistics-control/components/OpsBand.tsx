@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/shared/utils';
 
 import type { WorkforceStrip } from '../types';
-import { OpsPeople } from './OpsPeople';
+import { OpsPeople, type OpsPeopleSplit } from './OpsPeople';
 
 /**
  * The bands this vocabulary knows how to paint.
@@ -58,6 +58,8 @@ export interface OpsBandProps {
   columns?: string;
   children: ReactNode;
   people?: WorkforceStrip;
+  /** The people strip's per-company halves — see `OpsPeople`. */
+  peopleSplit?: readonly OpsPeopleSplit[];
   /** Replaces the tiles when the reader may not see this band. */
   unavailable?: string;
 }
@@ -89,6 +91,7 @@ export function OpsBand({
   columns = EQUAL_COLUMNS,
   children,
   people,
+  peopleSplit,
   unavailable,
 }: OpsBandProps) {
   return (
@@ -112,7 +115,7 @@ export function OpsBand({
       )}
 
       {people ? (
-        <OpsPeople strip={people} />
+        <OpsPeople strip={people} split={peopleSplit} />
       ) : (
         <div className="ops-people">
           <p className="ops-note">Team figures need factory expense access.</p>

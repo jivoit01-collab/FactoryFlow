@@ -6,6 +6,7 @@ import type { BoardSettingsPayload, WarehouseSettingsPayload } from '../types';
 import {
   boardSettingsApi,
   getApprovedPartialScans,
+  getBoardWarehouses,
   getDayPlanBills,
   getEmployeeRoll,
   getFreightRate,
@@ -27,6 +28,31 @@ export const LOGISTICS_CONTROL_QUERY_KEYS = {
    */
   warehouseSettings: (warehouse: string, companyId?: number | string) =>
     [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'warehouse-settings', companyId, warehouse] as const,
+  /** A company's typed-in board figures; the viewer's company id where none is named. */
+  boardSettings: (scopeKey?: number | string) =>
+    [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'board-settings', scopeKey] as const,
+  /** Every read of one company's warehouse list, ticked-only or full. */
+  boardWarehousesFor: (companyCode?: string) =>
+    [
+      ...LOGISTICS_CONTROL_QUERY_KEYS.all,
+      'board-warehouses',
+      ...(companyCode ? [companyCode] : []),
+    ] as const,
+  boardWarehouses: (companyCode: string, onBoard: boolean, itemGroups: readonly number[]) =>
+    [
+      ...LOGISTICS_CONTROL_QUERY_KEYS.boardWarehousesFor(companyCode),
+      onBoard ? 'ticked' : 'all',
+      itemGroups.join(','),
+    ] as const,
+  /** One company's stock across the warehouses ticked for it. */
+  occupancy: (companyCode: string, warehouses: readonly string[], itemGroups: readonly number[]) =>
+    [
+      ...LOGISTICS_CONTROL_QUERY_KEYS.all,
+      'occupancy',
+      companyCode,
+      warehouses.join(','),
+      itemGroups.join(','),
+    ] as const,
 };
 
 /**
@@ -71,7 +97,57 @@ export function useSaveWarehouseSettings(warehouse: string, companyCode?: string
         LOGISTICS_CONTROL_QUERY_KEYS.warehouseSettings(warehouse, scopeKey),
         saved,
       );
+      // The operations board reads capacity off the ticked list, so a capacity
+      // typed here for a ticked warehouse has to reach it too. Every company's
+      // list where none is named, since the viewer's company is not a code.
+      void queryClient.invalidateQueries({
+        queryKey: LOGISTICS_CONTROL_QUERY_KEYS.boardWarehousesFor(companyCode),
+      });
     },
+  });
+}
+
+/**
+ * Every warehouse one company could put on the board, for the settings screen.
+ *
+ * One SAP read across the company's whole chart of warehouses, so it is not
+ * polled; it refetches when the screen is opened again.
+ */
+export function useBoardWarehouseList(
+  companyCode: string,
+  itemGroups: readonly number[],
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: LOGISTICS_CONTROL_QUERY_KEYS.boardWarehouses(companyCode, false, itemGroups),
+    queryFn: () => getBoardWarehouses(companyCode, { itemGroups }),
+    staleTime: 60 * 1000,
+    enabled: enabled && Boolean(companyCode),
+  });
+}
+
+/**
+ * Tick a warehouse, or set its capacity or audit date, for one company.
+ *
+ * Refetches the company's lists rather than patching them: the full list is
+ * ordered ticked-first, and the board's ticked list decides which warehouses
+ * its stock is read from, so both have to be the server's answer.
+ */
+export function useSaveBoardWarehouse(companyCode: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      warehouse,
+      payload,
+    }: {
+      warehouse: string;
+      payload: WarehouseSettingsPayload;
+    }) => logisticsControlApi.saveWarehouseSettings(warehouse, payload, companyCode),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: LOGISTICS_CONTROL_QUERY_KEYS.boardWarehousesFor(companyCode),
+      }),
   });
 }
 
@@ -259,7 +335,6 @@ export function useApprovedPartialScans(companyCodes: readonly string[], enabled
   });
 }
 
-const BOARD_SETTINGS_KEY = [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'board-settings'] as const;
 
 /**
  * Owned vehicles and per-section staffing.
@@ -273,7 +348,7 @@ export function useBoardSettings(enabled = true, companyCode?: string) {
   const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
-    queryKey: [...BOARD_SETTINGS_KEY, scopeKey] as const,
+    queryKey: LOGISTICS_CONTROL_QUERY_KEYS.boardSettings(scopeKey),
     queryFn: () => boardSettingsApi.get(companyCode),
     staleTime: 5 * 60 * 1000,
     enabled,
@@ -288,7 +363,7 @@ export function useSaveBoardSettings(companyCode?: string) {
   return useMutation({
     mutationFn: (payload: BoardSettingsPayload) => boardSettingsApi.save(payload, companyCode),
     onSuccess: (saved) => {
-      queryClient.setQueryData([...BOARD_SETTINGS_KEY, scopeKey] as const, saved);
+      queryClient.setQueryData(LOGISTICS_CONTROL_QUERY_KEYS.boardSettings(scopeKey), saved);
     },
   });
 }

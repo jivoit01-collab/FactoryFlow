@@ -2,7 +2,7 @@ import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
 import { useExpandedRow } from '../useExpandedRow';
 import type { Board } from './board';
-import { decimal, shortDate, whole } from './format';
+import { companyLabel, decimal, shortDate, whole } from './format';
 
 type Movement = Board['warehouse']['allocated']['rows'][number];
 type Line = Movement['lines'][number];
@@ -67,12 +67,13 @@ function MovementLines({ movement }: { movement: Movement }) {
   );
 }
 
-/** What the floor declared into the warehouse today, and what each load held. */
+/** What the floor declared into the ticked warehouses today, and what each load held. */
 export function AllocatedDrill({
   warehouse,
   allocated,
   onClose,
 }: {
+  /** The band's warehouses, as its rail names them. */
   warehouse: string;
   allocated: Board['warehouse']['allocated'];
   onClose: () => void;
@@ -87,6 +88,12 @@ export function AllocatedDrill({
       onClose={onClose}
       stats={[
         { label: 'Consignments', value: whole(allocated.movements) },
+        ...(allocated.sides.length > 1
+          ? allocated.sides.map((side) => ({
+              label: `${companyLabel(side.companyCode)} pieces`,
+              value: whole(side.pieces),
+            }))
+          : []),
         { label: 'Pieces', value: whole(allocated.pieces) },
         { label: 'Litres', value: whole(allocated.litres) },
       ]}
@@ -100,7 +107,16 @@ export function AllocatedDrill({
       columns={[
         { label: 'Entry', cell: (row) => row.entry_no },
         { label: 'From', cell: (row) => row.from_warehouse, dim: true },
-        { label: 'To', cell: (row) => row.destination_display, dim: true },
+        {
+          label: 'To',
+          // The receiving company as well: Oil's floor declares into Mart's
+          // Gupta godown as well as its own basement.
+          cell: (row) =>
+            row.to_company_code
+              ? `${companyLabel(row.to_company_code)} ${row.destination_display}`
+              : row.destination_display,
+          dim: true,
+        },
         { label: 'Vehicle', cell: (row) => row.vehicle_no || '—' },
         { label: 'Reference', cell: (row) => row.reference || '—', dim: true },
         { label: 'Items', cell: (row) => whole(row.line_count ?? 0), numeric: true },

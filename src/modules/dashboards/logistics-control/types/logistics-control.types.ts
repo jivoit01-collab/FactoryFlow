@@ -179,14 +179,42 @@ export interface WarehouseSettings {
   capacity_tonnes: number | null;
   /** `YYYY-MM-DD`, or null where stock has never been verified. */
   last_audit_date: string | null;
-  updated_at: string;
+  /** Counted on the operations board's warehouse band. */
+  on_board: boolean;
+  /** Null on a warehouse nobody has configured yet. */
+  updated_at: string | null;
   updated_by_name: string;
 }
 
-/** Either field, or both. `null` clears one back to unset. */
+/** Any field, or several. `null` clears a figure back to unset. */
 export interface WarehouseSettingsPayload {
   capacity_tonnes?: number | null;
   last_audit_date?: string | null;
+  on_board?: boolean;
+}
+
+/**
+ * One warehouse on the board's settings screen: its settings and, from SAP,
+ * what stands in it today.
+ *
+ * The stock fields are null where SAP could not be read. Zero means SAP was
+ * read and holds nothing there, which is how a ticked warehouse that has
+ * emptied still gets listed so it can be unticked.
+ */
+export interface BoardWarehouse extends WarehouseSettings {
+  name: string;
+  items: number | null;
+  tonnes: number | null;
+  /** Rows the tonnage could not weigh, so the figure is a floor. */
+  unweighed_items: number | null;
+}
+
+/** One company's warehouses, as `board-warehouses/` answers. */
+export interface BoardWarehouseList {
+  company_code: string;
+  warehouses: BoardWarehouse[];
+  /** Why SAP could not be read, where it could not. The ticks still come back. */
+  stock_error: string | null;
 }
 
 /**

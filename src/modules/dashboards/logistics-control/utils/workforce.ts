@@ -131,6 +131,30 @@ export function buildWorkforceStrip(input: {
   };
 }
 
+/**
+ * Several strips for one card, added — the warehouse card's Oil and Mart.
+ *
+ * Each figure is the sum of the halves that know it, and null only where none
+ * does. A half that is unknown therefore leaves the total short rather than
+ * blanking it; the card prints each half beside the total, so the reader can
+ * see which one is missing rather than losing the half that is known.
+ */
+export function sumWorkforceStrips(strips: readonly WorkforceStrip[]): WorkforceStrip {
+  const add = (pick: (strip: WorkforceStrip) => number | null): number | null => {
+    const known = strips.map(pick).filter((value): value is number => value !== null);
+    return known.length > 0 ? known.reduce((total, value) => total + value, 0) : null;
+  };
+  const notes = [...new Set(strips.map((strip) => strip.note).filter(Boolean))];
+
+  return {
+    employees: add((strip) => strip.employees),
+    employeeCostPerDay: add((strip) => strip.employeeCostPerDay),
+    labour: add((strip) => strip.labour),
+    labourCostPerDay: add((strip) => strip.labourCostPerDay),
+    note: notes.length > 0 ? notes.join(' · ') : undefined,
+  };
+}
+
 /** One department's on-roll head count, as the employee roll reports it. */
 export interface RollDepartmentCount {
   name: string;

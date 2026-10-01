@@ -3,11 +3,27 @@ import { useEffect, useState } from 'react';
 import { EXPENSE_SPANS } from '../constants';
 import type { ExpenseSpanKey } from '../types';
 
+/** The month the "month" span covers, and the arrows that move it. */
+export interface ExpenseMonthControl {
+  /** "September 2026". */
+  label: string;
+  isCurrent: boolean;
+  canGoForward: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
 export interface ExpenseTopbarProps {
   /** What the grid covers, as a sentence: "1 – 12 September 2026 · 12 days". */
   scope: string;
   span: ExpenseSpanKey;
   onSpanChange: (span: ExpenseSpanKey) => void;
+  /**
+   * The month span's month. While that span is chosen its button names the
+   * month and an arrow either side steps it — back as far as anyone wants,
+   * forward no further than this month.
+   */
+  month?: ExpenseMonthControl;
   /** The grand total, already formatted. Empty string draws a rule instead. */
   grandTotal: string;
   grandSub: string;
@@ -58,6 +74,7 @@ export function ExpenseTopbar({
   scope,
   span,
   onSpanChange,
+  month,
   grandTotal,
   grandSub,
   busy = false,
@@ -84,16 +101,44 @@ export function ExpenseTopbar({
       </div>
 
       <div className="exp-spans" role="group" aria-label="Period">
-        {EXPENSE_SPANS.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            aria-pressed={span === option.key}
-            onClick={() => onSpanChange(option.key)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {EXPENSE_SPANS.map((option) => {
+          const stepping = option.key === 'month' && span === 'month' && month;
+          return (
+            <span key={option.key} className="exp-span">
+              {stepping && (
+                <button
+                  type="button"
+                  className="exp-step"
+                  onClick={month.onPrevious}
+                  aria-label="Previous month"
+                >
+                  ‹
+                </button>
+              )}
+              <button
+                type="button"
+                aria-pressed={span === option.key}
+                // An ended month is marked, so a wall left on it is not read
+                // as this month's spend.
+                data-past={stepping && !month.isCurrent ? '1' : undefined}
+                onClick={() => onSpanChange(option.key)}
+              >
+                {stepping ? month.label : option.label}
+              </button>
+              {stepping && (
+                <button
+                  type="button"
+                  className="exp-step"
+                  onClick={month.onNext}
+                  disabled={!month.canGoForward}
+                  aria-label="Next month"
+                >
+                  ›
+                </button>
+              )}
+            </span>
+          );
+        })}
       </div>
 
       <div className="exp-grand">

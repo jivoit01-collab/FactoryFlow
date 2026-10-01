@@ -87,6 +87,11 @@ export function OpsMeter({ segments, className }: OpsMeterProps) {
 export interface OpsBarsProps {
   /** One entry per day, oldest first. The last is drawn as today. */
   days: { label: string; pct: number; value?: string }[];
+  /**
+   * Whether the last bar IS today. False on a board showing an ended month,
+   * whose last bar is that month's last day and is labelled with its date.
+   */
+  lastIsToday?: boolean;
   className?: string;
 }
 
@@ -97,7 +102,7 @@ export interface OpsBarsProps {
  * shape answers "is today normal for this week", which is the only question a
  * seven-bar chart can honestly answer at this size.
  */
-export function OpsBars({ days, className }: OpsBarsProps) {
+export function OpsBars({ days, lastIsToday = true, className }: OpsBarsProps) {
   return (
     <div className={className}>
       <div className="ops-bars">
@@ -124,7 +129,7 @@ export function OpsBars({ days, className }: OpsBarsProps) {
       <div className="ops-blab">
         {days.map((day, index) => (
           <span key={day.label} className={cn(index === days.length - 1 && 'ops-now')}>
-            {index === days.length - 1 ? 'Today' : day.label}
+            {index === days.length - 1 && lastIsToday ? 'Today' : day.label}
           </span>
         ))}
       </div>

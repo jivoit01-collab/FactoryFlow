@@ -5,11 +5,19 @@ import { useRef, useState } from 'react';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import {
+  BoardPeriodContext,
+  boardPeriodFor,
+  useBoardPeriod,
+} from '../../hooks/boardPeriod.context';
+import { useBoardMonth } from '../../hooks/useBoardMonth';
+import {
   OpsBand,
   OpsBars,
   OpsGroup,
   OpsMeter,
+  type OpsMonthControl,
   OpsTopbar,
+  useBoardEmbed,
 } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import type { WorkforceStrip } from '../../logistics-control/types';
@@ -211,7 +219,26 @@ function peopleFor(
  * fold, one composed request per refresh, and type that scales with the display.
  */
 export default function PlantBoardDashboardPage() {
-  const { data, isFetching, error, refetch } = usePlantBoard();
+  /**
+   * This month, or an ended one somebody stepped back to. The month figures
+   * then run to that month's last day while the live tiles — stock, what came
+   * in, ran and shipped today — go on reading today, tagged "now". A carousel
+   * slide is pinned to the current month: see BoardEmbed.
+   */
+  const embedded = useBoardEmbed();
+  const month = useBoardMonth({ locked: embedded });
+  const boardPeriod = boardPeriodFor(month);
+  const monthControl: OpsMonthControl = {
+    label: month.label,
+    isCurrent: month.isCurrent,
+    canGoForward: month.canGoForward,
+    onPrevious: month.previous,
+    onNext: month.next,
+  };
+  const { data, isFetching, error, refetch } = usePlantBoard(
+    true,
+    month.isCurrent ? null : month.month,
+  );
   const shellRef = useRef<HTMLDivElement>(null);
 
   /*
@@ -245,6 +272,7 @@ export default function PlantBoardDashboardPage() {
           <OpsTopbar
             title="Plant Control"
             scope="Jivo Oil"
+            month={monthControl}
             chips={[{ label: 'Feed', value: 'not answering' }]}
             totals={[]}
             busy
@@ -274,10 +302,12 @@ export default function PlantBoardDashboardPage() {
   const degraded = data?.meta.degraded ?? [];
 
   return (
+    <BoardPeriodContext.Provider value={boardPeriod}>
     <div ref={shellRef} className="plant-board ops-board">
       <div className="ops-board__inner">
         <PlantTopbar
           data={data}
+          month={monthControl}
           isFetching={isFetching}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggle}
@@ -296,6 +326,7 @@ export default function PlantBoardDashboardPage() {
           panel can never disagree with the card underneath it. */}
       {drill && <PlantBoardDrill which={drill} data={data} onClose={() => setDrill(null)} />}
     </div>
+    </BoardPeriodContext.Provider>
   );
 }
 
@@ -360,11 +391,13 @@ function rollSplit(workforce: PlantBoardWorkforce | null): string {
 
 function PlantTopbar({
   data,
+  month,
   isFetching,
   isFullscreen,
   onToggleFullscreen,
 }: {
   data: PlantBoardResponse | undefined;
+  month: OpsMonthControl;
   isFetching: boolean;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
@@ -407,6 +440,7 @@ function PlantTopbar({
     <OpsTopbar
       title="Plant Control"
       scope={`${meta?.company_code ?? 'Jivo Oil'} · ${plan?.name || 'no production plan'}`}
+      month={month}
       chips={chips}
       busy={isFetching}
       isFullscreen={isFullscreen}
@@ -459,6 +493,8 @@ function PurchaseBand({
   degraded: string[];
   onOpen: DrillOpener;
 }) {
+  // An ended month on the board: its period words follow it.
+  const { monthWord } = useBoardPeriod();
   const purchase = data?.purchase ?? null;
   const people = peopleFor(data?.workforce, 'purchase');
 
@@ -531,7 +567,7 @@ function PurchaseBand({
       people={people}
     >
       <OpsGroup
-        name="Plan this month"
+        name={`Plan ${monthWord}`}
         onOpen={onOpen('plan')}
         // The tag is the share, the figure is the absolute — never the same
         // number twice in different type sizes. Which plan month this is
@@ -700,7 +736,7 @@ function PurchaseBand({
               {
                 fill: 'main',
                 pct: share(purchase.open_po_recent_value, purchase.open_po_value),
-                label: 'Raised this month',
+                label: `Raised ${monthWord}`,
                 figure: money(purchase.open_po_recent_value),
               },
               {
@@ -730,6 +766,9 @@ function StoreBand({
   degraded: string[];
   onOpen: DrillOpener;
 }) {
+  // An ended month on the board: its live tiles say so, and its period words follow it.
+  const { pastMonth, monthWord } = useBoardPeriod();
+  const past = pastMonth !== null;
   const store = data?.store ?? null;
   const people = peopleFor(data?.workforce, 'store');
 
@@ -784,6 +823,7 @@ function StoreBand({
           movements would actually mean "last count that found a discrepancy". */}
       <OpsGroup
         name="Stock space"
+        now={past}
         onOpen={onOpen('stock-space')}
         tag={
           space.audit_days_ago == null
@@ -876,6 +916,7 @@ function StoreBand({
           divide by. A count and a value need neither. */}
       <OpsGroup
         name="Non-moving stock"
+        now={past}
         onOpen={onOpen('non-moving')}
         tag={{ label: `${whole(idle.item_count)} SKUs idle`, tone: 'neut' }}
         sub={`Oldest ${whole(idle.oldest_days)} days · ${whole(idle.recent_count)} SKUs still moving`}
@@ -909,6 +950,7 @@ function StoreBand({
           packaging store. */}
       <OpsGroup
         name="Packing material in"
+        now={past}
         onOpen={onOpen('pm-vehicles')}
         tag={{
           label: `${whole(vehicles.po_count)} POs · ${whole(vehicles.line_count)} lines`,
@@ -958,7 +1000,7 @@ function StoreBand({
           Production band uses, because a Sunday is not a bad day and dividing
           by it reports one. */}
       <OpsGroup
-        name="Blowing this month"
+        name={`Blowing ${monthWord}`}
         onOpen={onOpen('blowing')}
         // What is turning right now, and what it has cost so far. A different
         // question from the two monthly figures below it, which is why it sits
@@ -975,7 +1017,7 @@ function StoreBand({
         // per-day averages and the per-bottle rate are all derivable from
         // these two and the day count, and each one added a number a reader
         // had to work out how to combine.
-        sub={`${money(blowing.cost)} this month`}
+        sub={`${money(blowing.cost)} ${monthWord}`}
         value={qty(blowing.bottles_made)}
         unit="bottles"
         viz={
@@ -985,6 +1027,7 @@ function StoreBand({
           // The totals above cover the whole month; these bars are the last
           // week of it.
           <OpsBars
+            lastIsToday={!past}
             days={blowingTrend.map((row) => ({
               label: row.date.slice(8, 10),
               pct: share(row.bottles, blowingBest),
@@ -1016,6 +1059,8 @@ function ProductionBand({
   degraded: string[];
   onOpen: DrillOpener;
 }) {
+  // An ended month on the board: its live tiles say so.
+  const past = useBoardPeriod().pastMonth !== null;
   const production = data?.production ?? null;
   const people = peopleFor(data?.workforce, 'production');
 
@@ -1112,6 +1157,7 @@ function ProductionBand({
           payload for anyone who wants them; they are not a second headline. */}
       <OpsGroup
         name="Today on the lines"
+        now={past}
         onOpen={onOpen('today-lines')}
         tag={{
           label:
@@ -1219,6 +1265,7 @@ function ProductionBand({
           moment a new pallet of the same SKU lands beside it. */}
       <OpsGroup
         name="Total stock"
+        now={past}
         onOpen={onOpen('total-stock')}
         // The value as the pill: a different measure from the pieces above it,
         // and the one a reader quotes.
@@ -1303,6 +1350,7 @@ function ProductionBand({
           // no waste target in any system, and seven bars can only honestly
           // answer "is this day normal for the week".
           <OpsBars
+            lastIsToday={!past}
             days={wasteWeek.map((row) => ({
               label: row.date.slice(8, 10),
               pct: share(row.total_value, wasteBest),
@@ -1330,6 +1378,8 @@ function ShiftingBand({
   degraded: string[];
   onOpen: DrillOpener;
 }) {
+  // An ended month on the board: its live tiles say so.
+  const past = useBoardPeriod().pastMonth !== null;
   const shifting = data?.shifting ?? null;
   const people = peopleFor(data?.workforce, 'shifting');
 
@@ -1370,6 +1420,7 @@ function ShiftingBand({
           compare them by eye instead. */}
       <OpsGroup
         name="Declared today"
+        now={past}
         onOpen={onOpen('declared')}
         // No SAP branch on this half: the register snapshots its own litres per
         // piece as each line is typed, so its tonnage stands whatever HANA is
@@ -1398,6 +1449,7 @@ function ShiftingBand({
 
       <OpsGroup
         name="Shipped today"
+        now={past}
         onOpen={onOpen('shipped')}
         tag={
           (shifting.shipped.rejected_pieces ?? 0) > 0

@@ -1,3 +1,4 @@
+import { useBoardPeriod } from '../../hooks/boardPeriod.context';
 import { DrillSub, OpsDrill, useExpandedRow } from '../../logistics-control/components';
 import { ADMIN_COST_COLOURS } from '../constants';
 import type { AdminCost, AdminCostRow, AdminCostSlice } from '../types';
@@ -44,6 +45,9 @@ function rowToday(value: number | null | undefined): string {
  * from instead of stating a total.
  */
 function CostLineRows({ slice }: { slice: AdminCostSlice }) {
+  // "this month" and "today", or an ended month's "in Sep" and "30 Sep".
+  const { monthWord, dayWord, DayWord } = useBoardPeriod();
+  const monthColumn = monthWord === 'this month' ? 'This month' : `Month (${monthWord.replace('in ', '')})`;
   // `rows` may be absent rather than empty — see `AdminCostSlice.rows`. Both
   // read as "nothing behind this line", which `empty` below already states.
   const rows = slice.rows ?? [];
@@ -58,7 +62,7 @@ function CostLineRows({ slice }: { slice: AdminCostSlice }) {
 
   return (
     <DrillSub
-      lede={slice.basis ?? `What makes up ${slice.label.toLowerCase()} this month`}
+      lede={slice.basis ?? `What makes up ${slice.label.toLowerCase()} ${monthWord}`}
       stats={
         // Recomputed from these rows rather than carried down from the line,
         // so that anything which made the two disagree is visible instead of
@@ -70,13 +74,14 @@ function CostLineRows({ slice }: { slice: AdminCostSlice }) {
           </>
         ) : (
           <>
-            {count} · <b>{money(monthSum)}</b> this month · <b>{money(todaySum)}</b> today
+            {count} · <b>{money(monthSum)}</b> {monthWord} · <b>{money(todaySum)}</b>{' '}
+            {dayWord === 'today' ? 'today' : `on ${dayWord}`}
           </>
         )
       }
       rows={rows}
       rowKey={(row: AdminCostRow) => row.label}
-      empty={slice.warning ?? `Nothing is booked to ${slice.label.toLowerCase()} this month.`}
+      empty={slice.warning ?? `Nothing is booked to ${slice.label.toLowerCase()} ${monthWord}.`}
       columns={[
         {
           label: 'What',
@@ -100,13 +105,13 @@ function CostLineRows({ slice }: { slice: AdminCostSlice }) {
           width: '30%',
         },
         {
-          label: 'This month',
+          label: monthColumn,
           cell: (row: AdminCostRow) => money(row.amount),
           numeric: true,
           width: '18%',
         },
         {
-          label: 'Today',
+          label: DayWord,
           cell: (row: AdminCostRow) => rowToday(row.today),
           numeric: true,
           width: '18%',
@@ -141,6 +146,8 @@ export interface AdminCostDrillProps {
  * same rule the tiles follow, one level down.
  */
 export function AdminCostDrill({ cost, period, onClose }: AdminCostDrillProps) {
+  const { monthWord, DayWord } = useBoardPeriod();
+  const monthLabel = monthWord === 'this month' ? 'This month' : `Month (${monthWord.replace('in ', '')})`;
   const { openKey, toggle } = useExpandedRow();
 
   const unsourced = cost.slices.filter((slice) => !slice.has_source);
@@ -153,8 +160,8 @@ export function AdminCostDrill({ cost, period, onClose }: AdminCostDrillProps) {
       domain="transport"
       onClose={onClose}
       stats={[
-        { label: 'This month', value: money(cost.total) },
-        { label: 'Today', value: money(cost.today_total) },
+        { label: monthLabel, value: money(cost.total) },
+        { label: DayWord, value: money(cost.today_total) },
         { label: 'A day, on average', value: money(cost.avg_per_day) },
         {
           label: 'Unsourced lines',
@@ -199,7 +206,7 @@ export function AdminCostDrill({ cost, period, onClose }: AdminCostDrillProps) {
           dim: true,
         },
         {
-          label: 'Today',
+          label: DayWord,
           // The reason in place of the figure where there is no figure — a
           // meter nobody has read today is not a day the plant drew no power.
           cell: (slice: AdminCostSlice) =>

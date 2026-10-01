@@ -4,8 +4,9 @@ import {
   LOGISTICS_CONTROL_DISPATCH_COMPANIES,
   LOGISTICS_CONTROL_SECTION_DEPARTMENTS,
   LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS,
-  LOGISTICS_CONTROL_WAREHOUSE,
-  LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
+  LOGISTICS_CONTROL_SETTINGS_COMPANY,
+  LOGISTICS_CONTROL_WAREHOUSE_SIDES,
+  type LogisticsWarehouseSide,
 } from './logistics-control.constants';
 
 /** The three cards each band closes with a people strip for. */
@@ -60,13 +61,15 @@ export interface LogisticsAbsentSources {
  * The fields divide into three kinds, and mixing them up is how this board
  * reports another company's numbers under this company's heading:
  *
- *   - `warehouseCompany` names whose SAP *chart of warehouses* holds the floor.
- *     Read `BH-FG` through Oil's schema and the answer is empty rather than
- *     wrong, which is much harder to notice on a wall than an error.
- *   - `settingsCompany` names whose *typed-in* rows the board reads — rated
- *     capacity, owned registrations, section salaries. These are stored per
+ *   - `warehouseSides` names whose SAP *chart of warehouses* each half of the
+ *     warehouse band reads, and whose ticked list decides which floors. Read
+ *     `BH-FG` through Oil's schema and the answer is empty rather than wrong,
+ *     which is much harder to notice on a wall than an error.
+ *   - `settingsCompany` names whose *typed-in* rows the board reads — owned
+ *     registrations, section salaries, the labour rate. These are stored per
  *     company and reached by the `Company-Code` header, so they follow the
- *     board rather than whoever happens to be signed in.
+ *     board rather than whoever happens to be signed in. The warehouse card's
+ *     staffing is the exception: each side reads its own company's.
  *   - `dispatchCompanies` is what is ADDED. See the constants module for the
  *     three things that must hold before two companies can be summed.
  */
@@ -79,16 +82,22 @@ export interface LogisticsControlScope {
   boardPath: string;
   /** Where this board's settings live. */
   settingsPath: string;
-  /** The finished-goods floor the warehouse band reports on. */
-  warehouse: string;
-  /** The company whose SAP chart of warehouses holds that floor. */
-  warehouseCompany: string;
-  /** The company whose typed-in board and warehouse settings this board reads. */
+  /**
+   * The warehouse band's halves, one per company, in the order they print.
+   *
+   * One side is a single-company board and its tiles read as they always did;
+   * two print Oil | Mart under a combined figure.
+   */
+  warehouseSides: readonly LogisticsWarehouseSide[];
+  /** The company whose typed-in board figures this board reads. */
   settingsCompany: string;
   /** The companies whose dispatch is added together. */
   dispatchCompanies: readonly string[];
-  /** Gate labour department names counting against each card. */
-  sectionDepartments: Record<LogisticsSection, readonly string[]>;
+  /**
+   * Gate labour department names counting against the dispatch and transport
+   * cards. The warehouse card's are per company, on `warehouseSides`.
+   */
+  sectionDepartments: Record<Exclude<LogisticsSection, 'warehouse'>, readonly string[]>;
   /** Employee-directory department names counting against each card. */
   sectionEmployeeDepartments: Record<LogisticsSection, readonly string[]>;
   /** Tiles with no source under this scope, each with the sentence it prints. */
@@ -98,25 +107,27 @@ export interface LogisticsControlScope {
 }
 
 /**
- * The original board: BH-BT, Oil and Mart added.
+ * The original board: Oil and Mart.
  *
- * Every value is the constant it was before this type existed, so the Oil board
- * is unchanged by the split — with one deliberate exception. `settingsCompany`
- * pins the typed-in figures to Oil, where they were previously read through
- * whichever company the viewer was signed into. That was a latent bug rather
- * than a feature: it is how an empty `JIVO_MART` settings row came to exist,
- * created the first time somebody signed into Mart opened this board, and a
- * wall screen must show the same capacity and the same fleet to everybody
- * standing in front of it.
+ * The warehouse band used to be one floor, BH-BT, read through Oil's schema —
+ * so Mart's stock was on nobody's wall. It is now every warehouse ticked for
+ * either company on the settings screen, each half read through its own
+ * company, with the combined figure on top and Oil | Mart beneath.
+ *
+ * `settingsCompany` pins the typed-in fleet and salaries to Oil, where they
+ * were once read through whichever company the viewer was signed into. That
+ * was a latent bug rather than a feature: it is how an empty `JIVO_MART`
+ * settings row came to exist, created the first time somebody signed into
+ * Mart opened this board, and a wall screen must show the same fleet to
+ * everybody standing in front of it.
  */
 export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
   key: 'oil',
   title: 'Operations board',
   boardPath: '/dashboards/logistics-control',
   settingsPath: '/dashboards/logistics-control/settings',
-  warehouse: LOGISTICS_CONTROL_WAREHOUSE,
-  warehouseCompany: LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
-  settingsCompany: LOGISTICS_CONTROL_WAREHOUSE_COMPANY,
+  warehouseSides: LOGISTICS_CONTROL_WAREHOUSE_SIDES,
+  settingsCompany: LOGISTICS_CONTROL_SETTINGS_COMPANY,
   dispatchCompanies: LOGISTICS_CONTROL_DISPATCH_COMPANIES,
   sectionDepartments: LOGISTICS_CONTROL_SECTION_DEPARTMENTS,
   sectionEmployeeDepartments: LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS,
@@ -152,15 +163,16 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
   // this app already works.
   boardPath: '/dashboards/logistics-control',
   settingsPath: '/dashboards/logistics-control/settings',
-  warehouse: 'BH-FG',
-  warehouseCompany: COMPANY_CODES.JIVO_BEVERAGES,
+  // One side, ticked to BH-FG when the tick shipped. The gate's own name for
+  // this floor's intake is "Warehouse Beverage"; "Warehouse Basement" is Oil's
+  // and "Warehouse Gupta" is Mart's — folding any of them together would price
+  // one floor's labour against another's head count.
+  warehouseSides: [
+    { companyCode: COMPANY_CODES.JIVO_BEVERAGES, labourDepartments: ['Warehouse Beverage'] },
+  ],
   settingsCompany: COMPANY_CODES.JIVO_BEVERAGES,
   dispatchCompanies: [COMPANY_CODES.JIVO_BEVERAGES],
   sectionDepartments: {
-    // The gate's own name for this floor's intake. "Warehouse Basement" is
-    // Oil's and "Warehouse Gupta" is a third floor again — folding any of them
-    // together would price one section's labour against another's head count.
-    warehouse: ['Warehouse Beverage'],
     // Empty for the same reason they are empty on the Oil board: no gate labour
     // department names either section, and a card whose list is empty says it is
     // unassigned rather than reporting a zero that looks like an answer.
