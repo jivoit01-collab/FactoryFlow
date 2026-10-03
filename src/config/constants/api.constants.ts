@@ -812,6 +812,8 @@ export const API_ENDPOINTS = {
     CUSTOMERS: '/ar-invoices/customers/',
     CUSTOMER_CREDIT: '/ar-invoices/customer-credit/',
     CUSTOMER_LEDGER: '/ar-invoices/customer-ledger/',
+    // Whose ledgers this user may open: any, or only the customers linked to them.
+    CUSTOMER_LEDGER_CUSTOMERS: '/ar-invoices/customer-ledger/customers/',
     OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',

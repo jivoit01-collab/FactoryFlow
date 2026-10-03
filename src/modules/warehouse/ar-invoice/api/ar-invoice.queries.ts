@@ -13,6 +13,7 @@ export const AR_INVOICE_QUERY_KEYS = {
   customers: (search: string) => [...AR_INVOICE_QUERY_KEYS.all, 'customers', search] as const,
   customerCredit: (customerCode: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'customer-credit', customerCode] as const,
+  customerLedgerAccess: () => [...AR_INVOICE_QUERY_KEYS.all, 'customer-ledger-access'] as const,
   customerLedger: (query: CustomerLedgerQuery) =>
     [
       ...AR_INVOICE_QUERY_KEYS.all,
@@ -72,6 +73,15 @@ export function useCustomerCredit(customerCode: string) {
     enabled: !!customerCode,
     staleTime: 15 * 1000,
     retry: false,
+  });
+}
+
+/** Whose ledgers this user may open — changes only when IT relinks them. */
+export function useCustomerLedgerAccess() {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.customerLedgerAccess(),
+    queryFn: () => arInvoiceApi.getCustomerLedgerAccess(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

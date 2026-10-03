@@ -504,3 +504,13 @@ export interface CustomerLedgerQuery {
   date_from?: string;
   date_to?: string;
 }
+
+/**
+ * Whose ledgers the Ledger tab may show this user. With the all-ledgers right
+ * (`all_customers`) any customer can be searched; otherwise exactly
+ * `customers` — the SAP customers linked to the login, possibly none.
+ */
+export interface CustomerLedgerAccess {
+  all_customers: boolean;
+  customers: Customer[];
+}

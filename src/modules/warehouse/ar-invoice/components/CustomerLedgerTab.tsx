@@ -1,4 +1,4 @@
-import { BookOpen, Download } from 'lucide-react';
+import { BookOpen, Download, UserX } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -13,11 +13,11 @@ import {
   Th,
   THEAD_CLASSES,
 } from '@/shared/components/page';
-import { Button, Input, Label } from '@/shared/components/ui';
+import { Button, Input, Label, NativeSelect, SelectOption } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
-import { useCustomerLedger } from '../api/ar-invoice.queries';
-import type { CustomerLedgerLine } from '../types';
+import { useCustomerLedger, useCustomerLedgerAccess } from '../api/ar-invoice.queries';
+import type { Customer, CustomerLedgerLine } from '../types';
 import {
   defaultLedgerRange,
   drCr,
@@ -58,13 +58,65 @@ function PendingCell({ line }: { line: CustomerLedgerLine }) {
 }
 
 /**
+ * The customer box for a user who may only see their own accounts: one is
+ * simply named, several are a list. (Anyone allowed every customer gets the
+ * searching picker instead.)
+ */
+function LinkedCustomerPicker({
+  customers,
+  value,
+  onChange,
+}: {
+  customers: Customer[];
+  value: string;
+  onChange: (code: string) => void;
+}) {
+  const label = (c: Customer) => `${c.customer_name} (${c.customer_code})`;
+  if (customers.length === 1) {
+    return (
+      <>
+        <Label>Customer</Label>
+        <div className="flex h-10 items-center truncate rounded-md border bg-muted/40 px-3 text-sm">
+          {label(customers[0])}
+        </div>
+      </>
+    );
+  }
+  return (
+    <>
+      <Label htmlFor="ledger-customer">Customer</Label>
+      <NativeSelect
+        id="ledger-customer"
+        className="h-10"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {customers.map((c) => (
+          <SelectOption key={c.customer_code} value={c.customer_code}>
+            {label(c)}
+          </SelectOption>
+        ))}
+      </NativeSelect>
+    </>
+  );
+}
+
+/**
  * Ledger — one customer's account as SAP holds it: every bill, credit note,
  * receipt and journal entry posted to them, oldest first, with the balance
  * after each. Read from SAP's journal, so it includes what the counter enters
  * in SAP directly, which this app has no record of.
+ *
+ * Whose account: anyone's for a holder of the all-ledgers right; otherwise
+ * only the SAP customers linked to the login, opening on the first of them.
+ * The backend refuses any other, so this is the courtesy, not the guard.
  */
 export function CustomerLedgerTab() {
-  const [customerCode, setCustomerCode] = useState('');
+  const access = useCustomerLedgerAccess();
+  const seesAll = access.data?.all_customers ?? false;
+  const linked = access.data?.customers ?? [];
+  const [picked, setPicked] = useState('');
+  const customerCode = seesAll ? picked : picked || linked[0]?.customer_code || '';
   const [range, setRange] = useState(defaultLedgerRange);
   const badRange = !!range.from && !!range.to && range.from > range.to;
 
@@ -79,14 +131,20 @@ export function CustomerLedgerTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="w-full sm:w-96">
-          <CustomerSelect
-            label="Customer"
-            required
-            value={customerCode}
-            onChange={(customer) => setCustomerCode(customer?.customer_code ?? '')}
-          />
-        </div>
+        {seesAll || linked.length > 0 ? (
+          <div className="w-full sm:w-96">
+            {seesAll ? (
+              <CustomerSelect
+                label="Customer"
+                required
+                value={customerCode}
+                onChange={(customer) => setPicked(customer?.customer_code ?? '')}
+              />
+            ) : (
+              <LinkedCustomerPicker customers={linked} value={customerCode} onChange={setPicked} />
+            )}
+          </div>
+        ) : null}
         <div>
           <Label htmlFor="ledger-from">From</Label>
           <Input
@@ -173,7 +231,24 @@ export function CustomerLedgerTab() {
             </tr>
           </thead>
           <tbody>
-            {!customerCode ? (
+            {!access.data ? (
+              access.isError ? (
+                <TableEmpty
+                  colSpan={COLUMNS}
+                  message="Could not check whose ledger you can see"
+                  hint={getErrorMessage(access.error, 'Please try again.')}
+                />
+              ) : (
+                <TableLoading colSpan={COLUMNS} />
+              )
+            ) : !seesAll && linked.length === 0 ? (
+              <TableEmpty
+                colSpan={COLUMNS}
+                icon={UserX}
+                message="No SAP customer is linked to your login"
+                hint="Ask IT to link your login to your customer account, and your ledger will show here."
+              />
+            ) : !customerCode ? (
               <TableEmpty
                 colSpan={COLUMNS}
                 icon={BookOpen}

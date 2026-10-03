@@ -9,6 +9,7 @@ import type {
   Customer,
   CustomerCredit,
   CustomerLedger,
+  CustomerLedgerAccess,
   CustomerLedgerQuery,
   LineDefaults,
   MarkARPaymentRequest,
@@ -36,6 +37,14 @@ export const arInvoiceApi = {
         // invoice being raised would be noise about a read that only informs.
         suppressErrorToast: true,
       },
+    );
+    return response.data;
+  },
+
+  /** Which customers' ledgers this user may open. */
+  async getCustomerLedgerAccess(): Promise<CustomerLedgerAccess> {
+    const response = await apiClient.get<CustomerLedgerAccess>(
+      API_ENDPOINTS.AR_INVOICE.CUSTOMER_LEDGER_CUSTOMERS,
     );
     return response.data;
   },
