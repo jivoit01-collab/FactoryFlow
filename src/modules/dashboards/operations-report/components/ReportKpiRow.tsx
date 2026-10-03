@@ -6,6 +6,7 @@ import {
   type LucideIcon,
   Minus,
   Trash2,
+  Undo2,
   Users,
   Zap,
 } from 'lucide-react';
@@ -109,6 +110,16 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
     return missing.length ? `No ${missing.join(', ')} figure` : 'Not known';
   })();
 
+  const grSub = (() => {
+    if (now.grReturns === null) return NIL;
+    if (now.grReturns === 0) return 'Nothing came back';
+    const spoiled =
+      now.grQuantity && now.grSpoiledQuantity !== null
+        ? ` · ${Math.round((now.grSpoiledQuantity / now.grQuantity) * 100)}% not good`
+        : '';
+    return `${whole(now.grReturns)} return${now.grReturns === 1 ? '' : 's'} · ${whole(now.grQuantity)} pcs${spoiled}`;
+  })();
+
   const tiles: Tile[] = [
     {
       label: 'Production',
@@ -162,10 +173,23 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       change: powerComparable ? change(now.perLitre.total, was.perLitre.total) : null,
       goodWhen: 'down',
     },
+    {
+      // Last, and outside the cost per litre: a return is product that came
+      // back, not a cost of making the litre.
+      label: 'Goods Return (GR)',
+      icon: Undo2,
+      accent: 'pink',
+      value: rupeesCompact(now.grValue),
+      sub: gap('returns') ?? grSub,
+      change: change(now.grValue, was.grValue),
+      goodWhen: 'down',
+    },
   ];
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3.5">
+    // Three across at a desk, so six tiles sit as two even rows; six across only
+    // on a screen wide enough for "₹ 17.37 lakh" in each.
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {tiles.map((tile) => {
         const tone = ACCENTS[tile.accent];
         return (

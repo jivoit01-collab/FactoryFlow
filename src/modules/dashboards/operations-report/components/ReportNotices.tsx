@@ -5,6 +5,21 @@ import { SECTION_LABEL, spanLabel } from '../utils';
 
 const days = (count: number) => `${count} day${count === 1 ? '' : 's'}`;
 
+/** The right that would show each hidden section, named once each. */
+function rightsFor(sections: ReportMeta['withheld']): string {
+  const rights = new Set(
+    sections.map((section) =>
+      section === 'returns'
+        ? 'goods return'
+        : section === 'labour' || section === 'power'
+          ? 'factory expense'
+          : 'production cost',
+    ),
+  );
+  const list = [...rights];
+  return `${list.join(' or ')} right${list.length > 1 ? 's' : ''}`;
+}
+
 /** What a span is missing, in the order a reader would chase it. */
 function gapsOf(totals: ReportTotals): string[] {
   return [
@@ -42,7 +57,8 @@ export function ReportNotices({ report }: { report: OperationsReport }) {
     !meta.degraded.length &&
     !meta.warnings.length &&
     !shown.length &&
-    !compared.length
+    !compared.length &&
+    !totals.grUnpriced
   ) {
     return null;
   }
@@ -67,8 +83,11 @@ export function ReportNotices({ report }: { report: OperationsReport }) {
           <EyeOff className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             <b>{names(meta.withheld)}</b> {meta.withheld.length === 1 ? 'is' : 'are'} not shown to
-            you, so the cost per litre cannot be worked out. Ask an administrator for the production
-            cost or factory expense right.
+            you
+            {meta.withheld.some((section) => section !== 'returns')
+              ? ', so the cost per litre cannot be worked out'
+              : ''}
+            . Ask an administrator for the {rightsFor(meta.withheld)}.
           </span>
         </p>
       )}
@@ -78,6 +97,17 @@ export function ReportNotices({ report }: { report: OperationsReport }) {
           <span>
             <b>{span}</b> has {shown.join(', ')}. Those figures are left blank rather than counted
             as zero.
+          </span>
+        </p>
+      )}
+      {totals.grUnpriced > 0 && (
+        <p className="flex items-start gap-2 text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {totals.grUnpriced} Goods Return line{totals.grUnpriced === 1 ? '' : 's'} in{' '}
+            <b>{span}</b> {totals.grUnpriced === 1 ? 'has' : 'have'} no invoice price (returned
+            against a debit note or letter pad, or invoiced at nil), so the pieces are counted and
+            their value is not.
           </span>
         </p>
       )}

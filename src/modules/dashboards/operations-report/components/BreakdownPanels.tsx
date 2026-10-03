@@ -1,10 +1,17 @@
-import { Factory, Trash2, Users, Zap } from 'lucide-react';
+import { Factory, Trash2, Undo2, Users, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Td, Th } from '@/shared/components/page';
 
 import type { ReportPalette } from '../constants';
-import type { LabourEntry, LineOutput, OperationsReport, PowerEntry, WastageEntry } from '../types';
+import type {
+  LabourEntry,
+  LineOutput,
+  OperationsReport,
+  PowerEntry,
+  ReturnEntry,
+  WastageEntry,
+} from '../types';
 import { perLitre, quantity, rupees, sectionGap, whole } from '../utils';
 import { ReportPanel } from './ReportPanel';
 
@@ -226,6 +233,55 @@ export function BreakdownPanels({
     },
   ];
 
+  const returns: Column<ReturnEntry>[] = [
+    {
+      header: 'Condition',
+      cell: (row) => (
+        <span className="font-medium">
+          {row.label}
+          {row.unpriced > 0 && (
+            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+              {row.unpriced} unpriced
+            </span>
+          )}
+        </span>
+      ),
+    },
+    {
+      header: 'Returns',
+      numeric: true,
+      cell: (row) => whole(row.entries.length),
+      total: whole(totals.grReturns),
+    },
+    {
+      header: 'GR numbers',
+      cell: (row) => (
+        <span className="text-xs text-muted-foreground" title={row.entries.join(', ')}>
+          {row.entries.slice(0, 4).join(', ')}
+          {row.entries.length > 4 ? ` +${row.entries.length - 4} more` : ''}
+        </span>
+      ),
+    },
+    {
+      header: 'Quantity',
+      numeric: true,
+      cell: (row) => `${quantity(row.quantity)} pcs`,
+      total: totals.grQuantity === null ? undefined : `${quantity(totals.grQuantity)} pcs`,
+    },
+    {
+      header: 'Value',
+      numeric: true,
+      cell: (row) => rupees(row.value),
+      total: rupees(totals.grValue),
+    },
+    {
+      header: 'Share',
+      cell: (row) => (
+        <ShareBar share={share(row.quantity, totals.grQuantity)} hue={palette.returns} />
+      ),
+    },
+  ];
+
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <ReportPanel
@@ -293,6 +349,23 @@ export function BreakdownPanels({
           columns={power}
           empty="No units on any meter."
           gap={sectionGap(meta, 'power') ?? 'No meter readings were entered for these days.'}
+        />
+      </ReportPanel>
+
+      <ReportPanel
+        title="Goods Return (GR)"
+        subtitle="Customer returns by the day the truck arrived (or was booked, if it has not), valued at the invoice price; not part of the cost per litre"
+        icon={Undo2}
+        accent="pink"
+        className="xl:col-span-2"
+        flush
+      >
+        <BreakdownTable
+          rows={breakdown.returns}
+          rowKey={(row) => row.condition}
+          columns={returns}
+          empty="Nothing came back."
+          gap={sectionGap(meta, 'returns')}
         />
       </ReportPanel>
     </div>

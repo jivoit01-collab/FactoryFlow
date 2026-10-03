@@ -19,6 +19,7 @@ function Figures({ row }: { row: ReportTotals }) {
       <Td numeric className="font-semibold">
         {perLitre(row.perLitre.total)}
       </Td>
+      <Td numeric>{rupees(row.grValue)}</Td>
     </>
   );
 }
@@ -56,6 +57,9 @@ export function DailyLedgerTable({
               <Th align="right">kWh</Th>
               <Th align="right">Power</Th>
               <Th align="right">₹ / L</Th>
+              <Th align="right" title="Goods Return">
+                GR
+              </Th>
               <Th aria-label="Open" />
             </tr>
           </thead>

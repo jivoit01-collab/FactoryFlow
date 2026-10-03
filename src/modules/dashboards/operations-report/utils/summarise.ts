@@ -25,6 +25,7 @@ import type {
   ReportMeta,
   ReportPeriod,
   ReportTotals,
+  ReturnEntry,
   WastageEntry,
 } from '../types';
 import { comparisonSpan, daysBetween, trendSpan } from './period';
@@ -49,7 +50,7 @@ function rowsOf<T>(days: readonly ReportDay[], pick: (day: ReportDay) => T[] | n
 
 /** A day with nothing in it — what a day outside the fetched span reads as. */
 export function emptyDay(date: string): ReportDay {
-  return { date, lines: null, wastage: null, labour: null, power: null };
+  return { date, lines: null, wastage: null, labour: null, power: null, returns: null };
 }
 
 /**
@@ -64,6 +65,7 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
   const lines = rowsOf(days, (day) => day.lines);
   const wastage = rowsOf(days, (day) => day.wastage);
   const labour = rowsOf(days, (day) => day.labour);
+  const returns = rowsOf(days, (day) => day.returns ?? null);
 
   const readPower = days.filter((day) => day.power !== null);
   const power = readPower.length > 0 ? readPower.flatMap((day) => day.power ?? []) : null;
@@ -112,8 +114,29 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
       .length,
     kwhPerKl: kwh !== null && litres !== null && litres > 0 ? kwh / (litres / 1000) : null,
     perLitre: cost,
+    // A return with lines in two conditions is one return, so they are counted
+    // by GR number rather than added up per row.
+    grReturns: returns ? new Set(returns.flatMap((entry) => entry.entries)).size : null,
+    grQuantity: returns ? sum(returns, (entry) => entry.quantity) : null,
+    grValue: returns ? sum(returns, (entry) => entry.value) : null,
+    grSpoiledQuantity: returns
+      ? sum(
+          returns.filter((entry) => entry.condition !== 'GOOD'),
+          (entry) => entry.quantity,
+        )
+      : null,
+    grUnpriced: returns ? sum(returns, (entry) => entry.unpriced) : 0,
   };
 }
+
+/** A return's conditions, worst first — the server's order for a day. */
+const RETURN_ORDER: readonly ReturnEntry['condition'][] = [
+  'LEAKED',
+  'DAMAGED',
+  'EXPIRED',
+  'OTHER',
+  'GOOD',
+];
 
 /** Rows with the same key added together, biggest first by `size`. */
 function mergeBy<T>(
@@ -137,6 +160,7 @@ export function breakdownOf(days: readonly ReportDay[]): OperationsReport['break
   const wastage = rowsOf(days, (day) => day.wastage);
   const labour = rowsOf(days, (day) => day.labour);
   const readPower = days.filter((day) => day.power !== null);
+  const returns = rowsOf(days, (day) => day.returns ?? null);
 
   return {
     lines:
@@ -193,6 +217,22 @@ export function breakdownOf(days: readonly ReportDay[]): OperationsReport['break
             (into, row) => ({ ...into, kwh: into.kwh + row.kwh, cost: into.cost + row.cost }),
             (row) => row.kwh,
           ),
+    returns:
+      returns &&
+      mergeBy<ReturnEntry>(
+        returns,
+        (row) => row.condition,
+        (into, row) => ({
+          ...into,
+          entries: [...new Set([...into.entries, ...row.entries])].sort(),
+          lines: into.lines + row.lines,
+          quantity: into.quantity + row.quantity,
+          value: into.value + row.value,
+          unpriced: into.unpriced + row.unpriced,
+        }),
+        // Worst first, as the server sends a day: the part that cost money leads.
+        (row) => -RETURN_ORDER.indexOf(row.condition),
+      ),
   };
 }
 

@@ -50,11 +50,13 @@ export const DAY_VIEW_TREND_DAYS = 14;
  *
  * The three cost heads are the reference palette's first three categorical
  * slots, in its order — validated as a set for colour-blind separation in both
- * themes, because they sit side by side in the per-litre stack. Production and
- * the per-litre total never share a chart with them.
+ * themes, because they sit side by side in the per-litre stack. Production, Goods
+ * Return (the reference palette's magenta) and the per-litre total never share
+ * a chart with them.
  */
 export interface ReportPalette {
   production: string;
+  returns: string;
   labour: string;
   power: string;
   wastage: string;
@@ -66,6 +68,7 @@ export interface ReportPalette {
 export const REPORT_PALETTES: Record<'light' | 'dark', ReportPalette> = {
   light: {
     production: '#4a3aa7',
+    returns: '#e87ba4',
     labour: '#2a78d6',
     power: '#eb6834',
     wastage: '#1baf7a',
@@ -75,6 +78,7 @@ export const REPORT_PALETTES: Record<'light' | 'dark', ReportPalette> = {
   },
   dark: {
     production: '#9085e9',
+    returns: '#d55181',
     labour: '#3987e5',
     power: '#d95926',
     wastage: '#199e70',

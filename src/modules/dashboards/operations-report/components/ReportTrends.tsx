@@ -238,6 +238,16 @@ export function ReportTrends({
       hue: palette.total,
       form: 'line',
     },
+    {
+      key: 'returns',
+      title: 'Goods Return (GR)',
+      unit: '₹',
+      pick: (day) => day.grValue,
+      exact: rupees,
+      tick: axisTick,
+      hue: palette.returns,
+      form: 'bar',
+    },
   ];
 
   const highlight = report.view === 'day' ? report.from : null;

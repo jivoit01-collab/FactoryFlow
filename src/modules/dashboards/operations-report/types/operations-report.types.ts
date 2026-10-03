@@ -58,6 +58,25 @@ export interface PowerEntry {
   cost: number;
 }
 
+/** A return's state as the returns desk keyed it, worst first. */
+export type ReturnCondition = 'LEAKED' | 'DAMAGED' | 'EXPIRED' | 'OTHER' | 'GOOD';
+
+/** Goods Return (GR): customer returns that came back in one condition. */
+export interface ReturnEntry {
+  condition: ReturnCondition;
+  /** "Leaked" — as the returns desk names it. */
+  label: string;
+  /** The GR numbers with a line in this condition, so returns are counted once. */
+  entries: string[];
+  lines: number;
+  /** Pieces. */
+  quantity: number;
+  /** Rupees at the invoice price, over the lines that carry one. */
+  value: number;
+  /** Lines with no invoice price (debit note, letter pad): counted, not valued. */
+  unpriced: number;
+}
+
 /**
  * One day of the report. A section is null when it was not read for this
  * reader (withheld or degraded — see the response's `meta`), and `power` is also
@@ -71,9 +90,14 @@ export interface ReportDay {
   wastage: WastageEntry[] | null;
   labour: LabourEntry[] | null;
   power: PowerEntry[] | null;
+  /**
+   * Customer returns that arrived that day. Optional because a server that
+   * predates it does not send it — read as not read, never as nothing returned.
+   */
+  returns?: ReturnEntry[] | null;
 }
 
-export type ReportSection = 'production' | 'wastage' | 'labour' | 'power';
+export type ReportSection = 'production' | 'wastage' | 'labour' | 'power' | 'returns';
 
 export interface ReportMeta {
   /** Sections the server tried to read and could not. */
@@ -132,6 +156,14 @@ export interface ReportTotals {
   litresUnknownDays: number;
   /** Days in the span whose labour had no rate in force. */
   labourUncostedDays: number;
+  /** Goods Return (GR): distinct returns, pieces, and rupees over priced lines. */
+  grReturns: number | null;
+  grQuantity: number | null;
+  grValue: number | null;
+  /** Pieces that came back other than good — leaked, damaged, expired, other. */
+  grSpoiledQuantity: number | null;
+  /** GR lines with no invoice price. */
+  grUnpriced: number;
   /** Units per kilolitre filled. */
   kwhPerKl: number | null;
   perLitre: PerLitreCost;
@@ -158,6 +190,7 @@ export interface OperationsReport {
     wastage: WastageEntry[] | null;
     labour: LabourEntry[] | null;
     power: PowerEntry[] | null;
+    returns: ReturnEntry[] | null;
   };
   /**
    * One summary per day, oldest first. The month's own days on the month view;

@@ -13,6 +13,26 @@ const day = (date: string, overrides: Partial<ReportDay> = {}): ReportDay => ({
   wastage: [{ item: 'Caps', unit: 'pcs', quantity: 50, value: 30, unpriced: 0 }],
   labour: [{ group: 'Imran', heads: 10, day_shift: 8, night_shift: 2, cost: 6_500 }],
   power: [{ area: 'Blowing', kwh: 300, cost: 2_505 }],
+  returns: [
+    {
+      condition: 'LEAKED',
+      label: 'Leaked',
+      entries: ['GR-1'],
+      lines: 1,
+      quantity: 4,
+      value: 600,
+      unpriced: 0,
+    },
+    {
+      condition: 'GOOD',
+      label: 'Good',
+      entries: ['GR-1', 'GR-2'],
+      lines: 2,
+      quantity: 6,
+      value: 0,
+      unpriced: 1,
+    },
+  ],
   ...overrides,
 });
 
@@ -97,6 +117,35 @@ describe('totalsOf', () => {
     expect(totals.litresUnknownDays).toBe(1);
     expect(totals.labourUncostedDays).toBe(2);
     expect(totals.powerUnreadDays).toBe(0);
+  });
+});
+
+describe('Goods Return (GR)', () => {
+  it('counts a return once however many conditions and days it spans', () => {
+    const totals = totalsOf([day('2026-09-01'), day('2026-09-02')]);
+    expect(totals.grReturns).toBe(2);
+    expect(totals.grQuantity).toBe(20);
+    expect(totals.grSpoiledQuantity).toBe(8);
+    expect(totals.grValue).toBe(1_200);
+    expect(totals.grUnpriced).toBe(2);
+  });
+
+  it('keeps returns out of the cost per litre', () => {
+    const totals = totalsOf([day('2026-09-01')]);
+    expect(totals.perLitre.total).toBeCloseTo((6_500 + 2_505 + 30) / 1_200, 6);
+  });
+
+  it('reads a server that sends no returns as not read, never as nothing returned', () => {
+    const old = day('2026-09-01');
+    delete old.returns;
+    expect(totalsOf([old]).grValue).toBeNull();
+    expect(breakdownOf([old]).returns).toBeNull();
+  });
+
+  it('merges a condition across days, worst first', () => {
+    const merged = breakdownOf([day('2026-09-01'), day('2026-09-02')]).returns;
+    expect(merged?.map((row) => row.condition)).toEqual(['LEAKED', 'GOOD']);
+    expect(merged?.[1]).toMatchObject({ entries: ['GR-1', 'GR-2'], quantity: 12, unpriced: 2 });
   });
 });
 
