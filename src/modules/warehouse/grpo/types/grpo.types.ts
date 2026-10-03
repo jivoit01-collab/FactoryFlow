@@ -911,6 +911,24 @@ export interface POPrintTotals {
   grand_total: string;
 }
 
+/** Where the printed PO's approver comes from: SAP's approval chain, or typed here. */
+export type POApproverSource = 'SAP' | 'MANUAL';
+
+/** One company's PO print settings. */
+export interface POPrintSettings {
+  approver_source: POApproverSource;
+  /** Printed as the approver when the source is ``MANUAL``; kept when it is not. */
+  approver_name: string;
+  updated_by_name: string;
+  /** Null until somebody first saves them. */
+  updated_at: string | null;
+}
+
+export interface UpdatePOPrintSettingsRequest {
+  approver_source: POApproverSource;
+  approver_name: string;
+}
+
 export interface POPrintPayload {
   /**
    * Which gate receipt asked for the sheet, when one did.
@@ -946,7 +964,10 @@ export interface POPrintPayload {
   place_of_supply: string;
   approval: {
     is_approved: boolean;
-    /** The document's own approver, off the SAP approval chain. */
+    /**
+     * The document's own approver, off the SAP approval chain — or the name the
+     * company typed in instead (see ``POPrintSettings``).
+     */
     approver: string;
   };
   /** The receiving location: the masthead and the "Ship To" block. */

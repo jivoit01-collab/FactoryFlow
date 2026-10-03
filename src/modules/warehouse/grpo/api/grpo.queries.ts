@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { GRPOListParams, PostGRPORequest, PostServiceGRPORequest } from '../types';
+import type {
+  GRPOListParams,
+  PostGRPORequest,
+  PostServiceGRPORequest,
+  UpdatePOPrintSettingsRequest,
+} from '../types';
 import { grpoApi } from './grpo.api';
 
 // Query keys
@@ -25,6 +30,7 @@ export const GRPO_QUERY_KEYS = {
     [...GRPO_QUERY_KEYS.all, 'service', 'history', params] as const,
   serviceDetail: (postingId: number) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'detail', postingId] as const,
+  poPrintSettings: () => [...GRPO_QUERY_KEYS.all, 'po-print-settings'] as const,
   warehouses: () => ['warehouses'] as const,
   attachments: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'attachments', postingId] as const,
   planBiltyAttachment: (dispatchPlanId: number) =>
@@ -337,6 +343,25 @@ export function useRetryGRPOAttachment(postingId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.attachments(postingId) });
       queryClient.invalidateQueries({ queryKey: GRPO_QUERY_KEYS.detail(postingId) });
+    },
+  });
+}
+
+// Where the active company's printed PO takes its approver from
+export function usePOPrintSettings(enabled = true) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.poPrintSettings(),
+    queryFn: () => grpoApi.getPOPrintSettings(),
+    enabled,
+  });
+}
+
+export function useUpdatePOPrintSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdatePOPrintSettingsRequest) => grpoApi.updatePOPrintSettings(data),
+    onSuccess: (settings) => {
+      queryClient.setQueryData(GRPO_QUERY_KEYS.poPrintSettings(), settings);
     },
   });
 }

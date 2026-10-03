@@ -18,6 +18,8 @@ export const GRPO_PERMISSIONS = {
   VIEW_POSTING: 'grpo.view_grpoposting',
   /** Manage GRPO attachments (upload, delete, retry) */
   MANAGE_ATTACHMENTS: 'grpo.can_manage_grpo_attachments',
+  /** Choose whether the printed PO's approver is SAP's or a typed name */
+  MANAGE_PO_PRINT_SETTINGS: 'grpo.can_manage_po_print_settings',
 } as const;
 
 /** Module prefix for sidebar filtering */

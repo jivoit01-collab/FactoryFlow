@@ -111,6 +111,7 @@ describe('grpoApi', () => {
       'getHistory',
       'getInspectionReport',
       'getPOPrint',
+      'getPOPrintSettings',
       'getPendingEntries',
       'getPlanBiltyAttachment',
       'getPreview',
@@ -129,6 +130,7 @@ describe('grpoApi', () => {
       'replacePlanBiltyAttachment',
       'retryAttachment',
       'saveDraft',
+      'updatePOPrintSettings',
       'uploadAttachment',
     ]);
   });

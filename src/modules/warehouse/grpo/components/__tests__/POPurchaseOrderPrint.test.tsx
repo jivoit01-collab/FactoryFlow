@@ -260,6 +260,22 @@ describe('POPurchaseOrderPrint', () => {
     expect(pending).not.toContain('Approved');
   });
 
+  it('keeps an overlong approver on one line by setting it smaller', () => {
+    const approverStyle = (approver: string) => {
+      const html = renderToStaticMarkup(
+        <POPurchaseOrderPrint order={order({ approval: { is_approved: true, approver } })} />,
+      );
+      const match = html.match(new RegExp(`<div style="([^"]*)">${approver}</div>`));
+      return match?.[1] ?? '';
+    };
+
+    // SAP's own names fit the slot and keep SAP's size.
+    expect(approverStyle('VISHAL TYAGI')).toContain('font-size:8.75pt');
+    const typed = approverStyle('Vishal Tyagi / Gagandeep Singh / Bhupinder Singh');
+    expect(typed).toContain('white-space:pre');
+    expect(Number(typed.match(/font-size:([\d.]+)pt/)?.[1])).toBeLessThan(8.75);
+  });
+
   it('carries the per-company banner only where one has been seen', () => {
     expect(text(order())).toContain('ONLY FOR BEVERAGES');
     // Nothing invented for the companies whose sheet has not been seen.

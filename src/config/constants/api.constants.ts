@@ -415,6 +415,7 @@ export const API_ENDPOINTS = {
     // SAP's own Purchase Order, as data, for one PO on a gate entry. Keyed on
     // the PO receipt, so it prints before a GRPO is posted as well as after.
     PO_PRINT: (poReceiptId: number) => `/grpo/po-receipt/${poReceiptId}/print/`,
+    PO_PRINT_SETTINGS: '/grpo/po-print-settings/',
     SERVICE_PENDING: '/grpo/service/pending/',
     // The same queue counted rather than listed. SERVICE_PENDING is paginated
     // and scoped to one month; this one is neither, which is what an age-banded

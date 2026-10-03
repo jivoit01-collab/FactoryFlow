@@ -23,7 +23,7 @@ import type { POPrintHSNRow, POPrintLine, POPrintPayload, POPrintTotalRow } from
  *                   298; registrations right-aligned to 563.7; rules 143.6/149.3
  *   header block    y 149.3 -> 334.8, split at x 306.5; the left column divided
  *                   again at y 233.6 (Bill From above, Ship To below)
- *   approval        box 306,305 -> 484.8,333.8; approver right of x 456.5
+ *   approval        box 306,305 -> 456.5,333.8; approver 456.5 -> 567
  *   item grid       header y 334.8 -> 372, then 17.5pt rows
  *   totals          grid total row -> 467.3, "before freight" -> 480.3, words
  *                   and discount -> 512.5, HSN strip and tax -> 560.5,
@@ -43,7 +43,7 @@ import type { POPrintHSNRow, POPrintLine, POPrintPayload, POPrintTotalRow } from
  * The last two never move with the number of item lines, so they are drawn as
  * placed rules rather than cell borders; everything else is a cell edge.
  *
- * Three things in the original are deliberately not reproduced, because copying
+ * Four things in the original are deliberately not reproduced, because copying
  * them would read as a defect in this sheet rather than as fidelity:
  *
  * * Crystal clips the state names to their field width, so the printed original
@@ -53,6 +53,11 @@ import type { POPrintHSNRow, POPrintLine, POPrintPayload, POPrintTotalRow } from
  *   grid's top edge here.
  * * The x 492.5 divider runs behind the boxed tax rows, which are a Crystal
  *   frame drawn over it. The box wins here and the divider stops at it.
+ * * SAP's approval box runs on past its own divider (x 456.5) to 484.8, leaving
+ *   an empty cell under the start of the approver's rule (480 -> 567). That
+ *   leaves 81pt for the name, and a typed one ("Vishal/Gagandeep Singh", 103pt
+ *   at the sheet's 8.75pt) does not fit. The box ends at its divider here and
+ *   the rule starts there, so the name has 108pt at full size.
  *
  * What SAP prints and this reproduces exactly, however odd it looks: the empty
  * "Packing Slip No.", "Payment Due Date" and ship-to contact lines, the
@@ -482,6 +487,37 @@ function At({
   );
 }
 
+/**
+ * The largest size, up to `size` points, at which `text` sets on one line of
+ * bold Arial within `width` points. A typed approver ("Vishal/Gagandeep Singh")
+ * runs past the slot SAP's own names fit. Measured on a canvas in the browser
+ * that prints the sheet; where there is none, estimated at a generous 0.7em a
+ * character, so a guess shrinks too far rather than not enough.
+ */
+function fitOneLine(text: string, width: number, size: number): number {
+  if (!text) return size;
+  let ems = text.length * 0.7;
+  const measure = canvasContext();
+  if (measure) {
+    measure.font = `700 100px ${ARIAL}`;
+    ems = measure.measureText(text).width / 100;
+  }
+  return ems > 0 ? Math.min(size, Math.floor((width / ems) * 100) / 100) : size;
+}
+
+let canvas2d: CanvasRenderingContext2D | null | undefined;
+
+function canvasContext(): CanvasRenderingContext2D | null {
+  if (canvas2d === undefined) {
+    // jsdom has a canvas element but no context (and says so on the console).
+    canvas2d =
+      typeof document === 'undefined' || /jsdom/i.test(navigator.userAgent)
+        ? null
+        : document.createElement('canvas').getContext('2d');
+  }
+  return canvas2d;
+}
+
 /** A label on the left of its cell and an amount on the right of it. */
 function LabelAmount({
   label,
@@ -738,7 +774,7 @@ function HeaderBlock({ order }: { order: POPrintPayload }) {
           position: 'absolute',
           left: '306pt',
           top: '305pt',
-          width: `${484.8 - 306}pt`,
+          width: `${456.5 - 306}pt`,
           height: `${333.8 - 305}pt`,
           border: RULE,
         }}
@@ -752,29 +788,24 @@ function HeaderBlock({ order }: { order: POPrintPayload }) {
           Approved
         </At>
       ) : null}
-      {/* The approver's signature block, right of the box's own divider. */}
-      <div
-        style={{
-          position: 'absolute',
-          left: `${456.5}pt`,
-          top: '305pt',
-          height: `${325.5 - 305}pt`,
-          borderLeft: RULE,
-        }}
-      />
-      <At x={514.8} y={305.8} size={7.8} bold>
+      {/* The approver's signature block, from where the box ends (see the
+          note at the top on why that is not where SAP ends it). */}
+      <At x={456.5} y={305.8} size={7.8} bold width={567 - 456.5} align="center">
         Approver
       </At>
       <div
         style={{
           position: 'absolute',
-          left: '480pt',
+          left: '456.5pt',
           top: '317.5pt',
-          width: `${567 - 480}pt`,
+          width: `${567 - 456.5}pt`,
           borderTop: RULE,
         }}
       />
-      <At x={486} y={318.4} bold width={84}>
+      {/* One line however long the name, ending where the rule above it does:
+          the item grid starts 16pt below, so a second line would print over
+          its header. */}
+      <At x={459.5} y={318.4} bold size={fitOneLine(order.approval.approver, 567 - 459.5, 8.75)}>
         {order.approval.approver}
       </At>
     </>

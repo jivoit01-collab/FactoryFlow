@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/shared/components/ui';
 
 import { useAllGRPOEntries, usePendingGRPOEntries } from '../api';
+import { POPrintSettingsButton } from '../components';
 import AllEntriesPage, { type PhaseFilter } from './AllEntriesPage';
 import GRPOHistoryPage from './GRPOHistoryPage';
 import PendingEntriesPage from './PendingEntriesPage';
@@ -60,12 +61,17 @@ export default function MaterialGRPOPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
-          <PackageCheck className="h-8 w-8" />
-          GRPO Posting
-        </h2>
-        <p className="text-muted-foreground">Post goods receipts to SAP after gate entry completion</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="flex items-center gap-3 text-3xl font-bold tracking-tight">
+            <PackageCheck className="h-8 w-8" />
+            GRPO Posting
+          </h2>
+          <p className="text-muted-foreground">
+            Post goods receipts to SAP after gate entry completion
+          </p>
+        </div>
+        <POPrintSettingsButton />
       </div>
 
       <div className="flex flex-wrap gap-2">

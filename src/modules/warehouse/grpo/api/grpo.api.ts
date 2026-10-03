@@ -16,6 +16,7 @@ import type {
   PendingGRPOEntryWithSuppliers,
   PlanBiltyAttachmentState,
   POPrintPayload,
+  POPrintSettings,
   PostGRPORequest,
   PostGRPOResponse,
   PostServiceGRPORequest,
@@ -26,6 +27,7 @@ import type {
   ServiceGRPOPendingEntry,
   ServiceGRPOPreview,
   ServiceGRPOSummary,
+  UpdatePOPrintSettingsRequest,
   Warehouse,
 } from '../types';
 
@@ -220,6 +222,20 @@ export const grpoApi = {
   async getPOPrint(poReceiptId: number): Promise<POPrintPayload> {
     const response = await apiClient.get<POPrintPayload>(
       API_ENDPOINTS.GRPO.PO_PRINT(poReceiptId),
+    );
+    return response.data;
+  },
+
+  /** Whether the active company's printed PO names SAP's approver or a typed one. */
+  async getPOPrintSettings(): Promise<POPrintSettings> {
+    const response = await apiClient.get<POPrintSettings>(API_ENDPOINTS.GRPO.PO_PRINT_SETTINGS);
+    return response.data;
+  },
+
+  async updatePOPrintSettings(data: UpdatePOPrintSettingsRequest): Promise<POPrintSettings> {
+    const response = await apiClient.patch<POPrintSettings>(
+      API_ENDPOINTS.GRPO.PO_PRINT_SETTINGS,
+      data,
     );
     return response.data;
   },

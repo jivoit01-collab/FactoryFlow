@@ -30,9 +30,11 @@ export type {
   PendingSupplierGroup,
   PlanAttachmentAuditEntry,
   PlanBiltyAttachmentState,
+  POApproverSource,
   POPrintHSNRow,
   POPrintLine,
   POPrintPayload,
+  POPrintSettings,
   POPrintTotalRow,
   POPrintTotals,
   PostGRPOAttachmentResult,
@@ -64,5 +66,6 @@ export type {
   ServiceGRPOSummary,
   ServiceGRPOTaxCodeOption,
   ServiceGRPOVarietyOption,
+  UpdatePOPrintSettingsRequest,
   Warehouse,
 } from './grpo.types';
