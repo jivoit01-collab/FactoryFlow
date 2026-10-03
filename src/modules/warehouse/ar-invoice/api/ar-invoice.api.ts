@@ -8,6 +8,8 @@ import type {
   CreateARInvoiceRequest,
   Customer,
   CustomerCredit,
+  CustomerLedger,
+  CustomerLedgerQuery,
   LineDefaults,
   MarkARPaymentRequest,
   OpenSOLine,
@@ -35,6 +37,14 @@ export const arInvoiceApi = {
         suppressErrorToast: true,
       },
     );
+    return response.data;
+  },
+
+  /** One customer's postings in SAP between two dates, with the running balance. */
+  async getCustomerLedger(query: CustomerLedgerQuery): Promise<CustomerLedger> {
+    const response = await apiClient.get<CustomerLedger>(API_ENDPOINTS.AR_INVOICE.CUSTOMER_LEDGER, {
+      params: query,
+    });
     return response.data;
   },
 

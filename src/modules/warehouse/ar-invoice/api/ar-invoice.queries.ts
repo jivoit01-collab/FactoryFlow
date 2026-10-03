@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   CreateARInvoiceRequest,
+  CustomerLedgerQuery,
   MarkARPaymentRequest,
   SapCashSaleQuery,
 } from '../types';
@@ -12,6 +13,14 @@ export const AR_INVOICE_QUERY_KEYS = {
   customers: (search: string) => [...AR_INVOICE_QUERY_KEYS.all, 'customers', search] as const,
   customerCredit: (customerCode: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'customer-credit', customerCode] as const,
+  customerLedger: (query: CustomerLedgerQuery) =>
+    [
+      ...AR_INVOICE_QUERY_KEYS.all,
+      'customer-ledger',
+      query.customer_code,
+      query.date_from ?? '',
+      query.date_to ?? '',
+    ] as const,
   openLines: (customerCode: string, search?: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'open-lines', customerCode, search ?? ''] as const,
   items: (warehouse: string, search: string) =>
@@ -63,6 +72,16 @@ export function useCustomerCredit(customerCode: string) {
     enabled: !!customerCode,
     staleTime: 15 * 1000,
     retry: false,
+  });
+}
+
+/** One customer's ledger for a date range; idle until a customer is picked. */
+export function useCustomerLedger(query: CustomerLedgerQuery) {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.customerLedger(query),
+    queryFn: () => arInvoiceApi.getCustomerLedger(query),
+    enabled: !!query.customer_code,
+    staleTime: 30 * 1000,
   });
 }
 

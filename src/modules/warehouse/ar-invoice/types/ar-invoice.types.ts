@@ -449,3 +449,58 @@ export interface SapCashSaleQuery {
   search?: string;
   limit?: number;
 }
+
+/** One posting on a customer's ledger — a journal line on their account in SAP. */
+export interface CustomerLedgerLine {
+  trans_id: number;
+  line_id: number;
+  /** Posting date, `YYYY-MM-DD`. */
+  date: string | null;
+  due_date: string | null;
+  trans_type: string;
+  /** "A/R Invoice", "Incoming Payment", "Journal Entry"… */
+  trans_type_label: string;
+  /** The source document's own number — the invoice, credit note or receipt. */
+  doc_num: string;
+  /** The customer's reference; on an invoice, their PO number. */
+  reference: string;
+  /** The bank narration or remark; blank when SAP only wrote its automatic memo. */
+  narration: string;
+  offset_account: string;
+  offset_name: string;
+  debit: number;
+  credit: number;
+  /** The balance after this posting. Positive is a debit — the customer owes. */
+  balance: number;
+  /**
+   * What SAP has not matched yet: the unpaid part of a bill (positive), or a
+   * receipt or credit note not yet set against one (negative).
+   */
+  open_amount: number;
+}
+
+/** One customer's ledger between two posting dates, straight from SAP. */
+export interface CustomerLedger {
+  customer_code: string;
+  customer_name: string;
+  date_from: string | null;
+  date_to: string | null;
+  currency: string;
+  /** Everything posted before `date_from`. */
+  opening_balance: number;
+  total_debit: number;
+  total_credit: number;
+  closing_balance: number;
+  /** SAP's live balance for the customer, whatever the range. */
+  balance_today: number;
+  /** Postings in the range — more than `lines.length` when `truncated`. */
+  total: number;
+  truncated: boolean;
+  lines: CustomerLedgerLine[];
+}
+
+export interface CustomerLedgerQuery {
+  customer_code: string;
+  date_from?: string;
+  date_to?: string;
+}

@@ -35,6 +35,7 @@ import { ARInvoiceDetailSheet } from '../components/ARInvoiceDetailSheet';
 import { ARInvoiceHistoryTable } from '../components/ARInvoiceHistoryTable';
 import { ARPaymentFilter } from '../components/ARPaymentControls';
 import { CustomerCreditPanel } from '../components/CustomerCreditPanel';
+import { CustomerLedgerTab } from '../components/CustomerLedgerTab';
 import { CustomerSelect } from '../components/CustomerSelect';
 import { DirectSaleForm } from '../components/DirectSaleForm';
 import { SapCashSaleList } from '../components/SapCashSaleList';
@@ -495,7 +496,7 @@ export default function ARInvoicePage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission(AR_INVOICE_PERMISSIONS.CREATE);
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<'new' | 'direct' | 'history'>(
+  const [tab, setTab] = useState<'new' | 'direct' | 'history' | 'ledger'>(
     canCreate ? (SHOW_SALES_ORDER_TAB ? 'new' : 'direct') : 'history',
   );
 
@@ -512,13 +513,14 @@ export default function ARInvoicePage() {
         </Button>
       </DashboardHeader>
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as 'new' | 'direct' | 'history')}>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as 'new' | 'direct' | 'history' | 'ledger')}>
         <TabsList>
           {canCreate && SHOW_SALES_ORDER_TAB ? (
             <TabsTrigger value="new">From Sales Order</TabsTrigger>
           ) : null}
           {canCreate ? <TabsTrigger value="direct">New Invoice</TabsTrigger> : null}
           <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
         </TabsList>
         {canCreate && SHOW_SALES_ORDER_TAB ? (
           <TabsContent value="new" className="mt-4">
@@ -532,6 +534,9 @@ export default function ARInvoicePage() {
         ) : null}
         <TabsContent value="history" className="mt-4">
           <HistoryTab canAct={canCreate} />
+        </TabsContent>
+        <TabsContent value="ledger" className="mt-4">
+          <CustomerLedgerTab />
         </TabsContent>
       </Tabs>
     </div>

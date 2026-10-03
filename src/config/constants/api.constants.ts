@@ -811,6 +811,7 @@ export const API_ENDPOINTS = {
   AR_INVOICE: {
     CUSTOMERS: '/ar-invoices/customers/',
     CUSTOMER_CREDIT: '/ar-invoices/customer-credit/',
+    CUSTOMER_LEDGER: '/ar-invoices/customer-ledger/',
     OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',
