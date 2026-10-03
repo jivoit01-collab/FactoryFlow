@@ -3,6 +3,8 @@
 
 import type { CompanyCode } from '@/config/constants';
 
+import type { ReadingShift } from './electricityTree.types';
+
 /** Where a main meter's electricity comes from. Mirrors the backend choices. */
 export type SupplySource = 'GRID' | 'DG' | 'SOLAR';
 
@@ -117,6 +119,8 @@ export interface DailyElectricityReading {
   consumer_codes: string[];
   attribution_display: string;
   date: string;
+  // The day or the night round of `date`; the night opens on the day's closing.
+  shift: ReadingShift;
   // Clock time the dial was read — not when the row was typed (created_at is
   // that). Null on readings entered before this was recorded.
   reading_time: string | null;
@@ -139,6 +143,8 @@ export interface DailyElectricityReading {
 export interface DailyElectricityReadingPayload {
   meter: number;
   date: string;
+  // The day round when omitted.
+  shift?: ReadingShift;
   // Omit both to carry the meter's own attribution onto the reading.
   company_codes?: CompanyCode[];
   consumer_codes?: string[];

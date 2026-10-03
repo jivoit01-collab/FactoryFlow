@@ -65,8 +65,10 @@ vi.mock('../api', () => ({
     data: [{ id: 1, name: 'Sidle', code: 'SIDLE', is_active: true }],
     isLoading: false,
   }),
-  useDailyElectricityReadings: (filters: unknown) => {
-    readingFilters.current = filters;
+  // The register's own query; the page's other one (the opening a new
+  // reading carries) is off unless a meter was read on or after that date.
+  useDailyElectricityReadings: (filters: unknown, enabled = true) => {
+    if (enabled) readingFilters.current = filters;
     return { data: rows.current ?? [READING], isLoading: false };
   },
   useCreateElectricityMeter: () => ({ mutateAsync: vi.fn(), isPending: false }),

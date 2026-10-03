@@ -1,4 +1,4 @@
-import { Gauge, Loader2, Pencil, Plus, Trash2, Zap } from 'lucide-react';
+import { Gauge, Loader2, Moon, Pencil, Plus, Sun, Trash2, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import {
   useCreateDailyElectricityReading,
@@ -37,8 +38,25 @@ import {
   useUpdateDailyElectricityReading,
   useUpdateElectricityMeter,
 } from '../api';
-import type { DailyElectricityReading, ElectricityMeter, SupplySource } from '../types';
+import { shiftISO } from '../components/electricity/electricityFormat';
+import type { DailyElectricityReading, ElectricityMeter, ReadingShift, SupplySource } from '../types';
 import { SUPPLY_SOURCE_LABELS, SUPPLY_SOURCE_LIST } from '../types';
+
+/** A day is read twice, as on Daily Electricity++: the day round, then the night. */
+const SHIFTS: { value: ReadingShift; label: string; Icon: typeof Sun }[] = [
+  { value: 'DAY', label: 'Day', Icon: Sun },
+  { value: 'NIGHT', label: 'Night', Icon: Moon },
+];
+
+/** "2026-09-29:1" — sorts readings in the order the rounds were worked. */
+function roundKey(date: string, shift: ReadingShift | undefined) {
+  return `${date}:${shift === 'NIGHT' ? 1 : 0}`;
+}
+
+/** "2026-09-29" for the day round, "2026-09-29 night" for the night round. */
+function roundLabel(date: string, shift: ReadingShift | undefined) {
+  return shift === 'NIGHT' ? `${date} night` : date;
+}
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -71,6 +89,7 @@ function firstOfMonthISO() {
 const EMPTY_READING_FORM = {
   meter: '',
   date: todayISO(),
+  shift: 'DAY' as ReadingShift,
   // When the dial was read. Defaults to now on a new entry, but editable:
   // the morning round is often typed up at the end of the shift.
   reading_time: '',
@@ -156,6 +175,11 @@ export default function MaintenanceDailyElectricityPage() {
   const [dialog, setDialog] = useState<'reading' | 'meters' | null>(null);
   const [editingReading, setEditingReading] = useState<DailyElectricityReading | null>(null);
   const [readingForm, setReadingForm] = useState(EMPTY_READING_FORM);
+  // The opening follows the round picked until somebody types one of their own.
+  const [openingTyped, setOpeningTyped] = useState(false);
+  // A round is entered meter after meter, so the next Add opens on the round
+  // the last one was for — a night round does not slip back to day halfway.
+  const [lastShift, setLastShift] = useState<ReadingShift>('DAY');
   const [editingMeter, setEditingMeter] = useState<ElectricityMeter | null>(null);
   const [meterForm, setMeterForm] = useState(EMPTY_METER_FORM);
   // The master list and the add/edit form are two modals, the form stacked on
@@ -229,10 +253,50 @@ export default function MaintenanceDailyElectricityPage() {
   const selectedMeter = readingForm.meter
     ? meters.find((m) => m.id === Number(readingForm.meter))
     : undefined;
+
+  // A new reading opens on the closing of the round before it: a night on its
+  // day's, a day on the night before's (or the day before's, when that night
+  // was not read). The meter's last closing is that round whenever it is older
+  // than the date being entered; a night after its day, or a late entry, needs
+  // the register itself.
+  const addingFor = dialog === 'reading' && !editingReading ? selectedMeter : undefined;
+  const lastIsEarlier = Boolean(
+    addingFor?.last_reading_date && addingFor.last_reading_date < readingForm.date,
+  );
+  const needsChain = Boolean(addingFor?.last_reading_date && readingForm.date && !lastIsEarlier);
+  const { data: chainReadings = [] } = useDailyElectricityReadings(
+    {
+      meter: addingFor?.id,
+      date_from: readingForm.date ? shiftISO(readingForm.date, -31) : undefined,
+      date_to: readingForm.date || undefined,
+    },
+    needsChain,
+  );
+  const previousRound = useMemo(() => {
+    if (!needsChain || !addingFor) return null;
+    const here = roundKey(readingForm.date, readingForm.shift);
+    let found: DailyElectricityReading | null = null;
+    for (const reading of chainReadings) {
+      if (reading.meter !== addingFor.id) continue;
+      const at = roundKey(reading.date, reading.shift);
+      if (at < here && (!found || at > roundKey(found.date, found.shift))) found = reading;
+    }
+    return found;
+  }, [needsChain, addingFor, chainReadings, readingForm.date, readingForm.shift]);
+  const carried = !addingFor
+    ? null
+    : lastIsEarlier
+      ? { closing: addingFor.last_closing_reading ?? '', from: addingFor.last_reading_date ?? '' }
+      : previousRound
+        ? { closing: previousRound.closing_reading, from: roundLabel(previousRound.date, previousRound.shift) }
+        : null;
+  const openingReading =
+    editingReading || openingTyped ? readingForm.opening_reading : (carried?.closing ?? '');
+
   // What the dial moved, before the multiplying factor.
   const previewDialDiff =
-    readingForm.opening_reading !== '' && readingForm.closing_reading !== ''
-      ? parseFloat(readingForm.closing_reading) - parseFloat(readingForm.opening_reading)
+    openingReading !== '' && readingForm.closing_reading !== ''
+      ? parseFloat(readingForm.closing_reading) - parseFloat(openingReading)
       : null;
   const previewFactor = readingForm.multiplying_factor !== ''
     ? parseFloat(readingForm.multiplying_factor)
@@ -254,7 +318,13 @@ export default function MaintenanceDailyElectricityPage() {
 
   const openAddReading = () => {
     setEditingReading(null);
-    setReadingForm({ ...EMPTY_READING_FORM, date: todayISO(), reading_time: nowHHMM() });
+    setReadingForm({
+      ...EMPTY_READING_FORM,
+      date: todayISO(),
+      shift: lastShift,
+      reading_time: nowHHMM(),
+    });
+    setOpeningTyped(false);
     setDialog('reading');
   };
 
@@ -272,6 +342,7 @@ export default function MaintenanceDailyElectricityPage() {
     setReadingForm({
       meter: String(reading.meter),
       date: reading.date,
+      shift: reading.shift ?? 'DAY',
       reading_time: trimSeconds(reading.reading_time),
       company_codes: inherits ? (meter?.company_codes ?? []) : reading.company_codes,
       consumer_codes: inherits ? (meter?.consumer_codes ?? []) : reading.consumer_codes,
@@ -286,11 +357,13 @@ export default function MaintenanceDailyElectricityPage() {
 
   const onSelectReadingMeter = (meterId: string) => {
     const meter = meters.find((m) => m.id === Number(meterId));
+    // Another meter carries another opening.
+    setOpeningTyped(false);
     setReadingForm((prev) => ({
       ...prev,
       meter: meterId,
-      // Prefill for convenience; all of it stays editable.
-      opening_reading: meter?.last_closing_reading ?? prev.opening_reading,
+      // Prefill for convenience; all of it stays editable. The opening is
+      // carried from the meter's chain (openingReading above).
       rate_per_unit: meter?.rate_per_unit ?? prev.rate_per_unit,
       multiplying_factor: meter?.multiplying_factor ?? prev.multiplying_factor,
       // Who the meter feeds is the day's attribution until somebody says
@@ -330,11 +403,12 @@ export default function MaintenanceDailyElectricityPage() {
     const payload = {
       meter: Number(readingForm.meter),
       date: readingForm.date,
+      shift: readingForm.shift,
       // Left blank the backend stamps the current time rather than storing none.
       reading_time: readingForm.reading_time === '' ? undefined : readingForm.reading_time,
       company_codes: readingForm.company_codes,
       consumer_codes: readingForm.consumer_codes,
-      opening_reading: readingForm.opening_reading === '' ? undefined : readingForm.opening_reading,
+      opening_reading: openingReading === '' ? undefined : openingReading,
       closing_reading: readingForm.closing_reading,
       rate_per_unit: readingForm.rate_per_unit === '' ? undefined : readingForm.rate_per_unit,
       multiplying_factor:
@@ -347,6 +421,7 @@ export default function MaintenanceDailyElectricityPage() {
         toast.success('Reading updated');
       } else {
         await createReading.mutateAsync(payload);
+        setLastShift(readingForm.shift);
         toast.success('Reading recorded');
       }
       setDialog(null);
@@ -358,7 +433,7 @@ export default function MaintenanceDailyElectricityPage() {
   const removeReading = async (reading: DailyElectricityReading) => {
     const confirmed = await confirmDialog({
       title: 'Delete reading?',
-      description: `The ${reading.date} reading for ${reading.meter_name} will be deleted.`,
+      description: `The ${roundLabel(reading.date, reading.shift)} reading for ${reading.meter_name} will be deleted.`,
       confirmLabel: 'Delete',
       destructive: true,
     });
@@ -470,6 +545,7 @@ export default function MaintenanceDailyElectricityPage() {
         <thead>
           <tr className="border-b bg-muted/50 text-left">
             <th className="px-3 py-2 font-medium">Date</th>
+            <th className="px-3 py-2 font-medium">Shift</th>
             {/* When the dial was read, which is not when the row was typed —
                 the tooltip on Entered By says that. */}
             <th className="px-3 py-2 font-medium">Time</th>
@@ -490,6 +566,17 @@ export default function MaintenanceDailyElectricityPage() {
           {rows.map((reading) => (
             <tr key={reading.id} className="border-b border-slate-100 last:border-0 transition-colors hover:bg-sky-50/60 dark:border-border/60 dark:hover:bg-muted/40">
               <td className="whitespace-nowrap px-3 py-2">{reading.date}</td>
+              <td className="whitespace-nowrap px-3 py-2">
+                {reading.shift === 'NIGHT' ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Moon className="h-3.5 w-3.5 text-muted-foreground" /> Night
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <Sun className="h-3.5 w-3.5 text-muted-foreground" /> Day
+                  </span>
+                )}
+              </td>
               <td className="whitespace-nowrap px-3 py-2">
                 {trimSeconds(reading.reading_time) || (
                   <span className="text-muted-foreground" title="Read before the register recorded the time">
@@ -559,7 +646,7 @@ export default function MaintenanceDailyElectricityPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      aria-label={`Edit ${reading.date} reading for ${reading.meter_name}`}
+                      aria-label={`Edit ${roundLabel(reading.date, reading.shift)} reading for ${reading.meter_name}`}
                       onClick={() => openEditReading(reading)}
                     >
                       <Pencil className="h-4 w-4" />
@@ -569,7 +656,7 @@ export default function MaintenanceDailyElectricityPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      aria-label={`Delete ${reading.date} reading for ${reading.meter_name}`}
+                      aria-label={`Delete ${roundLabel(reading.date, reading.shift)} reading for ${reading.meter_name}`}
                       onClick={() => removeReading(reading)}
                       disabled={deleteReading.isPending}
                     >
@@ -843,11 +930,17 @@ export default function MaintenanceDailyElectricityPage() {
                   </SelectOption>
                 ))}
               </NativeSelect>
-              {selectedMeter?.last_reading_date && (
+              {addingFor && carried ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Last reading {selectedMeter.last_reading_date}: closing{' '}
-                  {selectedMeter.last_closing_reading}
+                  Opens on the {carried.from} closing: {carried.closing}
                 </p>
+              ) : (
+                selectedMeter?.last_reading_date && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Last reading {selectedMeter.last_reading_date}: closing{' '}
+                    {selectedMeter.last_closing_reading}
+                  </p>
+                )
               )}
             </div>
             <fieldset>
@@ -891,13 +984,47 @@ export default function MaintenanceDailyElectricityPage() {
               </p>
             </fieldset>
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <Label id="reading-shift">Shift</Label>
+                <div
+                  role="group"
+                  aria-labelledby="reading-shift"
+                  className="mt-1 flex h-9 w-fit items-center rounded-lg bg-muted p-1 text-muted-foreground"
+                >
+                  {SHIFTS.map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={readingForm.shift === value}
+                      onClick={() => {
+                        setOpeningTyped(false);
+                        setReadingForm((p) => ({ ...p, shift: value }));
+                      }}
+                      className={cn(
+                        'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        readingForm.shift === value && 'bg-background text-foreground shadow',
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Both rounds belong to the date below. The night opens on the day's closing; the
+                  next day opens on the night's — or on the day's, when the night was not read.
+                </p>
+              </div>
               <div>
                 <Label htmlFor="reading-date">Date</Label>
                 <Input
                   id="reading-date"
                   type="date"
                   value={readingForm.date}
-                  onChange={(e) => setReadingForm((p) => ({ ...p, date: e.target.value }))}
+                  onChange={(e) => {
+                    setOpeningTyped(false);
+                    setReadingForm((p) => ({ ...p, date: e.target.value }));
+                  }}
                 />
               </div>
               <div>
@@ -943,10 +1070,11 @@ export default function MaintenanceDailyElectricityPage() {
                   id="reading-opening"
                   type="number"
                   step="0.01"
-                  value={readingForm.opening_reading}
-                  onChange={(e) =>
-                    setReadingForm((p) => ({ ...p, opening_reading: e.target.value }))
-                  }
+                  value={openingReading}
+                  onChange={(e) => {
+                    setOpeningTyped(true);
+                    setReadingForm((p) => ({ ...p, opening_reading: e.target.value }));
+                  }}
                   placeholder="Carried from last closing"
                 />
               </div>
