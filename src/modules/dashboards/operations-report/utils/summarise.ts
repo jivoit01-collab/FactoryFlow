@@ -107,6 +107,9 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
     kwh,
     powerCost,
     powerUnreadDays: power === null ? 0 : days.length - readPower.length,
+    litresUnknownDays: days.filter((day) => day.lines?.some((line) => line.litres === null)).length,
+    labourUncostedDays: days.filter((day) => day.labour?.some((entry) => entry.cost === null))
+      .length,
     kwhPerKl: kwh !== null && litres !== null && litres > 0 ? kwh / (litres / 1000) : null,
     perLitre: cost,
   };

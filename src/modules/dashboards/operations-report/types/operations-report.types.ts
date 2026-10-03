@@ -128,6 +128,10 @@ export interface ReportTotals {
   powerCost: number | null;
   /** Days in the span nobody entered the meter register. */
   powerUnreadDays: number;
+  /** Days in the span with a run of unknown pack size, so unknown litres. */
+  litresUnknownDays: number;
+  /** Days in the span whose labour had no rate in force. */
+  labourUncostedDays: number;
   /** Units per kilolitre filled. */
   kwhPerKl: number | null;
   perLitre: PerLitreCost;

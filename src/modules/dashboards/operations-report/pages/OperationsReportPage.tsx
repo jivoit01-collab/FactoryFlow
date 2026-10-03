@@ -68,7 +68,7 @@ export default function OperationsReportPage() {
         <DashboardLoading />
       ) : report ? (
         <>
-          <ReportNotices meta={report.meta} />
+          <ReportNotices report={report} />
           <ReportKpiRow report={report} />
           <CostPerLitrePanel report={report} palette={palette} />
           <ReportTrends report={report} palette={palette} onSelectDay={period.openDay} />

@@ -82,6 +82,22 @@ describe('totalsOf', () => {
     expect(totals.kwh).toBe(300);
     expect(totals.powerUnreadDays).toBe(1);
   });
+
+  it('counts the days each gap falls on, so a notice can name its own period', () => {
+    const totals = totalsOf([
+      day('2026-08-01', {
+        lines: [{ line: '10 Head', runs: 1, cases: 100, litres: null }],
+        labour: [{ group: 'Imran', heads: 10, day_shift: 10, night_shift: 0, cost: null }],
+      }),
+      day('2026-08-02', {
+        labour: [{ group: 'Imran', heads: 10, day_shift: 10, night_shift: 0, cost: null }],
+      }),
+      day('2026-08-03'),
+    ]);
+    expect(totals.litresUnknownDays).toBe(1);
+    expect(totals.labourUncostedDays).toBe(2);
+    expect(totals.powerUnreadDays).toBe(0);
+  });
 });
 
 describe('breakdownOf', () => {

@@ -73,6 +73,9 @@ function Delta({ pct, goodWhen, vs }: { pct: number | null; goodWhen: GoodWhen; 
 export function ReportKpiRow({ report }: { report: OperationsReport }) {
   const { totals: now, previous: was, view, meta } = report;
   const gap = (section: Parameters<typeof sectionGap>[1]) => sectionGap(meta, section);
+  // A span with unread meter days holds less electricity than it used, so it is
+  // not set against one that was read in full: the gap would read as a saving.
+  const powerComparable = !now.powerUnreadDays && !was.powerUnreadDays;
 
   const labourSub = (() => {
     if (gap('labour')) return gap('labour') as string;
@@ -147,7 +150,7 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       accent: 'orange',
       value: now.kwh === null ? NIL : `${compact(now.kwh)} kWh`,
       sub: powerSub,
-      change: change(now.kwh, was.kwh),
+      change: powerComparable ? change(now.kwh, was.kwh) : null,
       goodWhen: null,
     },
     {
@@ -156,7 +159,7 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       accent: 'slate',
       value: perLitre(now.perLitre.total),
       sub: costSub,
-      change: change(now.perLitre.total, was.perLitre.total),
+      change: powerComparable ? change(now.perLitre.total, was.perLitre.total) : null,
       goodWhen: 'down',
     },
   ];
