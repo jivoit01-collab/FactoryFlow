@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/shared/components/ui';
 import type { MachineBreakdown } from '../types';
+import { breakdownTypeLabel } from '../utils';
 
 interface BreakdownTableProps {
   breakdowns: MachineBreakdown[];
@@ -41,7 +42,7 @@ export function BreakdownTable({ breakdowns, onAdd, readOnly }: BreakdownTablePr
               <tr key={b.id} className="border-b hover:bg-muted/30">
                 <td className="p-2">
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
-                    {b.breakdown_category_name || 'Unknown'}
+                    {breakdownTypeLabel(b) || 'Unknown'}
                   </span>
                 </td>
                 <td className="p-2">{new Date(b.start_time).toLocaleTimeString()}</td>

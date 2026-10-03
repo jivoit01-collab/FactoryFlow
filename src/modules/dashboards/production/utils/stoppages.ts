@@ -18,11 +18,15 @@
  * Reasons are typed by hand, so they are matched case- and space-insensitively
  * — "powercut" and "POWERCUT" are one problem, not two — while the spelling
  * shown is the one the floor actually typed first.
+ *
+ * Where a sub-breakdown was picked (Filler › Cap stuck) it is the cause, and
+ * the reason typed beside it is only detail. It is keyed with its main
+ * breakdown, because Filler and Blow moulding both have a "Timing out".
  */
 
 /** One cause of lost output, and what it cost in minutes. */
 export interface Stoppage {
-  /** The reason as typed, or the category where no reason was given. */
+  /** The sub-breakdown, else the reason as typed, else the category. */
   label: string;
   /** The coarse category behind it, where it adds anything to the label. */
   category: string;
@@ -38,6 +42,7 @@ export interface Stoppage {
 /** The fields a stoppage record must carry, whichever register it came from. */
 export interface StoppageRecord {
   breakdown_category_name?: string | null;
+  breakdown_subcategory_name?: string | null;
   reason?: string | null;
   breakdown_minutes?: number | string | null;
   start_time: string;
@@ -64,17 +69,18 @@ export function stoppageMinutes(record: StoppageRecord, now: number): number {
   return record.end_time ? num(record.breakdown_minutes) : minutesSince(record.start_time, now);
 }
 
-/** Fold one stoppage into a cause map, keyed on its reason. */
+/** Fold one stoppage into a cause map, keyed on its sub-breakdown or reason. */
 export function addStoppage(
   byCause: Map<string, Stoppage>,
   record: StoppageRecord,
   machineName: string,
   now: number,
 ): void {
+  const sub = (record.breakdown_subcategory_name ?? '').trim();
   const reason = (record.reason ?? '').trim();
   const category = (record.breakdown_category_name ?? '').trim();
-  const label = reason || category || 'Uncategorised';
-  const key = label.toLowerCase();
+  const label = sub || reason || category || 'Uncategorised';
+  const key = (sub ? `${category} › ${sub}` : label).toLowerCase();
   const minutes = stoppageMinutes(record, now);
 
   const existing = byCause.get(key);

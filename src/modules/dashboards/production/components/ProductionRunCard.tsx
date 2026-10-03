@@ -489,15 +489,18 @@ export function ProductionRunCard({
                 {run.breakdowns.map((breakdown) => (
                   <li key={breakdown.id} className="flex items-start justify-between gap-3 py-1.5">
                     <span className="min-w-0">
-                      {/* The reason leads, because it is the half that says
-                          anything: every stoppage on record carries one, while
-                          the category only ever takes five coarse values. */}
+                      {/* The sub-breakdown leads where one was picked, else
+                          the typed reason: either says what went wrong, while
+                          the main breakdown only says where. */}
                       <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                         {breakdown.is_active && (
                           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
                         )}
                         <span className="truncate">
-                          {breakdown.reason || breakdown.breakdown_category_name || 'Stoppage'}
+                          {breakdown.breakdown_subcategory_name ||
+                            breakdown.reason ||
+                            breakdown.breakdown_category_name ||
+                            'Stoppage'}
                         </span>
                         {breakdown.is_unrecovered && (
                           <span className="shrink-0 rounded-full border border-rose-600/30 px-1.5 text-[9px] font-bold uppercase tracking-wider text-rose-700 dark:border-rose-400/30 dark:text-rose-300">
@@ -510,6 +513,9 @@ export function ProductionRunCard({
                         {breakdown.end_time ? ` – ${clockTime(breakdown.end_time)}` : ''}
                         {breakdown.breakdown_category_name
                           ? ` · ${breakdown.breakdown_category_name}`
+                          : ''}
+                        {breakdown.breakdown_subcategory_name && breakdown.reason
+                          ? ` · ${breakdown.reason}`
                           : ''}
                         {breakdown.machine_name ? ` · ${breakdown.machine_name}` : ''}
                         {breakdown.remarks ? ` · ${breakdown.remarks}` : ''}

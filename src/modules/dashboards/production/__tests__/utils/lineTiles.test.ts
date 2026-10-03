@@ -498,6 +498,30 @@ describe('buildLineTiles', () => {
     expect(board.tiles[0].stoppages[0].label).toBe('PM Short');
   });
 
+  it('takes a picked sub-breakdown as the cause, keyed with its main', () => {
+    const sub = (id: number, main: string, name: string, reason: string, minutes: number) =>
+      ({ ...stop(id, main, reason, minutes), breakdown_subcategory_name: name }) as MachineBreakdown;
+    const board = build([
+      row(1, 'COMPLETED', 1, {
+        breakdowns: [
+          sub(1, 'Filler', 'Cap stuck', 'capstuck', 10),
+          sub(2, 'Filler', 'Cap stuck', '', 5),
+          // Both mains have a "Timing out"; they are two different faults.
+          sub(3, 'Blow moulding', 'Timing out', '', 7),
+          sub(4, 'Filler', 'Timing out', '', 4),
+        ],
+      }),
+    ]);
+
+    expect(
+      board.tiles[0].stoppages.map((s) => [s.label, s.category, s.minutes, s.count]),
+    ).toEqual([
+      ['Cap stuck', 'Filler', 15, 2],
+      ['Timing out', 'Blow moulding', 7, 1],
+      ['Timing out', 'Filler', 4, 1],
+    ]);
+  });
+
   it('rolls the whole plant’s stoppages up, naming every line a cause stopped', () => {
     const board = build([
       row(1, 'COMPLETED', 1, { breakdowns: [stop(1, 'Other', 'powercut', 21)] }),

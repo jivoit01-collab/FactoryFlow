@@ -14,7 +14,7 @@ import {
   Warehouse,
   Zap,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -27,9 +27,9 @@ import {
   useRunBOMRequests,
 } from '@/modules/warehouse/api';
 import {
-  Button, Card, CardContent, Checkbox,
+  Button, Card, CardContent,
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  Input, Label, NativeSelect, Select, SelectContent, SelectItem, SelectOption, SelectTrigger, SelectValue,
+  Input, Label,
   Tabs, TabsContent, TabsList, TabsTrigger, Textarea,
 } from '@/shared/components/ui';
 
@@ -40,7 +40,6 @@ import {
   useBreakdownCategories,
   useCreateMaterial,
   useLineClearances,
-  useMachines,
   useMaterials,
   useResolveBreakdown,
   useRunDetail,
@@ -51,6 +50,7 @@ import {
   useUpdateSegment,
   useWasteLogs,
 } from '../api';
+import { BreakdownTypeFields } from '../components/BreakdownTypeFields';
 import { MaterialConsumptionTable } from '../components/MaterialConsumptionTable';
 import { ProductionStatusBadge } from '../components/ProductionStatusBadge';
 import { ProductionTimeline } from '../components/ProductionTimeline';
@@ -68,6 +68,7 @@ import {
   stopProductionSchema,
 } from '../schemas';
 import type { MachineBreakdown, ProductionSegment } from '../types';
+import { breakdownTypeLabel, checkBreakdownType, subBreakdownsOf } from '../utils';
 
 function WarehouseApprovalBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; cls: string }> = {
@@ -103,7 +104,6 @@ function RunDetailPage() {
   const { data: breakdownCategories = [] } = useBreakdownCategories();
   const { data: clearances = [] } = useLineClearances(run?.line);
   const { data: wasteLogs = [] } = useWasteLogs(numRunId);
-  const { data: lineMachines = [] } = useMachines(run?.line);
 
   // ---------------------------------------------------------------------------
   // Mutations
@@ -161,12 +161,6 @@ function RunDetailPage() {
   const hasActiveBreakdown = run?.breakdowns?.some((b) => b.is_active) ?? false;
   const canComplete = !hasActiveSegment && !hasActiveBreakdown && run?.status === 'IN_PROGRESS';
   const runClearance = clearances.find((c) => c.production_run === run?.id);
-  const machineOptions = useMemo(() => {
-    if (!run?.machine_ids?.length) return lineMachines;
-    const runMachineIds = new Set(run.machine_ids);
-    const runMachines = lineMachines.filter((machine) => runMachineIds.has(machine.id));
-    return runMachines.length > 0 ? runMachines : lineMachines;
-  }, [lineMachines, run?.machine_ids]);
   // Where the checks are optional (Beverages), the BOM request gates the start
   // only once it has been sent, and no line clearance is needed.
   const startChecksOptional = run?.start_checks_optional === true;
@@ -197,38 +191,33 @@ function RunDetailPage() {
     defaultValues: {
       produced_cases: '0',
       remarks: '',
-      create_maintenance_work_order: true,
-      maintenance_priority: 'CRITICAL',
     },
   });
-  const selectedBreakdownMachineId = breakdownForm.watch('machine_id');
-  const createMaintenanceWork = breakdownForm.watch('create_maintenance_work_order') ?? true;
+  const breakdownCategoryId = breakdownForm.watch('breakdown_category_id');
+  const breakdownHasSubs = subBreakdownsOf(breakdownCategories, breakdownCategoryId).length > 0;
 
   const openBreakdownDialog = () => {
-    const defaultMachineId = machineOptions.length === 1 ? machineOptions[0].id : undefined;
     breakdownForm.reset({
-      machine_id: defaultMachineId,
-      create_maintenance_work_order: true,
-      maintenance_priority: 'CRITICAL',
       produced_cases: '0',
       remarks: '',
     });
     setDialog('breakdown');
   };
   const onSubmitBreakdown = async (data: AddBreakdownFormData) => {
+    const typeError = checkBreakdownType(breakdownCategories, data);
+    if (typeError) {
+      breakdownForm.setError(typeError.field, { message: typeError.message });
+      return;
+    }
     try {
-      await addBreakdown.mutateAsync(data);
-      toast.success(
-        data.create_maintenance_work_order === false
-          ? 'Breakdown added'
-          : 'Breakdown added and maintenance work created',
-      );
+      // A breakdown is logged against the line; no maintenance work is raised
+      // from here (the server would otherwise default to trying).
+      await addBreakdown.mutateAsync({ ...data, create_maintenance_work_order: false });
+      toast.success('Breakdown added');
       setDialog(null);
       breakdownForm.reset({
         produced_cases: '0',
         remarks: '',
-        create_maintenance_work_order: true,
-        maintenance_priority: 'CRITICAL',
       });
     } catch {
       toast.error('Failed to add breakdown');
@@ -291,24 +280,30 @@ function RunDetailPage() {
     resolver: zodResolver(addManualBreakdownSchema),
     defaultValues: { start_time: '', end_time: '', reason: '', remarks: '' },
   });
+  const manualBreakdownCategoryId = manualBreakdownForm.watch('breakdown_category_id');
+  const manualBreakdownHasSubs =
+    subBreakdownsOf(breakdownCategories, manualBreakdownCategoryId).length > 0;
   const openManualBreakdownDialog = () => {
-    const defaultMachineId = machineOptions.length === 1 ? machineOptions[0].id : undefined;
     manualBreakdownForm.reset({
       start_time: '',
       end_time: '',
-      machine_id: defaultMachineId,
       reason: '',
       remarks: '',
     });
     setDialog('manual-breakdown');
   };
   const onSubmitManualBreakdown = async (data: AddManualBreakdownFormData) => {
+    const typeError = checkBreakdownType(breakdownCategories, data);
+    if (typeError) {
+      manualBreakdownForm.setError(typeError.field, { message: typeError.message });
+      return;
+    }
     try {
       await addManualBreakdown.mutateAsync({
         start_time: toIso(data.start_time),
         end_time: toIso(data.end_time),
         breakdown_category_id: data.breakdown_category_id,
-        machine_id: data.machine_id,
+        breakdown_subcategory_id: data.breakdown_subcategory_id,
         reason: data.reason,
         remarks: data.remarks,
       });
@@ -613,74 +608,28 @@ function RunDetailPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Add Breakdown</DialogTitle></DialogHeader>
           <form onSubmit={breakdownForm.handleSubmit(onSubmitBreakdown)} className="space-y-4">
+            <BreakdownTypeFields
+              categories={breakdownCategories}
+              categoryId={breakdownCategoryId}
+              onCategoryChange={(id) => {
+                breakdownForm.setValue('breakdown_category_id', id);
+                breakdownForm.setValue('breakdown_subcategory_id', null);
+                breakdownForm.clearErrors(['breakdown_category_id', 'breakdown_subcategory_id', 'reason']);
+              }}
+              onSubCategoryChange={(id) => {
+                breakdownForm.setValue('breakdown_subcategory_id', id);
+                breakdownForm.clearErrors('breakdown_subcategory_id');
+              }}
+              categoryError={breakdownForm.formState.errors.breakdown_category_id?.message}
+              subCategoryError={breakdownForm.formState.errors.breakdown_subcategory_id?.message}
+            />
             <div>
-              <Label>Breakdown Type</Label>
-              <Select onValueChange={(v) => breakdownForm.setValue('breakdown_category_id', Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select breakdown type" /></SelectTrigger>
-                <SelectContent>
-                  {breakdownCategories.length === 0 ? (
-                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No breakdown categories found.</div>
-                  ) : (
-                    breakdownCategories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="breakdown_machine">Machine</Label>
-              <NativeSelect
-                id="breakdown_machine"
-                value={selectedBreakdownMachineId ? String(selectedBreakdownMachineId) : ''}
-                onChange={(event) => {
-                  const machineId = event.target.value ? Number(event.target.value) : null;
-                  breakdownForm.setValue('machine_id', machineId);
-                }}
-              >
-                <SelectOption value="">Line-level breakdown</SelectOption>
-                {machineOptions.map((machine) => (
-                  <SelectOption key={machine.id} value={String(machine.id)}>
-                    {machine.name} - {machine.machine_type}
-                  </SelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div className="rounded-md border p-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="create_maintenance_work_order"
-                  checked={createMaintenanceWork}
-                  onCheckedChange={(checked) =>
-                    breakdownForm.setValue('create_maintenance_work_order', checked)
-                  }
-                />
-                <Label htmlFor="create_maintenance_work_order">Create maintenance work</Label>
-              </div>
-              {createMaintenanceWork && (
-                <div className="mt-3">
-                  <div>
-                    <Label htmlFor="breakdown_priority">Maintenance Priority</Label>
-                    <NativeSelect
-                      id="breakdown_priority"
-                      value={breakdownForm.watch('maintenance_priority') ?? 'CRITICAL'}
-                      onChange={(event) =>
-                        breakdownForm.setValue(
-                          'maintenance_priority',
-                          event.target.value as AddBreakdownFormData['maintenance_priority'],
-                        )
-                      }
-                    >
-                      <SelectOption value="CRITICAL">Critical</SelectOption>
-                      <SelectOption value="HIGH">High</SelectOption>
-                      <SelectOption value="NORMAL">Normal</SelectOption>
-                    </NativeSelect>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    The work order links to the selected machine&apos;s maintenance asset automatically.
-                  </p>
-                </div>
+              <Label>{breakdownHasSubs ? 'Reason (optional)' : 'Reason'}</Label>
+              <Input {...breakdownForm.register('reason')} />
+              {breakdownForm.formState.errors.reason && (
+                <p className="mt-1 text-xs text-red-600">{breakdownForm.formState.errors.reason.message}</p>
               )}
             </div>
-            <div><Label>Reason</Label><Input {...breakdownForm.register('reason')} /></div>
             <div><Label>Cases Produced</Label><Input type="number" {...breakdownForm.register('produced_cases')} /></div>
             <div><Label>Remarks</Label><Textarea {...breakdownForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2">
@@ -779,41 +728,28 @@ function RunDetailPage() {
                 )}
               </div>
             </div>
+            <BreakdownTypeFields
+              categories={breakdownCategories}
+              categoryId={manualBreakdownCategoryId}
+              onCategoryChange={(id) => {
+                manualBreakdownForm.setValue('breakdown_category_id', id);
+                manualBreakdownForm.setValue('breakdown_subcategory_id', null);
+                manualBreakdownForm.clearErrors(['breakdown_category_id', 'breakdown_subcategory_id', 'reason']);
+              }}
+              onSubCategoryChange={(id) => {
+                manualBreakdownForm.setValue('breakdown_subcategory_id', id);
+                manualBreakdownForm.clearErrors('breakdown_subcategory_id');
+              }}
+              categoryError={manualBreakdownForm.formState.errors.breakdown_category_id?.message}
+              subCategoryError={manualBreakdownForm.formState.errors.breakdown_subcategory_id?.message}
+            />
             <div>
-              <Label>Breakdown Type</Label>
-              <Select onValueChange={(v) => manualBreakdownForm.setValue('breakdown_category_id', Number(v))}>
-                <SelectTrigger><SelectValue placeholder="Select breakdown type" /></SelectTrigger>
-                <SelectContent>
-                  {breakdownCategories.length === 0 ? (
-                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No breakdown categories found.</div>
-                  ) : (
-                    breakdownCategories.map((c) => (<SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>))
-                  )}
-                </SelectContent>
-              </Select>
-              {manualBreakdownForm.formState.errors.breakdown_category_id && (
-                <p className="mt-1 text-xs text-red-600">{manualBreakdownForm.formState.errors.breakdown_category_id.message}</p>
+              <Label>{manualBreakdownHasSubs ? 'Reason (optional)' : 'Reason'}</Label>
+              <Input {...manualBreakdownForm.register('reason')} />
+              {manualBreakdownForm.formState.errors.reason && (
+                <p className="mt-1 text-xs text-red-600">{manualBreakdownForm.formState.errors.reason.message}</p>
               )}
             </div>
-            <div>
-              <Label htmlFor="manual_breakdown_machine">Machine</Label>
-              <NativeSelect
-                id="manual_breakdown_machine"
-                value={manualBreakdownForm.watch('machine_id') ? String(manualBreakdownForm.watch('machine_id')) : ''}
-                onChange={(event) => {
-                  const machineId = event.target.value ? Number(event.target.value) : null;
-                  manualBreakdownForm.setValue('machine_id', machineId);
-                }}
-              >
-                <SelectOption value="">Line-level breakdown</SelectOption>
-                {machineOptions.map((machine) => (
-                  <SelectOption key={machine.id} value={String(machine.id)}>
-                    {machine.name} - {machine.machine_type}
-                  </SelectOption>
-                ))}
-              </NativeSelect>
-            </div>
-            <div><Label>Reason</Label><Input {...manualBreakdownForm.register('reason')} /></div>
             <div><Label>Remarks</Label><Textarea {...manualBreakdownForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Cancel</Button>
@@ -876,8 +812,8 @@ function RunDetailPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Type</span>
-                  <p className="font-medium">{selectedBreakdown.breakdown_category_name}</p>
+                  <span className="text-muted-foreground">Breakdown</span>
+                  <p className="font-medium">{breakdownTypeLabel(selectedBreakdown)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Start Time</span>
@@ -915,7 +851,7 @@ function RunDetailPage() {
               )}
               <div>
                 <span className="text-sm text-muted-foreground">Reason</span>
-                <p className="text-sm font-medium">{selectedBreakdown.reason}</p>
+                <p className="text-sm font-medium">{selectedBreakdown.reason || '—'}</p>
               </div>
               <div>
                 <Label>Remarks</Label>

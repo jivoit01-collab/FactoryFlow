@@ -293,10 +293,22 @@ export interface UpdateBreakdownRemarksRequest {
 // Breakdown Categories
 // ============================================================================
 
+/** The specific fault under a main breakdown — Filler › Cap stuck. */
+export interface BreakdownSubCategory {
+  id: number;
+  name: string;
+  is_active: boolean;
+}
+
 export interface BreakdownCategory {
   id: number;
   name: string;
   is_active: boolean;
+  /**
+   * Active sub-breakdowns; a main that has any must be logged with one.
+   * Optional because the frontend and backend deploy from separate repos.
+   */
+  sub_categories?: BreakdownSubCategory[];
   created_at: string;
   updated_at: string;
 }
@@ -312,6 +324,8 @@ export interface MachineBreakdown {
   machine_name?: string | null;
   breakdown_category: number | null;
   breakdown_category_name: string;
+  breakdown_subcategory?: number | null;
+  breakdown_subcategory_name?: string;
   start_time: string;
   end_time: string;
   breakdown_minutes: number;
@@ -1020,11 +1034,13 @@ export interface UpdateRunRequest {
 
 export interface AddBreakdownRequest {
   breakdown_category_id: number;
+  breakdown_subcategory_id?: number | null;
   machine_id?: number | null;
   maintenance_asset_id?: number | null;
   create_maintenance_work_order?: boolean;
   maintenance_priority?: 'NORMAL' | 'HIGH' | 'CRITICAL';
-  reason: string;
+  /** Required unless a sub-breakdown is picked. */
+  reason?: string;
   produced_cases?: string;
   remarks?: string;
 }
@@ -1049,8 +1065,10 @@ export interface AddManualBreakdownRequest {
   start_time: string;
   end_time: string;
   breakdown_category_id: number;
+  breakdown_subcategory_id?: number | null;
   machine_id?: number | null;
-  reason: string;
+  /** Required unless a sub-breakdown is picked. */
+  reason?: string;
   remarks?: string;
 }
 

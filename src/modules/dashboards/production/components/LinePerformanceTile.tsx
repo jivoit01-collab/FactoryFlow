@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { breakdownTypeLabel } from '@/modules/production/execution/utils/breakdownType';
 import { cn } from '@/shared/utils';
 
 import { clockTime, count, localDateOf, money } from '../../dispatch/utils/format';
@@ -382,7 +383,7 @@ export function LinePerformanceTile({
         <p className="mt-2 flex items-center gap-1.5 rounded-lg bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
           <AlertTriangle className="h-3 w-3 shrink-0" />
           <span className="truncate">
-            {tile.openBreakdown.breakdown_category_name || 'Stopped'} since{' '}
+            {breakdownTypeLabel(tile.openBreakdown) || 'Stopped'} since{' '}
             {clockTime(tile.openBreakdown.start_time)}
             {tile.openBreakdown.reason && ` · ${tile.openBreakdown.reason}`}
             {tile.openBreakdown.maintenance_work_order_no &&

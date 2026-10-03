@@ -64,13 +64,12 @@ export type CreateRunFormData = z.infer<typeof createRunSchema>;
 // Add Breakdown Schema (timeline action)
 // ============================================================================
 
+// Whether the sub-breakdown or the reason is required depends on the chosen
+// main breakdown, so `checkBreakdownType` checks those two on submit.
 export const addBreakdownSchema = z.object({
-  breakdown_category_id: z.number({ required_error: 'Breakdown type is required' }),
-  machine_id: z.number().nullable().optional(),
-  maintenance_asset_id: z.number().nullable().optional(),
-  create_maintenance_work_order: z.boolean().optional().default(true),
-  maintenance_priority: z.enum(['NORMAL', 'HIGH', 'CRITICAL']).optional().default('CRITICAL'),
-  reason: z.string().min(1, 'Reason is required'),
+  breakdown_category_id: z.number({ required_error: 'Breakdown is required' }),
+  breakdown_subcategory_id: z.number().nullable().optional(),
+  reason: z.string().optional(),
   produced_cases: z.string().optional().default('0'),
   remarks: z.string().optional(),
 });
@@ -115,9 +114,9 @@ export const addManualBreakdownSchema = z
   .object({
     start_time: z.string().min(1, 'Start time is required'),
     end_time: z.string().min(1, 'End time is required'),
-    breakdown_category_id: z.number({ required_error: 'Breakdown type is required' }),
-    machine_id: z.number().nullable().optional(),
-    reason: z.string().min(1, 'Reason is required'),
+    breakdown_category_id: z.number({ required_error: 'Breakdown is required' }),
+    breakdown_subcategory_id: z.number().nullable().optional(),
+    reason: z.string().optional(),
     remarks: z.string().optional(),
   })
   .superRefine((val, ctx) => {

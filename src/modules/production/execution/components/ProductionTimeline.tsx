@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Play, Wrench, Clock, MessageSquareOff, MessageSquareText, PencilLine } from 'lucide-react';
 import { Button } from '@/shared/components/ui';
 import type { ProductionSegment, MachineBreakdown } from '../types';
+import { breakdownTypeLabel } from '../utils';
 
 // ============================================================================
 // Types
@@ -261,7 +262,7 @@ function BreakdownCard({
       {/* Row 2: Category + reason */}
       <p className="mt-1 break-words text-sm text-red-700 dark:text-red-300">
         <span className="font-bold uppercase">
-          {breakdown.breakdown_category_name}
+          {breakdownTypeLabel(breakdown)}
         </span>{' '}
         {breakdown.reason}
       </p>

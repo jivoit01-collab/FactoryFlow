@@ -1,3 +1,9 @@
+export {
+  type BreakdownTypeError,
+  breakdownTypeLabel,
+  checkBreakdownType,
+  subBreakdownsOf,
+} from './breakdownType';
 export { formatClock, formatDuration, toLocalIso } from './planTime';
 export { type RunMetrics, runMetrics } from './runMetrics';
 export {
