@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { shrinkPhoto } from '@/shared/utils';
+
 import type {
   AssetCategoryPayload,
   AssetDepartmentPayload,
@@ -88,6 +90,8 @@ export const MAINTENANCE_QUERY_KEYS = {
   spares: (filters?: MaintenanceSpareFilters) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'spares', filters ?? {}] as const,
   spare: (spareId: number) => [...MAINTENANCE_QUERY_KEYS.all, 'spare', spareId] as const,
+  sparePhotos: (spareId: number) =>
+    [...MAINTENANCE_QUERY_KEYS.all, 'spare-photos', spareId] as const,
   lowStockSpares: (filters?: MaintenanceSpareFilters) =>
     [...MAINTENANCE_QUERY_KEYS.all, 'low-stock-spares', filters ?? {}] as const,
   spareRequests: (filters?: SpareRequestFilters) =>
@@ -732,6 +736,53 @@ export function useUpdateMaintenanceSpare() {
       invalidateMaintenance(queryClient);
       queryClient.invalidateQueries({ queryKey: MAINTENANCE_QUERY_KEYS.spare(variables.spareId) });
     },
+  });
+}
+
+export function useSparePhotos(spareId: number | null) {
+  return useQuery({
+    queryKey: MAINTENANCE_QUERY_KEYS.sparePhotos(spareId!),
+    queryFn: () => maintenanceApi.getSparePhotos(spareId!),
+    enabled: spareId !== null,
+  });
+}
+
+/**
+ * Send a store item's new photos, shrunk first and one at a time, so a phone on
+ * the factory's connection is not pushing them all at once. One that fails does
+ * not stop the rest; resolves with how many did not go up (the API client has
+ * already said why).
+ */
+export function useAddSparePhotos() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ spareId, files }: { spareId: number; files: File[] }) => {
+      let failed = 0;
+      for (const file of files) {
+        try {
+          await maintenanceApi.uploadSparePhoto(spareId, await shrinkPhoto(file));
+        } catch {
+          failed += 1;
+        }
+      }
+      return failed;
+    },
+    onSettled: (_failed, _error, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: MAINTENANCE_QUERY_KEYS.sparePhotos(variables.spareId),
+      }),
+  });
+}
+
+export function useDeleteSparePhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ photoId }: { spareId: number; photoId: number }) =>
+      maintenanceApi.deleteSparePhoto(photoId),
+    onSettled: (_result, _error, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: MAINTENANCE_QUERY_KEYS.sparePhotos(variables.spareId),
+      }),
   });
 }
 

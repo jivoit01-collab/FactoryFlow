@@ -893,6 +893,8 @@ export const API_ENDPOINTS = {
     SPARES_LOW_STOCK: '/maintenance/spares/low-stock/',
     SPARE_ADJUST_STOCK: (spareId: number) => `/maintenance/spares/${spareId}/adjust-stock/`,
     SPARE_GIVE_OUT: (spareId: number) => `/maintenance/spares/${spareId}/give-out/`,
+    SPARE_PHOTOS: '/maintenance/spare-photos/',
+    SPARE_PHOTO_DETAIL: (photoId: number) => `/maintenance/spare-photos/${photoId}/`,
     SPARE_REQUESTS: '/maintenance/spare-requests/',
     SPARE_REQUEST_DETAIL: (requestId: number) => `/maintenance/spare-requests/${requestId}/`,
     SPARE_REQUEST_ISSUE: (requestId: number) => `/maintenance/spare-requests/${requestId}/issue/`,

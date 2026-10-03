@@ -280,6 +280,15 @@ export interface MaintenanceSpare {
   updated_at: string;
 }
 
+/** A picture of a store item. `photo` is the file's url. */
+export interface MaintenanceSparePhoto {
+  id: number;
+  spare: number;
+  photo: string;
+  created_by: number | null;
+  created_at: string;
+}
+
 export interface MaintenanceSparePayload {
   /** Omitted: the item goes in the "General" category. */
   category?: number;

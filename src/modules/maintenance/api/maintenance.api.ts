@@ -34,6 +34,7 @@ import type {
   MaintenanceSpare,
   MaintenanceSpareFilters,
   MaintenanceSparePayload,
+  MaintenanceSparePhoto,
   MaintenanceSpareStockFilters,
   MaintenanceSpareStockResponse,
   MaintenanceVendorVisit,
@@ -595,6 +596,27 @@ export const maintenanceApi = {
   async updateSpare(spareId: number, payload: MaintenanceSparePayload): Promise<MaintenanceSpare> {
     const response = await apiClient.put<MaintenanceSpare>(EP.SPARE_DETAIL(spareId), payload);
     return response.data;
+  },
+
+  async getSparePhotos(spareId: number): Promise<MaintenanceSparePhoto[]> {
+    const response = await apiClient.get<MaintenanceSparePhoto[]>(EP.SPARE_PHOTOS, {
+      params: { spare: spareId },
+    });
+    return response.data;
+  },
+
+  async uploadSparePhoto(spareId: number, file: File): Promise<MaintenanceSparePhoto> {
+    const formData = new FormData();
+    formData.append('spare', String(spareId));
+    formData.append('photo', file);
+    const response = await apiClient.post<MaintenanceSparePhoto>(EP.SPARE_PHOTOS, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async deleteSparePhoto(photoId: number): Promise<void> {
+    await apiClient.delete(EP.SPARE_PHOTO_DETAIL(photoId));
   },
 
   async adjustSpareStock(

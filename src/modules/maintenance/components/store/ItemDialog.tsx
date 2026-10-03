@@ -8,16 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui';
-import { cn } from '@/shared/utils';
+import { cn, resolveFileUrl } from '@/shared/utils';
 
-import { useSpareMovements } from '../../api';
+import { useSpareMovements, useSparePhotos } from '../../api';
 import type { MaintenanceSpare } from '../../types';
 import { StockLevelBadge } from './StockLevelBadge';
 import { formatQty, historyLines, toNumber } from './storeFormat';
 
 const HISTORY_LINES = 15;
 
-/** One item: how many, where, what to do with it, and what happened to it. */
+/** One item: what it looks like, how many, where, what to do with it, and what happened to it. */
 export function ItemDialog({
   spare,
   canManage,
@@ -34,6 +34,7 @@ export function ItemDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const movementsQuery = useSpareMovements({ spare: spare.id });
+  const photos = useSparePhotos(spare.id).data ?? [];
   const lines = historyLines(movementsQuery.data ?? []).slice(0, HISTORY_LINES);
 
   return (
@@ -45,6 +46,23 @@ export function ItemDialog({
             {spare.storage_location ? `Kept at ${spare.storage_location}` : 'No place written'}
           </DialogDescription>
         </DialogHeader>
+
+        {photos.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {photos.map((photo, index) => {
+              const url = resolveFileUrl(photo.photo);
+              return (
+                <a key={photo.id} href={url} target="_blank" rel="noreferrer" className="shrink-0">
+                  <img
+                    src={url}
+                    alt={`${spare.name} photo ${index + 1}`}
+                    className="h-28 w-28 rounded-lg border object-cover"
+                  />
+                </a>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-baseline gap-2">
           <span

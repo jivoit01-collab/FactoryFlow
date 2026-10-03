@@ -18,8 +18,15 @@ import {
   Label,
 } from '@/shared/components/ui';
 
-import { useCreateMaintenanceSpare, useUpdateMaintenanceSpare } from '../../api';
+import {
+  useAddSparePhotos,
+  useCreateMaintenanceSpare,
+  useDeleteSparePhoto,
+  useSparePhotos,
+  useUpdateMaintenanceSpare,
+} from '../../api';
 import type { MaintenanceSpare, MaintenanceSparePayload } from '../../types';
+import { ItemPhotosField } from './ItemPhotosField';
 import { parseCount, STORE_UNITS, toNumber } from './storeFormat';
 
 function numberText(value: MaintenanceSpare['reorder_level'] | undefined) {
@@ -28,10 +35,13 @@ function numberText(value: MaintenanceSpare['reorder_level'] | undefined) {
 }
 
 /**
- * Add an item to the store, or fix one's details. Only name, unit, count and
- * place are asked for; part number, SAP code, cost and "critical" wait behind
- * "More" for whoever needs them. Stock on an existing item changes only by
- * receiving, giving out or counting again, never here.
+ * Add an item to the store, or fix one's details. Only name, unit, count,
+ * place and photos are asked for; part number, SAP code, cost and "critical"
+ * wait behind "More" for whoever needs them. Stock on an existing item changes
+ * only by receiving, giving out or counting again, never here.
+ *
+ * Photos go up after the item is saved, one by one. The item stands even if a
+ * photo does not, and the toast says how many to add again from Edit.
  */
 export function ItemFormDialog({
   spare,
@@ -45,6 +55,9 @@ export function ItemFormDialog({
 }) {
   const create = useCreateMaintenanceSpare();
   const update = useUpdateMaintenanceSpare();
+  const savedPhotosQuery = useSparePhotos(spare?.id ?? null);
+  const addPhotos = useAddSparePhotos();
+  const deletePhoto = useDeleteSparePhoto();
   const [name, setName] = useState(spare?.name ?? initialName ?? '');
   const [uom, setUom] = useState(spare?.uom ?? 'NOS');
   const [count, setCount] = useState('');
@@ -54,7 +67,14 @@ export function ItemFormDialog({
   const [sapCode, setSapCode] = useState(spare?.sap_item_code ?? '');
   const [unitCost, setUnitCost] = useState(numberText(spare?.unit_cost));
   const [critical, setCritical] = useState(spare?.is_critical ?? false);
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
   const [error, setError] = useState('');
+
+  const savedPhotos = (savedPhotosQuery.data ?? []).filter(
+    (photo) => !removedPhotoIds.includes(photo.id),
+  );
+  const busy = create.isPending || update.isPending || addPhotos.isPending || deletePhoto.isPending;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -80,18 +100,36 @@ export function ItemFormDialog({
       is_critical: critical,
       ...(spare ? {} : { current_stock: String(opening) }),
     };
+    let saved: MaintenanceSpare;
     try {
-      if (spare) {
-        await update.mutateAsync({ spareId: spare.id, payload });
-        toast.success('Saved');
-      } else {
-        await create.mutateAsync(payload);
-        toast.success('Added to store');
-      }
-      onOpenChange(false);
+      saved = spare
+        ? await update.mutateAsync({ spareId: spare.id, payload })
+        : await create.mutateAsync(payload);
     } catch {
       // The API client has already shown the error.
+      return;
     }
+
+    for (const photoId of removedPhotoIds) {
+      try {
+        await deletePhoto.mutateAsync({ spareId: saved.id, photoId });
+      } catch {
+        // The API client has already shown the error; the photo stays.
+      }
+    }
+    const failed = newPhotos.length
+      ? await addPhotos.mutateAsync({ spareId: saved.id, files: newPhotos })
+      : 0;
+
+    const done = spare ? 'Saved' : 'Added to store';
+    if (failed) {
+      toast.error(
+        `${done}, but ${failed === 1 ? '1 photo' : `${failed} photos`} did not go up. Add again from Edit.`,
+      );
+    } else {
+      toast.success(done);
+    }
+    onOpenChange(false);
   };
 
   return (
@@ -184,6 +222,16 @@ export function ItemFormDialog({
               onChange={(event) => setWarnAt(event.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <p className="text-base font-medium leading-none">Photos</p>
+            <ItemPhotosField
+              saved={savedPhotos}
+              onRemoveSaved={(photoId) => setRemovedPhotoIds((ids) => [...ids, photoId])}
+              files={newPhotos}
+              onFilesChange={setNewPhotos}
+              disabled={busy}
+            />
+          </div>
 
           <Collapsible>
             <CollapsibleTrigger className="group flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -235,12 +283,18 @@ export function ItemFormDialog({
             </p>
           )}
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" size="lg" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              disabled={busy}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" size="lg" disabled={create.isPending || update.isPending}>
+            <Button type="submit" size="lg" disabled={busy}>
               <PackageCheck />
-              Save
+              {addPhotos.isPending ? 'Sending photos…' : 'Save'}
             </Button>
           </DialogFooter>
         </form>

@@ -71,13 +71,37 @@ const fixtures = vi.hoisted(() => {
     ],
     onTheWay: [indent(8, 'PURCHASED', [item(3, 'Starter', '', '1.000')])],
     spares: [spare(21, 'Bearing 6205', '5.000', 'Rack A'), spare(22, 'Tissue roll', '0.000')],
+    photos: {
+      21: [
+        {
+          id: 5,
+          spare: 21,
+          photo: 'http://localhost:8000/media/maintenance/spares/photos/bearing.jpg',
+          created_by: 1,
+          created_at: '2026-10-03T05:00:00Z',
+        },
+      ],
+    } as Record<number, unknown[]>,
   };
   const receive = vi.fn().mockResolvedValue({});
   const giveOut = vi.fn().mockResolvedValue({});
   const createSpare = vi.fn().mockResolvedValue({});
+  const updateSpare = vi.fn().mockResolvedValue({ id: 21 });
+  const addPhotos = vi.fn().mockResolvedValue(0);
+  const deletePhoto = vi.fn().mockResolvedValue(undefined);
   const mutation = (fn: ReturnType<typeof vi.fn>) => () => ({ mutateAsync: fn, isPending: false });
   const noop = () => ({ mutateAsync: vi.fn(), isPending: false });
-  return { state, receive, giveOut, createSpare, mutation, noop };
+  return {
+    state,
+    receive,
+    giveOut,
+    createSpare,
+    updateSpare,
+    addPhotos,
+    deletePhoto,
+    mutation,
+    noop,
+  };
 });
 
 vi.mock('../api', () => ({
@@ -92,12 +116,18 @@ vi.mock('../api', () => ({
   }),
   useSpareRequests: () => ({ data: [], isLoading: false }),
   useSpareMovements: () => ({ data: [], isLoading: false }),
+  useSparePhotos: (spareId: number | null) => ({
+    data: spareId === null ? undefined : (fixtures.state.photos[spareId] ?? []),
+    isLoading: false,
+  }),
+  useAddSparePhotos: fixtures.mutation(fixtures.addPhotos),
+  useDeleteSparePhoto: fixtures.mutation(fixtures.deletePhoto),
   useReceiveMaterialIndent: fixtures.mutation(fixtures.receive),
   useGiveOutSpare: fixtures.mutation(fixtures.giveOut),
   useCreateMaintenanceSpare: fixtures.mutation(fixtures.createSpare),
   useIssueSpareRequest: fixtures.noop,
   useAdjustSpareStock: fixtures.noop,
-  useUpdateMaintenanceSpare: fixtures.noop,
+  useUpdateMaintenanceSpare: fixtures.mutation(fixtures.updateSpare),
 }));
 
 const granted = vi.hoisted(() => ({ current: new Set<string>() }));
@@ -130,6 +160,12 @@ describe('Store page', () => {
     fixtures.receive.mockClear();
     fixtures.giveOut.mockClear();
     fixtures.createSpare.mockClear();
+    fixtures.updateSpare.mockClear();
+    fixtures.addPhotos.mockClear();
+    fixtures.deletePhoto.mockClear();
+    // jsdom has no object urls; the form previews picked photos with them.
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
   });
 
   it('puts goods at the gate under To do and receives the counted numbers', async () => {
@@ -220,6 +256,73 @@ describe('Store page', () => {
         }),
       ),
     );
+  });
+
+  it("sends a new item's photos once the item is saved", async () => {
+    fixtures.createSpare.mockResolvedValueOnce({ id: 30 });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Add item/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Oil bottle' } });
+
+    const front = new File(['front'], 'front.jpg', { type: 'image/jpeg' });
+    const back = new File(['back'], 'back.jpg', { type: 'image/jpeg' });
+    const input = within(dialog).getByTestId('item-photo-input');
+    fireEvent.change(input, { target: { files: [front, back] } });
+    expect(within(dialog).getByAltText('front.jpg')).toBeInTheDocument();
+    // A wrong pick comes off before anything is sent.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Remove back.jpg' }));
+    expect(within(dialog).queryByAltText('back.jpg')).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() =>
+      expect(fixtures.addPhotos).toHaveBeenCalledWith({ spareId: 30, files: [front] }),
+    );
+    expect(fixtures.createSpare).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Oil bottle' }),
+    );
+    expect(fixtures.createSpare.mock.invocationCallOrder[0]).toBeLessThan(
+      fixtures.addPhotos.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('adds an item with no photo without sending any', async () => {
+    fixtures.createSpare.mockResolvedValueOnce({ id: 31 });
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Add item/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Add photo' })).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Fuse' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() => expect(fixtures.createSpare).toHaveBeenCalled());
+    expect(fixtures.addPhotos).not.toHaveBeenCalled();
+  });
+
+  it("shows an item's photos, and Edit takes a wrong one away on Save", async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Bearing 6205'));
+    const item = await screen.findByRole('dialog');
+    const shown = within(item).getByAltText('Bearing 6205 photo 1');
+    expect(shown).toHaveAttribute(
+      'src',
+      'http://localhost:8000/media/maintenance/spares/photos/bearing.jpg',
+    );
+    // Tapping it opens the full picture.
+    expect(shown.closest('a')).toHaveAttribute('target', '_blank');
+
+    fireEvent.click(within(item).getByRole('button', { name: 'Edit' }));
+    await screen.findByRole('heading', { name: 'Edit item' });
+    const form = screen.getByRole('dialog');
+    fireEvent.click(within(form).getByRole('button', { name: 'Remove photo 1' }));
+    expect(within(form).queryByAltText('photo 1')).not.toBeInTheDocument();
+    expect(fixtures.deletePhoto).not.toHaveBeenCalled();
+
+    fireEvent.click(within(form).getByRole('button', { name: 'Save' }));
+    await vi.waitFor(() =>
+      expect(fixtures.deletePhoto).toHaveBeenCalledWith({ spareId: 21, photoId: 5 }),
+    );
+    expect(fixtures.updateSpare).toHaveBeenCalled();
+    expect(fixtures.addPhotos).not.toHaveBeenCalled();
   });
 
   it('says so when there is nothing to do', () => {
