@@ -351,7 +351,6 @@ export function LogisticsControlDashboardPage({
             domain="warehouse"
             title="Warehouse"
             columns={bandColumns(['allocated'])}
-            scope={warehouseCaption(warehouseCodes)}
             people={canSeeWorkforce ? board.workforce.warehouse : undefined}
             peopleSplit={split ? board.workforce.warehouseSplit : undefined}
             unavailable={canSeeWarehouse ? undefined : 'No access to warehouse stock.'}
