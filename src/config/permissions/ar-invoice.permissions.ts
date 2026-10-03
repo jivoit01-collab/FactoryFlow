@@ -13,6 +13,11 @@ export const AR_INVOICE_PERMISSIONS = {
   /** Create A/R invoices and post them (and their approved drafts) to SAP */
   CREATE: 'ar_invoice.create_ar_invoice_posting',
   /**
+   * Raise A/R invoices from open Sales Orders — on top of CREATE, so the
+   * counter raising cash sales does not get the "From Sales Order" tab.
+   */
+  CREATE_FROM_SALES_ORDER: 'ar_invoice.create_ar_invoice_from_sales_order',
+  /**
    * Record whether a bill's money has come in. Held apart from CREATE so
    * accounts can mark receipts without also gaining the power to raise
    * invoices.

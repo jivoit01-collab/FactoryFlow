@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { useWarehouseScope } from '@/modules/warehouse/api';
 import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
@@ -48,10 +47,9 @@ const lineKey = (line: OpenSOLine) => `${line.so_doc_entry}:${line.line_num}`;
 
 /**
  * New A/R invoice: pick the customer, tick their open Sales Order lines
- * (the invoice carries each line's open quantity), and post. SAP normally
- * holds the post as an approval draft — it then appears on the warehouse
- * Invoice Approval page, and approving it there posts the invoice (batches
- * allocated FIFO automatically).
+ * (the invoice carries each line's open quantity), and send it for approval.
+ * It waits on the Invoice Approval page for the manager of each warehouse on
+ * it, and the last approval creates it in SAP (batches allocated FIFO).
  */
 function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
   const [customerCode, setCustomerCode] = useState('');
@@ -74,10 +72,11 @@ function CreateInvoiceTab({ onCreated }: { onCreated: () => void }) {
     [selectedKeys, byKey],
   );
   const selectedTotal = selected.reduce((sum, l) => sum + (l.open_total || 0), 0);
-  const scope = useWarehouseScope();
+  // A Sales Order bill always waits for the manager of every warehouse on it,
+  // whoever raises it — the backend holds it even for that warehouse's manager.
   const needsApproval = warehousesNeedingApproval(
     selected.map((l) => l.warehouse_code),
-    scope.manages,
+    () => false,
   );
 
   // One invoice carries one SAP branch — once something is ticked, rows from
@@ -481,13 +480,6 @@ function AppHistoryList({ canAct }: { canAct: boolean }) {
 }
 
 /**
- * Sales-Order-based invoicing is built and working (backend route included),
- * but hidden for now — the factory raises direct/cash sales only. Flip this to
- * bring the "From Sales Order" tab back.
- */
-const SHOW_SALES_ORDER_TAB = false;
-
-/**
  * A/R Invoices — raise a sales invoice (a direct/cash sale, or against open
  * Sales Order lines) and follow it through SAP's approval procedure to the
  * posted OINV invoice.
@@ -495,9 +487,11 @@ const SHOW_SALES_ORDER_TAB = false;
 export default function ARInvoicePage() {
   const { hasPermission } = usePermission();
   const canCreate = hasPermission(AR_INVOICE_PERMISSIONS.CREATE);
+  const canCreateFromSalesOrder =
+    canCreate && hasPermission(AR_INVOICE_PERMISSIONS.CREATE_FROM_SALES_ORDER);
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<'new' | 'direct' | 'history' | 'ledger'>(
-    canCreate ? (SHOW_SALES_ORDER_TAB ? 'new' : 'direct') : 'history',
+    canCreate ? 'direct' : 'history',
   );
 
   return (
@@ -515,21 +509,19 @@ export default function ARInvoicePage() {
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as 'new' | 'direct' | 'history' | 'ledger')}>
         <TabsList>
-          {canCreate && SHOW_SALES_ORDER_TAB ? (
-            <TabsTrigger value="new">From Sales Order</TabsTrigger>
-          ) : null}
           {canCreate ? <TabsTrigger value="direct">New Invoice</TabsTrigger> : null}
+          {canCreateFromSalesOrder ? <TabsTrigger value="new">From Sales Order</TabsTrigger> : null}
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="ledger">Ledger</TabsTrigger>
         </TabsList>
-        {canCreate && SHOW_SALES_ORDER_TAB ? (
-          <TabsContent value="new" className="mt-4">
-            <CreateInvoiceTab onCreated={() => setTab('history')} />
-          </TabsContent>
-        ) : null}
         {canCreate ? (
           <TabsContent value="direct" className="mt-4">
             <DirectSaleForm onCreated={() => setTab('history')} />
+          </TabsContent>
+        ) : null}
+        {canCreateFromSalesOrder ? (
+          <TabsContent value="new" className="mt-4">
+            <CreateInvoiceTab onCreated={() => setTab('history')} />
           </TabsContent>
         ) : null}
         <TabsContent value="history" className="mt-4">
