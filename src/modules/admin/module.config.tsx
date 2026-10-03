@@ -2,6 +2,7 @@ import { ShieldCheck } from 'lucide-react';
 
 import {
   ADMIN_PERMISSIONS,
+  AR_INVOICE_PERMISSIONS,
   COST_MASTER_PERMISSIONS,
   GATE_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
@@ -39,6 +40,7 @@ const ElectricityMeterManagersPage = lazy(
 );
 const SapReportAccessPage = lazy(() => import('./pages/SapReportAccessPage'));
 const SapIdentitiesPage = lazy(() => import('./pages/SapIdentitiesPage'));
+const CustomerLedgerLinksPage = lazy(() => import('./pages/CustomerLedgerLinksPage'));
 const SapPostingsPage = lazy(() => import('./pages/SapPostingsPage'));
 const CostMasterPage = lazy(() => import('./pages/CostMasterPage'));
 // Same queue the Warehouse module exposes at /warehouse/bst/partial-approvals —
@@ -102,6 +104,10 @@ const sapReportAccessPermissions = [SAP_REPORTS_PERMISSIONS.MANAGE] as const;
 // managers: it decides who may sign a SAP approval, not who may see one.
 const sapIdentityPermissions = [SAP_IDENTITY_PERMISSIONS.MANAGE] as const;
 
+// Which SAP customer each user is, for the AR Invoices Ledger tab. Its own
+// right: seeing a ledger must not be enough to widen whose you can see.
+const customerLedgerLinkPermissions = [AR_INVOICE_PERMISSIONS.MANAGE_LEDGER_LINKS] as const;
+
 // The SAP posting log: what was posted, what waits for SAP, what SAP refused.
 // Django's own view permission, so every superuser has it.
 const sapPostingsPermissions = [SAP_POSTINGS_PERMISSIONS.VIEW] as const;
@@ -111,6 +117,7 @@ const adminPermissions = [
   ...electricityMeterManagerPermissions,
   ...sapReportAccessPermissions,
   ...sapIdentityPermissions,
+  ...customerLedgerLinkPermissions,
   ...sapPostingsPermissions,
   ...costMasterPermissions,
   ...dockingApprovalPermissions,
@@ -210,6 +217,13 @@ export const adminModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'SAP Identities' },
     },
     {
+      path: '/admin/customer-ledger-links',
+      element: <CustomerLedgerLinksPage />,
+      layout: 'main',
+      permissions: customerLedgerLinkPermissions,
+      breadcrumb: { label: 'Customer Ledger Links' },
+    },
+    {
       path: '/admin/sap-postings',
       element: <SapPostingsPage />,
       layout: 'main',
@@ -295,6 +309,11 @@ export const adminModuleConfig: ModuleConfig = {
           path: '/admin/sap-identities',
           title: 'SAP Identities',
           permissions: sapIdentityPermissions,
+        },
+        {
+          path: '/admin/customer-ledger-links',
+          title: 'Customer Ledger Links',
+          permissions: customerLedgerLinkPermissions,
         },
         {
           path: '/admin/sap-postings',

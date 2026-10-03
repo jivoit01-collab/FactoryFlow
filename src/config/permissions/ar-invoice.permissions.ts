@@ -25,9 +25,11 @@ export const AR_INVOICE_PERMISSIONS = {
   MARK_PAYMENT: 'ar_invoice.mark_ar_invoice_payment',
   /**
    * Open any customer's ledger. Without it the Ledger tab offers only the SAP
-   * customers linked to the user (Django admin › Customer ledger links).
+   * customers linked to the user (Admin › Customer Ledger Links).
    */
   VIEW_ALL_LEDGERS: 'ar_invoice.view_all_customer_ledgers',
+  /** Link users to their SAP customer accounts (Admin › Customer Ledger Links). */
+  MANAGE_LEDGER_LINKS: 'ar_invoice.manage_customer_ledger_links',
 } as const;
 
 /** Module prefix used by the permission system */

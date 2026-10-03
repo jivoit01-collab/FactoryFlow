@@ -6,10 +6,12 @@ import type {
   ARInvoicePosting,
   ARInvoicePrintPayload,
   CreateARInvoiceRequest,
+  CreateCustomerLedgerLinkRequest,
   Customer,
   CustomerCredit,
   CustomerLedger,
   CustomerLedgerAccess,
+  CustomerLedgerLink,
   CustomerLedgerQuery,
   LineDefaults,
   MarkARPaymentRequest,
@@ -47,6 +49,29 @@ export const arInvoiceApi = {
       API_ENDPOINTS.AR_INVOICE.CUSTOMER_LEDGER_CUSTOMERS,
     );
     return response.data;
+  },
+
+  /** Every user ↔ customer link in the active company, active or not. */
+  async listCustomerLedgerLinks(): Promise<CustomerLedgerLink[]> {
+    const response = await apiClient.get<CustomerLedgerLink[]>(
+      API_ENDPOINTS.AR_INVOICE.CUSTOMER_LINKS,
+    );
+    return response.data;
+  },
+
+  /** Link a user to a customer — SAP must know the code; re-linking revives the old link. */
+  async createCustomerLedgerLink(
+    data: CreateCustomerLedgerLinkRequest,
+  ): Promise<CustomerLedgerLink> {
+    const response = await apiClient.post<CustomerLedgerLink>(
+      API_ENDPOINTS.AR_INVOICE.CUSTOMER_LINKS,
+      data,
+    );
+    return response.data;
+  },
+
+  async removeCustomerLedgerLink(id: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.AR_INVOICE.CUSTOMER_LINK(id));
   },
 
   /** One customer's postings in SAP between two dates, with the running balance. */

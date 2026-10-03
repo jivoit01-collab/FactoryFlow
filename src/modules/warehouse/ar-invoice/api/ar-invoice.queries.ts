@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   CreateARInvoiceRequest,
+  CreateCustomerLedgerLinkRequest,
   CustomerLedgerQuery,
   MarkARPaymentRequest,
   SapCashSaleQuery,
@@ -14,6 +15,7 @@ export const AR_INVOICE_QUERY_KEYS = {
   customerCredit: (customerCode: string) =>
     [...AR_INVOICE_QUERY_KEYS.all, 'customer-credit', customerCode] as const,
   customerLedgerAccess: () => [...AR_INVOICE_QUERY_KEYS.all, 'customer-ledger-access'] as const,
+  customerLedgerLinks: () => [...AR_INVOICE_QUERY_KEYS.all, 'customer-ledger-links'] as const,
   customerLedger: (query: CustomerLedgerQuery) =>
     [
       ...AR_INVOICE_QUERY_KEYS.all,
@@ -82,6 +84,40 @@ export function useCustomerLedgerAccess() {
     queryKey: AR_INVOICE_QUERY_KEYS.customerLedgerAccess(),
     queryFn: () => arInvoiceApi.getCustomerLedgerAccess(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Admin › Customer Ledger Links: every link in the active company. */
+export function useCustomerLedgerLinks() {
+  return useQuery({
+    queryKey: AR_INVOICE_QUERY_KEYS.customerLedgerLinks(),
+    queryFn: () => arInvoiceApi.listCustomerLedgerLinks(),
+  });
+}
+
+// A link changes whose ledgers the Ledger tab offers — the linker's own included.
+function useInvalidateLedgerLinks() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.customerLedgerLinks() });
+    queryClient.invalidateQueries({ queryKey: AR_INVOICE_QUERY_KEYS.customerLedgerAccess() });
+  };
+}
+
+export function useCreateCustomerLedgerLink() {
+  const invalidate = useInvalidateLedgerLinks();
+  return useMutation({
+    mutationFn: (data: CreateCustomerLedgerLinkRequest) =>
+      arInvoiceApi.createCustomerLedgerLink(data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveCustomerLedgerLink() {
+  const invalidate = useInvalidateLedgerLinks();
+  return useMutation({
+    mutationFn: (id: number) => arInvoiceApi.removeCustomerLedgerLink(id),
+    onSuccess: invalidate,
   });
 }
 

@@ -814,6 +814,9 @@ export const API_ENDPOINTS = {
     CUSTOMER_LEDGER: '/ar-invoices/customer-ledger/',
     // Whose ledgers this user may open: any, or only the customers linked to them.
     CUSTOMER_LEDGER_CUSTOMERS: '/ar-invoices/customer-ledger/customers/',
+    // Admin › Customer Ledger Links: which SAP customer each user is.
+    CUSTOMER_LINKS: '/ar-invoices/customer-links/',
+    CUSTOMER_LINK: (id: number) => `/ar-invoices/customer-links/${id}/`,
     OPEN_SO_LINES: '/ar-invoices/open-so-lines/',
     ITEMS: '/ar-invoices/items/',
     LINE_DEFAULTS: '/ar-invoices/line-defaults/',

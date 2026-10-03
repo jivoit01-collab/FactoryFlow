@@ -514,3 +514,24 @@ export interface CustomerLedgerAccess {
   all_customers: boolean;
   customers: Customer[];
 }
+
+/** One user ↔ SAP customer link, in the active company (Admin › Customer Ledger Links). */
+export interface CustomerLedgerLink {
+  id: number;
+  user: number;
+  user_name: string;
+  user_email: string;
+  user_code: string;
+  customer_code: string;
+  customer_name: string;
+  /** Unlinking switches a link off; only active links open a ledger. */
+  is_active: boolean;
+  created_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCustomerLedgerLinkRequest {
+  user: number;
+  customer_code: string;
+}
