@@ -37,6 +37,7 @@ import type {
   ProductionQCEntry,
   ProductionQCEntryListParams,
 } from '../../types/productionQC.types';
+import { groupBySubmission } from '../../utils/productionQCEntries';
 import { formatDateTime } from '../../utils/productionQCFormat';
 import { NewProductionQCEntryDialog } from './NewProductionQCEntryDialog';
 import { ProductionQCSheet } from './ProductionQCSheet';
@@ -133,12 +134,14 @@ export default function ProductionQCDashboardPage() {
   const page = paging.key === filterKey ? paging.page : 1;
   const setPage = (next: number) => setPaging({ key: filterKey, page: next });
 
-  const totalItems = filteredEntries.length;
+  // Samples sent together are one entry here: one row each (the sheet keeps them apart).
+  const rows = useMemo(() => groupBySubmission(filteredEntries), [filteredEntries]);
+  const totalItems = rows.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   const safePage = Math.min(page, totalPages);
   const pagedEntries = useMemo(
-    () => filteredEntries.slice((safePage - 1) * pageSize, safePage * pageSize),
-    [filteredEntries, safePage, pageSize],
+    () => rows.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [rows, safePage, pageSize],
   );
 
   const apiError = error as ApiError | null;
@@ -443,7 +446,7 @@ export default function ProductionQCDashboardPage() {
       {view === 'list' && !isLoading && !error && filteredEntries.length > 0 && (
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-            {statusLabel} ({filteredEntries.length})
+            {statusLabel} ({rows.length})
           </h3>
           <div className="overflow-hidden rounded-md border">
             <div className="max-w-full overflow-x-auto">
@@ -477,13 +480,9 @@ export default function ProductionQCDashboardPage() {
                     >
                       <td className="whitespace-nowrap p-3 text-sm font-medium">
                         #{entry.id}
-                        {entry.submission_entry_ids.length > 1 && (
-                          <div
-                            className="text-xs font-normal text-muted-foreground"
-                            title="Sent together: approved and sent back together"
-                          >
-                            {entry.submission_entry_ids.indexOf(entry.id) + 1} of{' '}
-                            {entry.submission_entry_ids.length}
+                        {entry.sampleCount > 1 && (
+                          <div className="text-xs font-normal text-muted-foreground">
+                            {entry.sampleCount} samples
                           </div>
                         )}
                       </td>

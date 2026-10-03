@@ -151,15 +151,27 @@ describe('ProductionQCDashboardPage — list and sheet', () => {
     expect(data.sheetCalls.every((call) => !call.enabled)).toBe(true);
   });
 
-  it('marks entries sent together, each still a row of its own', () => {
+  it('shows the samples of one entry as one row', () => {
     data.entries = [
-      { ...entry(4), submission_entry_ids: [4, 5] } as ProductionQCEntry,
-      { ...entry(5), submission_entry_ids: [4, 5] } as ProductionQCEntry,
+      {
+        ...entry(5),
+        submission_id: 40,
+        submission_entry_ids: [4, 5],
+        out_of_spec_count: 1,
+      } as ProductionQCEntry,
+      {
+        ...entry(4),
+        submission_id: 40,
+        submission_entry_ids: [4, 5],
+        out_of_spec_count: 2,
+      } as ProductionQCEntry,
     ];
     renderAt();
-    expect(screen.getAllByRole('row')).toHaveLength(3); // header + both entries
-    expect(screen.getByRole('row', { name: /#4/ })).toHaveTextContent('1 of 2');
-    expect(screen.getByRole('row', { name: /#5/ })).toHaveTextContent('2 of 2');
+    expect(screen.getAllByRole('row')).toHaveLength(2); // header + the one entry
+    const row = screen.getByRole('row', { name: /#4/ });
+    expect(row).toHaveTextContent('2 samples');
+    expect(row).toHaveTextContent('3'); // out of spec across both samples
+    expect(screen.getByText('All (1)')).toBeInTheDocument();
   });
 
   it('filters the day by document', () => {

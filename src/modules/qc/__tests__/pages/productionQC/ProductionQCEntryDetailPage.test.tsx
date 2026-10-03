@@ -16,6 +16,8 @@ import ProductionQCEntryDetailPage from '../../../pages/productionQC/ProductionQ
 const state = vi.hoisted(() => ({
   perms: new Set<string>(),
   entry: null as unknown,
+  siblings: [] as unknown[],
+  byId: {} as Record<number, unknown>,
   approve: vi.fn(),
   sendBack: vi.fn(),
 }));
@@ -30,11 +32,16 @@ vi.mock('@/core/auth', () => ({
 }));
 
 vi.mock('@/modules/qc/api/productionQC/productionQC.queries', () => ({
-  useProductionQCEntry: () => ({
-    data: state.entry,
+  useProductionQCEntry: (id: number | null) => ({
+    data: (id !== null && state.byId[id]) || state.entry,
     isLoading: false,
     error: null,
     refetch: vi.fn(),
+  }),
+  useProductionQCSubmissionEntries: (submissionId: number | null) => ({
+    data: submissionId ? state.siblings : undefined,
+    isLoading: false,
+    error: null,
   }),
   useApproveProductionQCEntry: () => ({ mutateAsync: state.approve, isPending: false }),
   useSendBackProductionQCEntry: () => ({ mutateAsync: state.sendBack, isPending: false }),
@@ -110,9 +117,9 @@ function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>;
 }
 
-function renderPage() {
+function renderPage(url = '/qc/qa-reports/entries/7') {
   render(
-    <MemoryRouter initialEntries={['/qc/qa-reports/entries/7']}>
+    <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route path="/qc/qa-reports/entries/:entryId" element={<ProductionQCEntryDetailPage />} />
         <Route path="*" element={<Where />} />
@@ -130,6 +137,7 @@ const buttons = () => ({
 beforeEach(() => {
   state.perms = new Set();
   state.entry = entry('PENDING');
+  state.byId = {};
   state.approve = vi.fn().mockResolvedValue({});
   state.sendBack = vi.fn().mockResolvedValue({});
 });
@@ -217,29 +225,50 @@ describe('deciding', () => {
   });
 });
 
-describe('an entry sent with others', () => {
-  beforeEach(() => {
-    state.perms = new Set([FILL, APPROVE]);
-    state.entry = { ...entry('PENDING'), submission_entry_ids: [7, 8, 9] };
+describe('an entry of several samples', () => {
+  const sample = (id: number, value: string) => ({
+    ...entry('PENDING'),
+    id,
+    submission_entry_ids: [7, 8, 9],
+    out_of_spec_count: id === 8 ? 1 : 0,
+    results: [
+      {
+        ...entry('PENDING').results[0],
+        id: id * 10,
+        result_value: value,
+        is_within_spec: id !== 8,
+      },
+    ],
   });
 
-  it('names the entries sent with it, and decides them all', async () => {
+  beforeEach(() => {
+    state.perms = new Set([FILL, APPROVE]);
+    state.entry = sample(7, '911');
+    state.siblings = [sample(9, '912'), sample(7, '911'), sample(8, '890')];
+  });
+
+  it('is one entry: its samples side by side, decided as one', async () => {
     renderPage();
 
-    expect(screen.getByText(/Sent with/)).toHaveTextContent('Sent with #8, #9');
-    expect(screen.getByRole('link', { name: '#8' })).toHaveAttribute(
-      'href',
-      '/qc/qa-reports/entries/8',
-    );
-    expect(screen.getByRole('button', { name: /Edit all 3/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Send back all 3/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Entry #7' })).toBeInTheDocument();
+    expect(screen.getByText('1 L PET Oil · 3 samples')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('columnheader', { name: /^Sample \d$/ }).map((th) => th.textContent),
+    ).toEqual(['Sample 1', 'Sample 2', 'Sample 3']);
+    expect(screen.getByText(/^890/)).toBeInTheDocument();
+    expect(screen.queryByText(/Sent with/)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Approve all 3/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
     const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByRole('heading')).toHaveTextContent(
-      'Approve all 3 entries (#7, #8, #9)?',
-    );
+    expect(within(dialog).getByRole('heading')).toHaveTextContent('Approve entry #7 (3 samples)?');
+    expect(dialog).toHaveTextContent('1 reading is out of spec.');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(state.approve).toHaveBeenCalledWith({ id: 7, remarks: '' }));
+  });
+
+  it('opens on the entry’s own number from a later sample’s address', () => {
+    state.byId = { 8: sample(8, '890') };
+    renderPage('/qc/qa-reports/entries/8');
+    expect(screen.getByRole('heading', { name: 'Entry #7' })).toBeInTheDocument();
   });
 });

@@ -427,7 +427,7 @@ describe('several samples in one entry', () => {
     fireEvent.click(screen.getByRole('button', { name: /Add sample/ }));
     fireEvent.click(screen.getByRole('button', { name: /Add sample/ }));
 
-    expect(screen.getByRole('heading', { name: 'New Entries (3)' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'New Entry · 3 samples' })).toBeInTheDocument();
     expect(screen.getAllByRole('columnheader', { name: /^Sample \d/ })).toHaveLength(3);
     fillSample(1, '911');
     fillSample(2, '909');
@@ -537,10 +537,12 @@ describe('several samples in one entry', () => {
     state.siblings = [sibling(8, '905'), sibling(7, '900')];
     renderAt('/qc/qa-reports/entries/7/edit');
 
-    expect(screen.getByRole('heading', { name: 'Correct Entries #7, #8' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Correct Entry #7 · 2 samples' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Add sample/ })).not.toBeInTheDocument();
     const grid = screen.getByRole('table');
-    expect(within(grid).getByText('#8')).toBeInTheDocument();
+    expect(within(grid).queryByText('#8')).not.toBeInTheDocument();
     expect(cell('Net Weight', 2)).toHaveValue(905);
     fireEvent.change(cell('Net Weight', 1), { target: { value: '911' } });
     save();

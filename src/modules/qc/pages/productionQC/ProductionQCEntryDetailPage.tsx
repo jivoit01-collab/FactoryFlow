@@ -9,7 +9,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { QC_PERMISSIONS } from '@/config/permissions';
@@ -35,6 +35,7 @@ import { cn } from '@/shared/utils';
 import {
   useApproveProductionQCEntry,
   useProductionQCEntry,
+  useProductionQCSubmissionEntries,
   useSendBackProductionQCEntry,
 } from '../../api/productionQC/productionQC.queries';
 import type { ProductionQCEntry, ProductionQCResult } from '../../types/productionQC.types';
@@ -53,9 +54,25 @@ export default function ProductionQCEntryDetailPage() {
   const canApprove = hasPermission(QC_PERMISSIONS.PRODUCTION_QC.APPROVE);
 
   const { data: entry, isLoading, error, refetch } = useProductionQCEntry(id);
+  // Samples sent together are one entry: its page shows them all, side by side.
+  const many = (entry?.submission_entry_ids.length ?? 0) > 1;
+  const {
+    data: siblings,
+    isLoading: siblingsLoading,
+    error: siblingsError,
+  } = useProductionQCSubmissionEntries(many ? (entry?.submission_id ?? null) : null);
   const [decision, setDecision] = useState<Decision | null>(null);
 
-  if (isLoading) {
+  // The entry's number is its first sample's: a later sample's address opens it there.
+  if (
+    entry &&
+    entry.submission_entry_ids.length > 0 &&
+    entry.submission_entry_ids[0] !== entry.id
+  ) {
+    return <Navigate to={`/qc/qa-reports/entries/${entry.submission_entry_ids[0]}`} replace />;
+  }
+
+  if (isLoading || (many && siblingsLoading)) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -63,8 +80,8 @@ export default function ProductionQCEntryDetailPage() {
     );
   }
 
-  if (error || !entry) {
-    const apiError = error as ApiError | null;
+  if (error || !entry || (many && (siblingsError || !siblings?.length))) {
+    const apiError = (error || siblingsError) as ApiError | null;
     return (
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -94,9 +111,8 @@ export default function ProductionQCEntryDetailPage() {
   const isUnfinished = entry.status === 'PENDING' || entry.status === 'SENT_BACK';
   const showEdit = canFill && isUnfinished;
   const showDecision = canApprove && entry.status === 'PENDING';
-  // Entries sent together are decided and corrected as one.
-  const sentWith = entry.submission_entry_ids.filter((id) => id !== entry.id);
-  const all = sentWith.length > 0 ? ` all ${sentWith.length + 1}` : '';
+  const samples = many ? [...siblings!].sort((a, b) => a.id - b.id) : [entry];
+  const outOfSpec = samples.reduce((total, sample) => total + sample.out_of_spec_count, 0);
   const results = [...entry.results].sort((a, b) => a.sequence - b.sequence || a.id - b.id);
 
   return (
@@ -117,21 +133,10 @@ export default function ProductionQCEntryDetailPage() {
               <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Entry #{entry.id}</h2>
               <ProductionQCStatusBadge status={entry.status} label={entry.status_label} />
             </div>
-            <p className="text-sm text-muted-foreground">{entry.parameter_type.name}</p>
-            {sentWith.length > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Sent with{' '}
-                {sentWith.map((id, index) => (
-                  <span key={id}>
-                    {index > 0 && ', '}
-                    <Link to={`/qc/qa-reports/entries/${id}`} className="font-medium underline">
-                      #{id}
-                    </Link>
-                  </span>
-                ))}{' '}
-                — approved, sent back and corrected together.
-              </p>
-            )}
+            <p className="text-sm text-muted-foreground">
+              {entry.parameter_type.name}
+              {many && ` · ${samples.length} samples`}
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -142,18 +147,17 @@ export default function ProductionQCEntryDetailPage() {
             >
               <Edit className="mr-2 h-4 w-4" />
               {entry.status === 'SENT_BACK' ? 'Correct' : 'Edit'}
-              {all}
             </Button>
           )}
           {showDecision && (
             <>
               <Button variant="outline" onClick={() => setDecision('send-back')}>
                 <Undo2 className="mr-2 h-4 w-4" />
-                Send back{all}
+                Send back
               </Button>
               <Button onClick={() => setDecision('approve')}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
-                Approve{all}
+                Approve
               </Button>
             </>
           )}
@@ -198,9 +202,7 @@ export default function ProductionQCEntryDetailPage() {
             </InfoItem>
           )}
           <InfoItem label="Out of Spec">
-            <span className={cn(entry.out_of_spec_count > 0 && 'text-destructive')}>
-              {entry.out_of_spec_count}
-            </span>
+            <span className={cn(outOfSpec > 0 && 'text-destructive')}>{outOfSpec}</span>
           </InfoItem>
         </CardContent>
       </Card>
@@ -208,27 +210,34 @@ export default function ProductionQCEntryDetailPage() {
       {/* Readings */}
       <Card>
         <CardHeader>
-          <CardTitle>Results ({results.length})</CardTitle>
+          <CardTitle>
+            Results ({results.length}
+            {many && ` × ${samples.length} samples`})
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="p-3 text-left font-medium">Parameter</th>
-                  <th className="p-3 text-left font-medium">Spec</th>
-                  <th className="p-3 text-left font-medium">Value</th>
-                  <th className="p-3 text-center font-medium">In Spec</th>
-                  <th className="p-3 text-left font-medium">Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((result) => (
-                  <ResultRow key={result.id} result={result} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {many ? (
+            <SampleResults samples={samples} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="p-3 text-left font-medium">Parameter</th>
+                    <th className="p-3 text-left font-medium">Spec</th>
+                    <th className="p-3 text-left font-medium">Value</th>
+                    <th className="p-3 text-center font-medium">In Spec</th>
+                    <th className="p-3 text-left font-medium">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((result) => (
+                    <ResultRow key={result.id} result={result} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -263,8 +272,79 @@ export default function ProductionQCEntryDetailPage() {
       </Card>
 
       {showDecision && (
-        <DecisionDialog entry={entry} decision={decision} onClose={() => setDecision(null)} />
+        <DecisionDialog
+          entry={entry}
+          sampleCount={samples.length}
+          outOfSpec={outOfSpec}
+          decision={decision}
+          onClose={() => setDecision(null)}
+        />
       )}
+    </div>
+  );
+}
+
+/** Several samples' readings side by side: a row per parameter, a column per sample. */
+function SampleResults({ samples }: { samples: ProductionQCEntry[] }) {
+  const parameters = [...samples[0].results].sort((a, b) => a.sequence - b.sequence || a.id - b.id);
+  const byParameter = samples.map(
+    (sample) => new Map(sample.results.map((result) => [result.parameter_id, result])),
+  );
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th className="min-w-[200px] p-3 text-left font-medium">Parameter</th>
+            <th className="min-w-[140px] p-3 text-left font-medium">Spec</th>
+            {samples.map((sample, index) => (
+              <th key={sample.id} className="min-w-[140px] p-3 text-left font-medium">
+                Sample {index + 1}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {parameters.map((parameter) => (
+            <tr key={parameter.parameter_id} className="border-b align-top">
+              <td className="p-3">
+                <div className="font-medium">
+                  {parameter.parameter_name}
+                  {parameter.is_mandatory && <span className="text-destructive"> *</span>}
+                </div>
+                <div className="font-mono text-xs text-muted-foreground">
+                  {parameter.parameter_code}
+                </div>
+              </td>
+              <td className="p-3 text-muted-foreground">{describeSpec(parameter)}</td>
+              {byParameter.map((results, index) => {
+                const result = results.get(parameter.parameter_id);
+                const outOfSpec = result?.is_within_spec === false;
+                const value = result?.result_value?.trim();
+                return (
+                  <td
+                    key={samples[index].id}
+                    className={cn('p-3', outOfSpec && 'bg-destructive/5 text-destructive')}
+                  >
+                    <span className="inline-flex items-center gap-1.5 font-medium">
+                      {value
+                        ? `${value}${result!.uom && result!.parameter_type !== 'BOOLEAN' ? ` ${result!.uom}` : ''}`
+                        : '-'}
+                      {result?.is_within_spec === true && (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" aria-label="Within spec" />
+                      )}
+                      {outOfSpec && <XCircle className="h-4 w-4" aria-label="Out of spec" />}
+                    </span>
+                    {result?.remarks && (
+                      <div className="text-xs text-muted-foreground">{result.remarks}</div>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -315,10 +395,15 @@ function InfoItem({ label, children }: { label: string; children: ReactNode }) {
 /** Approve (remark optional) or send back (remark required), in one step. */
 function DecisionDialog({
   entry,
+  sampleCount,
+  outOfSpec,
   decision,
   onClose,
 }: {
   entry: ProductionQCEntry;
+  /** An entry of several samples is decided whole. */
+  sampleCount: number;
+  outOfSpec: number;
   decision: Decision | null;
   onClose: () => void;
 }) {
@@ -328,11 +413,7 @@ function DecisionDialog({
   const [error, setError] = useState('');
   const isSendBack = decision === 'send-back';
   const isPending = approve.isPending || sendBack.isPending;
-  // The entries sent with it are decided with it.
-  const ids = entry.submission_entry_ids;
-  const together = ids.length > 1;
-  const label = `Entries #${ids.join(', #')}`;
-  const what = together ? `all ${ids.length} entries (#${ids.join(', #')})` : `entry #${entry.id}`;
+  const what = `entry #${entry.id}${sampleCount > 1 ? ` (${sampleCount} samples)` : ''}`;
 
   const close = () => {
     if (isPending) return;
@@ -351,10 +432,10 @@ function DecisionDialog({
     try {
       if (isSendBack) {
         await sendBack.mutateAsync({ id: entry.id, remarks: trimmed });
-        toast.success(together ? `${label} sent back` : `Entry #${entry.id} sent back`);
+        toast.success(`Entry #${entry.id} sent back`);
       } else {
         await approve.mutateAsync({ id: entry.id, remarks: trimmed });
-        toast.success(together ? `${label} approved` : `Entry #${entry.id} approved`);
+        toast.success(`Entry #${entry.id} approved`);
       }
       setRemarks('');
       onClose();
@@ -372,14 +453,11 @@ function DecisionDialog({
         <DialogHeader>
           <DialogTitle>{isSendBack ? `Send back ${what}?` : `Approve ${what}?`}</DialogTitle>
           <DialogDescription>
-            {together && 'They were sent together, so they are decided together. '}
             {isSendBack
-              ? `${together ? 'They go' : 'It goes'} back to QC to correct and save again.`
-              : entry.out_of_spec_count > 0
-                ? `On #${entry.id}, ${entry.out_of_spec_count} parameter${entry.out_of_spec_count === 1 ? ' is' : 's are'} out of spec.`
-                : together
-                  ? `On #${entry.id}, every judged parameter is within spec.`
-                  : 'Every judged parameter is within spec.'}
+              ? 'It goes back to QC to correct and save again.'
+              : outOfSpec > 0
+                ? `${outOfSpec} reading${outOfSpec === 1 ? ' is' : 's are'} out of spec.`
+                : 'Every judged reading is within spec.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">

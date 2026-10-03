@@ -103,11 +103,14 @@ QA Reports, in `types/productionQC.types.ts` (mirrors
   "-"; all three blank keeps the report's) — and a `value` that pre-fills the reading.
   The rule is `utils/productionQCDefaults.ts`, as the backend snapshots it.
 - **`ProductionQCEntry`** — one filled-in copy: the report type, the default it was
-  made with (`default_id`, and `default_name`, kept if the default goes), the entries
-  sent with it (`submission_id`, `submission_entry_ids` — itself included; decided and
-  corrected as one, separate everywhere else), `checked_at`,
+  made with (`default_id`, and `default_name`, kept if the default goes), its set
+  (`submission_id`, `submission_entry_ids`), `checked_at`,
   `status` PENDING / SENT_BACK / APPROVED, remarks, and `results[]`
-  (`ProductionQCResult`, the parameter's spec snapshotted onto each reading). No line,
+  (`ProductionQCResult`, the parameter's spec snapshotted onto each reading). Strictly
+  this is one *sample*: samples filled together share a submission, and to the user they
+  are **one entry** — one row, one number (the first sample's, `utils/productionQCEntries.ts`),
+  one detail page, one decision, counted once — everywhere except the sheet and its
+  print, where each sample is a column. No line,
   run or product.
 
 Status → label/colour/icon maps live in `constants/qc.constants.ts`
@@ -187,7 +190,8 @@ readings bold red with `*`. The form's number comes from Master Data > Print Doc
 (the type's `print_document_id`) and is printed above "Controlled Document" in the
 footer; its revision / revision date come from the type.
 
-1. **List** (`/qc/qa-reports`, `ProductionQCDashboardPage`) — status chips with the
+1. **List** (`/qc/qa-reports`, `ProductionQCDashboardPage`) — one row per entry (the
+   API's sample rows grouped by `groupBySubmission`, "N samples" under the number), status chips with the
    day's counts (`?status=`), a report filter (`?doc=`, client-side over the loaded
    day), and a search over the entry no., the report and every value entered (so a
    product or batch typed into a report finds it). A row opens the entry.
@@ -212,14 +216,16 @@ footer; its revision / revision date come from the type.
    **Add sample** (new entries only) turns the form into a grid as on the paper — a row
    per parameter, a column per sample (`SampleGrid` / `GridCell`), each new column
    starting with the default's values, a copy button per row to repeat Sample 1's value
-   (the SKU, say) across, and × to drop a column. Each sample saves as its own entry
-   (`samples: [{results}]`), one remark for all; a missing value is named by sample.
-   Correcting an entry sent with others loads them all
-   (`useProductionQCSubmissionEntries`, `?submission_id=`) into the same grid and sends
-   them all back (`samples: [{entry_id, results}]`); no column can be added or dropped.
-4. **Entry detail** (`/qc/qa-reports/entries/:entryId`, `ProductionQCEntryDetailPage`) —
-   status, the report, the entries sent with it (linked; *Approve / Send back / Correct
-   all N* then act on them all), the results (value, spec, in-spec ✓/✗), remarks, and a
+   (the SKU, say) across, and × to drop a column. The title stays *New Entry · N
+   samples*: the samples save together (`samples: [{results}]`) as one entry, one remark
+   for all; a missing value is named by sample. Correcting an entry of several samples
+   loads them all (`useProductionQCSubmissionEntries`, `?submission_id=`) into the same
+   grid and sends them all back (`samples: [{entry_id, results}]`); no column can be
+   added or dropped.
+4. **Entry detail** (`/qc/qa-reports/entries/:entryId`, `ProductionQCEntryDetailPage`; a
+   later sample's id — the sheet links each column — redirects to the entry's own number) —
+   status, the report (· N samples), the results — for several samples a grid, a column
+   per sample (`SampleResults`) — remarks, and a
    highlighted banner with the send-back remark while SENT_BACK. **Edit** (FILL) while
    PENDING or SENT_BACK → the form in edit mode → `PATCH`, which puts it back to
    PENDING. **Approve** (optional remark) and **Send back** (remark required) for

@@ -349,7 +349,6 @@ function EditEntry({ entryId }: { entryId: number }) {
       }}
       rows={rows}
       initialSamples={initialSamples}
-      sampleEntryIds={entries.map((item) => item.id)}
       initialRemarks={entry.remarks}
       cancelTo={detailPath}
       onSave={async ({ remarks, samples }) => {
@@ -379,7 +378,6 @@ function EntryForm({
   rows,
   initialSamples,
   initialRemarks = '',
-  sampleEntryIds,
   freshSample,
   cancelTo,
   onSave,
@@ -390,8 +388,6 @@ function EntryForm({
   /** One map of readings per sample: one entry each, sent and decided together. */
   initialSamples?: Record<number, ReadingState>[];
   initialRemarks?: string;
-  /** Edits: the entries being corrected, one per sample (a correction cannot add or drop one). */
-  sampleEntryIds?: number[];
   /** New entries: what a sample added with Add sample starts with (the default's values). */
   freshSample?: () => Record<number, ReadingState>;
   cancelTo: string;
@@ -511,9 +507,7 @@ function EntryForm({
         ),
       });
       toast.success(
-        many
-          ? `${samples.length} entries saved and sent for approval together`
-          : `Entry #${id} saved and sent for approval`,
+        `Entry #${id}${many ? ` (${samples.length} samples)` : ''} saved and sent for approval`,
       );
       navigate(`/qc/qa-reports/entries/${id}`, { replace: true });
     } catch (error) {
@@ -524,14 +518,8 @@ function EntryForm({
   };
 
   const entry = header.entry;
-  const title =
-    mode === 'new'
-      ? many
-        ? `New Entries (${samples.length})`
-        : 'New Entry'
-      : sampleEntryIds && sampleEntryIds.length > 1
-        ? `Correct Entries #${sampleEntryIds.join(', #')}`
-        : `Correct Entry #${entry?.id}`;
+  // Several samples are still one entry: one number, one approval.
+  const title = mode === 'new' ? 'New Entry' : `Correct Entry #${entry?.id}`;
 
   return (
     <div className="space-y-6 pb-6">
@@ -541,11 +529,17 @@ function EntryForm({
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {title}
+              {many && ' '}
+              {many && (
+                <span className="ml-2 text-lg font-normal text-muted-foreground">
+                  · {samples.length} samples
+                </span>
+              )}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              {many
-                ? 'Each sample is its own entry; saving sends them to a QC lead for approval together.'
-                : 'Saving sends the entry to a QC lead for approval.'}
+              Saving sends the entry to a QC lead for approval.
             </p>
           </div>
         </div>
@@ -624,7 +618,6 @@ function EntryForm({
             <SampleGrid
               rows={rows}
               sampleCount={samples.length}
-              sampleEntryIds={sampleEntryIds}
               readingOf={readingOf}
               errors={errors}
               disabled={saving}
@@ -706,7 +699,6 @@ function EntryForm({
 function SampleGrid({
   rows,
   sampleCount,
-  sampleEntryIds,
   readingOf,
   errors,
   disabled,
@@ -716,7 +708,6 @@ function SampleGrid({
 }: {
   rows: ReadingRow[];
   sampleCount: number;
-  sampleEntryIds?: number[];
   readingOf: (sample: number, row: ReadingRow) => ReadingState;
   errors: FieldErrors;
   disabled: boolean;
@@ -736,14 +727,7 @@ function SampleGrid({
             {sampleIndexes.map((sample) => (
               <th key={sample} className="min-w-[190px] p-3 text-left font-medium">
                 <div className="flex items-center justify-between gap-2">
-                  <span>
-                    Sample {sample + 1}
-                    {sampleEntryIds?.[sample] && (
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        #{sampleEntryIds[sample]}
-                      </span>
-                    )}
-                  </span>
+                  <span>Sample {sample + 1}</span>
                   {onRemoveSample && (
                     <Button
                       size="sm"
