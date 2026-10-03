@@ -183,7 +183,6 @@ function buildParams(filters: DispatchPlanFilters): Record<string, string> {
   if (filters.search) params.search = filters.search;
   if (filters.branch) params.branch = filters.branch;
   if (filters.limit) params.limit = String(filters.limit);
-  if (filters.exclude_jivo_mart_transfer) params.exclude_jivo_mart_transfer = 'true';
   if (filters.by_dispatch_date) params.by_dispatch_date = 'true';
   if (filters.include_unscheduled) params.include_unscheduled = 'true';
   if (filters.ordering && filters.ordering !== 'default') params.ordering = filters.ordering;

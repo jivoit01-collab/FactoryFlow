@@ -48,7 +48,6 @@ export function createDefaultDispatchPlanFilters(): DispatchPlanFilters {
     // No row cap and no paging — omitting both `limit` and the page params gets
     // the backend's whole date-bounded window, which the selection board shows
     // in one list.
-    exclude_jivo_mart_transfer: true,
   };
 }
 
@@ -89,7 +88,6 @@ export function createDefaultDispatchDateFilters(): DispatchPlanFilters {
     date_from: range.from,
     date_to: range.to,
     booking_status: 'all',
-    exclude_jivo_mart_transfer: true,
     by_dispatch_date: true,
     include_unscheduled: true,
     selected_only: true,

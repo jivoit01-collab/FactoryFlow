@@ -148,9 +148,8 @@ export function useControlLinkingFeed(date: string, enabled = true) {
  *
  * `by_dispatch_date` + `include_unscheduled: false` is what makes this "bills
  * with a date filled in" — the server windows on the planned dispatch date and
- * drops bills that have none. `selected_only` and `exclude_jivo_mart_transfer`
- * match the Plans page so the board counts exactly the bills that page lists,
- * per company.
+ * drops bills that have none. `selected_only` matches the Plans page so the
+ * board counts exactly the bills that page lists, per company.
  *
  * The window reaches forward as well as back: the Plans page opens on a month
  * back through today, but a board about what has not gone out has to show what
@@ -163,7 +162,6 @@ export function useControlPlanBills(date: string, enabled = true) {
       dispatchPlansApi.getBills({
         ...warehouseControlPlanWindow(date),
         booking_status: 'all',
-        exclude_jivo_mart_transfer: true,
         by_dispatch_date: true,
         include_unscheduled: false,
         selected_only: true,

@@ -109,9 +109,8 @@ export const LOGISTICS_CONTROL_WAREHOUSE_SIDES: readonly LogisticsWarehouseSide[
  *
  *   1. Intercompany bills must come out. In August 2026, 66% of Oil's invoiced
  *      finished-goods pieces went to group companies; add both schemas raw and
- *      the board reports internal transfers as dispatch. The backend's
- *      `exclude_jivo_mart_transfer` strips Oil→Mart only, so the card filters on
- *      the full intercompany customer list instead.
+ *      the board reports internal transfers as dispatch, so the card filters on
+ *      the full intercompany customer list.
  *   2. Counts must be de-duplicated, not summed. A docking is per company, so
  *      one truck carrying both companies' bills is two dockings under one
  *      vehicle arrival — see `dedupeVehicles` in `../utils`.

@@ -3,14 +3,7 @@ import { CalendarCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { FilterAction, FilterBar, FilterField } from '@/shared/components/page';
-import {
-  Button,
-  Input,
-  Label,
-  NativeSelect as Select,
-  SelectOption,
-  Switch,
-} from '@/shared/components/ui';
+import { Button, Input, NativeSelect as Select, SelectOption } from '@/shared/components/ui';
 
 import {
   BOOKING_STATUS_OPTIONS,
@@ -65,7 +58,6 @@ export function DispatchPlanFilters({
   const activeCount =
     (filters.search ? 1 : 0) +
     (filters.booking_status && filters.booking_status !== 'all' ? 1 : 0) +
-    (filters.exclude_jivo_mart_transfer ? 0 : 1) +
     (isToday ? 1 : 0);
 
   function toggleToday() {
@@ -181,24 +173,6 @@ export function DispatchPlanFilters({
           ))}
         </Select>
       </FilterField>
-
-      <FilterAction>
-        <div className="flex h-10 w-full items-center gap-2 rounded-md border bg-background px-3 sm:w-auto">
-          <Switch
-            id="dispatch-plan-show-jivo-mart"
-            checked={!filters.exclude_jivo_mart_transfer}
-            onChange={(checked) =>
-              onFiltersChange({
-                ...filters,
-                exclude_jivo_mart_transfer: !checked,
-              })
-            }
-          />
-          <Label htmlFor="dispatch-plan-show-jivo-mart" className="cursor-pointer text-xs">
-            Show Jivo Mart bills
-          </Label>
-        </div>
-      </FilterAction>
     </FilterBar>
   );
 }
