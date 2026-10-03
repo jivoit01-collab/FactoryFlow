@@ -4,6 +4,7 @@ import {
   Boxes,
   Building2,
   ClipboardCheck,
+  ClipboardList,
   CupSoda,
   DoorOpen,
   Factory,
@@ -55,6 +56,7 @@ import {
   LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   logisticsControlScopeForCompany,
 } from '../logistics-control/constants';
+import { OPERATIONS_REPORT_VIEW_PERMISSIONS } from '../operations-report/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from '../production-control/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
@@ -112,6 +114,15 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/production-control',
     accent: 'emerald',
     permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+  },
+  {
+    // A day's or a month's production, wastage, labour and electricity, and
+    // the cost of a litre.
+    title: 'Operations Report',
+    icon: <ClipboardList className="h-5 w-5" />,
+    route: '/dashboards/operations-report',
+    accent: 'indigo',
+    permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
   },
   {
     title: 'HR Control',

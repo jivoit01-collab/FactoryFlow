@@ -32,6 +32,7 @@ import {
   LOGISTICS_CONTROL_VIEW_PERMISSIONS,
   LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS,
 } from './logistics-control/constants';
+import { OPERATIONS_REPORT_VIEW_PERMISSIONS } from './operations-report/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from './plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
 import { TOMORROW_RUN_VIEW_PERMISSIONS } from './tomorrow-run/constants';
@@ -86,6 +87,9 @@ const ProductionControlDashboardPage = lazy(
   () => import('./production-control/pages/ProductionControlDashboardPage'),
 );
 const PlantBoardDashboardPage = lazy(() => import('./plant-board/pages/PlantBoardDashboardPage'));
+const OperationsReportPage = lazy(
+  () => import('./operations-report/pages/OperationsReportPage'),
+);
 const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
@@ -143,6 +147,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...HR_BOARD_VIEW_PERMISSIONS,
         // Tomorrow's run has rights of its own that nothing above covers.
         ...TOMORROW_RUN_VIEW_PERMISSIONS,
+        // The Operations Report opens on the production COST feed, which
+        // nothing else here carries.
+        ...OPERATIONS_REPORT_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -338,6 +345,23 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Production Control' },
+    },
+    {
+      // Production, wastage, labour and electricity for a day or a month, and
+      // what each litre cost. A desk report rather than a wall board: it is
+      // stepped through day by day and read, not left running.
+      //
+      // One read of factory_app's `operations_report` -- the floor's runs, the
+      // waste register, the labour gate and Daily Electricity++, a day at a
+      // time -- added up on the page.
+      //
+      // Gated on the factory expense and production cost rights rather than a
+      // new one — see the constants file for why those.
+      path: '/dashboards/operations-report',
+      element: <OperationsReportPage />,
+      layout: 'main',
+      permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Operations Report' },
     },
     {
       // One board folding four screens: non-moving stock, pallet space, today's
@@ -666,6 +690,10 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // above, so without this spread the entire Dashboards menu -- not just
         // this one board -- stays hidden from the people it was built for.
         ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+        // And the Operations Report. The production cost feed is on no other
+        // board, so a login granted only that would find the whole Dashboards
+        // menu hidden without this spread.
+        ...OPERATIONS_REPORT_VIEW_PERMISSIONS,
         // The builder. Somebody granted only the build right holds nothing
         // else under any module, so without this the whole Dashboards menu is
         // hidden from the very people it was granted to. Note this does NOT
@@ -719,6 +747,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/production-control',
           title: 'Production Control',
           permissions: PRODUCTION_CONTROL_VIEW_PERMISSIONS,
+        },
+        {
+          // Beside Production Control: the same plant, read as a day's or a
+          // month's figures and what they cost.
+          path: '/dashboards/operations-report',
+          title: 'Operations Report',
+          permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/hr-board',
