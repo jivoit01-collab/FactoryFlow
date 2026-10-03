@@ -11,3 +11,14 @@ export const RUN_STATUS_BADGE: Record<BlowingRunStatus, string> = {
   IN_PROGRESS: 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400',
   COMPLETED: 'bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400',
 };
+
+/**
+ * Shift-sheet endpoints. Kept beside the module rather than in API_ENDPOINTS so
+ * the page ships without touching the shared constants file.
+ */
+export const SHIFT_SHEET_ENDPOINTS = {
+  PLAN: '/blowing/shift-sheet/',
+  PARSE: '/blowing/shift-sheet/parse/',
+} as const;
+
+export const SHIFT_LABELS = { DAY: 'Day', NIGHT: 'Night' } as const;

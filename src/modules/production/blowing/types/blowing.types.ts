@@ -467,3 +467,98 @@ export interface MonthlyReport {
     avg_per_bottle_cost: number;
   }>;
 }
+
+// ---- Shift sheet — the floor's Excel booked as completed runs ----
+export type ShiftCode = 'DAY' | 'NIGHT';
+export type ShiftSheetRowStatus = 'NEW' | 'DUPLICATE' | 'ERROR';
+
+/** One shift row as the page sends it — the figures as typed. */
+export interface ShiftSheetRowInput {
+  date: string;
+  shift: ShiftCode | null;
+  preform_spec_id: number | null;
+  total_counter_production: string;
+  own_labour_count: string;
+  contract_labour_count: string;
+  machine_units: string;
+  utility_units: string;
+  rejection_pcs: string;
+  /** Book it even though the app already has this date, shift and preform. */
+  add_anyway?: boolean;
+}
+
+/** A row read out of the uploaded sheet, before anything is checked. */
+export interface ParsedShiftSheetRow {
+  sheet: string;
+  line: number;
+  date: string | null;
+  shift: ShiftCode | null;
+  sku_text: string;
+  preform_spec_id: number | null;
+  total_counter_production: string | null;
+  own_labour_count: string | null;
+  contract_labour_count: string | null;
+  machine_units: string | null;
+  utility_units: string | null;
+  rejection_pcs: string | null;
+  /** What the person has to fix on screen — an unknown SKU, an odd shift. */
+  notes: string[];
+}
+
+export interface ShiftSheetParse {
+  file_name: string;
+  rows: ParsedShiftSheetRow[];
+  /** Lines with figures but no shift — listed, never guessed into a run. */
+  ignored: Array<{ sheet: string; line: number; reason: string }>;
+}
+
+/** A run already in the app on one of the sheet's dates. */
+export interface ShiftSheetExistingRun {
+  id: number;
+  date: string;
+  run_number: number;
+  shift: ShiftCode | null;
+  preform_spec_id: number;
+  preform: string;
+  total_counter_production: number;
+  status: BlowingRunStatus;
+  started_at: string | null;
+  ended_at: string | null;
+  machine_start_reading: string | null;
+  machine_stop_reading: string | null;
+  remarks: string;
+}
+
+export interface ShiftSheetPlanRow {
+  /** Position of the row in the request. */
+  index: number;
+  status: ShiftSheetRowStatus;
+  errors: string[];
+  warnings: string[];
+  duplicate_of: ShiftSheetExistingRun | null;
+  run_number: number | null;
+  machine_start_reading: string | null;
+  machine_stop_reading: string | null;
+  good_bottles: number | null;
+  blowing_cost: string | null;
+  blowing_cost_per_bottle: string | null;
+  total_per_bottle_cost: string | null;
+  run_id?: number;
+}
+
+export interface ShiftSheetPlan {
+  committed: boolean;
+  machine: { id: number; name: string };
+  rows: ShiftSheetPlanRow[];
+  existing: ShiftSheetExistingRun[];
+  summary: Record<ShiftSheetRowStatus, number>;
+  created?: Array<{ index: number; id: number; run_number: number; date: string; shift: ShiftCode }>;
+  detail?: string;
+}
+
+export interface ShiftSheetRequest {
+  machine_id: number;
+  rows: ShiftSheetRowInput[];
+  /** The uploaded file's name, kept in each booked run's remarks. */
+  source?: string;
+}

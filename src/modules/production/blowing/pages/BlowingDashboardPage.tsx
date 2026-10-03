@@ -1,7 +1,9 @@
-import { BarChart3, Plus, Scale, Settings2 } from 'lucide-react';
+import { BarChart3, FileSpreadsheet, Plus, Scale, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { BLOWING_PERMISSIONS } from '@/config/permissions';
+import { Authorized } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import {
   Badge,
@@ -60,6 +62,14 @@ function BlowingDashboardPage() {
           onClick: () => navigate('/production/blowing/runs/new'),
         }}
       >
+        <Authorized
+          permissions={[BLOWING_PERMISSIONS.CREATE_RUN, BLOWING_PERMISSIONS.COMPLETE_RUN]}
+          requireAll
+        >
+          <Button variant="outline" onClick={() => navigate('/production/blowing/shift-sheet')}>
+            <FileSpreadsheet className="mr-2 h-4 w-4" /> Shift Sheet
+          </Button>
+        </Authorized>
         <Button onClick={() => navigate('/production/blowing/make-vs-buy')}>
           <Scale className="mr-2 h-4 w-4" /> Make vs Buy
         </Button>

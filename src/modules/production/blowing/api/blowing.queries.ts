@@ -13,6 +13,7 @@ import type {
   CreateRunRequest,
   ResolveBreakdownRequest,
   RunListParams,
+  ShiftSheetRequest,
   StopProductionRequest,
   UpdateRunRequest,
 } from '../types';
@@ -124,6 +125,25 @@ export const useUpdateRateConfig = () => {
 };
 
 // Cost rates are managed on the admin Cost Master page (/admin/cost-master).
+
+// ---- Shift sheet ----
+export const useParseShiftSheet = () =>
+  useMutation({ mutationFn: (file: File) => blowingApi.parseShiftSheet(file) });
+
+export const useCheckShiftSheet = () =>
+  useMutation({ mutationFn: (data: ShiftSheetRequest) => blowingApi.checkShiftSheet(data) });
+
+export const useSaveShiftSheet = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ShiftSheetRequest) => blowingApi.saveShiftSheet(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'runs'] });
+      qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'daily-report'] });
+      qc.invalidateQueries({ queryKey: [...BLOWING_QUERY_KEYS.all, 'monthly-report'] });
+    },
+  });
+};
 
 // ---- Runs ----
 export const useRuns = (params?: RunListParams) =>

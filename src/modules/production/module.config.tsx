@@ -63,6 +63,7 @@ const BlowingRunDetailPage = lazy(() => import('./blowing/pages/RunDetailPage'))
 const BlowingMasterDataPage = lazy(() => import('./blowing/pages/MasterDataPage'));
 const BlowingReportsPage = lazy(() => import('./blowing/pages/ReportsPage'));
 const BlowingMakeVsBuyPage = lazy(() => import('./blowing/pages/MakeVsBuyPage'));
+const BlowingShiftSheetPage = lazy(() => import('./blowing/pages/ShiftSheetPage'));
 
 /** The filling cost sheet is a Beverages practice; no other unit keeps one. */
 const FILLING_COST_COMPANIES = [COMPANY_CODES.JIVO_BEVERAGES] as const;
@@ -333,6 +334,15 @@ export const productionModuleConfig: ModuleConfig = {
       permissions: [BLOWING_PERMISSIONS.CREATE_RUN],
     },
     {
+      // The floor's Excel, booked as completed runs — the server also asks for
+      // the complete-run right before it saves.
+      path: '/production/blowing/shift-sheet',
+      element: <BlowingShiftSheetPage />,
+      layout: 'main',
+      permissions: [BLOWING_PERMISSIONS.CREATE_RUN],
+      breadcrumb: { label: 'Shift Sheet' },
+    },
+    {
       path: '/production/blowing/runs/:runId',
       element: <BlowingRunDetailPage />,
       layout: 'main',
@@ -387,6 +397,11 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/blowing',
           title: 'Blowing',
           permissions: [BLOWING_PERMISSIONS.VIEW_RUN],
+        },
+        {
+          path: '/production/blowing/shift-sheet',
+          title: 'Blowing Shift Sheet',
+          permissions: [BLOWING_PERMISSIONS.CREATE_RUN],
         },
         {
           path: '/production/blowing/make-vs-buy',

@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
+import { SHIFT_SHEET_ENDPOINTS } from '../constants';
 import type {
   AddBreakdownRequest,
   AddManualBreakdownRequest,
@@ -29,6 +30,9 @@ import type {
   ResolveBreakdownRequest,
   RunListParams,
   SAPItem,
+  ShiftSheetParse,
+  ShiftSheetPlan,
+  ShiftSheetRequest,
   StopProductionRequest,
   UpdateRunRequest,
   UpdateSegmentRequest,
@@ -211,6 +215,28 @@ export const blowingApi = {
   async getAuditLogs(entityType: string, entityId: number): Promise<BlowingAuditLog[]> {
     const res = await apiClient.get<BlowingAuditLog[]>(EP.AUDIT, {
       params: { entity_type: entityType, entity_id: entityId },
+    });
+    return res.data;
+  },
+
+  // ---- Shift sheet — the floor's Excel booked as completed runs ----
+  /** Read an uploaded sheet into rows for the grid. Nothing is checked or written. */
+  async parseShiftSheet(file: File): Promise<ShiftSheetParse> {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await apiClient.post<ShiftSheetParse>(SHIFT_SHEET_ENDPOINTS.PARSE, form);
+    return res.data;
+  },
+  /** What each row would become — run number, meter readings, cost, duplicates. Writes nothing. */
+  async checkShiftSheet(data: ShiftSheetRequest): Promise<ShiftSheetPlan> {
+    const res = await apiClient.post<ShiftSheetPlan>(SHIFT_SHEET_ENDPOINTS.PLAN, data);
+    return res.data;
+  },
+  /** Book the rows as completed runs — all of them, or none when a row needs fixing. */
+  async saveShiftSheet(data: ShiftSheetRequest): Promise<ShiftSheetPlan> {
+    const res = await apiClient.post<ShiftSheetPlan>(SHIFT_SHEET_ENDPOINTS.PLAN, {
+      ...data,
+      commit: true,
     });
     return res.data;
   },
