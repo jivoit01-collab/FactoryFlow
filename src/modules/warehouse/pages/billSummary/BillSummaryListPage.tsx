@@ -24,7 +24,9 @@ import {
   type BillSummaryStatus,
   useBillSummaries,
   useSapBillSummaries,
+  useWarehouseScope,
 } from '../../api';
+import { decidesSheet } from './billSummaryScope';
 import { matchesBillSummary } from './billSummarySearch';
 import { BillSummaryTimes } from './BillSummaryTimes';
 
@@ -51,6 +53,7 @@ function formatDate(value?: string | null): string {
 export default function BillSummaryListPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
+  const scope = useWarehouseScope();
   const [status, setStatus] = useState<BillSummaryStatus | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -117,8 +120,11 @@ export default function BillSummaryListPage() {
   const canApprove = hasPermission(DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY);
   /* Counted off the rows already in hand rather than asked for separately: this
      screen has the whole list, and a second request for a number on a button is
-     a request nobody needs. */
-  const waiting = rows.filter((row) => row.status === 'PENDING_APPROVAL').length;
+     a request nobody needs. Only the user's own godowns, so the number is what
+     the approvals screen will show them. */
+  const waiting = rows.filter(
+    (row) => row.status === 'PENDING_APPROVAL' && decidesSheet(scope, row.warehouse_codes),
+  ).length;
 
   return (
     <div className="space-y-6">

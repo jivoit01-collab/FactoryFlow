@@ -41,10 +41,12 @@ import {
   useRejectBillSummary,
   useResubmitBillSummary,
   useSapBillSummary,
+  useWarehouseScope,
 } from '../../api';
 import { BillInvoicePrintButton } from './BillInvoicePrintButton';
 import { billSummaryEvents } from './billSummaryEvents';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
+import { decidesSheet } from './billSummaryScope';
 
 function num(value: string | number, dp = 0): string {
   const n = Number(value ?? 0);
@@ -65,6 +67,7 @@ export default function BillSummaryDetailPage() {
   const id = isSap ? NaN : Number(routeKey);
   const navigate = useNavigate();
   const { hasPermission } = usePermission();
+  const scope = useWarehouseScope();
 
   const app = useBillSummary(!isSap && Number.isFinite(id) ? id : null);
   const sap = useSapBillSummary(isSap && Number.isFinite(docEntry) ? docEntry : null);
@@ -113,6 +116,8 @@ export default function BillSummaryDetailPage() {
      what is already recorded here — and the desk that approved is often the one
      looking at the failure, so both can drive it. */
   const canRetrySap = canPost || canApprove;
+  /* Approving and sending back are for the managers of the sheet's godown. */
+  const decides = canApprove && decidesSheet(scope, summary.warehouse_codes);
   const canPick = hasPermission(DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY);
   /* Live: the warehouse has dated it and SAP has been told. Anything still to
      be decided sits under `is_editable` instead. */
@@ -380,7 +385,7 @@ export default function BillSummaryDetailPage() {
 
       {/* The warehouse's half. Its only decision is the dispatch date — and
           that date IS the SAP posting, which is why the button says so. */}
-      {summary.status === 'PENDING_APPROVAL' && canApprove && (
+      {summary.status === 'PENDING_APPROVAL' && decides && (
         <Card className="border-amber-300 dark:border-amber-500/40">
           <CardContent className="space-y-3 p-4">
             <p className="font-semibold">Set the dispatch date to approve</p>
@@ -454,10 +459,14 @@ export default function BillSummaryDetailPage() {
 
       {/* Waiting, seen by somebody who cannot act on it. Worth saying where it
           is rather than leaving the sheet looking unfinished. */}
-      {summary.status === 'PENDING_APPROVAL' && !canApprove && (
+      {summary.status === 'PENDING_APPROVAL' && !decides && (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
           With the warehouse since {formatDateTimeShort(summary.submitted_at)}, waiting for a
           dispatch date. Nothing is written to SAP until it is approved.
+          {canApprove &&
+            (summary.warehouse_codes
+              ? ` Only the managers of ${summary.warehouse_codes} can approve it.`
+              : ' Only a godown manager can approve it.')}
         </p>
       )}
 

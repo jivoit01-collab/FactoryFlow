@@ -62,9 +62,16 @@ const sapRows = [
   }),
 ];
 
+const listed = vi.hoisted(() => ({ rows: null as BillSummary[] | null }));
+const scope = vi.hoisted(() => ({
+  manages: (() => true) as (code?: string | null) => boolean,
+  managesNothing: false,
+}));
+
 vi.mock('../../../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../api')>()),
-  useBillSummaries: () => ({ data: appRows, isLoading: false }),
+  useBillSummaries: () => ({ data: listed.rows ?? appRows, isLoading: false }),
+  useWarehouseScope: () => scope,
   useSapBillSummaries: (_params: unknown, enabled: boolean) => ({
     data: enabled ? sapRows : [],
     isFetching: false,
@@ -127,5 +134,29 @@ describe('BillSummaryListPage search', () => {
     expect(
       screen.getByText(/shows up only with “Also show dispatches stamped in SAP” on/),
     ).toBeTruthy();
+  });
+});
+
+describe('BillSummaryListPage to-approve count', () => {
+  it('counts only the sheets out of the godowns the user manages', () => {
+    listed.rows = [
+      sheet({ id: 3, key: '3', entry_no: 'BS-3', status: 'PENDING_APPROVAL' }),
+      sheet({ id: 4, key: '4', entry_no: 'BS-4', status: 'PENDING_APPROVAL' }),
+      sheet({
+        id: 5,
+        key: '5',
+        entry_no: 'BS-5',
+        status: 'PENDING_APPROVAL',
+        warehouse_codes: 'BH-BT',
+      }),
+    ];
+    scope.manages = (code) => code === 'BH-BT';
+    try {
+      open();
+      expect(screen.getByRole('button', { name: /1 to approve/ })).toBeTruthy();
+    } finally {
+      listed.rows = null;
+      scope.manages = () => true;
+    }
   });
 });

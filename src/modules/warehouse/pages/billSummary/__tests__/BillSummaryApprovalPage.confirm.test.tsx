@@ -29,15 +29,22 @@ vi.mock('sonner', async (importOriginal) => ({
   toast,
 }));
 const approve = vi.hoisted(() => vi.fn());
+const listed = vi.hoisted(() => ({ rows: [] as unknown[], params: [] as unknown[] }));
+const scope = vi.hoisted(() => ({
+  unrestricted: false,
+  managesNothing: false,
+  codes: new Set<string>(['BH-FG']),
+}));
 
 vi.mock('@/shared/components', () => ({ confirmSapPost: (o: unknown) => confirmSapPost(o) }));
 vi.mock('../../../api', () => ({
-  useBillSummaries: () => ({
-    data: [sheet(1, '626098260', 'NCR-4494'), sheet(2, '626098261', '')],
-    isLoading: false,
-  }),
+  useBillSummaries: (params: unknown) => {
+    listed.params.push(params);
+    return { data: listed.rows, isLoading: false };
+  },
   useApproveBillSummaries: () => ({ mutateAsync: approve, isPending: false }),
   useRejectBillSummary: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useWarehouseScope: () => scope,
 }));
 
 function renderPage() {
@@ -50,6 +57,7 @@ function renderPage() {
 
 describe('approving a truck asks before it stamps SAP', () => {
   beforeEach(() => {
+    listed.rows = [sheet(1, '626098260', 'NCR-4494'), sheet(2, '626098261', '')];
     confirmSapPost.mockReset();
     approve.mockReset();
     Object.values(toast).forEach((fn) => fn.mockReset());
@@ -103,5 +111,34 @@ describe('approving a truck asks before it stamps SAP', () => {
     );
     expect(toast.success).toHaveBeenCalledTimes(1);
     expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('the queue is the godowns the user manages', () => {
+  beforeEach(() => {
+    listed.rows = [];
+    listed.params = [];
+    Object.assign(scope, {
+      unrestricted: false,
+      managesNothing: false,
+      codes: new Set(['BH-FG', 'BH-PF']),
+    });
+  });
+
+  it('asks the server for the managed sheets only', () => {
+    renderPage();
+    expect(listed.params[0]).toEqual({ status: 'PENDING_APPROVAL', managed: true });
+  });
+
+  it('names the godowns when nothing is waiting for them', () => {
+    renderPage();
+    expect(screen.getByText(/Nothing waiting for BH-FG, BH-PF\./)).toBeInTheDocument();
+  });
+
+  it('tells a user who manages no godown where the assignment is made', () => {
+    Object.assign(scope, { managesNothing: true, codes: new Set() });
+    renderPage();
+    expect(screen.getByText(/not set as the manager of any godown/)).toBeInTheDocument();
+    expect(screen.getByText(/Admin → Warehouse Managers/)).toBeInTheDocument();
   });
 });

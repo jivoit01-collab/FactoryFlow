@@ -176,6 +176,8 @@ export interface BillSummaryListParams {
   sap_invoice_doc_num?: string;
   date_from?: string;
   date_to?: string;
+  /** Only sheets out of a godown the user manages — the approvals screen. */
+  managed?: boolean;
 }
 
 export interface GenerateBillSummaryPayload {

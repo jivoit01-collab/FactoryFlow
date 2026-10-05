@@ -22,6 +22,7 @@ import {
   useApproveBillSummaries,
   useBillSummaries,
   useRejectBillSummary,
+  useWarehouseScope,
 } from '../../api';
 import { BillSummaryTimes } from './BillSummaryTimes';
 
@@ -56,10 +57,17 @@ interface Batch {
  * Approving is the only thing on this screen that writes to SAP. A sheet SAP
  * then refuses stays approved with the refusal on it, so the refusals are
  * reported here and chased from the sheet rather than silently swallowed.
+ *
+ * Only the sheets out of the user's own godowns: the server filters, and
+ * refuses approving or sending back anyone else's.
  */
 export default function BillSummaryApprovalPage() {
   const navigate = useNavigate();
-  const { data: rows = [], isLoading } = useBillSummaries({ status: 'PENDING_APPROVAL' });
+  const scope = useWarehouseScope();
+  const { data: rows = [], isLoading } = useBillSummaries({
+    status: 'PENDING_APPROVAL',
+    managed: true,
+  });
   const approve = useApproveBillSummaries();
   const reject = useRejectBillSummary();
 
@@ -162,7 +170,7 @@ export default function BillSummaryApprovalPage() {
     <div className="space-y-6">
       <DashboardHeader
         title="Bill summaries to approve"
-        description="Sheets dispatch has sent over. Set the dispatch date to approve — that is what goes onto the SAP invoice."
+        description="Sheets dispatch has sent over for the godowns you manage. Set the dispatch date to approve — that is what goes onto the SAP invoice."
       >
         <Button variant="outline" onClick={() => navigate('/warehouse/bill-summaries')}>
           All bill summaries
@@ -173,7 +181,11 @@ export default function BillSummaryApprovalPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : batches.length === 0 ? (
         <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Nothing waiting. Dispatch has not sent any sheets over.
+          {scope.managesNothing
+            ? 'You are not set as the manager of any godown in this company, so no sheets come to you. An administrator assigns this on Admin → Warehouse Managers.'
+            : !scope.unrestricted
+              ? `Nothing waiting for ${[...scope.codes].sort().join(', ')}. Dispatch has not sent any sheets over.`
+              : 'Nothing waiting. Dispatch has not sent any sheets over.'}
         </p>
       ) : (
         batches.map((batch) => {
