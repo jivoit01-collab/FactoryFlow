@@ -81,13 +81,11 @@ interface BiltyCustomer {
   /** What the plans already hold, so a re-link does not ask for it all again. */
   existingNo: string;
   existingDate: string;
-  existingFileName: string;
 }
 
 interface BiltyEntry {
   bilty_no: string;
   bilty_date: string;
-  file: File | null;
 }
 
 interface FormState {
@@ -257,7 +255,6 @@ export function DispatchLinkingSheet({
           docEntries: [],
           existingNo: '',
           existingDate: '',
-          existingFileName: '',
         };
         byKey.set(key, customer);
       }
@@ -267,7 +264,6 @@ export function DispatchLinkingSheet({
       // already on the plan.
       customer.existingNo ||= item.plan.bilty_no || '';
       customer.existingDate ||= item.plan.bilty_date?.slice(0, 10) || '';
-      customer.existingFileName ||= item.plan.bilty_attachment_name || '';
     }
     return [...byKey.values()];
   }, [activeBills]);
@@ -277,22 +273,17 @@ export function DispatchLinkingSheet({
       bilties[customer.key] ?? {
         bilty_no: customer.existingNo,
         bilty_date: customer.existingDate,
-        file: null,
       },
     [bilties],
   );
 
-  /* Every consignee needs a number, a date and a scan before the truck can be
-     linked. The file counts as supplied when the plan already holds one. */
+  /* Every consignee needs a number and a date before the truck can be linked.
+     The scan is not asked for here: the docking uploads it after scanning. */
   const missingBilties = useMemo(
     () =>
       customers.filter((customer) => {
         const entry = biltyFor(customer);
-        return (
-          !entry.bilty_no.trim() ||
-          !entry.bilty_date ||
-          !(entry.file || customer.existingFileName)
-        );
+        return !entry.bilty_no.trim() || !entry.bilty_date;
       }),
     [biltyFor, customers],
   );
@@ -343,7 +334,6 @@ export function DispatchLinkingSheet({
         prev[key] ?? {
           bilty_no: customer?.existingNo ?? '',
           bilty_date: customer?.existingDate ?? '',
-          file: null,
         };
       return { ...prev, [key]: { ...base, ...patch } };
     });
@@ -398,7 +388,7 @@ export function DispatchLinkingSheet({
     if (missingBilties.length > 0) {
       showFormError(
         missingBilties.length === customers.length
-          ? 'Add the bilty number, date and scan for each customer on this truck before linking.'
+          ? 'Add the bilty number and date for each customer on this truck before linking.'
           : `The bilty is incomplete for ${missingBilties
               .map((customer) => customer.name)
               .join(', ')}.`,
@@ -446,10 +436,6 @@ export function DispatchLinkingSheet({
           doc_entries: customer.docEntries,
           bilty_no: entry.bilty_no.trim(),
           bilty_date: entry.bilty_date || null,
-          // Left out when the plan already holds the scan: re-sending it would
-          // rewrite the file and post a "replaced" row to the audit trail over
-          // a document nobody changed.
-          bilty_attachment: entry.file,
         };
       }),
       // The bills this link adds, on top of whatever the truck's freight
@@ -631,12 +617,11 @@ export function DispatchLinkingSheet({
             </div>
           )}
 
-          {/* The bilty, per consignee. This is where it is collected now: the
-              LR is issued per customer and the dispatch desk has it in hand
-              when it assigns the truck. The gatepass prints it, the Service
-              GRPO sends the scan to SAP, and the warehouse cannot approve a
-              bill summary without the number — all of them read it off the
-              plan this writes to. */}
+          {/* The bilty's number and date, per consignee: the LR is issued per
+              customer and the dispatch desk has it when it assigns the truck.
+              The scan is uploaded at the docking after scanning. The gatepass
+              prints the number, and the warehouse cannot approve a bill summary
+              without it — both read it off the plan this writes to. */}
           {customers.length > 0 && (
             <div className="space-y-3 rounded-md border p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -644,7 +629,7 @@ export function DispatchLinkingSheet({
                   Bilty (LR){customers.length > 1 ? ` — ${customers.length} customers` : ''}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  One per customer. The gatepass will not print without it.
+                  One per customer. The scan is uploaded at the docking.
                 </p>
               </div>
 
@@ -665,7 +650,7 @@ export function DispatchLinkingSheet({
                         {customer.docEntries.length === 1 ? '' : 's'}
                       </div>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label htmlFor={`bilty-no-${customer.key}`}>Bilty number</Label>
                         <Input
@@ -687,26 +672,6 @@ export function DispatchLinkingSheet({
                             updateBilty(customer.key, { bilty_date: event.target.value })
                           }
                         />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`bilty-file-${customer.key}`}>Bilty scan</Label>
-                        <Input
-                          id={`bilty-file-${customer.key}`}
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(event) =>
-                            updateBilty(customer.key, {
-                              file: event.target.files?.[0] ?? null,
-                            })
-                          }
-                        />
-                        {/* Already on the plan: the file box can stay empty, and
-                            the number or date can still be corrected. */}
-                        {!entry.file && customer.existingFileName && (
-                          <p className="text-xs text-muted-foreground">
-                            Already attached: {customer.existingFileName}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>

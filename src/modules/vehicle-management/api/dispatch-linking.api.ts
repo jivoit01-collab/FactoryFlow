@@ -106,9 +106,8 @@ export const dispatchLinkingApi = {
    * across every bill on the vehicle, and a bilty (LR) is issued per consignee
    * — folding it in would print one customer's LR number on another's gatepass.
    *
-   * Multipart, because it carries the scanned LR. The file is optional on a
-   * correction: fixing a mistyped number should not mean re-uploading the
-   * document that was already sent.
+   * Multipart, so it can carry a scanned LR, though the linking screens send
+   * only the number and date: the scan is uploaded at the docking.
    */
   async recordCustomerBilty(payload: CustomerBiltyPayload, companyCode?: string) {
     const body = new FormData();

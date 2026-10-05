@@ -17,7 +17,12 @@ import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/u
 import { cn } from '@/shared/utils';
 import { getErrorMessage } from '@/shared/utils/error';
 
-import { useDispatchLinkingPlans, useLinkDispatchVehicle, useUnlinkDispatchVehicle } from '../api';
+import {
+  dispatchLinkingApi,
+  useDispatchLinkingPlans,
+  useLinkDispatchVehicle,
+  useUnlinkDispatchVehicle,
+} from '../api';
 import { DispatchLinkingSheet, DispatchLinkingTable } from '../components';
 import type {
   CustomerBiltyPayload,
@@ -104,7 +109,7 @@ export default function DispatchBillsLinkingPage() {
   const handleSave = async (
     docEntry: number,
     payload: DispatchVehicleLinkPayload,
-    _bilties: CustomerBiltyPayload[],
+    bilties: CustomerBiltyPayload[],
     freight: TruckFreightInput,
   ) => {
     try {
@@ -120,6 +125,22 @@ export default function DispatchBillsLinkingPage() {
     setIsSheetOpen(false);
     setSelectedBill(null);
     setSelectedDocEntries(new Set());
+    // The bilty number and date, one write per consignee, now that every bill
+    // has a plan to hang it on. After the link rather than with it: the link
+    // payload is shared across the whole vehicle, and an LR is per consignee.
+    const biltyFailures: string[] = [];
+    for (const bilty of bilties) {
+      try {
+        await dispatchLinkingApi.recordCustomerBilty(bilty);
+      } catch (error) {
+        biltyFailures.push(`${bilty.bilty_no}: ${getErrorMessage(error, 'could not be saved')}`);
+      }
+    }
+    if (biltyFailures.length > 0) {
+      toast.error(
+        `Vehicle linked, but the bilty was not saved (${biltyFailures.join('; ')}). Enter it with the file at the docking.`,
+      );
+    }
     // The truck's freight, once the bill is on it: held against the benchmark
     // over every booked bill the truck carries, and waiting for Admin if over.
     try {

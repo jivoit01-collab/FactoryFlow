@@ -155,6 +155,14 @@ export interface SalesDispatchGateOutDocument {
   total_loose?: string | null;
   total_weight?: string | null;
   items?: SalesDispatchItem[];
+  /**
+   * The bilty as this bill's plan holds it. The number and date are entered at
+   * Vehicle Linking and read-only on the docking; the file is the docking's own
+   * upload, copied onto the plan. Not sent by the list endpoints.
+   */
+  plan_bilty_no?: string;
+  plan_bilty_date?: string | null;
+  plan_bilty_attachment_name?: string;
   created_at?: string;
   updated_at?: string;
 }

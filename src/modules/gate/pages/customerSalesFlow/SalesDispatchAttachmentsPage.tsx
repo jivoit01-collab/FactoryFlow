@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  AlertTriangle,
   ExternalLink,
   FileText,
   Loader2,
@@ -43,6 +42,7 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
+import { type BiltyTarget, biltyTargetsOf, type DockingCustomer } from './biltyTargets';
 import { ReviewModeBanner } from './ReviewModeBanner';
 import { DOCKING_TOTAL_STEPS, formatValue, isMultiDockingTruck } from './salesDispatchFlow.helpers';
 import { DOCKING_ROUTES } from './salesDispatchRoutes';
@@ -101,13 +101,6 @@ const UPLOAD_PANELS: UploadPanelConfig[] = [
   },
 ];
 
-/** A consignee on a docking. Attachments are still tagged with one. */
-interface DockingCustomer {
-  code: string;
-  name: string;
-  key: string;
-}
-
 // Docking statuses where box scanning is still the active gate. Only these are subject
 // to the scan-lock redirect; from GATEPASS_PRINTED onward the load has already moved
 // forward (and older loads may pre-date the stricter box count), so they stay viewable.
@@ -122,7 +115,13 @@ export default function SalesDispatchAttachmentsPage() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [uploadingType, setUploadingType] = useState<SalesDispatchAttachmentType | null>(null);
+  // Which customer's bilty is uploading, so only that panel spins.
+  const [uploadingCustomerKey, setUploadingCustomerKey] = useState<string | null>(null);
   const [uploadingMessage, setUploadingMessage] = useState('');
+  // A number and date typed here, only for a customer whose plans have none.
+  const [biltyDrafts, setBiltyDrafts] = useState<
+    Record<string, { bilty_no: string; bilty_date: string }>
+  >({});
   const [transportForm, setTransportForm] = useState<TransportDocumentForm>(
     EMPTY_TRANSPORT_DOCUMENT_FORM,
   );
@@ -168,6 +167,21 @@ export default function SalesDispatchAttachmentsPage() {
         attachment.latitude !== null &&
         attachment.longitude !== null,
     ) || Boolean(entry?.gatepass_readiness.has_truck_photo_geolocation);
+  // One bilty per consignee on the whole truck, across every company's docking.
+  const biltyTargets = entry
+    ? biltyTargetsOf(
+        isMultiCompanyArrival && arrivalDockings.dockings.length
+          ? arrivalDockings.dockings
+          : [entry],
+        attachments,
+      )
+    : [];
+  const biltyDraftFor = (target: BiltyTarget) =>
+    biltyDrafts[target.key] ?? { bilty_no: '', bilty_date: '' };
+  const targetsMissingBilty = biltyTargets.filter(
+    (target) => !target.hasFile || !target.linkedNo || !target.linkedDate,
+  );
+  const isMultiCustomerTruck = biltyTargets.length > 1;
   const hasEwayBillAttachment = attachments.some(
     (attachment) => attachment.attachment_type === 'EWAY_BILL',
   );
@@ -219,13 +233,18 @@ export default function SalesDispatchAttachmentsPage() {
     if (ewayBillRequired && !transportForm.eway_bill.trim()) {
       errors.eway_bill = 'E-way bill is required for invoices above Rs 50,000.';
     }
-    // The bilty is not collected on this screen any more — it is captured when
-    // the vehicle is linked — so this asks the server, which reads it off each
-    // customer's dispatch plan, rather than inspecting attachments that are no
-    // longer written.
-    if (includeAttachments && !entry?.gatepass_readiness.has_bilty_details) {
+    // The server is the judge — it reads each customer's dispatch plan — and the
+    // per-customer panels say who is still missing their file.
+    if (
+      includeAttachments &&
+      (targetsMissingBilty.length > 0 || !entry?.gatepass_readiness.has_bilty_details)
+    ) {
       errors.attachments =
-        'A bilty / LR is required for every customer on this truck. Add it on the Vehicle Linking screen.';
+        targetsMissingBilty.length > 0
+          ? `Upload the bilty / LR file for: ${targetsMissingBilty
+              .map((target) => target.name || target.code || target.key)
+              .join(', ')}.`
+          : 'Upload the bilty / LR file for every customer on this truck.';
     }
     if (includeAttachments && ewayBillRequired && !hasEwayBillAttachment) {
       errors.attachments = errors.attachments
@@ -282,6 +301,14 @@ export default function SalesDispatchAttachmentsPage() {
     await saveTransportDocuments();
   };
 
+  const updateBiltyDraft = (target: BiltyTarget, field: 'bilty_no' | 'bilty_date', value: string) => {
+    setBiltyDrafts((prev) => ({
+      ...prev,
+      [target.key]: { ...biltyDraftFor(target), [field]: value },
+    }));
+    setError(null);
+  };
+
   const handleUpload = async (
     type: SalesDispatchAttachmentType,
     file: File,
@@ -297,8 +324,27 @@ export default function SalesDispatchAttachmentsPage() {
       return;
     }
 
+    // A bilty file goes with its number and date. Those come from Vehicle
+    // Linking; only a truck linked before it asked for them types them here.
+    const target =
+      type === 'BILTY' && customer
+        ? biltyTargets.find((item) => item.key === customer.key)
+        : undefined;
+    const draft = target ? biltyDraftFor(target) : undefined;
+    if (
+      target &&
+      ((!target.linkedNo && !draft?.bilty_no.trim()) ||
+        (!target.linkedDate && !draft?.bilty_date))
+    ) {
+      setError(
+        `Enter the bilty / LR number and date for ${target.name || target.code} before uploading the file.`,
+      );
+      return;
+    }
+
     setError(null);
     setUploadingType(type);
+    setUploadingCustomerKey(customer?.key ?? null);
 
     try {
       setUploadingMessage(
@@ -332,8 +378,19 @@ export default function SalesDispatchAttachmentsPage() {
           ...(customer
             ? { customer_code: customer.code, customer_name: customer.name }
             : {}),
+          // Only what the plans lack: the server keeps whatever linking entered.
+          ...(target && !target.linkedNo ? { bilty_no: draft?.bilty_no.trim() ?? '' } : {}),
+          ...(target && !target.linkedDate ? { bilty_date: draft?.bilty_date || null } : {}),
           ...(allowPartial ? { allow_partial: true } : {}),
         };
+        // The bilty fans out to EVERY open docking carrying this customer: each
+        // company's docking gates on its own plans having the file.
+        if (target) {
+          const ids = target.editableDockingIds.length ? target.editableDockingIds : [entry.id];
+          return Promise.all(
+            ids.map((id) => uploadAttachment.mutateAsync({ id, data: attachmentData })),
+          );
+        }
         return uploadAttachment.mutateAsync({ id: entry.id, data: attachmentData });
       };
       try {
@@ -376,10 +433,12 @@ export default function SalesDispatchAttachmentsPage() {
         type === 'TRUCK_PHOTO' ? 'Truck photo uploaded with location' : 'Document uploaded',
       );
       await refetchEntry();
+      if (target && isMultiCompanyArrival) await arrivalDockings.refetch();
     } catch (uploadError) {
       setError(getErrorMessage(uploadError, 'Failed to upload attachment'));
     } finally {
       setUploadingType(null);
+      setUploadingCustomerKey(null);
       setUploadingMessage('');
     }
   };
@@ -519,46 +578,114 @@ export default function SalesDispatchAttachmentsPage() {
         </CardContent>
       </Card>
 
-      {/* The bilty is no longer collected here. It is asked for when the vehicle
-          is linked — one LR per consignee, which is how they are issued — and
-          the gatepass reads it off the dispatch plan. The gate still refuses
-          without it, so this says whether it is there and where to go if it is
-          not, rather than disappearing and leaving a blocked gatepass
-          unexplained. */}
+      {/* The bilty, one per consignee. Its number and date were entered at
+          Vehicle Linking and are shown here read-only; this screen uploads the
+          file, which lands on that customer's plans for the gatepass and the
+          Service GRPO. Only a truck linked before linking asked for the number
+          types it here. */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Paperclip className="h-5 w-5" />
-            Bilty / LR
+            Bilty / LR <span className="text-destructive">*</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {entry.gatepass_readiness.has_bilty_details ? (
-            <p className="text-sm text-muted-foreground">
-              The bilty is on the dispatch plan for every customer on this truck. It was
-              recorded when the vehicle was linked, and the gatepass will print it.
-            </p>
-          ) : (
-            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-              <p className="flex items-center gap-2 font-semibold">
-                <AlertTriangle className="h-4 w-4" />
-                No bilty on this load yet
-              </p>
-              <p className="text-xs">
-                The bilty / LR is captured on the Vehicle Linking screen, one per customer,
-                when the truck is assigned to its bills. Add it there and the gatepass will
-                print it.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/vehicle-management/dispatch-linking')}
-              >
-                Open Vehicle Linking
-              </Button>
-            </div>
-          )}
+        <CardContent className="space-y-5">
+          <p className="text-sm text-muted-foreground">
+            {isMultiCustomerTruck
+              ? `Upload one bilty / LR file per customer — ${biltyTargets.length} customers on this truck.`
+              : 'Upload the bilty / LR file.'}{' '}
+            The number and date come from Vehicle Linking.
+          </p>
+          <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+            {biltyTargets.map((target) => {
+              const draft = biltyDraftFor(target);
+              const existing = attachments.find(
+                (attachment) =>
+                  attachment.attachment_type === 'BILTY' &&
+                  ((attachment.customer_code || '').trim() ||
+                    (attachment.customer_name || '').trim()) === target.key,
+              );
+              const panelDisabled =
+                isReadOnly ||
+                !canUploadAttachments ||
+                uploadAttachment.isPending ||
+                Boolean(uploadingType);
+              return (
+                <div key={`BILTY-${target.key}`} className="space-y-3 rounded-lg border p-4">
+                  {isMultiCustomerTruck && (
+                    <p className="truncate text-sm font-semibold" title={target.name || target.code}>
+                      {target.name || target.code || 'Customer'}
+                    </p>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor={`bilty-no-${target.key}`}>
+                      Bilty / LR No. <span className="text-destructive">*</span>
+                    </Label>
+                    {target.linkedNo ? (
+                      <p id={`bilty-no-${target.key}`} className="text-sm font-medium">
+                        {target.linkedNo}
+                      </p>
+                    ) : (
+                      <Input
+                        id={`bilty-no-${target.key}`}
+                        value={draft.bilty_no}
+                        disabled={panelDisabled}
+                        onChange={(event) =>
+                          updateBiltyDraft(target, 'bilty_no', event.target.value)
+                        }
+                      />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`bilty-date-${target.key}`}>
+                      Bilty Date <span className="text-destructive">*</span>
+                    </Label>
+                    {target.linkedDate ? (
+                      <p id={`bilty-date-${target.key}`} className="text-sm font-medium">
+                        {target.linkedDate}
+                      </p>
+                    ) : (
+                      <Input
+                        id={`bilty-date-${target.key}`}
+                        type="date"
+                        value={draft.bilty_date}
+                        disabled={panelDisabled}
+                        onChange={(event) =>
+                          updateBiltyDraft(target, 'bilty_date', event.target.value)
+                        }
+                      />
+                    )}
+                  </div>
+                  {!target.linkedNo && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      This truck was linked before Vehicle Linking asked for the bilty. Enter
+                      its number and date with the file.
+                    </p>
+                  )}
+                  <DocumentUploadPanel
+                    panel={{
+                      type: 'BILTY',
+                      label: target.hasFile ? 'Replace bilty / LR file' : 'Upload bilty / LR file',
+                      description: 'Freight document or LR copy',
+                      required: true,
+                    }}
+                    customer={target}
+                    disabled={panelDisabled}
+                    isUploading={uploadingType === 'BILTY' && uploadingCustomerKey === target.key}
+                    uploadingMessage={uploadingMessage}
+                    attachments={existing ? [existing] : []}
+                    emptyNote={
+                      target.hasFile && target.fileName
+                        ? `Already attached: ${target.fileName}`
+                        : undefined
+                    }
+                    onUpload={handleUpload}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
@@ -672,6 +799,7 @@ function DocumentUploadPanel({
   isUploading,
   uploadingMessage,
   attachments,
+  emptyNote,
   onUpload,
 }: {
   panel: UploadPanelConfig;
@@ -680,6 +808,8 @@ function DocumentUploadPanel({
   isUploading: boolean;
   uploadingMessage: string;
   attachments: SalesDispatchAttachment[];
+  /** Shown instead of "required" when the file is already held elsewhere (the plan). */
+  emptyNote?: string;
   onUpload: (
     type: SalesDispatchAttachmentType,
     file: File,
@@ -747,7 +877,8 @@ function DocumentUploadPanel({
         </div>
       ) : (
         <p className="text-center text-sm text-muted-foreground">
-          {panel.required ? `${panel.label} is required.` : 'No file uploaded yet.'}
+          {emptyNote ??
+            (panel.required ? `${panel.label} is required.` : 'No file uploaded yet.')}
         </p>
       )}
     </div>

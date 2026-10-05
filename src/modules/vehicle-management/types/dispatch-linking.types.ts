@@ -68,16 +68,17 @@ export interface DispatchVehicleLinkPayload {
 /**
  * One consignee's bilty (LR) over that consignee's bills on a truck.
  *
- * Captured when the vehicle is linked — the dispatch desk has the LR in hand at
- * that point — and read from the dispatch plan afterwards by the gatepass, the
- * bill summary and the Service GRPO alike.
+ * The number and date are entered when the vehicle is linked — the dispatch desk
+ * has them at that point — and are read-only on the docking, which uploads the
+ * scan after scanning. All three are read from the dispatch plan afterwards by
+ * the gatepass, the bill summary and the Service GRPO alike.
  */
 export interface CustomerBiltyPayload {
   /** This customer's bills on this truck, in the company that owns their plans. */
   doc_entries: number[];
   bilty_no: string;
   bilty_date: string | null;
-  /** Omitted when only the number or date is being corrected. */
+  /** Not sent by the linking screens: the scan is uploaded at the docking. */
   bilty_attachment?: File | null;
 }
 
