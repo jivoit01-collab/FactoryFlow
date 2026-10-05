@@ -118,18 +118,14 @@ export function ShippedDrill({
         },
         {
           /*
-           * SAP's own document first, and the typed one only as a fallback.
            * `sap_doc_num` is what SAP posted — the stock transfer, or the
            * invoice on a sale to Mart, which is the number Accounts asks for.
-           * `invoice_no` is what a warehouse user typed to FIND the BST: on
-           * live rows the two agree, but one is a record and the other is
-           * somebody's search box, so the record leads.
            *
-           * Neither exists until SAP posts, and a transfer still waiting says
+           * It doesn't exist until SAP posts, and a transfer still waiting says
            * so rather than showing a blank the reader takes for a dead feed.
            */
           label: 'SAP document',
-          cell: (row) => row.sap_doc_num || row.invoice_no || 'Not posted yet',
+          cell: (row) => row.sap_doc_num || 'Not posted yet',
           dim: true,
         },
         { label: 'Boxes', cell: (row) => whole(row.boxes), numeric: true },

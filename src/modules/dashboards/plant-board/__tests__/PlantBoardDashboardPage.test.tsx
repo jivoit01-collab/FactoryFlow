@@ -464,8 +464,7 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
         shipments: [
           {
             entry_no: 'BST-0412',
-            sap_doc_num: '',
-            invoice_no: 'INV-99871',
+            sap_doc_num: 'INV-99871',
             route: 'DISPATCH',
             route_name: 'Sold on to Mart',
             warehouse: '',
@@ -479,7 +478,6 @@ function board(overrides: Partial<PlantBoardResponse> = {}): PlantBoardResponse 
           {
             entry_no: 'BST-0411',
             sap_doc_num: 'ST-20455',
-            invoice_no: '',
             route: 'BH-BT',
             route_name: 'Bhakharpur New Basement',
             warehouse: 'BH-BT',

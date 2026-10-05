@@ -46,7 +46,8 @@ function searchHaystack(t: BSTTransferListItem): string {
   return [
     t.entry_no,
     t.sap_doc_num,
-    t.invoice_no,
+    // Every attached document, not just the first one the head mirrors.
+    ...(t.doc_nums ?? []),
     t.sap_from_warehouse,
     t.sap_to_warehouse,
     t.destination_company_code,

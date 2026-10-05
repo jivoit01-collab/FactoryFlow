@@ -52,7 +52,7 @@ export default function BSTGateOutReviewPage() {
   const infoRows: Array<[string, string]> = [
     ['SAP Doc', t.sap_doc_num || '—'],
     ['Warehouses', `${t.sap_from_warehouse || '—'} → ${t.sap_to_warehouse || '—'}`],
-    ['Invoice / Ref', t.invoice_no || '—'],
+    ['Remarks', t.remarks || '—'],
     // Where the warehouse's work ends and the gate's begins.
     ['Loaded at', formatBstDateTime(t.loaded_at)],
     // Vehicle + driver sit in their own card below: the gate is usually the one

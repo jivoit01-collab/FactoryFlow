@@ -92,7 +92,6 @@ export interface BSTTransferDoc {
   sap_doc_num: string;
   sap_doc_date: string | null;
   sap_reference: string;
-  invoice_no: string;
   item_count: number;
   expected_box_count: number;
 }
@@ -159,7 +158,8 @@ export interface BSTTransferListItem {
   sap_from_warehouse: string;
   sap_to_warehouse: string;
   sap_reference: string;
-  invoice_no: string;
+  /** Every attached SAP document's number; `sap_doc_num` names only the first. */
+  doc_nums: string[];
   /** Vehicle/driver FK ids — the edit form needs the current selection, not just
    *  its label. Null until a vehicle is booked (an internal move never has one). */
   vehicle: number | null;
@@ -297,7 +297,6 @@ export interface BSTCreatePayload {
   // Required only when requires_gate (the vehicle leaves the factory).
   vehicle?: number | null;
   driver?: number | null;
-  invoice_no?: string;
   requires_gate?: boolean;
   remarks?: string;
 }
@@ -305,7 +304,6 @@ export interface BSTCreatePayload {
 export interface BSTUpdatePayload {
   vehicle?: number;
   driver?: number;
-  invoice_no?: string;
   requires_gate?: boolean;
   remarks?: string;
 }

@@ -137,10 +137,7 @@ export function BSTScannedBoxesSheet({
 
   const billOptions = docs
     .filter((doc) => doc.sap_doc_num)
-    .map((doc) => ({
-      value: doc.sap_doc_num,
-      label: `${doc.sap_doc_num}${doc.invoice_no ? ` · ${doc.invoice_no}` : ''}`,
-    }));
+    .map((doc) => ({ value: doc.sap_doc_num, label: doc.sap_doc_num }));
   const itemOptions = (() => {
     const seen = new Map<string, { code: string; name: string }>();
     const add = (code?: string | null, name?: string | null) => {

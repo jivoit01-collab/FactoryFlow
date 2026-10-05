@@ -109,7 +109,7 @@ export default function BSTReviewPage() {
                 'SAP Documents',
                 t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—',
               ],
-              ['Invoice / Ref', t.invoice_no || '—'],
+              ['Remarks', t.remarks || '—'],
               ['Scanned boxes', String(totalBoxes)],
               // Vehicle + driver get their own card below — the truck can still
               // be swapped here, right up to gate-out.

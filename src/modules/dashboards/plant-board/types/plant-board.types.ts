@@ -565,17 +565,14 @@ export interface ShiftingRoute {
  * names anything a reader can go and look up. This is that: the entry number
  * the register issued, with the SAP document beside it.
  *
- * `sap_doc_num` and `invoice_no` answer different questions and either can be
- * empty — a stock transfer has no invoice, and a transfer SAP has not posted
- * yet has no document number. The row prints whichever it has.
+ * `sap_doc_num` is the stock transfer, or on a sale to Mart the invoice that
+ * settles it. Empty only on a transfer SAP has not posted yet.
  */
 export interface ShiftingShipment {
   /** What the warehouse screen shows and the floor calls "the BST". */
   entry_no: string;
-  /** SAP's own stock-transfer document. Empty until SAP posts it. */
+  /** SAP's own document: the stock transfer, or the invoice. Empty until SAP posts it. */
   sap_doc_num: string;
-  /** Only on an INVOICE transfer — the sale to Mart settles on this. */
-  invoice_no: string;
   route: string;
   route_name: string;
   /** Destination warehouse code. Empty on a dispatch: the stock left. */

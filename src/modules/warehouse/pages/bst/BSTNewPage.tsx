@@ -66,7 +66,7 @@ export default function BSTNewPage() {
         : next,
     );
   const [destinationCompanyId, setDestinationCompanyId] = useState<number | null>(null);
-  const [invoiceNo, setInvoiceNo] = useState('');
+  const [remarks, setRemarks] = useState('');
   // When the stock leaves on a vehicle it needs a gate-out, so we capture the
   // vehicle + driver and route it to the gate after the warehouse approves.
   const [onVehicle, setOnVehicle] = useState(false);
@@ -188,7 +188,7 @@ export default function BSTNewPage() {
       const payload: BSTCreatePayload = {
         document_type: documentType,
         sap_doc_entries: selectedDocs.map((d) => d.doc_entry),
-        invoice_no: invoiceNo,
+        remarks,
         requires_gate: onVehicle,
         vehicle: onVehicle ? vehicleId : null,
         driver: onVehicle ? driverId : null,
@@ -377,16 +377,16 @@ export default function BSTNewPage() {
         </Card>
       )}
 
-      {/* Step 2 — reference + vehicle */}
+      {/* Step 2 — remarks + vehicle */}
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="sm:max-w-sm">
-            <Label>Invoice / Reference No.</Label>
+            <Label>Remarks</Label>
             <Input
               className="mt-1"
               placeholder="Optional"
-              value={invoiceNo}
-              onChange={(e) => setInvoiceNo(e.target.value)}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
             />
           </div>
 

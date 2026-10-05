@@ -133,7 +133,7 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
           [string, string]
         >)),
     ['SAP Documents', t.doc_count > 1 ? `${t.doc_count} documents` : t.sap_doc_num || '—'],
-    ['Invoice / Ref', t.invoice_no || '—'],
+    ['Remarks', t.remarks || '—'],
     // Vehicle + driver live in their own card below — they stay editable until
     // the gate marks the transfer out.
     ['Requires gate', t.requires_gate ? 'Yes' : 'No'],
