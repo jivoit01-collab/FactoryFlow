@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import type { ApiError } from '@/core/api/types';
 import { confirmSapPost } from '@/shared/components';
@@ -154,7 +155,12 @@ export default function FGGRPOPreviewPage() {
         attachments,
       });
       setResult(response);
-      toastSuccessMark('GRPO posted', { description: `SAP Doc ${response.sap_doc_num}` });
+      // SAP not answering is not a failure: the GRPO is saved and posts by itself.
+      if (response.queued) {
+        toast.info(response.message);
+      } else {
+        toastSuccessMark('GRPO posted', { description: `SAP Doc ${response.sap_doc_num}` });
+      }
     } catch (err) {
       const apiError = err as ApiError;
       setError(apiError.message || 'Failed to post GRPO to SAP.');
@@ -163,6 +169,23 @@ export default function FGGRPOPreviewPage() {
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
   if (isError) return <div className="p-8 text-center text-red-600">Failed to load preview.</div>;
+
+  if (result?.queued) {
+    return (
+      <div className="mx-auto max-w-2xl p-4">
+        <Card className="p-6 text-center">
+          <h2 className="mb-2 text-xl font-bold text-violet-600">Waiting for SAP</h2>
+          <p className="text-sm text-muted-foreground">{result.message}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Nothing is in SAP yet, so there is no SAP number. It is on the SAP Postings page.
+          </p>
+          <div className="mt-6 flex justify-center gap-2">
+            <Button onClick={() => navigate('/warehouse/grpo/fg')}>Back to FG GRPO</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   if (result) {
     return (
