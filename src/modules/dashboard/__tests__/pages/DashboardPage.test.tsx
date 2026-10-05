@@ -41,18 +41,9 @@ describe('DashboardPage', () => {
     expect(heading.className).toContain('tracking-tight');
   });
 
-  // ─── Subtitle with APP_NAME ───────────────────────────────────
-
-  it('renders subtitle with interpolated APP_NAME', () => {
-    render(<DashboardPage />);
-    expect(screen.getByText('Overview of your TestApp management system')).toBeInTheDocument();
-  });
-
-  it('subtitle has muted foreground styling', () => {
-    render(<DashboardPage />);
-    const subtitle = screen.getByText('Overview of your TestApp management system');
-    expect(subtitle.tagName).toBe('P');
-    expect(subtitle.className).toContain('text-muted-foreground');
+  it('does not render a subtitle', () => {
+    const { container } = render(<DashboardPage />);
+    expect(container.querySelector('p')).toBeNull();
   });
 
   // ─── DashboardStats Child ─────────────────────────────────────
@@ -70,12 +61,11 @@ describe('DashboardPage', () => {
     expect(wrapper.className).toContain('space-y-6');
   });
 
-  it('renders heading and subtitle inside a wrapper div', () => {
+  it('renders heading inside a wrapper div', () => {
     const { container } = render(<DashboardPage />);
     const wrapper = container.firstChild as HTMLElement;
     const headerDiv = wrapper.firstChild as HTMLElement;
     expect(headerDiv.tagName).toBe('DIV');
     expect(headerDiv.querySelector('h2')).toBeTruthy();
-    expect(headerDiv.querySelector('p')).toBeTruthy();
   });
 });
