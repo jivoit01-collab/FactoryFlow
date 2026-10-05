@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Copy, Download, FileText, ReceiptText, RefreshCw, Upload, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { AR_INVOICE_PERMISSIONS } from '@/config/permissions';
@@ -490,8 +491,11 @@ export default function ARInvoicePage() {
   const canCreateFromSalesOrder =
     canCreate && hasPermission(AR_INVOICE_PERMISSIONS.CREATE_FROM_SALES_ORDER);
   const queryClient = useQueryClient();
+  // `?customer=<code>` opens that customer's ledger (Party Outstanding links here).
+  const [params] = useSearchParams();
+  const linkedCustomer = params.get('customer')?.trim() ?? '';
   const [tab, setTab] = useState<'new' | 'direct' | 'history' | 'ledger'>(
-    canCreate ? 'direct' : 'history',
+    linkedCustomer ? 'ledger' : canCreate ? 'direct' : 'history',
   );
 
   return (
@@ -528,7 +532,7 @@ export default function ARInvoicePage() {
           <HistoryTab canAct={canCreate} />
         </TabsContent>
         <TabsContent value="ledger" className="mt-4">
-          <CustomerLedgerTab />
+          <CustomerLedgerTab initialCustomer={linkedCustomer} />
         </TabsContent>
       </Tabs>
     </div>

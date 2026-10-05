@@ -104,4 +104,5 @@ export interface CustomsRates {
 
 export * from './contracts';
 export * from './farm';
+export * from './inventory';
 export * from './prices';

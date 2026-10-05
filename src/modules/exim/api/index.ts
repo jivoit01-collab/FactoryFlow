@@ -16,5 +16,7 @@ export {
 } from './exim.queries';
 export { FARM_ENDPOINTS, farmApi } from './farm.api';
 export * from './farm.queries';
+export { INVENTORY_ENDPOINTS, inventoryApi } from './inventory.api';
+export * from './inventory.queries';
 export { PRICE_ENDPOINTS, priceApi } from './prices.api';
 export * from './prices.queries';

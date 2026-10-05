@@ -15,6 +15,8 @@
  *   Oil Prices, Jivo Rates  EXIM's daily commodity prices and Jivo rates, read
  *                           nightly from the purchase team's price sheet
  *   Director Inventory      EXIM's Director Dashboard
+ *   Warehouse Inventory     EXIM's Warehouse Inventory: oil in SAP's
+ *                           warehouses, in litres, by category
  *   Contract History,
  *   Change Log              EXIM's contractual history and stock updation logs
  *   Export Licences         EXIM's Advance License and DFIA License pages, as
@@ -44,6 +46,7 @@ import {
   Ship,
   Tags,
   Truck,
+  Warehouse,
 } from 'lucide-react';
 
 import {
@@ -65,6 +68,7 @@ const CustomsRatesPage = lazy(() => import('./pages/CustomsRatesPage'));
 const StockDashboardPage = lazy(() => import('./pages/reports/StockDashboardPage'));
 const StockStatusBreakdownPage = lazy(() => import('./pages/reports/StockStatusBreakdownPage'));
 const DirectorInventoryPage = lazy(() => import('./pages/reports/DirectorInventoryPage'));
+const WarehouseInventoryPage = lazy(() => import('./pages/reports/WarehouseInventoryPage'));
 
 const DomesticContractsPage = lazy(() => import('./pages/contracts/DomesticContractsPage'));
 const DomesticContractPage = lazy(() => import('./pages/contracts/DomesticContractPage'));
@@ -230,6 +234,13 @@ export const eximModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Director Inventory' },
     },
     {
+      path: '/exim/warehouse-inventory',
+      element: <WarehouseInventoryPage />,
+      layout: 'main',
+      permissions: [P.INVENTORY_VIEW],
+      breadcrumb: { label: 'Warehouse Inventory' },
+    },
+    {
       path: '/exim/contract-history',
       element: <ContractHistoryPage />,
       layout: 'main',
@@ -339,6 +350,12 @@ export const eximModuleConfig: ModuleConfig = {
           title: 'Director Inventory',
           icon: Gauge,
           permissions: [P.DIRECTOR_REPORT],
+        },
+        {
+          path: '/exim/warehouse-inventory',
+          title: 'Warehouse Inventory',
+          icon: Warehouse,
+          permissions: [P.INVENTORY_VIEW],
         },
         {
           path: '/exim/contract-history',

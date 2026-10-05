@@ -110,12 +110,18 @@ function LinkedCustomerPicker({
  * Whose account: anyone's for a holder of the all-ledgers right; otherwise
  * only the SAP customers linked to the login, opening on the first of them.
  * The backend refuses any other, so this is the courtesy, not the guard.
+ *
+ * `initialCustomer` opens on that customer (the page reads it from
+ * `?customer=`). The searching picker can only name a customer it has
+ * searched for, so one arriving by link is named from its ledger instead,
+ * until Change.
  */
-export function CustomerLedgerTab() {
+export function CustomerLedgerTab({ initialCustomer = '' }: { initialCustomer?: string }) {
   const access = useCustomerLedgerAccess();
   const seesAll = access.data?.all_customers ?? false;
   const linked = access.data?.customers ?? [];
-  const [picked, setPicked] = useState('');
+  const [picked, setPicked] = useState(initialCustomer);
+  const [fromLink, setFromLink] = useState(!!initialCustomer);
   const customerCode = seesAll ? picked : picked || linked[0]?.customer_code || '';
   const [range, setRange] = useState(defaultLedgerRange);
   const badRange = !!range.from && !!range.to && range.from > range.to;
@@ -133,7 +139,27 @@ export function CustomerLedgerTab() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         {seesAll || linked.length > 0 ? (
           <div className="w-full sm:w-96">
-            {seesAll ? (
+            {seesAll && fromLink && customerCode ? (
+              <>
+                <Label>Customer</Label>
+                <div className="flex h-10 items-center gap-2 rounded-md border bg-muted/40 pl-3 pr-1 text-sm">
+                  <span className="min-w-0 flex-1 truncate">
+                    {data?.customer_name ? `${data.customer_name} (${customerCode})` : customerCode}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setFromLink(false);
+                      setPicked('');
+                    }}
+                  >
+                    Change
+                  </Button>
+                </div>
+              </>
+            ) : seesAll ? (
               <CustomerSelect
                 label="Customer"
                 required

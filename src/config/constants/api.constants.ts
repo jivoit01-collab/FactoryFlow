@@ -493,6 +493,12 @@ export const API_ENDPOINTS = {
     PURCHASE_ORDER_DETAIL: (id: number) => `/planning-purchase/purchase-orders/${id}/`,
     PURCHASE_ORDER_APPROVE: (id: number) => `/planning-purchase/purchase-orders/${id}/approve/`,
     PURCHASE_ORDER_POST: (id: number) => `/planning-purchase/purchase-orders/${id}/post-to-sap/`,
+    // SAP's open purchase orders and the planning team's monthly plan
+    // workbook, both moved here from EXIM.
+    OPEN_POS: '/planning-purchase/open-pos/',
+    MONTHLY_PLANS: '/planning-purchase/monthly-plans/',
+    /** One version, or `latest`: the newest version of the newest month. */
+    MONTHLY_PLAN: (id: number | 'latest') => `/planning-purchase/monthly-plans/${id}/`,
   },
   // Plant Control Board -- the four-band wall screen. ONE endpoint for the
   // whole board on purpose: every tile re-runs on each refresh of a screen

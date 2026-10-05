@@ -90,6 +90,9 @@ export const EXIM_PERMISSIONS = {
   RATE_VIEW: 'exim.view_jivorates',
   RATE_FETCH: 'exim.fetch_jivo_rates',
   RATE_ADD: 'exim.add_jivorates',
+
+  /** Oil in SAP's warehouses, in litres. EXIM's codename, from its SAP sync screen. */
+  INVENTORY_VIEW: 'exim.sync_inventory',
 } as const;
 
 export const EXIM_PRICE_ACCESS: string[] = [EXIM_PERMISSIONS.PRICE_VIEW, EXIM_PERMISSIONS.PRICE_GRAPH];
@@ -137,4 +140,5 @@ export const EXIM_ACCESS: string[] = [
   ...EXIM_CONTRACT_ACCESS,
   ...EXIM_PRICE_ACCESS,
   ...EXIM_RATE_ACCESS,
+  EXIM_PERMISSIONS.INVENTORY_VIEW,
 ];

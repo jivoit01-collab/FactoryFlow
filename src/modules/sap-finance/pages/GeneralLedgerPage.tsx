@@ -8,8 +8,12 @@
  * anchored on SAP's live balance less anything posted after the chosen range —
  * the portal anchored on today's balance whatever the range, so an old range
  * showed wrong balances.
+ *
+ * `?account=<code>` opens on that account or partner (Party Outstanding links
+ * a vendor here).
  */
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { SearchableSelect } from '@/shared/components';
 import {
@@ -33,8 +37,13 @@ import { type LedgerAccountOption, useGeneralLedger, useLedgerAccountSearch } fr
 import { money, sapDate } from '../utils/format';
 
 export default function GeneralLedgerPage() {
+  const [params] = useSearchParams();
+  const linkedAccount = params.get('account')?.trim() ?? '';
   const [search, setSearch] = useState('');
-  const [account, setAccount] = useState<LedgerAccountOption | null>(null);
+  // Only the code is known from a link; the picker's search for it fills in the name.
+  const [account, setAccount] = useState<LedgerAccountOption | null>(() =>
+    linkedAccount ? { code: linkedAccount, name: '', kind: 'BP' } : null,
+  );
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [limit, setLimit] = useState(200);
@@ -68,6 +77,7 @@ export default function GeneralLedgerPage() {
           <SearchableSelect<LedgerAccountOption>
             inputId="gl-account"
             value={account?.code ?? ''}
+            defaultDisplayText={linkedAccount || undefined}
             items={options.data ?? []}
             isLoading={options.isFetching}
             isError={options.isError}

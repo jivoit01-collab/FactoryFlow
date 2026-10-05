@@ -30,6 +30,35 @@ export const PLANNING_PURCHASE_ACCESS: string[] = [
 ];
 
 /**
+ * EXIM's Open POs and monthly plan workbook, moved here. Their users arrived
+ * holding EXIM's own rights (under the `exim` label), which open the same
+ * screens; the backend checks exactly these lists (`planning_purchase/permissions.py`).
+ */
+export const OPEN_POS_ACCESS: string[] = [
+  'planning_purchase.can_view_open_pos',
+  'exim.view_open_pos',
+];
+
+/** Read the monthly plan. Anyone who may read SAP's plan, or upload this one, may. */
+export const MONTHLY_PLAN_VIEW_ACCESS: string[] = [
+  'planning_purchase.can_view_production_plan',
+  'planning_purchase.can_upload_monthly_plan',
+  'exim.view_planningupload',
+];
+
+/** Upload a new version of a month's plan. */
+export const MONTHLY_PLAN_UPLOAD: string[] = [
+  'planning_purchase.can_upload_monthly_plan',
+  'exim.add_planningupload',
+];
+
+/** Delete a version. */
+export const MONTHLY_PLAN_DELETE: string[] = [
+  'planning_purchase.can_upload_monthly_plan',
+  'exim.delete_planningupload',
+];
+
+/**
  * Hides the whole sidebar entry from users with no `planning_purchase.*`
  * permission. This is the sidebar gate: `hasModulePermission` returns true only
  * if the user holds at least one permission starting with this prefix.

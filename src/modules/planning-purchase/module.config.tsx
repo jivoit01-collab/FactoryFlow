@@ -28,6 +28,10 @@
  *
  * Purchase orders are ours. Raising, approving and posting to SAP are three
  * separate permissions — posting a purchase order is a commitment to a supplier.
+ *
+ * Two screens moved in from EXIM: Open POs (every PO line SAP still expects
+ * goods against) and Monthly Plan (the planning team's own workbook, uploaded
+ * month by month). Each also opens to the EXIM right its users arrived with.
  */
 import { ClipboardList } from 'lucide-react';
 
@@ -36,6 +40,10 @@ import {
   PLANNING_PURCHASE_ACCESS,
   PLANNING_PURCHASE_PERMISSIONS,
 } from '@/config/permissions';
+import {
+  MONTHLY_PLAN_VIEW_ACCESS,
+  OPEN_POS_ACCESS,
+} from '@/config/permissions/planning-purchase.permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
@@ -46,6 +54,8 @@ const WhatCanRunPage = lazy(() => import('./pages/WhatCanRunPage'));
 const PurchaseFromPlanPage = lazy(() => import('./pages/PurchaseFromPlanPage'));
 const PurchaseOrderListPage = lazy(() => import('./pages/PurchaseOrderListPage'));
 const PurchaseOrderDetailPage = lazy(() => import('./pages/PurchaseOrderDetailPage'));
+const OpenPosPage = lazy(() => import('./pages/OpenPosPage'));
+const MonthlyPlanPage = lazy(() => import('./pages/MonthlyPlanPage'));
 const SalesPlanningRequirementDashboardPage = lazy(
   () =>
     import('@/modules/dashboards/sales-planning-requirement/pages/SalesPlanningRequirementDashboardPage'),
@@ -64,10 +74,13 @@ const StockLevelDashboardPage = lazy(
  * prefix INSTEAD of the list: with `planning_purchase` as the prefix, somebody
  * granted only Stock Benchmark would never see the menu it now sits in. The
  * four `planning_purchase` rights are the whole of that app, so listing them
- * loses nobody who saw the menu before.
+ * loses nobody who saw the menu before. The two screens from EXIM add their
+ * view rights, EXIM's included, so their users find the menu too.
  */
 const PLANNING_PURCHASE_MENU_PERMISSIONS: string[] = [
   ...PLANNING_PURCHASE_ACCESS,
+  ...OPEN_POS_ACCESS,
+  ...MONTHLY_PLAN_VIEW_ACCESS,
   DASHBOARDS_PERMISSIONS.VIEW_SALES_PLANNING_REQUIREMENT,
   DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL,
   DASHBOARDS_PERMISSIONS.VIEW_STOCK_DASHBOARD,
@@ -158,6 +171,23 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
       permissions: PLANNING_PURCHASE_ACCESS,
       breadcrumb: { label: 'Purchase Order' },
     },
+    {
+      // SAP's open PO lines, every buyer's. From EXIM, where it was one buyer's.
+      path: '/planning-purchase/open-pos',
+      element: <OpenPosPage />,
+      layout: 'main',
+      permissions: OPEN_POS_ACCESS,
+      breadcrumb: { label: 'Open POs' },
+    },
+    {
+      // The planning team's workbook; uploading and deleting a version are
+      // separate rights, and the page hides those buttons itself.
+      path: '/planning-purchase/monthly-plan',
+      element: <MonthlyPlanPage />,
+      layout: 'main',
+      permissions: MONTHLY_PLAN_VIEW_ACCESS,
+      breadcrumb: { label: 'Monthly Plan' },
+    },
   ],
   navigation: [
     {
@@ -172,6 +202,11 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
           path: '/planning-purchase',
           title: 'Production Plans',
           permissions: [PLANNING_PURCHASE_PERMISSIONS.VIEW],
+        },
+        {
+          path: '/planning-purchase/monthly-plan',
+          title: 'Monthly Plan',
+          permissions: MONTHLY_PLAN_VIEW_ACCESS,
         },
         {
           path: '/planning-purchase/what-can-run',
@@ -197,6 +232,11 @@ export const planningPurchaseModuleConfig: ModuleConfig = {
           path: '/planning-purchase/purchase-orders',
           title: 'Purchase Orders',
           permissions: PLANNING_PURCHASE_ACCESS,
+        },
+        {
+          path: '/planning-purchase/open-pos',
+          title: 'Open POs',
+          permissions: OPEN_POS_ACCESS,
         },
       ],
     },
