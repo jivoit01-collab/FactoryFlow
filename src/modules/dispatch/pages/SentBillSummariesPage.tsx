@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react';
 
 import { useAuth } from '@/core/auth';
 import { BILL_SUMMARY_STATUS_LABELS, type BillSummaryStatus } from '@/modules/warehouse/api';
+import { wasResent } from '@/modules/warehouse/pages/billSummary/billSummaryEvents';
 import { matchesBillSummary } from '@/modules/warehouse/pages/billSummary/billSummarySearch';
 import {
   PRINTABLE_BILL_SUMMARY_STATUSES,
@@ -61,7 +62,7 @@ const TONE: Record<BillSummaryStatus, StatusTone> = {
   CANCELLED: 'neutral',
 };
 
-const COLUMNS = 6;
+const COLUMNS = 7;
 
 function isoDay(date: Date): string {
   return date.toLocaleDateString('en-CA');
@@ -209,6 +210,7 @@ export default function SentBillSummariesPage() {
               <Th>Bill</Th>
               <Th>Customer</Th>
               <Th>Vehicle</Th>
+              <Th>Sent / Approved</Th>
               <Th>Dispatch date</Th>
               <Th>Status</Th>
               <Th className="w-28" aria-label="Actions" />
@@ -248,10 +250,12 @@ export default function SentBillSummariesPage() {
                         <span className="font-mono font-medium">{row.sap_invoice_doc_num}</span>
                         <Badge variant="outline">{row.company_code}</Badge>
                       </span>
-                      <span className="block text-xs text-muted-foreground">{row.entry_no}</span>
+                      <span className="block whitespace-nowrap text-xs text-muted-foreground">
+                        {row.entry_no}
+                      </span>
                     </Td>
                     <Td>
-                      <span className="block max-w-52 truncate" title={row.customer_name}>
+                      <span className="block max-w-40 truncate" title={row.customer_name}>
                         {row.customer_name || '—'}
                       </span>
                       {row.warehouse_codes && (
@@ -270,6 +274,48 @@ export default function SentBillSummariesPage() {
                         </span>
                       )}
                     </Td>
+                    {/* When the desk sent it across and when the warehouse gave
+                        the date — the two things everybody chasing a sheet asks.
+                        A sheet handed back and sent again shows the last send,
+                        with the first beside it. */}
+                    <Td>
+                      <dl className="grid grid-cols-[auto_auto] items-baseline gap-x-2 text-xs">
+                        <dt className="text-muted-foreground">Sent</dt>
+                        <dd className="whitespace-nowrap">
+                          {row.submitted_at ? (
+                            <>
+                              <span className="block text-sm tabular-nums">
+                                {formatDateTimeShort(row.submitted_at)}
+                              </span>
+                              <span className="block text-muted-foreground">
+                                {wasResent(row)
+                                  ? `Re-sent · first ${formatDateTimeShort(row.issued_at)}`
+                                  : row.issued_by_name}
+                              </span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
+                        </dd>
+                        <dt className="mt-1 text-muted-foreground">Approved</dt>
+                        <dd className="mt-1 whitespace-nowrap">
+                          {row.approved_at ? (
+                            <>
+                              <span className="block text-sm tabular-nums">
+                                {formatDateTimeShort(row.approved_at)}
+                              </span>
+                              {row.approved_by_name && (
+                                <span className="block text-muted-foreground">
+                                  {row.approved_by_name}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">Not yet</span>
+                          )}
+                        </dd>
+                      </dl>
+                    </Td>
                     <Td className="whitespace-nowrap">
                       {row.dispatch_date ? (
                         formatDay(row.dispatch_date)
@@ -286,16 +332,30 @@ export default function SentBillSummariesPage() {
                           {row.reject_reason}
                         </span>
                       )}
-                      {row.approved_at && (
-                        <span className="mt-1 block max-w-48 text-xs text-muted-foreground">
-                          Approved {formatDateTimeShort(row.approved_at)}
-                          {row.approved_by_name ? ` · ${row.approved_by_name}` : ''}
+                      {row.status === 'REJECTED' && row.rejected_at && (
+                        <span className="mt-1 block whitespace-nowrap text-xs text-muted-foreground">
+                          Sent back {formatDateTimeShort(row.rejected_at)}
+                          {row.rejected_by_name ? ` · ${row.rejected_by_name}` : ''}
                         </span>
                       )}
                       {row.printed_at && (
-                        <span className="block max-w-48 text-xs text-emerald-700 dark:text-emerald-400">
-                          Printed {formatDateTimeShort(row.printed_at)}
-                          {row.printed_by_name ? ` · ${row.printed_by_name}` : ''}
+                        <span className="mt-1 block text-xs text-emerald-700 dark:text-emerald-400">
+                          <span className="block whitespace-nowrap">
+                            Printed {formatDateTimeShort(row.printed_at)}
+                          </span>
+                          {row.printed_by_name && (
+                            <span className="block text-muted-foreground">{row.printed_by_name}</span>
+                          )}
+                        </span>
+                      )}
+                      {row.picked_at && (
+                        <span className="block text-xs text-emerald-700 dark:text-emerald-400">
+                          <span className="block whitespace-nowrap">
+                            Picked {formatDateTimeShort(row.picked_at)}
+                          </span>
+                          {row.picked_by_name && (
+                            <span className="block text-muted-foreground">{row.picked_by_name}</span>
+                          )}
                         </span>
                       )}
                     </Td>

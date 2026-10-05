@@ -23,6 +23,7 @@ import {
   useBillSummaries,
   useRejectBillSummary,
 } from '../../api';
+import { BillSummaryTimes } from './BillSummaryTimes';
 
 /** The truck a batch of sheets came in on, with no vehicle as its own bucket. */
 const NO_VEHICLE = '__none__';
@@ -257,6 +258,9 @@ export default function BillSummaryApprovalPage() {
                             {num(row.totals.boxes)} box · {num(row.totals.litres)} L
                             {row.warehouse_codes && ` · ${row.warehouse_codes}`}
                           </p>
+                          {/* How long it has been waiting, and who sent it — and,
+                              for one handed back before, when that was. */}
+                          <BillSummaryTimes sheet={row} showNames />
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

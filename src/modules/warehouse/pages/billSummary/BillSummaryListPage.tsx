@@ -26,6 +26,7 @@ import {
   useSapBillSummaries,
 } from '../../api';
 import { matchesBillSummary } from './billSummarySearch';
+import { BillSummaryTimes } from './BillSummaryTimes';
 
 /** Matches the smallest option PaginationControls offers. */
 const DEFAULT_PAGE_SIZE = 25;
@@ -302,6 +303,9 @@ export default function BillSummaryListPage() {
                   · {row.totals.lines} line(s)
                   {row.warehouse_codes && ` · ${row.warehouse_codes}`}
                 </p>
+                {/* When dispatch sent it and when the warehouse answered — the
+                    two things everybody chasing a sheet asks first. */}
+                <BillSummaryTimes sheet={row} className="mt-0.5" />
               </div>
               <div className="flex items-center gap-2">
                 {/* Which flow produced it. The row behaves the same either way,

@@ -21,6 +21,7 @@ import {
   type BulkSubmitCandidate,
   type BulkSubmitSkipped,
 } from '../api';
+import { BillSummaryTimes } from '../pages/billSummary/BillSummaryTimes';
 import {
   PRINTABLE_BILL_SUMMARY_STATUSES,
   sheetsForBills,
@@ -144,12 +145,20 @@ export function SubmitBillSummariesDialog({
   async function printSheet(row: BillSummary) {
     const updated = await printer.print(row);
     if (!updated) return;
-    // The first print moves an approved sheet to Printed; say so in place.
+    // The first print moves an approved sheet to Printed; say so in place,
+    // with when.
     setPreview((current) =>
       current && {
         ...current,
         sent: current.sent.map((sheet) =>
-          sheet.id === row.id ? { ...sheet, status: updated.status } : sheet,
+          sheet.id === row.id
+            ? {
+                ...sheet,
+                status: updated.status,
+                printed_at: updated.printed_at,
+                printed_by_name: updated.printed_by_name,
+              }
+            : sheet,
         ),
       },
     );
@@ -281,6 +290,7 @@ export function SubmitBillSummariesDialog({
                           <span className="block truncate text-xs text-muted-foreground">
                             {row.customer_name}
                           </span>
+                          <BillSummaryTimes sheet={row} />
                         </span>
                         <span className="flex shrink-0 items-center gap-2">
                           <Badge variant="outline">{BILL_SUMMARY_STATUS_LABELS[row.status]}</Badge>

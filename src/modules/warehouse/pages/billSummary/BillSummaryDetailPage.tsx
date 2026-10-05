@@ -27,7 +27,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
 import {
   BILL_SUMMARY_STATUS_LABELS,
@@ -43,6 +43,7 @@ import {
   useSapBillSummary,
 } from '../../api';
 import { BillInvoicePrintButton } from './BillInvoicePrintButton';
+import { billSummaryEvents } from './billSummaryEvents';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
 
 function num(value: string | number, dp = 0): string {
@@ -120,6 +121,7 @@ export default function BillSummaryDetailPage() {
     summary.status === 'PRINTED' ||
     summary.status === 'PICKED';
   const fromSap = summary.source === 'SAP';
+  const history = billSummaryEvents(summary, { withSap: true });
 
   /* Cancelling needs a record to cancel. A dispatch stamped in SAP has none
      until now, so it is taken onto the app's books first and the URL moves to
@@ -331,23 +333,9 @@ export default function BillSummaryDetailPage() {
                 : '—'
             }
           />
-          <Field
-            label="Issued by"
-            value={summary.issued_by_name || (fromSap ? 'Typed into SAP' : '—')}
-          />
-          {/* Who gave the date, which is the decision the whole step exists for.
-              Blank on a dispatch typed straight into SAP and on the sheets that
-              predate this flow — nobody approved those, and the record should
-              not pretend somebody did. */}
-          {summary.approved_at && (
-            <Field label="Approved by" value={summary.approved_by_name || '—'} />
-          )}
-          {summary.printed_at && (
-            <Field label="Printed by" value={summary.printed_by_name || '—'} />
-          )}
-          {summary.picked_at && (
-            <Field label="Picked by" value={summary.picked_by_name || '—'} />
-          )}
+          {/* Who did what, and when, is the History below. A dispatch typed
+              straight into SAP has none of it, so it says where it came from. */}
+          {fromSap && <Field label="Issued by" value="Typed into SAP" />}
           {summary.remarks && (
             <div className="sm:col-span-2">
               <p className="text-xs uppercase text-muted-foreground">Remarks</p>
@@ -356,6 +344,35 @@ export default function BillSummaryDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Every step the sheet has been through, with its time and who took it:
+          when dispatch sent it is the question everybody asks first, and when
+          the warehouse answered is the second. Nothing on a dispatch stamped
+          straight into SAP, and nothing approved on the sheets that predate the
+          approval step — nobody approved those, and the record should not
+          pretend somebody did. */}
+      {history.length > 0 && (
+        <Card>
+          <CardContent className="space-y-2 p-6">
+            <div className="text-sm font-semibold">History</div>
+            <ol className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-sm">
+              {history.map((event) => (
+                <li key={event.key} className="contents">
+                  <span className="text-muted-foreground">{event.label}</span>
+                  <span className="whitespace-nowrap font-medium tabular-nums">
+                    {formatDateTimeShort(event.at)}
+                  </span>
+                  <span className="truncate">
+                    {event.by || (
+                      <span className="text-xs text-muted-foreground">{event.note}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
 
       {/* The warehouse's half. Its only decision is the dispatch date — and
           that date IS the SAP posting, which is why the button says so. */}
@@ -435,7 +452,7 @@ export default function BillSummaryDetailPage() {
           is rather than leaving the sheet looking unfinished. */}
       {summary.status === 'PENDING_APPROVAL' && !canApprove && (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-          With the warehouse since {summary.submitted_at?.slice(0, 10) ?? '—'}, waiting for a
+          With the warehouse since {formatDateTimeShort(summary.submitted_at)}, waiting for a
           dispatch date. Nothing is written to SAP until it is approved.
         </p>
       )}
@@ -448,6 +465,12 @@ export default function BillSummaryDetailPage() {
             <p className="flex items-center gap-2 font-semibold text-orange-800 dark:text-orange-400">
               <AlertTriangle className="h-4 w-4" />
               Sent back by {summary.rejected_by_name || 'the warehouse'}
+              {summary.rejected_at && (
+                <span className="font-normal tabular-nums">
+                  {' '}
+                  on {formatDateTimeShort(summary.rejected_at)}
+                </span>
+              )}
             </p>
             <p className="text-sm">{summary.reject_reason}</p>
             {canPost && (
