@@ -9,7 +9,7 @@ import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useFillingCostBoard } from '../api';
 import { FILLING_COST_SHEET_ROUTE } from '../constants';
-import type { FillingCostHeadRow, FillingCostSku } from '../types';
+import type { FillingCostBoard, FillingCostHeadRow, FillingCostSku } from '../types';
 import { count, longDay, rate, rupees } from '../utils/format';
 
 /**
@@ -271,6 +271,106 @@ export function FillingCostSheetPanel({
           </div>
         </div>
       )}
+
+      {data && data.days.length > 0 && (
+        <DayByDay board={data} selected={date} onPick={onDateChange} />
+      )}
     </section>
+  );
+}
+
+/** '2026-09-28' → '28 Sep, Mon'. */
+function shortDay(date: string) {
+  const d = new Date(`${date}T00:00:00`);
+  return `${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}, ${d.toLocaleDateString('en-IN', { weekday: 'short' })}`;
+}
+
+/**
+ * The month's cost a day: every day a sheet was saved for, with the month's
+ * total under it. Picking a day opens its sheet above, when the panel owns
+ * the day.
+ */
+function DayByDay({
+  board,
+  selected,
+  onPick,
+}: {
+  board: FillingCostBoard;
+  selected: string;
+  onPick?: (date: string) => void;
+}) {
+  const month = new Date(`${board.month}-01T00:00:00`).toLocaleDateString('en-IN', {
+    month: 'long',
+    year: 'numeric',
+  });
+  return (
+    <div className="mt-6">
+      <p className="mb-2 text-sm font-medium">
+        Day by day — {month}{' '}
+        <span className="font-normal text-muted-foreground">
+          ({board.days_entered} of {board.days_in_month} days entered)
+        </span>
+      </p>
+      <div className="overflow-x-auto rounded-xl border">
+        <table className="w-full text-sm" aria-label="Filling cost day by day">
+          <thead>
+            <tr className="border-b bg-muted/50 text-xs uppercase text-muted-foreground">
+              <th className="px-3 py-2 text-left font-semibold">Date</th>
+              <th className="px-3 py-2 text-right font-semibold">Production (boxes)</th>
+              <th className="px-3 py-2 text-right font-semibold">Total cost</th>
+              <th className="px-3 py-2 text-right font-semibold">Per box</th>
+              <th className="px-3 py-2 text-right font-semibold">Per bottle</th>
+            </tr>
+          </thead>
+          <tbody>
+            {board.days.map((day) => {
+              const isSelected = day.date === selected;
+              return (
+                <tr
+                  key={day.date}
+                  aria-selected={isSelected}
+                  onClick={onPick && !isSelected ? () => onPick(day.date) : undefined}
+                  className={cn(
+                    'border-b',
+                    isSelected
+                      ? 'bg-primary/10 font-medium'
+                      : onPick && 'cursor-pointer hover:bg-muted/40',
+                  )}
+                >
+                  <td className="px-3 py-1.5">{shortDay(day.date)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                    {count(day.cases)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                    {rupees(day.total)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                    {rate(day.per_case)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+                    {rate(day.per_bottle, 4)}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="bg-muted/50 font-semibold">
+              <td className="px-3 py-2">MONTH</td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
+                {count(board.totals.cases)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
+                {rupees(board.totals.total)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
+                {rate(board.totals.per_case)}
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums">
+                {rate(board.totals.per_bottle, 4)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

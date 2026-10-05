@@ -89,12 +89,12 @@ const DAY: FillingCostBoardDayDetail = {
 };
 
 const asked = vi.hoisted(() => [] as unknown[]);
-const answer = vi.hoisted(() => ({ day: null as unknown }));
+const answer = vi.hoisted(() => ({ day: null as unknown, rest: {} as Record<string, unknown> }));
 
 vi.mock('../api', () => ({
   useFillingCostBoard: (month: string, day: string) => {
     asked.push({ month, day });
-    return { data: { day: answer.day }, isLoading: false };
+    return { data: { days: [], ...answer.rest, day: answer.day }, isLoading: false };
   },
 }));
 
@@ -114,6 +114,7 @@ describe('Filling cost on the production board', () => {
   beforeEach(() => {
     asked.length = 0;
     answer.day = DAY;
+    answer.rest = {};
   });
 
   it('asks for the day it is given', () => {
@@ -178,6 +179,43 @@ describe('Filling cost on the production board', () => {
     answer.day = { ...DAY, kept_by: 'day', shifts: [] };
     renderPanel();
     expect(screen.queryByRole('group', { name: 'Shift' })).not.toBeInTheDocument();
+  });
+
+  it('lists the month day by day, and opens a day picked from it', () => {
+    const figures = (date: string, cases: string, total: string, perCase: string) => ({
+      date,
+      kept_by: 'day',
+      cases,
+      bottles: '0',
+      total,
+      per_case: perCase,
+      per_bottle: null,
+    });
+    answer.rest = {
+      month: '2026-09',
+      days_in_month: 30,
+      days_entered: 2,
+      days: [
+        figures('2026-09-27', '1000.00', '1000.00', '1.00'),
+        figures('2026-09-28', '8655.00', '150000.00', '17.33'),
+      ],
+      totals: { ...figures('', '9655.00', '151000.00', '15.64'), per_bottle: null },
+    };
+    const onDateChange = vi.fn();
+    render(
+      <MemoryRouter>
+        <FillingCostSheetPanel date="2026-09-28" onDateChange={onDateChange} />
+      </MemoryRouter>,
+    );
+
+    const table = within(screen.getByRole('table', { name: 'Filling cost day by day' }));
+    expect(screen.getByText(/2 of 30 days entered/)).toBeInTheDocument();
+    const month = within(table.getByText('MONTH').closest('tr') as HTMLElement);
+    expect(month.getByText('₹1,51,000')).toBeInTheDocument();
+    expect(month.getByText('₹15.64')).toBeInTheDocument();
+
+    fireEvent.click(table.getByText(/^27 Sep/));
+    expect(onDateChange).toHaveBeenCalledWith('2026-09-27');
   });
 
   it('says so when the day has no sheet', () => {
