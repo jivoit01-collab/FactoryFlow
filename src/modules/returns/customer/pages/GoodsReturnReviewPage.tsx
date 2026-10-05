@@ -56,9 +56,15 @@ export default function GoodsReturnReviewPage() {
             {detail.basis !== 'INVOICE' && (
               <Field label={REF_NO_LABELS[detail.basis]} value={detail.customer_ref_no || '-'} />
             )}
-            <Field label="Vehicle" value={detail.vehicle_no || '-'} />
-            <Field label="Driver" value={detail.driver_name || '-'} />
-            <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
+            {detail.comes_on_vehicle ? (
+              <>
+                <Field label="Vehicle" value={detail.vehicle_no || '-'} />
+                <Field label="Driver" value={detail.driver_name || '-'} />
+                <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
+              </>
+            ) : (
+              <Field label="Vehicle" value="Not on a vehicle — no gate entry" />
+            )}
             {/* The numbers, not the count: each of these posts its own A/R Return. */}
             <Field
               label="Invoices"
@@ -128,8 +134,11 @@ export default function GoodsReturnReviewPage() {
 
       <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        The gate has had this return in its queue since step 1 — submitting records that the
-        booking is complete. SAP is posted later, when the goods are confirmed received.
+        {detail.comes_on_vehicle
+          ? 'The gate has had this return in its queue since step 1'
+          : 'No vehicle, so the gate is not involved'}{' '}
+        — submitting records that the booking is complete. SAP is posted later, when the goods are
+        confirmed received.
       </p>
     </div>
   );

@@ -40,11 +40,12 @@ export default function GoodsReturnListPage() {
   } = useGoodsReturns(statusFilter ? { status: statusFilter } : undefined);
   const cancelReturn = useCancelGoodsReturn();
 
-  async function handleDelete(id: number, entryNo: string) {
+  async function handleDelete(id: number, entryNo: string, comesOnVehicle: boolean) {
     const confirmed = await confirmDialog({
       title: `Delete ${entryNo}?`,
-      description:
-        'The gate is waiting for this vehicle — deleting takes it off their queue. It will be kept as a cancelled entry.',
+      description: comesOnVehicle
+        ? 'The gate is waiting for this vehicle — deleting takes it off their queue. It will be kept as a cancelled entry.'
+        : 'It will be kept as a cancelled entry.',
       confirmLabel: 'Delete',
       destructive: true,
     });
@@ -187,7 +188,13 @@ export default function GoodsReturnListPage() {
                           {entry.invoice_doc_nums.length ? entry.invoice_doc_nums.join(', ') : '-'}
                         </td>
                         <td className="px-4 py-3">{entry.line_count}</td>
-                        <td className="px-4 py-3">{entry.vehicle_no || '-'}</td>
+                        <td className="px-4 py-3">
+                          {entry.comes_on_vehicle ? (
+                            entry.vehicle_no || '-'
+                          ) : (
+                            <span className="text-muted-foreground">No vehicle</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           {formatDate(entry.expected_arrival_at)}
                         </td>
@@ -206,7 +213,7 @@ export default function GoodsReturnListPage() {
                               disabled={cancelReturn.isPending}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                handleDelete(entry.id, entry.entry_no);
+                                handleDelete(entry.id, entry.entry_no, entry.comes_on_vehicle);
                               }}
                             >
                               <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
@@ -237,9 +244,15 @@ function isUnfinished(entry: GoodsReturnListItem): boolean {
   );
 }
 
-/** The backend refuses to cancel anything the gate has already let in. */
+/** The backend refuses to cancel anything the gate has already let in. A return
+ *  with no vehicle is Arrived from the start without the gate letting anything
+ *  in, so it stays deletable until it is received. */
 function isDeletable(entry: GoodsReturnListItem): boolean {
-  return entry.status === 'DRAFT' || entry.status === 'AWAITING_ARRIVAL';
+  return (
+    entry.status === 'DRAFT' ||
+    entry.status === 'AWAITING_ARRIVAL' ||
+    (entry.status === 'ARRIVED' && !entry.comes_on_vehicle)
+  );
 }
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone?: string }) {

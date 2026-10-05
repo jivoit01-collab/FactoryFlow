@@ -213,9 +213,13 @@ export default function GoodsReturnApprovalsPage() {
               {reviewMode === 'approve' ? 'Approve' : 'Reject'} {reviewTarget?.entry_no}
             </DialogTitle>
             <DialogDescription>
-              {reviewMode === 'approve'
-                ? 'Approving lets the gate mark this truck in and the return be received (its SAP posting).'
-                : 'Rejecting keeps this truck out at the gate and blocks the return from being received.'}
+              {reviewTarget && !reviewTarget.comes_on_vehicle
+                ? reviewMode === 'approve'
+                  ? 'Approving lets the return be received (its SAP posting). It has no vehicle, so the gate is not involved.'
+                  : 'Rejecting blocks the return from being received.'
+                : reviewMode === 'approve'
+                  ? 'Approving lets the gate mark this truck in and the return be received (its SAP posting).'
+                  : 'Rejecting keeps this truck out at the gate and blocks the return from being received.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

@@ -55,6 +55,8 @@ export interface GoodsReturnListItem {
   customer_names: string[];
   /** The customer's own debit-note / letter-pad number, if they gave one. */
   customer_ref_no: string;
+  /** False for a return carried in by hand or by courier: it skips the gate. */
+  comes_on_vehicle: boolean;
   vehicle_no: string;
   driver_name: string;
   company_code: string;
@@ -154,6 +156,8 @@ export interface GoodsReturnDetail {
   customer_names: string[];
   /** The customer's own debit-note / letter-pad number, if they gave one. */
   customer_ref_no: string;
+  /** False for a return carried in by hand or by courier: it skips the gate. */
+  comes_on_vehicle: boolean;
   vehicle: number | null;
   vehicle_no: string;
   driver: number | null;
@@ -247,10 +251,13 @@ export interface ReturnCustomer {
 
 export interface CreateGoodsReturnPayload {
   basis: GoodsReturnBasis;
-  /** Required: saving this page puts the return in the gate's arrival queue, and
-   *  the gate needs a truck to look for. */
-  vehicle_id: number;
-  driver_id: number;
+  /** False when the goods are not coming on a vehicle: the return skips the
+   *  gate, is saved as arrived, and needs no vehicle or driver. */
+  comes_on_vehicle: boolean;
+  /** Required when it comes on a vehicle: saving this page puts the return in
+   *  the gate's arrival queue, and the gate needs a truck to look for. */
+  vehicle_id?: number | null;
+  driver_id?: number | null;
   expected_arrival_at?: string | null;
   invoice_numbers?: string[];
   customer_code?: string;
@@ -279,8 +286,10 @@ export interface SaveItemsPayload {
 /** Corrects the truck on a return that is already in the gate's queue. The
  *  vehicle and driver cannot be cleared (the gate is waiting on them); an
  *  omitted key is left untouched, and `expected_arrival_at: null` clears the
- *  date. Refused once the vehicle is marked in. */
+ *  date. Refused once the vehicle is marked in. `comes_on_vehicle` moves the
+ *  return on or off the gate's queue; turning it on needs the vehicle and driver. */
 export interface SetVehiclePayload {
+  comes_on_vehicle?: boolean;
   vehicle_id?: number | null;
   driver_id?: number | null;
   expected_arrival_at?: string | null;

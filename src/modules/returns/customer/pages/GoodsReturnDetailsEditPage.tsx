@@ -29,6 +29,7 @@ import {
   useUploadAttachment,
 } from '../api';
 import { ReturnCustomerPicker } from '../components/ReturnCustomerPicker';
+import { ReturnVehicleCheckbox } from '../components/ReturnVehicleCheckbox';
 import {
   ATTACHMENT_TYPE_BY_BASIS,
   BASIS_LABELS,
@@ -68,6 +69,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
   const [customerName, setCustomerName] = useState(detail.customer_name);
   const [customerCode, setCustomerCode] = useState(detail.customer_code);
   const [customerRefNo, setCustomerRefNo] = useState(detail.customer_ref_no);
+  const [comesOnVehicle, setComesOnVehicle] = useState(detail.comes_on_vehicle);
   const [vehicleId, setVehicleId] = useState<number | null>(detail.vehicle);
   const [vehicleNo, setVehicleNo] = useState(detail.vehicle_no);
   const [driverId, setDriverId] = useState<number | null>(detail.driver);
@@ -113,7 +115,7 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
 
   async function handleContinue() {
     setError(null);
-    if (!isGatedIn && (!vehicleId || !driverId)) {
+    if (comesOnVehicle && !isGatedIn && (!vehicleId || !driverId)) {
       setError('Pick the vehicle and driver bringing the goods back.');
       return;
     }
@@ -140,15 +142,24 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
         });
       }
       const vehicleChanged =
-        vehicleId !== detail.vehicle ||
-        driverId !== detail.driver ||
-        expectedArrival !== toDateInputValue(detail.expected_arrival_at);
-      if (!isGatedIn && vehicleChanged && vehicleId && driverId) {
-        await setVehicle.mutateAsync({
-          vehicle_id: vehicleId,
-          driver_id: driverId,
-          expected_arrival_at: expectedArrival || null,
-        });
+        comesOnVehicle !== detail.comes_on_vehicle ||
+        (comesOnVehicle &&
+          (vehicleId !== detail.vehicle ||
+            driverId !== detail.driver ||
+            expectedArrival !== toDateInputValue(detail.expected_arrival_at)));
+      if (!isGatedIn && vehicleChanged) {
+        // Unticking takes the return off the gate's queue and drops the truck;
+        // ticking it puts the return back in the queue with this truck.
+        await setVehicle.mutateAsync(
+          comesOnVehicle
+            ? {
+                comes_on_vehicle: true,
+                vehicle_id: vehicleId,
+                driver_id: driverId,
+                expected_arrival_at: expectedArrival || null,
+              }
+            : { comes_on_vehicle: false },
+        );
       }
       navigate(`/returns/customer/edit/${id}/items`);
     } catch (err) {
@@ -170,53 +181,68 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
       <Card>
         <CardContent className="space-y-4 p-6">
           <div>
-            <SectionTitle icon={<Truck className="h-4 w-4" />} title="Vehicle &amp; Driver *" />
+            <SectionTitle
+              icon={<Truck className="h-4 w-4" />}
+              title={comesOnVehicle ? 'Vehicle & Driver *' : 'Vehicle & Driver'}
+            />
             <p className="mt-1 text-xs text-muted-foreground">
               {isGatedIn
                 ? `Marked in at the gate on ${formatDateTime(detail.gated_in_at)} — the truck can no longer be changed.`
-                : 'This return is in the gate’s “Goods Return In” queue. The truck can be swapped, but not removed.'}
+                : !comesOnVehicle
+                  ? 'No vehicle, so the gate is not involved — the return goes straight on to the items and receipt.'
+                  : detail.comes_on_vehicle
+                    ? 'This return is in the gate’s “Goods Return In” queue. The truck can be swapped, but not removed.'
+                    : 'Saved, the truck joins the gate’s “Goods Return In” queue as Awaiting Arrival.'}
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Return Vehicle *</Label>
-              <VehicleSelect
-                value={vehicleNo}
-                defaultDisplayText={vehicleNo}
-                disabled={isGatedIn}
-                onChange={(vehicle) => {
-                  setVehicleId(vehicle.vehicleId);
-                  setVehicleNo(vehicle.vehicleNumber);
-                }}
-              />
-            </div>
+          <ReturnVehicleCheckbox
+            checked={comesOnVehicle}
+            onChange={setComesOnVehicle}
+            disabled={isGatedIn}
+          />
 
-            <div className="space-y-2">
-              <Label>Driver *</Label>
-              <DriverSelect
-                value={driverName}
-                defaultDisplayText={driverName}
-                disabled={isGatedIn}
-                onChange={(driver) => {
-                  setDriverId(driver.driverId);
-                  setDriverName(driver.driverName);
-                }}
-              />
-            </div>
+          {comesOnVehicle && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Return Vehicle *</Label>
+                <VehicleSelect
+                  value={vehicleNo}
+                  defaultDisplayText={vehicleNo}
+                  disabled={isGatedIn}
+                  onChange={(vehicle) => {
+                    setVehicleId(vehicle.vehicleId);
+                    setVehicleNo(vehicle.vehicleNumber);
+                  }}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <CalendarClock className="h-4 w-4" /> Expected Gate Arrival
-              </Label>
-              <Input
-                type="date"
-                value={expectedArrival}
-                disabled={isGatedIn}
-                onChange={(event) => setExpectedArrival(event.target.value)}
-              />
+              <div className="space-y-2">
+                <Label>Driver *</Label>
+                <DriverSelect
+                  value={driverName}
+                  defaultDisplayText={driverName}
+                  disabled={isGatedIn}
+                  onChange={(driver) => {
+                    setDriverId(driver.driverId);
+                    setDriverName(driver.driverName);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" /> Expected Gate Arrival
+                </Label>
+                <Input
+                  type="date"
+                  value={expectedArrival}
+                  disabled={isGatedIn}
+                  onChange={(event) => setExpectedArrival(event.target.value)}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

@@ -117,10 +117,16 @@ export default function GoodsReturnDetailPage() {
             <Field label={REF_NO_LABELS[detail.basis]} value={detail.customer_ref_no || '-'} />
           )}
           <Field label="Company" value={detail.company_name} />
-          <Field label="Vehicle" value={detail.vehicle_no || '-'} />
-          <Field label="Driver" value={detail.driver_name || '-'} />
-          <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
-          <Field label="Gated In" value={formatDateTime(detail.gated_in_at)} />
+          {detail.comes_on_vehicle ? (
+            <>
+              <Field label="Vehicle" value={detail.vehicle_no || '-'} />
+              <Field label="Driver" value={detail.driver_name || '-'} />
+              <Field label="Expected Arrival" value={formatDate(detail.expected_arrival_at)} />
+              <Field label="Gated In" value={formatDateTime(detail.gated_in_at)} />
+            </>
+          ) : (
+            <Field label="Vehicle" value="Not on a vehicle — no gate entry" />
+          )}
           {detail.received_at && (
             <Field label="Received" value={formatDateTime(detail.received_at)} />
           )}
@@ -381,9 +387,12 @@ function ReceivePanel({ id, detail }: { id: number; detail: GoodsReturnDetail })
                 owed.length ? ` (${owed.map((ref) => ref.sap_invoice_doc_num).join(', ')})` : ''
               }. The documents it accepted stand — a posted return cannot be withdrawn — so this
                retries only the refused ones, into the same warehouse.`
-            : `The vehicle is marked in at the gate. Confirm the goods physically arrived — this
-               posts an A/R Return to SAP for each return note below and brings the stock into
-               the warehouse chosen here.`}
+            : `${
+                detail.comes_on_vehicle
+                  ? 'The vehicle is marked in at the gate.'
+                  : 'This return did not come on a vehicle, so there is no gate entry.'
+              } Confirm the goods physically arrived — this posts an A/R Return to SAP for each
+               return note below and brings the stock into the warehouse chosen here.`}
         </p>
 
         {canGroup && (

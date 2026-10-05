@@ -27,6 +27,7 @@ import {
   useInvoiceSearch,
 } from '../api';
 import { ReturnCustomerPicker } from '../components/ReturnCustomerPicker';
+import { ReturnVehicleCheckbox } from '../components/ReturnVehicleCheckbox';
 import { ATTACHMENT_TYPE_BY_BASIS, BASIS_LABELS, REF_NO_LABELS } from '../utils';
 
 interface AddedInvoice {
@@ -49,6 +50,9 @@ export default function GoodsReturnStep1Page() {
   const createReturn = useCreateGoodsReturn();
   const invoiceSearch = useInvoiceSearch();
 
+  // Not every return comes on a truck — some are carried in by hand or come by
+  // courier. Those skip the gate entirely and go straight on to the items.
+  const [comesOnVehicle, setComesOnVehicle] = useState(true);
   const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [vehicleNo, setVehicleNo] = useState('');
   const [driverId, setDriverId] = useState<number | null>(null);
@@ -129,7 +133,7 @@ export default function GoodsReturnStep1Page() {
 
   async function handleContinue() {
     setError(null);
-    if (!vehicleId || !driverId) {
+    if (comesOnVehicle && (!vehicleId || !driverId)) {
       setError('Pick the vehicle and driver bringing the goods back.');
       return;
     }
@@ -151,9 +155,10 @@ export default function GoodsReturnStep1Page() {
     try {
       const created = await createReturn.mutateAsync({
         basis,
-        vehicle_id: vehicleId,
-        driver_id: driverId,
-        expected_arrival_at: expectedArrival || null,
+        comes_on_vehicle: comesOnVehicle,
+        vehicle_id: comesOnVehicle ? vehicleId : null,
+        driver_id: comesOnVehicle ? driverId : null,
+        expected_arrival_at: comesOnVehicle ? expectedArrival || null : null,
         invoice_numbers: isInvoiceBasis ? addedInvoices.map((inv) => inv.doc_num) : undefined,
         customer_code: isInvoiceBasis ? undefined : customerCode.trim(),
         customer_name: isInvoiceBasis ? undefined : customerName.trim(),
@@ -167,7 +172,11 @@ export default function GoodsReturnStep1Page() {
         await goodsReturnApi.uploadAttachment(created.id, file, ATTACHMENT_TYPE_BY_BASIS[basis]);
       }
 
-      toast.success(`${vehicleNo} is now awaiting arrival — the gate can mark it in`);
+      toast.success(
+        comesOnVehicle
+          ? `${vehicleNo} is now awaiting arrival — the gate can mark it in`
+          : 'Return saved — no vehicle, so it skips the gate',
+      );
       navigate(`/returns/customer/edit/${created.id}/items`);
     } catch (err) {
       const detail =
@@ -186,53 +195,70 @@ export default function GoodsReturnStep1Page() {
       <Card>
         <CardContent className="space-y-4 p-6">
           <div>
-            <SectionTitle icon={<Truck className="h-4 w-4" />} title="Vehicle &amp; Driver *" />
+            <SectionTitle
+              icon={<Truck className="h-4 w-4" />}
+              title={comesOnVehicle ? 'Vehicle & Driver *' : 'Vehicle & Driver'}
+            />
             <p className="mt-1 text-xs text-muted-foreground">
-              Saved with this page, the truck joins the gate&apos;s “Goods Return In” queue as{' '}
-              <span className="font-medium text-foreground">Awaiting Arrival</span> — the gate can
-              mark it in while you finish the rest of the return.
+              {comesOnVehicle ? (
+                <>
+                  Saved with this page, the truck joins the gate&apos;s “Goods Return In” queue as{' '}
+                  <span className="font-medium text-foreground">Awaiting Arrival</span> — the gate
+                  can mark it in while you finish the rest of the return.
+                </>
+              ) : (
+                <>
+                  No vehicle, so the gate is not involved — the return is saved as{' '}
+                  <span className="font-medium text-foreground">Arrived</span> and goes straight
+                  on to the items and receipt.
+                </>
+              )}
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Return Vehicle *</Label>
-              <VehicleSelect
-                value={vehicleNo}
-                defaultDisplayText={vehicleNo}
-                onChange={(vehicle) => {
-                  setVehicleId(vehicle.vehicleId);
-                  setVehicleNo(vehicle.vehicleNumber);
-                }}
-              />
-            </div>
+          <ReturnVehicleCheckbox checked={comesOnVehicle} onChange={setComesOnVehicle} />
 
-            <div className="space-y-2">
-              <Label>Driver *</Label>
-              <DriverSelect
-                value={driverName}
-                defaultDisplayText={driverName}
-                onChange={(driver) => {
-                  setDriverId(driver.driverId);
-                  setDriverName(driver.driverName);
-                }}
-              />
-            </div>
+          {comesOnVehicle && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Return Vehicle *</Label>
+                <VehicleSelect
+                  value={vehicleNo}
+                  defaultDisplayText={vehicleNo}
+                  onChange={(vehicle) => {
+                    setVehicleId(vehicle.vehicleId);
+                    setVehicleNo(vehicle.vehicleNumber);
+                  }}
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <CalendarClock className="h-4 w-4" /> Expected Gate Arrival
-              </Label>
-              <Input
-                type="date"
-                value={expectedArrival}
-                onChange={(event) => setExpectedArrival(event.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional — it only orders the gate&apos;s queue.
-              </p>
+              <div className="space-y-2">
+                <Label>Driver *</Label>
+                <DriverSelect
+                  value={driverName}
+                  defaultDisplayText={driverName}
+                  onChange={(driver) => {
+                    setDriverId(driver.driverId);
+                    setDriverName(driver.driverName);
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4" /> Expected Gate Arrival
+                </Label>
+                <Input
+                  type="date"
+                  value={expectedArrival}
+                  onChange={(event) => setExpectedArrival(event.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional — it only orders the gate&apos;s queue.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -465,8 +491,9 @@ export default function GoodsReturnStep1Page() {
             <span className="text-sm">
               <span className="font-medium">This return is coming on approval</span>
               <span className="block text-xs text-muted-foreground">
-                An admin must approve it before the gate can let the truck in or the goods
-                be received.
+                {comesOnVehicle
+                  ? 'An admin must approve it before the gate can let the truck in or the goods be received.'
+                  : 'An admin must approve it before the goods can be received.'}
               </span>
             </span>
           </label>
@@ -484,10 +511,12 @@ export default function GoodsReturnStep1Page() {
             ) : (
               <Plus className="mr-2 h-4 w-4" />
             )}
-            Save &amp; Send to Gate
+            {comesOnVehicle ? 'Save & Send to Gate' : 'Save & Continue'}
           </Button>
           <p className="text-xs text-muted-foreground">
-            The vehicle goes to the gate now; the items come next.
+            {comesOnVehicle
+              ? 'The vehicle goes to the gate now; the items come next.'
+              : 'No gate step — the items come next.'}
           </p>
         </div>
       </div>
