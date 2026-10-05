@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 
 import { COMPANY_CODES } from '@/config/constants';
 import { useAuth, usePermission } from '@/core/auth';
-import { useLines } from '@/modules/production/execution/api';
+import { useFillingCostSheets, useLines } from '@/modules/production/execution/api';
 import { cn } from '@/shared/utils';
 
 import { useFullscreen } from '../../dispatch/hooks';
@@ -68,14 +68,19 @@ function dayBefore(date: Date) {
 }
 
 /**
- * Beverages' board: one day's filling cost sheet and its pie. It opens on
- * yesterday, because a day's cost is entered the morning after.
+ * Beverages' board: one day's filling cost sheet and its pie. It opens on the
+ * newest day a sheet was saved for, straight from the Filling Cost page — not
+ * on yesterday, which reads blank whenever the sheet is entered late. With no
+ * sheet saved at all it falls back to yesterday.
  */
 function BeveragesFillingCostBoard() {
   const { hasAnyPermission } = usePermission();
-  const [date, setDate] = useState(() => dayBefore(new Date()));
+  const allowed = hasAnyPermission(FILLING_COST_BOARD_VIEW_PERMISSIONS);
+  const [picked, setPicked] = useState<string | null>(null);
+  // Any line's sheet counts: a day saved line by line shows its lines added up.
+  const newest = useFillingCostSheets({ limit: 1 }, allowed);
 
-  if (!hasAnyPermission(FILLING_COST_BOARD_VIEW_PERMISSIONS)) {
+  if (!allowed) {
     return (
       <p className="py-16 text-center text-sm text-muted-foreground">
         The production board for Jivo Beverages is the filling cost sheet, which your account cannot
@@ -83,7 +88,11 @@ function BeveragesFillingCostBoard() {
       </p>
     );
   }
-  return <FillingCostSheetPanel date={date} onDateChange={setDate} />;
+  if (!picked && newest.isLoading) {
+    return <p className="py-16 text-center text-sm text-muted-foreground">Loading…</p>;
+  }
+  const date = picked ?? newest.data?.[0]?.date ?? dayBefore(new Date());
+  return <FillingCostSheetPanel date={date} onDateChange={setPicked} />;
 }
 
 function ProductionWall() {

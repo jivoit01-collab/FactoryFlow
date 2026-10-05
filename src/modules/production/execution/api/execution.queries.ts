@@ -1547,10 +1547,11 @@ export function useAutoFillConfig(lineId: number | null, skuCode?: string) {
  * page asks only for what it shows: the day picked, and the newest couple for
  * a blank day to start from.
  */
-export function useFillingCostSheets(params?: FillingCostSheetParams) {
+export function useFillingCostSheets(params?: FillingCostSheetParams, enabled = true) {
   return useQuery({
     queryKey: EXECUTION_QUERY_KEYS.fillingCosts(params),
     queryFn: () => executionApi.getFillingCostSheets(params),
+    enabled,
   });
 }
 

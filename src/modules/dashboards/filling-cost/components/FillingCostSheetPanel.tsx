@@ -5,7 +5,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { Button, Input } from '@/shared/components/ui';
 import { useTheme } from '@/shared/contexts';
-import { cn } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useFillingCostBoard } from '../api';
 import { FILLING_COST_SHEET_ROUTE } from '../constants';
@@ -96,7 +96,7 @@ export function FillingCostSheetPanel({
   const { resolvedTheme } = useTheme();
   const theme = resolvedTheme === 'dark' ? 'dark' : 'light';
   const [scope, setScope] = useState<Scope>('');
-  const { data, isLoading } = useFillingCostBoard(date.slice(0, 7), date);
+  const { data, isLoading, isError, error } = useFillingCostBoard(date.slice(0, 7), date);
 
   const day = data?.day ?? null;
   const shift = scope ? day?.shifts.find((s) => s.shift === scope) : undefined;
@@ -159,6 +159,10 @@ export function FillingCostSheetPanel({
 
       {isLoading ? (
         <div className="h-64 animate-pulse rounded-2xl bg-muted/40" />
+      ) : isError && !data ? (
+        <p className="py-10 text-center text-sm text-destructive">
+          {getErrorMessage(error, 'The filling cost sheet could not be loaded.')}
+        </p>
       ) : !view ? (
         <p className="py-10 text-center text-sm text-muted-foreground">
           No filling cost sheet saved for this day yet.
