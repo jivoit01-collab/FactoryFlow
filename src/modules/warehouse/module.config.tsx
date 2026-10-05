@@ -30,6 +30,12 @@ const BillSummaryNewPage = lazy(() => import('./pages/billSummary/BillSummaryNew
 const BillSummaryDetailPage = lazy(
   () => import('./pages/billSummary/BillSummaryDetailPage'),
 );
+// The warehouse's queue: sheets dispatch has sent over, waiting for a dispatch
+// date. Its own screen rather than a filter on the list, because it is somebody
+// else's job and the only one they open the module to do.
+const BillSummaryApprovalPage = lazy(
+  () => import('./pages/billSummary/BillSummaryApprovalPage'),
+);
 
 // The bill summary is warehouse work — the floor picks against it — but its
 // permissions still name the Django app the backend lives in (`dispatch_plans`),
@@ -37,6 +43,7 @@ const BillSummaryDetailPage = lazy(
 const billSummaryViewPermissions = [
   DISPATCH_PERMISSIONS.VIEW_BILL_SUMMARY,
   DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
+  DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY,
   DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY,
 ] as const;
 // The raw-material stock register — what each store states it is holding, as
@@ -90,6 +97,14 @@ export const warehouseModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY],
       breadcrumb: { label: 'New' },
+    },
+    {
+      // Before the `:summaryId` route, so "approvals" is never read as a sheet id.
+      path: '/warehouse/bill-summaries/approvals',
+      element: <BillSummaryApprovalPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY],
+      breadcrumb: { label: 'To approve' },
     },
     {
       path: '/warehouse/bill-summaries/:summaryId',
@@ -314,6 +329,13 @@ export const warehouseModuleConfig: ModuleConfig = {
           path: '/warehouse/bill-summaries',
           title: 'Bill Summaries',
           permissions: billSummaryViewPermissions,
+        },
+        {
+          // The warehouse desk's own entry: the one thing it opens the module
+          // for is the queue of sheets waiting on a dispatch date.
+          path: '/warehouse/bill-summaries/approvals',
+          title: 'Bill Summaries to Approve',
+          permissions: [DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY],
         },
         // Directly under Bill Summaries: posting one is what takes the stock out
         // of SAP, and this is how the part that never went comes back.

@@ -3,11 +3,13 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
+  FileText,
   Link2,
   type LucideIcon,
   PackageCheck,
   Printer,
   ReceiptText,
+  Scale,
   Truck,
 } from 'lucide-react';
 
@@ -108,6 +110,25 @@ export const DISPATCH_SECTIONS: readonly DispatchSection[] = [
     permissions: [
       DISPATCH_PERMISSIONS.LINK_VEHICLE,
       DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
+    ],
+  },
+  {
+    title: 'Sent Bill Summaries',
+    description: 'Sheets sent to the warehouse, bill by bill — print the approved ones',
+    route: '/dispatch/bill-summary-prints',
+    icon: FileText,
+    accent: 'violet',
+    permissions: [DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY],
+  },
+  {
+    title: 'Freight Benchmarks',
+    description: 'What a truckload should cost, by destination and vehicle size',
+    route: '/dispatch/freight-benchmarks',
+    icon: Scale,
+    accent: 'amber',
+    permissions: [
+      DISPATCH_PERMISSIONS.VIEW_FREIGHT_BENCHMARKS,
+      DISPATCH_PERMISSIONS.MANAGE_FREIGHT_BENCHMARKS,
     ],
   },
   {

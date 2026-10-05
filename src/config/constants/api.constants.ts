@@ -732,6 +732,10 @@ export const API_ENDPOINTS = {
     PLAN: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/`,
     PLAN_REMOVE: (docEntry: number) => `/dispatch-plans/bills/${docEntry}/plan/remove/`,
     BULK_DISPATCH_DATE: '/dispatch-plans/bills/plan/bulk-dispatch-date/',
+    // One consignee's bilty over that consignee's bills on a truck. Separate
+    // from PLAN because the plan payload is shared across the whole vehicle and
+    // a bilty (LR) is issued per consignee.
+    PLAN_CUSTOMER_BILTY: '/dispatch-plans/bills/plan/bilty/',
     // The Dispatch Sheet: the outward register, a window of days at a time.
     SHEET: '/dispatch-plans/sheet/',
   },
@@ -751,6 +755,14 @@ export const API_ENDPOINTS = {
     BILL_SUMMARIES: '/dispatch/bill-summaries/',
     BILL_SUMMARY_DETAIL: (id: number) => `/dispatch/bill-summaries/${id}/`,
     BILL_SUMMARY_PICK: (id: number) => `/dispatch/bill-summaries/${id}/pick/`,
+    // Raised by dispatch, dated by the warehouse. `bulk` submits a whole truck
+    // and `approve` decides a whole truck; both take a list, so the one-sheet
+    // buttons and the whole-truck buttons post the same request.
+    BILL_SUMMARIES_BULK: '/dispatch/bill-summaries/bulk/',
+    BILL_SUMMARIES_APPROVE: '/dispatch/bill-summaries/approve/',
+    BILL_SUMMARY_REJECT: (id: number) => `/dispatch/bill-summaries/${id}/reject/`,
+    BILL_SUMMARY_RESUBMIT: (id: number) => `/dispatch/bill-summaries/${id}/resubmit/`,
+    BILL_SUMMARY_PRINTED: (id: number) => `/dispatch/bill-summaries/${id}/printed/`,
     BILL_SUMMARY_STAMP_SAP: (id: number) => `/dispatch/bill-summaries/${id}/stamp-sap/`,
     BILL_SUMMARY_CANCEL: (id: number) => `/dispatch/bill-summaries/${id}/cancel/`,
     // The BILL itself — SAP's own TAX INVOICE, not the picking sheet. Keyed by
@@ -773,6 +785,22 @@ export const API_ENDPOINTS = {
     // Freight per litre: the money from SAP's own service GRPOs, the litres
     // from the posting lines that tie each SAP document back to its bills.
     FREIGHT_RATE: '/dispatch/freight-rate/',
+    // Benchmark freight by destination and vehicle-size slab: one read of the
+    // whole table, writes per destination (with its rates) and per slab.
+    FREIGHT_BENCHMARKS: '/dispatch/freight-benchmarks/',
+    FREIGHT_BENCHMARK_DESTINATIONS: '/dispatch/freight-benchmarks/destinations/',
+    FREIGHT_BENCHMARK_DESTINATION: (id: number) =>
+      `/dispatch/freight-benchmarks/destinations/${id}/`,
+    FREIGHT_BENCHMARK_SLABS: '/dispatch/freight-benchmarks/slabs/',
+    FREIGHT_BENCHMARK_SLAB: (id: number) => `/dispatch/freight-benchmarks/slabs/${id}/`,
+    // A truck's freight against its benchmark. Entered once per truck at Vehicle
+    // Linking (`truck`), read back per truck for the board (`trucks`), and
+    // cleared or refused in Admin > Freight Approvals.
+    FREIGHT_APPROVALS: '/dispatch/freight-approvals/',
+    FREIGHT_APPROVAL_TRUCK: '/dispatch/freight-approvals/truck/',
+    FREIGHT_APPROVAL_TRUCKS: '/dispatch/freight-approvals/trucks/',
+    FREIGHT_APPROVAL_APPROVE: (id: number) => `/dispatch/freight-approvals/${id}/approve/`,
+    FREIGHT_APPROVAL_REJECT: (id: number) => `/dispatch/freight-approvals/${id}/reject/`,
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
     BILTY_GRPO_PREVIEW: (dispatchPlanId: number) =>

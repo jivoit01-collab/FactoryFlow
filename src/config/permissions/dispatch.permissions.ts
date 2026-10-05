@@ -16,16 +16,29 @@ export const DISPATCH_PERMISSIONS = {
   INSIDE_VEHICLE_MOVE_BILL: 'dispatch_plans.can_move_bill_inside_vehicle',
   INSIDE_VEHICLE_UNLINK_ALL: 'dispatch_plans.can_unlink_bills_inside_vehicle',
   INSIDE_VEHICLE_MARK_OUT: 'dispatch_plans.can_mark_out_inside_vehicle',
-  // Bill summary (the picking sheet). Issuing and picking are separate on
-  // purpose: one person doing both can record a pick nobody performed.
+  // Bill summary (the picking sheet). Raising, approving and picking are three
+  // permissions because they are three desks: dispatch fills the sheet in, the
+  // warehouse gives it a dispatch date — which is the moment SAP is written to —
+  // and the floor confirms what came off it. One person holding all three can
+  // date and pick a dispatch nobody checked.
   VIEW_BILL_SUMMARY: 'dispatch_plans.can_view_bill_summary',
   CREATE_BILL_SUMMARY: 'dispatch_plans.can_create_bill_summary',
+  APPROVE_BILL_SUMMARY: 'dispatch_plans.can_approve_bill_summary',
   PICK_BILL_SUMMARY: 'dispatch_plans.can_pick_bill_summary',
   CANCEL_BILL_SUMMARY: 'dispatch_plans.can_cancel_bill_summary',
   // The Dispatch Sheet — the outward register, read-only. Anyone who can see
   // the plans sees it too; the right of its own is for the office staff who
   // keep the register and have no business editing a plan.
   VIEW_SHEET: 'dispatch_plans.can_view_dispatch_sheet',
+  // Freight Benchmarks — what a truckload should cost to each destination, by
+  // vehicle size. Editing is its own right: vehicle linking holds a truck's
+  // actual freight against these, so whoever moves a benchmark moves the line.
+  VIEW_FREIGHT_BENCHMARKS: 'dispatch_plans.can_view_freight_benchmarks',
+  MANAGE_FREIGHT_BENCHMARKS: 'dispatch_plans.can_manage_freight_benchmarks',
+  // Admin > Freight Approvals — a truck linked at a freight over its benchmark.
+  // Entering the freight rides on LINK_VEHICLE; seeing and deciding are these.
+  VIEW_FREIGHT_APPROVALS: 'dispatch_plans.can_view_freight_approvals',
+  APPROVE_FREIGHT_APPROVALS: 'dispatch_plans.can_approve_freight_approvals',
   // Dispatch Tracking (post-dispatch truck status log).
   DISPATCH_TRACKING_VIEW: 'gate_core.can_view_dispatch_tracking',
   DISPATCH_TRACKING_UPDATE: 'gate_core.can_update_dispatch_tracking',

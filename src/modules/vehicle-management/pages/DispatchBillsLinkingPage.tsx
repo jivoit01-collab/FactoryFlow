@@ -8,6 +8,10 @@ import { VEHICLE_MANAGEMENT_PERMISSIONS } from '@/config/permissions';
 import { useAuth } from '@/core/auth/hooks/useAuth';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
+import {
+  type TruckFreightInput,
+  useRecordTruckFreight,
+} from '@/modules/dispatch/api/freightApproval.api';
 import { FilterBar, FilterField, PageHeader } from '@/shared/components/page';
 import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
@@ -16,10 +20,12 @@ import { getErrorMessage } from '@/shared/utils/error';
 import { useDispatchLinkingPlans, useLinkDispatchVehicle, useUnlinkDispatchVehicle } from '../api';
 import { DispatchLinkingSheet, DispatchLinkingTable } from '../components';
 import type {
+  CustomerBiltyPayload,
   DispatchLinkingBucket,
   DispatchLinkingFilters,
   DispatchVehicleLinkPayload,
 } from '../types';
+import { branchClash } from '../utils/branchCheck';
 
 const BUCKET_OPTIONS: Array<{ value: DispatchLinkingBucket; label: string }> = [
   { value: 'today', label: 'Today' },
@@ -59,6 +65,7 @@ export default function DispatchBillsLinkingPage() {
 
   const plansQuery = useDispatchLinkingPlans(effectiveFilters, currentCompany?.company_id);
   const linkMutation = useLinkDispatchVehicle();
+  const recordFreight = useRecordTruckFreight();
   const unlinkMutation = useUnlinkDispatchVehicle();
 
   const handleLink = (bill: DispatchBill) => {
@@ -71,6 +78,18 @@ export default function DispatchBillsLinkingPage() {
   };
 
   const handleToggleSelection = (bill: DispatchBill) => {
+    if (!selectedDocEntries.has(bill.doc_entry)) {
+      // Refused as it is ticked rather than after the linking form is filled:
+      // the server will not link one company's bills from two SAP branches.
+      const ticked = (plansQuery.data?.data ?? []).filter((item) =>
+        selectedDocEntries.has(item.doc_entry),
+      );
+      const why = branchClash(bill, ticked);
+      if (why) {
+        toast.error(why);
+        return;
+      }
+    }
     setSelectedDocEntries((current) => {
       const next = new Set(current);
       if (next.has(bill.doc_entry)) {
@@ -82,18 +101,38 @@ export default function DispatchBillsLinkingPage() {
     });
   };
 
-  const handleSave = async (docEntry: number, payload: DispatchVehicleLinkPayload) => {
+  const handleSave = async (
+    docEntry: number,
+    payload: DispatchVehicleLinkPayload,
+    _bilties: CustomerBiltyPayload[],
+    freight: TruckFreightInput,
+  ) => {
     try {
       await linkMutation.mutateAsync({ docEntry, payload });
-      toast.success('Vehicle linked to dispatch plan');
-      setIsSheetOpen(false);
-      setSelectedBill(null);
-      setSelectedDocEntries(new Set());
     } catch (error) {
       // Surface backend guard messages (e.g. "vehicle is already inside — add
       // bills from the 'Add Bills to Inside Vehicle' page") instead of a generic
       // failure, so the gate/planning user knows the correct next step.
       toast.error(getErrorMessage(error, 'Failed to link vehicle'));
+      return;
+    }
+    toast.success('Vehicle linked to dispatch plan');
+    setIsSheetOpen(false);
+    setSelectedBill(null);
+    setSelectedDocEntries(new Set());
+    // The truck's freight, once the bill is on it: held against the benchmark
+    // over every booked bill the truck carries, and waiting for Admin if over.
+    try {
+      const { approval } = await recordFreight.mutateAsync(freight);
+      if (approval.status === 'PENDING') {
+        toast.warning(
+          `${payload.vehicle_no || 'The truck'}'s freight is over the benchmark. It waits in Admin > Freight Approvals before the truck can gate in.`,
+        );
+      }
+    } catch (error) {
+      toast.error(
+        `Vehicle linked, but the freight was not saved: ${getErrorMessage(error, 'enter it from the truck on Vehicle Linking')}`,
+      );
     }
   };
 

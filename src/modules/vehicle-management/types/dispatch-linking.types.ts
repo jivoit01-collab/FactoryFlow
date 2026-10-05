@@ -55,13 +55,30 @@ export interface DispatchVehicleLinkPayload {
   driver_license_no?: string;
   driver_id_proof_type?: string;
   driver_id_proof_number?: string;
-  bilty_no?: string;
-  bilty_date?: string | null;
-  bilty_attachment?: File | null;
+  /* The bilty is NOT sent with the link. It is issued per consignee, and this
+     payload is applied to every bill on the vehicle — one customer's LR number
+     would land on another's gatepass. It goes through `recordCustomerBilty`,
+     once per customer, right after the link. */
   freight?: string | null;
   total_freight?: string | null;
   kanta_weight?: string | null;
   remarks: string;
+}
+
+/**
+ * One consignee's bilty (LR) over that consignee's bills on a truck.
+ *
+ * Captured when the vehicle is linked — the dispatch desk has the LR in hand at
+ * that point — and read from the dispatch plan afterwards by the gatepass, the
+ * bill summary and the Service GRPO alike.
+ */
+export interface CustomerBiltyPayload {
+  /** This customer's bills on this truck, in the company that owns their plans. */
+  doc_entries: number[];
+  bilty_no: string;
+  bilty_date: string | null;
+  /** Omitted when only the number or date is being corrected. */
+  bilty_attachment?: File | null;
 }
 
 /**

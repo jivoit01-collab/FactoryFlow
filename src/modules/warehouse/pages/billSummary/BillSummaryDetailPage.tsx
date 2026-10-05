@@ -1,9 +1,12 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  CheckCircle2,
+  ClipboardCheck,
   Loader2,
   Printer,
   RefreshCw,
+  Send,
   XCircle,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -15,14 +18,28 @@ import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth';
 import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
-import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Textarea,
+} from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import {
+  BILL_SUMMARY_STATUS_LABELS,
   useAdoptSapBillSummary,
+  useApproveBillSummaries,
   useBillSummary,
   useCancelBillSummary,
+  useMarkBillSummaryPicked,
+  useMarkBillSummaryPrinted,
   usePostBillSummaryToSap,
+  useRejectBillSummary,
+  useResubmitBillSummary,
   useSapBillSummary,
 } from '../../api';
 import { BillInvoicePrintButton } from './BillInvoicePrintButton';
@@ -52,9 +69,15 @@ export default function BillSummaryDetailPage() {
   const sap = useSapBillSummary(isSap && Number.isFinite(docEntry) ? docEntry : null);
   const { data: summary, isLoading } = isSap ? sap : app;
 
-  const post = usePostBillSummaryToSap(Number.isFinite(id) ? id : 0);
+  const sheetId = Number.isFinite(id) ? id : 0;
+  const post = usePostBillSummaryToSap(sheetId);
   const cancel = useCancelBillSummary();
   const adopt = useAdoptSapBillSummary();
+  const approve = useApproveBillSummaries();
+  const reject = useRejectBillSummary();
+  const resubmit = useResubmitBillSummary(sheetId);
+  const markPrinted = useMarkBillSummaryPrinted(sheetId);
+  const markPicked = useMarkBillSummaryPicked(sheetId);
 
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrint = useReactToPrint({
@@ -65,6 +88,11 @@ export default function BillSummaryDetailPage() {
 
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [dispatchDate, setDispatchDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [showSendBack, setShowSendBack] = useState(false);
+  const [sendBackReason, setSendBackReason] = useState('');
+  /** The bilty the dispatch desk is adding before sending a sheet back over. */
+  const [fixBilty, setFixBilty] = useState<string | null>(null);
 
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (!summary) return <p className="p-6 text-sm text-red-600">Bill summary not found.</p>;
@@ -79,7 +107,18 @@ export default function BillSummaryDetailPage() {
 
   const canPost = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
   const canCancel = hasPermission(DISPATCH_PERMISSIONS.CANCEL_BILL_SUMMARY);
-  const isOpen = summary.status === 'GENERATED';
+  const canApprove = hasPermission(DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY);
+  /* Retrying a refused posting decides nothing — it only makes SAP agree with
+     what is already recorded here — and the desk that approved is often the one
+     looking at the failure, so both can drive it. */
+  const canRetrySap = canPost || canApprove;
+  const canPick = hasPermission(DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY);
+  /* Live: the warehouse has dated it and SAP has been told. Anything still to
+     be decided sits under `is_editable` instead. */
+  const isLive =
+    summary.status === 'APPROVED' ||
+    summary.status === 'PRINTED' ||
+    summary.status === 'PICKED';
   const fromSap = summary.source === 'SAP';
 
   /* Cancelling needs a record to cancel. A dispatch stamped in SAP has none
@@ -99,6 +138,73 @@ export default function BillSummaryDetailPage() {
     // on the sheet they were looking at, with the error, rather than on a
     // half-adopted sheet that still says it is live.
     if (fromSap) navigate(`/warehouse/bill-summaries/${targetId}`, { replace: true });
+  }
+
+  /* The one act on this screen that writes to SAP. A sheet SAP then refuses is
+     still approved — the warehouse's decision stands — so the reply is read
+     rather than merely awaited, the same way the retry below reads it. */
+  async function approveSheet() {
+    // Asked again, as every SAP posting is: approving stamps the invoice there
+    // and then.
+    const confirmed = await confirmSapPost({
+      title: 'Approve this sheet and stamp SAP?',
+      details: [
+        { label: 'SAP invoice', value: summary!.sap_invoice_doc_num },
+        { label: 'Dispatch date', value: dispatchDate },
+        { label: 'Stamps', value: 'The dispatch date, bilty and per-line quantities' },
+        !summary!.bilty_no.trim() && {
+          label: 'No bilty',
+          value: 'SAP will refuse it',
+        },
+        { label: 'In SAP', value: 'Bilty, vehicle, driver and dates can only be set once' },
+      ],
+      confirmLabel: 'Approve and stamp SAP',
+    });
+    if (!confirmed) return;
+    try {
+      const result = await approve.mutateAsync({
+        ids: [summary!.id as number],
+        dispatchDate,
+      });
+      const refusal = result.refused[0];
+      if (refusal) {
+        toast.error(refusal.reason);
+        return;
+      }
+      toast.success(`Approved for ${dispatchDate} and sent to SAP`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not approve this sheet.'));
+    }
+  }
+
+  async function sendBack() {
+    await run(
+      () => reject.mutateAsync({ id: summary!.id as number, reason: sendBackReason }),
+      'Sent back to dispatch',
+      'Could not send it back.',
+    );
+    setShowSendBack(false);
+    setSendBackReason('');
+  }
+
+  async function resend() {
+    await run(
+      () => resubmit.mutateAsync({ bilty_no: fixBilty ?? summary!.bilty_no }),
+      'Sent to the warehouse',
+      'Could not send it over.',
+    );
+    setFixBilty(null);
+  }
+
+  async function printAndRecord() {
+    handlePrint();
+    if (summary!.status !== 'APPROVED' || !summary!.id) return;
+    try {
+      await markPrinted.mutateAsync();
+    } catch {
+      // Deliberately silent. The paper is out of the printer either way, and a
+      // toast about a status flag over the top of a print dialog helps nobody.
+    }
   }
 
   async function run(action: () => Promise<unknown>, ok: string, fail: string) {
@@ -165,7 +271,24 @@ export default function BillSummaryDetailPage() {
         <Button variant="outline" onClick={() => navigate('/warehouse/bill-summaries')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <Button variant="outline" onClick={() => handlePrint()}>
+        {/* Printing is a step in the flow, not just a browser action: this is
+            the copy the dispatch desk signs and walks down to the godown, so
+            the sheet records that it went. The print itself is never held up by
+            the recording — a failed write must not cost somebody their paper.
+
+            Closed until the warehouse has given a dispatch date. The sheet
+            would print with that line blank, and a blank dispatch date on the
+            paper the godown picks against is worse than no paper at all. */}
+        <Button
+          variant="outline"
+          disabled={!summary.dispatch_date}
+          title={
+            summary.dispatch_date
+              ? undefined
+              : 'Not yet approved — the warehouse has not set a dispatch date'
+          }
+          onClick={() => void printAndRecord()}
+        >
           <Printer className="mr-2 h-4 w-4" /> Print summary
         </Button>
         {/* The other sheet this dispatch has: the customer's own bill, printed
@@ -180,8 +303,14 @@ export default function BillSummaryDetailPage() {
 
       <Card>
         <CardContent className="grid gap-4 p-6 sm:grid-cols-4">
-          <Field label="Status" value={summary.status} />
-          <Field label="Dispatch date" value={summary.dispatch_date} />
+          <Field
+            label="Status"
+            value={BILL_SUMMARY_STATUS_LABELS[summary.status] ?? summary.status}
+          />
+          <Field
+            label="Dispatch date"
+            value={summary.dispatch_date ?? 'Not set — with the warehouse'}
+          />
           <Field label="Warehouse" value={summary.warehouse_codes || '—'} />
           <Field
             label="Totals"
@@ -206,6 +335,19 @@ export default function BillSummaryDetailPage() {
             label="Issued by"
             value={summary.issued_by_name || (fromSap ? 'Typed into SAP' : '—')}
           />
+          {/* Who gave the date, which is the decision the whole step exists for.
+              Blank on a dispatch typed straight into SAP and on the sheets that
+              predate this flow — nobody approved those, and the record should
+              not pretend somebody did. */}
+          {summary.approved_at && (
+            <Field label="Approved by" value={summary.approved_by_name || '—'} />
+          )}
+          {summary.printed_at && (
+            <Field label="Printed by" value={summary.printed_by_name || '—'} />
+          )}
+          {summary.picked_at && (
+            <Field label="Picked by" value={summary.picked_by_name || '—'} />
+          )}
           {summary.remarks && (
             <div className="sm:col-span-2">
               <p className="text-xs uppercase text-muted-foreground">Remarks</p>
@@ -214,6 +356,131 @@ export default function BillSummaryDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* The warehouse's half. Its only decision is the dispatch date — and
+          that date IS the SAP posting, which is why the button says so. */}
+      {summary.status === 'PENDING_APPROVAL' && canApprove && (
+        <Card className="border-amber-300 dark:border-amber-500/40">
+          <CardContent className="space-y-3 p-4">
+            <p className="font-semibold">Set the dispatch date to approve</p>
+            <p className="text-xs text-muted-foreground">
+              Approving stamps invoice {summary.sap_invoice_doc_num} in SAP with this date,
+              the bilty and the per-line quantities. In SAP those can only be set once.
+            </p>
+            {!summary.bilty_no.trim() && (
+              <p className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                This sheet has no bilty number, and SAP will not accept a dispatch date
+                without one. Send it back for the bilty.
+              </p>
+            )}
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="bs-approve-date">Dispatch date</Label>
+                <Input
+                  id="bs-approve-date"
+                  type="date"
+                  className="w-44"
+                  value={dispatchDate}
+                  onChange={(event) => setDispatchDate(event.target.value)}
+                />
+              </div>
+              <Button
+                disabled={approve.isPending || !summary.id}
+                onClick={() => void approveSheet()}
+              >
+                {approve.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
+                Approve and stamp SAP
+              </Button>
+              <Button variant="outline" onClick={() => setShowSendBack((v) => !v)}>
+                <Send className="mr-2 h-4 w-4" /> Send back
+              </Button>
+            </div>
+
+            {showSendBack && (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="bs-send-back">What does dispatch need to fix?</Label>
+                <Textarea
+                  id="bs-send-back"
+                  rows={2}
+                  value={sendBackReason}
+                  onChange={(event) => setSendBackReason(event.target.value)}
+                  placeholder="Bilty is for the wrong truck, quantity does not match what was loaded…"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Nothing has been written to SAP, so there is nothing to undo.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setShowSendBack(false)}>
+                    Keep it
+                  </Button>
+                  <Button
+                    disabled={reject.isPending || !sendBackReason.trim()}
+                    onClick={() => void sendBack()}
+                  >
+                    Send it back
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Waiting, seen by somebody who cannot act on it. Worth saying where it
+          is rather than leaving the sheet looking unfinished. */}
+      {summary.status === 'PENDING_APPROVAL' && !canApprove && (
+        <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+          With the warehouse since {summary.submitted_at?.slice(0, 10) ?? '—'}, waiting for a
+          dispatch date. Nothing is written to SAP until it is approved.
+        </p>
+      )}
+
+      {/* Handed back. The reason is the whole message — a clerk told only "sent
+          back" has to open something else to find out what for. */}
+      {summary.status === 'REJECTED' && (
+        <Card className="border-orange-300 dark:border-orange-500/40">
+          <CardContent className="space-y-3 p-4">
+            <p className="flex items-center gap-2 font-semibold text-orange-800 dark:text-orange-400">
+              <AlertTriangle className="h-4 w-4" />
+              Sent back by {summary.rejected_by_name || 'the warehouse'}
+            </p>
+            <p className="text-sm">{summary.reject_reason}</p>
+            {canPost && (
+              <div className="space-y-2 border-t pt-3">
+                <Label htmlFor="bs-fix-bilty">Bilty number</Label>
+                <Input
+                  id="bs-fix-bilty"
+                  value={fixBilty ?? summary.bilty_no}
+                  onChange={(event) => setFixBilty(event.target.value)}
+                  placeholder="NCR-4494"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The usual reason a sheet comes back. Anything else on it is corrected on
+                  the dispatch plan, and the sheet re-sent from here.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    disabled={resubmit.isPending}
+                    onClick={() => void resend()}
+                  >
+                    {resubmit.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    Send back to the warehouse
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* A sheet in the operator's hands whose posting failed is the state that
           needs chasing: the goods are moving and SAP does not know. */}
@@ -228,7 +495,7 @@ export default function BillSummaryDetailPage() {
               : 'Not posted to SAP'}
           </p>
           <pre className="whitespace-pre-wrap font-sans text-xs">{summary.sap_error}</pre>
-          {canPost && (
+          {canRetrySap && (
             <Button
               size="sm"
               variant="outline"
@@ -300,8 +567,28 @@ export default function BillSummaryDetailPage() {
         </CardContent>
       </Card>
 
-      {isOpen && (
+      {(isLive || summary.is_editable) && (
         <div className="flex flex-wrap justify-end gap-2">
+          {/* The godown's step, and the end of the trail. Open on an approved
+              sheet as well as a printed one: the floor has the signed paper in
+              its hand, and the print flag is the dispatch desk's housekeeping
+              rather than the godown's permission. */}
+          {canPick &&
+            (summary.status === 'APPROVED' || summary.status === 'PRINTED') && (
+              <Button
+                variant="outline"
+                disabled={markPicked.isPending}
+                onClick={() =>
+                  void run(
+                    () => markPicked.mutateAsync(),
+                    'Recorded as picked',
+                    'Could not record the pick.',
+                  )
+                }
+              >
+                <ClipboardCheck className="mr-2 h-4 w-4" /> Mark picked
+              </Button>
+            )}
           {canCancel && (
             <Button variant="destructive" onClick={() => setShowCancel((v) => !v)}>
               <XCircle className="mr-2 h-4 w-4" /> Cancel sheet

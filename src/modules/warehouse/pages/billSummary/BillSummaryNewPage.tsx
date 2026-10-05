@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { confirmSapPost } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Badge, Button, Card, CardContent, Input, Label } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
@@ -19,7 +18,6 @@ function num(value: string | number, dp = 0): string {
 }
 
 interface FormState {
-  dispatch_date: string;
   bilty_no: string;
   bilty_date: string;
   transporter_name: string;
@@ -30,7 +28,6 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  dispatch_date: '',
   bilty_no: '',
   bilty_date: '',
   transporter_name: '',
@@ -43,11 +40,6 @@ const EMPTY: FormState = {
 function fromLookup(lookup: BillLookup): FormState {
   const p = lookup.prefill;
   return {
-    /* Never prefilled, from any source. The dispatch date is what the sheet is
-       for, it goes into SAP where nobody can change it afterwards, and a plan's
-       date is routinely days stale by the time the truck is loaded. A date
-       already sitting in the box gets accepted without being read. */
-    dispatch_date: '',
     bilty_no: p.bilty_no ?? '',
     bilty_date: p.bilty_date?.slice(0, 10) ?? '',
     transporter_name: p.transporter_name ?? '',
@@ -59,13 +51,21 @@ function fromLookup(lookup: BillLookup): FormState {
 }
 
 /**
- * Generate a bill summary for one bill.
+ * Raise a bill summary for one bill and send it to the warehouse.
  *
- * Search the bill number; the app fills in everything the dispatch module
- * already knows; the user supplies the rest. In practice that is the bilty,
- * which is raised once the truck is loaded and so is not yet known here — and
- * SAP will not take the posting without one, which is why it is marked required
- * rather than merely nagged about later.
+ * The exception rather than the rule: most sheets are raised a truck at a time
+ * from the vehicle-linking screen, which is where the dispatch desk actually
+ * knows what the load is. This page is for the one bill that has to be done by
+ * hand.
+ *
+ * There is no dispatch date on the form, from any source. It is the warehouse's
+ * to give at approval, it goes into SAP where nobody can change it afterwards,
+ * and a box the dispatch desk could fill is a box somebody fills.
+ *
+ * The bilty is asked for but not insisted on. SAP will not take the posting
+ * without one — but the posting does not happen until the warehouse approves,
+ * and the truck's LR is often not raised while its load is still being put
+ * together.
  */
 export default function BillSummaryNewPage() {
   const navigate = useNavigate();
@@ -99,22 +99,10 @@ export default function BillSummaryNewPage() {
 
   async function handleGenerate() {
     if (!lookup) return;
-    const confirmed = await confirmSapPost({
-      title: `Generate the sheet and stamp bill ${lookup.doc_num}?`,
-      details: [
-        { label: 'SAP invoice', value: lookup.doc_num },
-        { label: 'Dispatch date', value: form.dispatch_date },
-        { label: 'Bilty', value: form.bilty_no.trim() },
-        { label: 'In SAP', value: 'Date, bilty, vehicle and driver can only be set once' },
-      ],
-      confirmLabel: 'Generate and stamp',
-    });
-    if (!confirmed) return;
     try {
       const summary = await generate.mutateAsync({
         sap_invoice_doc_entry: lookup.doc_entry,
         sap_invoice_doc_num: lookup.doc_num,
-        dispatch_date: form.dispatch_date,
         bilty_no: form.bilty_no.trim(),
         bilty_date: form.bilty_date || null,
         transporter_name: form.transporter_name,
@@ -123,21 +111,22 @@ export default function BillSummaryNewPage() {
         driver_mobile: form.driver_mobile,
         remarks: form.remarks,
       });
-      toastSuccessMark(`${summary.entry_no} generated`, {
+      toastSuccessMark(`${summary.entry_no} sent to the warehouse`, {
         description: `Against SAP bill ${summary.sap_invoice_doc_num}`,
       });
       navigate(`/warehouse/bill-summaries/${summary.id}`);
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Could not generate the bill summary.'));
+      toast.error(getErrorMessage(err, 'Could not raise the bill summary.'));
     }
   }
 
-  const ready = Boolean(lookup && form.dispatch_date && form.bilty_no.trim());
+  const ready = Boolean(lookup);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <DashboardHeader
         title="New Bill Summary"
+        description="Search a bill, confirm the details, send the sheet to the warehouse for a dispatch date"
       >
         <Button variant="outline" onClick={() => navigate('/warehouse/bill-summaries')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -233,18 +222,11 @@ export default function BillSummaryNewPage() {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <Editable
-                  id="f-dispatch-date"
-                  label="Dispatch date *"
-                  type="date"
-                  value={form.dispatch_date}
-                  onChange={(v) => set('dispatch_date', v)}
-                />
-                <Editable
                   id="f-bilty-no"
-                  label="Bilty number *"
+                  label="Bilty number"
                   value={form.bilty_no}
                   missing={lookup.missing.includes('bilty_no')}
-                  hint="SAP will not accept the posting without this"
+                  hint="Needed before the warehouse can approve — SAP refuses a dispatch date without one"
                   onChange={(v) => set('bilty_no', v)}
                 />
                 <Editable
@@ -315,14 +297,18 @@ export default function BillSummaryNewPage() {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-3">
+            <p className="text-xs text-muted-foreground">
+              The warehouse sets the dispatch date. Nothing is written to SAP until it
+              approves.
+            </p>
             <Button onClick={handleGenerate} disabled={!ready || generate.isPending}>
               {generate.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <FileText className="mr-2 h-4 w-4" />
               )}
-              Generate &amp; post to SAP
+              Send to the warehouse
             </Button>
           </div>
         </>

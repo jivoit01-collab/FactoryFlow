@@ -4,6 +4,7 @@ import {
   billSummaryApi,
   type BillSummaryListParams,
   type GenerateBillSummaryPayload,
+  type ResubmitBillSummaryPayload,
 } from './billSummary.api';
 
 export const BILL_SUMMARY_QUERY_KEYS = {
@@ -110,6 +111,79 @@ export function useGenerateBillSummary() {
   return useMutation({
     mutationFn: (payload: GenerateBillSummaryPayload) => billSummaryApi.generate(payload),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
+  });
+}
+
+/**
+ * Raise a sheet for each of a truck's bills.
+ *
+ * Takes the company per call rather than at mount: the vehicle-linking screen
+ * is cross-company and links one truck's bills company by company.
+ */
+export function useBulkSubmitBillSummaries() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      docEntries,
+      dryRun,
+      companyCode,
+    }: {
+      docEntries: number[];
+      dryRun?: boolean;
+      companyCode?: string;
+    }) => billSummaryApi.bulkSubmit(docEntries, { dryRun, companyCode }),
+    onSuccess: (data) => {
+      // A dry run wrote nothing; invalidating would refetch the whole list for
+      // a dialog the user has not answered yet.
+      if (!data.dry_run) void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
+  });
+}
+
+/** The warehouse's decision. One date, however many sheets it covers. */
+export function useApproveBillSummaries() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, dispatchDate }: { ids: number[]; dispatchDate: string }) =>
+      billSummaryApi.approve(ids, dispatchDate),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useRejectBillSummary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      billSummaryApi.reject(id, reason),
+    onSuccess: (data) => {
+      if (data.id) qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(data.id), data);
+      void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useResubmitBillSummary(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ResubmitBillSummaryPayload) =>
+      billSummaryApi.resubmit(id, payload),
+    onSuccess: (data) => {
+      qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(id), data);
+      void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
+    },
+  });
+}
+
+export function useMarkBillSummaryPrinted(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => billSummaryApi.markPrinted(id),
+    onSuccess: (data) => {
+      qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(id), data);
       void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });
     },
   });

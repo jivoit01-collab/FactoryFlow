@@ -2,6 +2,16 @@ import { Loader2, Plus, Save, Unlink } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
+import type { TruckFreightInput } from '@/modules/dispatch/api/freightApproval.api';
+import {
+  EMPTY_TRUCK_FREIGHT,
+  freightBillsOf,
+  toTruckFreightInput,
+  type TruckFreightDraft,
+  truckFreightProblem,
+} from '@/modules/dispatch/components/freight-approval/truckFreight';
+import { TruckFreightFields } from '@/modules/dispatch/components/freight-approval/TruckFreightFields';
+import { useTruckFreight } from '@/modules/dispatch/components/freight-approval/useTruckFreight';
 import type { Vehicle, VehicleName } from '@/modules/gate/api/vehicle/vehicle.api';
 import { useVehicleById, useVehicleNames } from '@/modules/gate/api/vehicle/vehicle.queries';
 import { CreateVehicleDialog } from '@/modules/gate/components';
@@ -19,7 +29,11 @@ import {
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 
-import type { DispatchLinkingVehicleSeed, DispatchVehicleLinkPayload } from '../types';
+import type {
+  CustomerBiltyPayload,
+  DispatchLinkingVehicleSeed,
+  DispatchVehicleLinkPayload,
+} from '../types';
 import {
   inferProductVariety,
   invoiceWeightForPayload,
@@ -42,8 +56,38 @@ interface DispatchLinkingSheetProps {
   isSaving: boolean;
   isUnlinking: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (docEntry: number, payload: DispatchVehicleLinkPayload) => Promise<void>;
+  /**
+   * The link itself, plus one bilty per consignee on the truck. The two go
+   * together but are written separately: the payload is shared across every
+   * bill on the vehicle, and a bilty (LR) is issued per consignee.
+   *
+   * `freight` is the truck's, entered once for the whole truck and recorded
+   * after the link against its benchmark (see `recordTruckFreight`).
+   */
+  onSave: (
+    docEntry: number,
+    payload: DispatchVehicleLinkPayload,
+    bilties: CustomerBiltyPayload[],
+    freight: TruckFreightInput,
+  ) => Promise<void>;
   onUnlink: (docEntry: number) => Promise<void>;
+}
+
+/** A consignee on the truck, with the bills of theirs it is carrying. */
+interface BiltyCustomer {
+  key: string;
+  name: string;
+  docEntries: number[];
+  /** What the plans already hold, so a re-link does not ask for it all again. */
+  existingNo: string;
+  existingDate: string;
+  existingFileName: string;
+}
+
+interface BiltyEntry {
+  bilty_no: string;
+  bilty_date: string;
+  file: File | null;
 }
 
 interface FormState {
@@ -173,6 +217,10 @@ export function DispatchLinkingSheet({
   const [form, setForm] = useState<FormState>(() => formFromBill(bill, vehicleSeed));
   const [formError, setFormError] = useState('');
   const [confirmingUnlink, setConfirmingUnlink] = useState(false);
+  /** The bilty being typed for each consignee, keyed the way `customers` is. */
+  const [bilties, setBilties] = useState<Record<string, BiltyEntry>>({});
+  const [freightDraft, setFreightDraft] = useState<TruckFreightDraft>(EMPTY_TRUCK_FREIGHT);
+  const [freightError, setFreightError] = useState('');
   const formErrors = useMemo(
     () => (formError ? { 'dispatch-linking-form-error': { message: formError } } : {}),
     [formError],
@@ -192,6 +240,62 @@ export function DispatchLinkingSheet({
     [bill, selectedBills],
   );
   const isBatchLink = activeBills.length > 1;
+
+  /* A bilty (LR) is issued per consignee, so the truck is asked for one per
+     distinct customer rather than one overall. Keyed on the SAP customer code,
+     falling back to the name for the rare bill that carries no code. */
+  const customers = useMemo<BiltyCustomer[]>(() => {
+    const byKey = new Map<string, BiltyCustomer>();
+    for (const item of activeBills) {
+      const key = (item.card_code || '').trim() || (item.card_name || '').trim();
+      if (!key) continue;
+      let customer = byKey.get(key);
+      if (!customer) {
+        customer = {
+          key,
+          name: item.card_name || item.card_code || key,
+          docEntries: [],
+          existingNo: '',
+          existingDate: '',
+          existingFileName: '',
+        };
+        byKey.set(key, customer);
+      }
+      customer.docEntries.push(item.doc_entry);
+      // Whatever any of this customer's bills already carries — a re-link, or a
+      // truck being added to, should not make somebody re-type a bilty that is
+      // already on the plan.
+      customer.existingNo ||= item.plan.bilty_no || '';
+      customer.existingDate ||= item.plan.bilty_date?.slice(0, 10) || '';
+      customer.existingFileName ||= item.plan.bilty_attachment_name || '';
+    }
+    return [...byKey.values()];
+  }, [activeBills]);
+
+  const biltyFor = useCallback(
+    (customer: BiltyCustomer): BiltyEntry =>
+      bilties[customer.key] ?? {
+        bilty_no: customer.existingNo,
+        bilty_date: customer.existingDate,
+        file: null,
+      },
+    [bilties],
+  );
+
+  /* Every consignee needs a number, a date and a scan before the truck can be
+     linked. The file counts as supplied when the plan already holds one. */
+  const missingBilties = useMemo(
+    () =>
+      customers.filter((customer) => {
+        const entry = biltyFor(customer);
+        return (
+          !entry.bilty_no.trim() ||
+          !entry.bilty_date ||
+          !(entry.file || customer.existingFileName)
+        );
+      }),
+    [biltyFor, customers],
+  );
   const selectedTotals = useMemo(
     () => ({
       invoices: activeBills.length,
@@ -201,6 +305,15 @@ export function DispatchLinkingSheet({
     }),
     [activeBills],
   );
+  const truckFreight = useTruckFreight(
+    form.vehicle_id,
+    freightDraft,
+    selectedTotals.weight > 0 ? selectedTotals.weight : null,
+  );
+  const updateFreight = useCallback((draft: TruckFreightDraft) => {
+    setFreightDraft(draft);
+    setFreightError('');
+  }, []);
 
   const showFormError = useCallback(
     (message: string) => {
@@ -211,12 +324,31 @@ export function DispatchLinkingSheet({
   );
 
   useEffect(() => {
+    // The sheet's form follows the selected bill, and the bilties are cleared
+    // with it: they are typed against the customers of THIS truck, and carrying
+    // them into the next one would attach somebody else's LR number.
     if (!open) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Sheet form must follow the selected bill.
     setForm(formFromBill(bill, vehicleSeed));
     setFormError('');
     setConfirmingUnlink(false);
+    setBilties({});
+    setFreightDraft(EMPTY_TRUCK_FREIGHT);
+    setFreightError('');
   }, [bill, open, vehicleSeed]);
+
+  function updateBilty(key: string, patch: Partial<BiltyEntry>) {
+    setBilties((prev) => {
+      const customer = customers.find((item) => item.key === key);
+      const base =
+        prev[key] ?? {
+          bilty_no: customer?.existingNo ?? '',
+          bilty_date: customer?.existingDate ?? '',
+          file: null,
+        };
+      return { ...prev, [key]: { ...base, ...patch } };
+    });
+    setFormError('');
+  }
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -244,6 +376,8 @@ export function DispatchLinkingSheet({
       mobile_no: vehicle.transporterMobile || '',
     }));
     setFormError('');
+    // Another truck has its own freight, or none yet.
+    if (vehicle.vehicleId !== form.vehicle_id) setFreightDraft(EMPTY_TRUCK_FREIGHT);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -258,7 +392,30 @@ export function DispatchLinkingSheet({
       );
       return;
     }
-    await onSave(bill.doc_entry, {
+    // The bilty is the LR the driver carries and the gatepass prints, and the
+    // desk assigning the truck is the one holding it. Refused here rather than
+    // left for the gate to discover with the load already on the vehicle.
+    if (missingBilties.length > 0) {
+      showFormError(
+        missingBilties.length === customers.length
+          ? 'Add the bilty number, date and scan for each customer on this truck before linking.'
+          : `The bilty is incomplete for ${missingBilties
+              .map((customer) => customer.name)
+              .join(', ')}.`,
+      );
+      return;
+    }
+    // The truck's freight, held against the benchmark for where it is going.
+    // Asked for here, with the load, because this is where it is agreed.
+    const freightProblem = truckFreightProblem(freightDraft, truckFreight.quote);
+    if (freightProblem) {
+      setFreightError(freightProblem);
+      showFormError(freightProblem);
+      return;
+    }
+    await onSave(
+      bill.doc_entry,
+      {
       sap_invoice_doc_num: bill.doc_num,
       linked_invoice_doc_entries: activeBills.map((selected) => selected.doc_entry),
       invoice_weight: invoiceWeightForPayload(bill),
@@ -280,9 +437,32 @@ export function DispatchLinkingSheet({
       transporter_gstin: form.transporter_gstin.trim(),
       contact_person: form.contact_person.trim(),
       mobile_no: form.mobile_no.trim(),
-      vehicle_no: form.vehicle_no.trim(),
-      remarks: form.remarks.trim(),
-    });
+        vehicle_no: form.vehicle_no.trim(),
+        remarks: form.remarks.trim(),
+      },
+      customers.map((customer) => {
+        const entry = biltyFor(customer);
+        return {
+          doc_entries: customer.docEntries,
+          bilty_no: entry.bilty_no.trim(),
+          bilty_date: entry.bilty_date || null,
+          // Left out when the plan already holds the scan: re-sending it would
+          // rewrite the file and post a "replaced" row to the audit trail over
+          // a document nobody changed.
+          bilty_attachment: entry.file,
+        };
+      }),
+      // The bills this link adds, on top of whatever the truck's freight
+      // already covers. Never the truck's every booking: an old bill left on it
+      // is not part of today's freight.
+      toTruckFreightInput(
+        form.vehicle_id,
+        freightDraft,
+        truckFreight.quote,
+        freightBillsOf(activeBills),
+        true,
+      ),
+    );
   }
 
   return (
@@ -449,6 +629,101 @@ export function DispatchLinkingSheet({
                 />
               </div>
             </div>
+          )}
+
+          {/* The bilty, per consignee. This is where it is collected now: the
+              LR is issued per customer and the dispatch desk has it in hand
+              when it assigns the truck. The gatepass prints it, the Service
+              GRPO sends the scan to SAP, and the warehouse cannot approve a
+              bill summary without the number — all of them read it off the
+              plan this writes to. */}
+          {customers.length > 0 && (
+            <div className="space-y-3 rounded-md border p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="text-sm font-medium">
+                  Bilty (LR){customers.length > 1 ? ` — ${customers.length} customers` : ''}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  One per customer. The gatepass will not print without it.
+                </p>
+              </div>
+
+              {customers.map((customer) => {
+                const entry = biltyFor(customer);
+                const incomplete = missingBilties.some((item) => item.key === customer.key);
+                return (
+                  <div
+                    key={customer.key}
+                    className={`space-y-2 rounded-md border p-3 ${
+                      incomplete ? 'border-amber-400 dark:border-amber-500/40' : ''
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div className="text-sm font-medium">{customer.name}</div>
+                      <div className="text-xs text-muted-foreground tabular-nums">
+                        {customer.docEntries.length} bill
+                        {customer.docEntries.length === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`bilty-no-${customer.key}`}>Bilty number</Label>
+                        <Input
+                          id={`bilty-no-${customer.key}`}
+                          value={entry.bilty_no}
+                          placeholder="NCR-4494"
+                          onChange={(event) =>
+                            updateBilty(customer.key, { bilty_no: event.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`bilty-date-${customer.key}`}>Bilty date</Label>
+                        <Input
+                          id={`bilty-date-${customer.key}`}
+                          type="date"
+                          value={entry.bilty_date}
+                          onChange={(event) =>
+                            updateBilty(customer.key, { bilty_date: event.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`bilty-file-${customer.key}`}>Bilty scan</Label>
+                        <Input
+                          id={`bilty-file-${customer.key}`}
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(event) =>
+                            updateBilty(customer.key, {
+                              file: event.target.files?.[0] ?? null,
+                            })
+                          }
+                        />
+                        {/* Already on the plan: the file box can stay empty, and
+                            the number or date can still be corrected. */}
+                        {!entry.file && customer.existingFileName && (
+                          <p className="text-xs text-muted-foreground">
+                            Already attached: {customer.existingFileName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {form.vehicle_id && (
+            <TruckFreightFields
+              idPrefix="dispatch-link-freight"
+              draft={freightDraft}
+              onChange={updateFreight}
+              freight={truckFreight}
+              loadKg={selectedTotals.weight > 0 ? selectedTotals.weight : null}
+              error={freightError}
+            />
           )}
 
           <div className="space-y-1.5">

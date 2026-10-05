@@ -2,6 +2,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Coins,
+  IndianRupee,
   PackageCheck,
   Send,
   ShieldCheck,
@@ -13,6 +14,7 @@ import { useMemo } from 'react';
 import {
   ADMIN_PERMISSIONS,
   COST_MASTER_PERMISSIONS,
+  DISPATCH_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
   RETURNABLE_PERMISSIONS,
@@ -50,6 +52,16 @@ const adminModuleCards: AdminModuleCard[] = [
     permissions: [
       ADMIN_PERMISSIONS.DOCKING.VIEW_PARTIAL_SCAN,
       ADMIN_PERMISSIONS.DOCKING.APPROVE_PARTIAL_SCAN,
+    ],
+  },
+  {
+    title: 'Freight Approvals',
+    route: '/admin/freight-approvals',
+    icon: <IndianRupee className="h-5 w-5" />,
+    color: 'text-amber-700 dark:text-amber-400',
+    permissions: [
+      DISPATCH_PERMISSIONS.VIEW_FREIGHT_APPROVALS,
+      DISPATCH_PERMISSIONS.APPROVE_FREIGHT_APPROVALS,
     ],
   },
   {

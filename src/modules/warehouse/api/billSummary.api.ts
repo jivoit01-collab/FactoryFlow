@@ -3,7 +3,31 @@ import { apiClient } from '@/core/api';
 
 import type { ARInvoicePrintPayload } from '../ar-invoice/types';
 
-export type BillSummaryStatus = 'GENERATED' | 'PICKED' | 'CANCELLED';
+/**
+ * Where the sheet is between two desks and the godown.
+ *
+ * Dispatch raises it (`PENDING_APPROVAL`); the warehouse gives it a dispatch
+ * date (`APPROVED`) or hands it back (`REJECTED`); dispatch prints and signs it
+ * (`PRINTED`); the godown picks against it (`PICKED`). Approval is the point at
+ * which SAP is written to — before it, a sheet has touched SAP not at all.
+ */
+export type BillSummaryStatus =
+  | 'PENDING_APPROVAL'
+  | 'REJECTED'
+  | 'APPROVED'
+  | 'PRINTED'
+  | 'PICKED'
+  | 'CANCELLED';
+
+/** How each status reads on screen. */
+export const BILL_SUMMARY_STATUS_LABELS: Record<BillSummaryStatus, string> = {
+  PENDING_APPROVAL: 'With the warehouse',
+  REJECTED: 'Sent back',
+  APPROVED: 'Approved',
+  PRINTED: 'Printed',
+  PICKED: 'Picked',
+  CANCELLED: 'Cancelled',
+};
 export type BillSummarySapStatus = 'NOT_POSTED' | 'POSTED' | 'FAILED';
 
 /**
@@ -104,7 +128,8 @@ export interface BillSummary {
   branch_name: string;
   branch_gstin: string;
   warehouse_codes: string;
-  dispatch_date: string;
+  /** Null until the warehouse approves — it is the warehouse's to give. */
+  dispatch_date: string | null;
   bilty_no: string;
   bilty_date: string | null;
   transporter_name: string;
@@ -119,10 +144,22 @@ export interface BillSummary {
   sap_posted_at: string | null;
   issued_by_name: string;
   picked_by_name: string;
+  approved_by_name: string;
+  rejected_by_name: string;
+  printed_by_name: string;
   issued_at: string;
+  /** Last sent to the warehouse — moves again each time a sheet is re-sent. */
+  submitted_at: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  printed_at: string | null;
   picked_at: string | null;
+  /** Still the dispatch desk's to change: pending or sent back. */
+  is_editable: boolean;
   remarks: string;
   cancel_reason: string;
+  /** Why the warehouse handed it back. Kept after a re-send, not cleared. */
+  reject_reason: string;
   totals: BillSummaryTotals;
 }
 
@@ -143,8 +180,9 @@ export interface BillSummaryListParams {
 export interface GenerateBillSummaryPayload {
   sap_invoice_doc_entry: number;
   sap_invoice_doc_num?: string;
-  dispatch_date: string;
-  bilty_no: string;
+  /** Optional here, required to approve: SAP refuses a dispatch date without
+   *  one, and the dispatch date is not given until the warehouse approves. */
+  bilty_no?: string;
   bilty_date?: string | null;
   transporter_name?: string;
   vehicle_no?: string;
@@ -153,6 +191,60 @@ export interface GenerateBillSummaryPayload {
   remarks?: string;
   /** Only the lines going short; the rest default to the full billed quantity. */
   lines?: { sap_line_num: number; dispatch_qty: string }[];
+}
+
+/** Corrections to a sheet on its way back to the warehouse. Only what is sent
+ *  is changed — the screen is usually fixing the one thing that was asked about. */
+export interface ResubmitBillSummaryPayload {
+  bilty_no?: string;
+  bilty_date?: string | null;
+  transporter_name?: string;
+  vehicle_no?: string;
+  driver_name?: string;
+  driver_mobile?: string;
+  remarks?: string;
+  lines?: { sap_line_num: number; dispatch_qty: string }[];
+}
+
+/** One bill the whole-truck submission would, or would not, raise a sheet for. */
+export interface BulkSubmitCandidate {
+  doc_entry: number;
+  doc_num: string;
+  customer_name: string;
+  vehicle_no: string;
+  bilty_no: string;
+}
+
+export interface BulkSubmitSkipped {
+  doc_entry: number;
+  doc_num: string;
+  reason: string;
+}
+
+/**
+ * What the popup behind vehicle linking gets back.
+ *
+ * A dry run fills `eligible` and `skipped` and writes nothing — that is how the
+ * popup knows what count to offer. The real call fills `created` as well.
+ */
+export interface BulkSubmitResult {
+  dry_run: boolean;
+  eligible: BulkSubmitCandidate[];
+  skipped: BulkSubmitSkipped[];
+  created: BillSummary[];
+}
+
+/** A sheet the warehouse could not approve, and why. The rest still went. */
+export interface ApprovalRefusal {
+  id: number;
+  entry_no: string;
+  doc_num: string;
+  reason: string;
+}
+
+export interface ApprovalResult {
+  approved: BillSummary[];
+  refused: ApprovalRefusal[];
 }
 
 export const billSummaryApi = {
@@ -183,6 +275,70 @@ export const billSummaryApi = {
     const { data } = await apiClient.post<BillSummaryDetail>(
       API_ENDPOINTS.DISPATCH.BILL_SUMMARIES,
       payload,
+    );
+    return data;
+  },
+
+  /**
+   * Raise a sheet for each of a truck's bills and send the lot to the warehouse.
+   *
+   * One company per call: each bill's plan lives in its own company, which is
+   * why the linking screen already links company by company. `companyCode`
+   * names it, the way the plan writes do; the request interceptor leaves an
+   * explicit Company-Code header untouched.
+   */
+  async bulkSubmit(
+    docEntries: number[],
+    options: { dryRun?: boolean; companyCode?: string } = {},
+  ): Promise<BulkSubmitResult> {
+    const { data } = await apiClient.post<BulkSubmitResult>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARIES_BULK,
+      { doc_entries: docEntries, dry_run: options.dryRun ?? false },
+      options.companyCode ? { headers: { 'Company-Code': options.companyCode } } : undefined,
+    );
+    return data;
+  },
+
+  /**
+   * The warehouse's decision: one dispatch date over one or many sheets.
+   *
+   * This is the call that writes to SAP. A sheet SAP then refuses stays
+   * approved with the refusal recorded on it, to be retried from the sheet.
+   */
+  async approve(ids: number[], dispatchDate: string): Promise<ApprovalResult> {
+    const { data } = await apiClient.post<ApprovalResult>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARIES_APPROVE,
+      { ids, dispatch_date: dispatchDate },
+    );
+    return data;
+  },
+
+  /** Hand a sheet back to the dispatch desk with what is wrong with it. */
+  async reject(id: number, reason: string): Promise<BillSummaryDetail> {
+    const { data } = await apiClient.post<BillSummaryDetail>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_REJECT(id),
+      { reason },
+    );
+    return data;
+  },
+
+  /** Correct a sheet the warehouse has not approved and send it again. */
+  async resubmit(
+    id: number,
+    payload: ResubmitBillSummaryPayload,
+  ): Promise<BillSummaryDetail> {
+    const { data } = await apiClient.post<BillSummaryDetail>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_RESUBMIT(id),
+      payload,
+    );
+    return data;
+  },
+
+  /** The approved sheet has been printed, to be signed and walked downstairs. */
+  async markPrinted(id: number): Promise<BillSummaryDetail> {
+    const { data } = await apiClient.post<BillSummaryDetail>(
+      API_ENDPOINTS.DISPATCH.BILL_SUMMARY_PRINTED(id),
+      {},
     );
     return data;
   },

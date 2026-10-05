@@ -1,9 +1,12 @@
 import { addDays, format, parseISO, subDays } from 'date-fns';
 
+import { API_ENDPOINTS } from '@/config/constants';
+import { apiClient } from '@/core/api';
 import { dispatchPlansApi } from '@/modules/dashboards/dispatch-plans/api';
 import type { DispatchBill, DispatchPlanStatus } from '@/modules/dashboards/dispatch-plans/types';
 
 import type {
+  CustomerBiltyPayload,
   DispatchLinkingFilters,
   DispatchLinkingResponse,
   DispatchVehicleLinkPayload,
@@ -94,6 +97,39 @@ export const dispatchLinkingApi = {
     companyCode?: string,
   ) {
     return dispatchPlansApi.updatePlan(docEntry, payload, companyCode);
+  },
+
+  /**
+   * One consignee's bilty over that consignee's bills on this truck.
+   *
+   * Posted after the link rather than with it: the link payload is shared
+   * across every bill on the vehicle, and a bilty (LR) is issued per consignee
+   * — folding it in would print one customer's LR number on another's gatepass.
+   *
+   * Multipart, because it carries the scanned LR. The file is optional on a
+   * correction: fixing a mistyped number should not mean re-uploading the
+   * document that was already sent.
+   */
+  async recordCustomerBilty(payload: CustomerBiltyPayload, companyCode?: string) {
+    const body = new FormData();
+    for (const docEntry of payload.doc_entries) {
+      body.append('doc_entries', String(docEntry));
+    }
+    body.append('bilty_no', payload.bilty_no);
+    if (payload.bilty_date) body.append('bilty_date', payload.bilty_date);
+    if (payload.bilty_attachment) body.append('bilty_attachment', payload.bilty_attachment);
+
+    const headers: Record<string, string> = { 'Content-Type': 'multipart/form-data' };
+    // The request interceptor leaves an explicit Company-Code header untouched —
+    // the linking screen is cross-company and names the owning company per bill.
+    if (companyCode) headers['Company-Code'] = companyCode;
+
+    const { data } = await apiClient.post<{
+      updated: number;
+      bilty_no: string;
+      doc_entries: number[];
+    }>(API_ENDPOINTS.DISPATCH_PLANS.PLAN_CUSTOMER_BILTY, body, { headers });
+    return data;
   },
 
   // Clear a booking so the vehicle can be re-assigned to another invoice.

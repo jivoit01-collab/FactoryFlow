@@ -1,4 +1,6 @@
 export type {
+  ApprovalRefusal,
+  ApprovalResult,
   BillLookup,
   BillLookupLine,
   BillSummary,
@@ -6,7 +8,12 @@ export type {
   BillSummaryLine,
   BillSummaryListParams,
   BillSummaryStatus,
+  BulkSubmitCandidate,
+  BulkSubmitResult,
+  BulkSubmitSkipped,
+  ResubmitBillSummaryPayload,
 } from './billSummary.api';
+export { BILL_SUMMARY_STATUS_LABELS, billSummaryApi } from './billSummary.api';
 export * from './billSummary.queries';
 export { bstApi } from './bst.api';
 export * from './bst.queries';

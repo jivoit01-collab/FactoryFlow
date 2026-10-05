@@ -2,6 +2,8 @@ import { addDays, format, subDays } from 'date-fns';
 import {
   AlertTriangle,
   ArrowRightLeft,
+  FileText,
+  IndianRupee,
   Link2,
   LogOut,
   MoonStar,
@@ -23,6 +25,18 @@ import { useDispatchBills, useLookupDispatchBill } from '@/modules/dashboards/di
 import { StatusBadge } from '@/modules/dashboards/dispatch-plans/components';
 import type { DispatchBill, DispatchPlanFilters } from '@/modules/dashboards/dispatch-plans/types';
 import {
+  type TruckFreightInput,
+  type TruckFreightRow,
+  useRecordTruckFreight,
+  useTruckFreights,
+} from '@/modules/dispatch/api/freightApproval.api';
+import { freightBillsOf } from '@/modules/dispatch/components/freight-approval/truckFreight';
+import { TruckFreightBadge } from '@/modules/dispatch/components/freight-approval/TruckFreightBadge';
+import {
+  TruckFreightDialog,
+  type TruckFreightTarget,
+} from '@/modules/dispatch/components/freight-approval/TruckFreightDialog';
+import {
   type InsideDispatchVehicle,
   type InsideVehicleBill,
   useAddBillToInsideVehicle,
@@ -32,6 +46,10 @@ import {
   useRemoveBillFromInsideVehicle,
   useUnlinkAllBills,
 } from '@/modules/gate/api';
+import {
+  type BillSummaryBatch,
+  SubmitBillSummariesDialog,
+} from '@/modules/warehouse/components/SubmitBillSummariesDialog';
 import { SearchableSelect } from '@/shared/components';
 import { EmptyPanel, FilterBar, FilterField, PageHeader } from '@/shared/components/page';
 import {
@@ -53,6 +71,7 @@ import {
 import { getErrorMessage } from '@/shared/utils/error';
 
 import {
+  dispatchLinkingApi,
   useLinkDispatchVehicle,
   useLookupDispatchBillAcrossCompanies,
   useUnlinkDispatchVehicle,
@@ -64,7 +83,7 @@ import {
   LinkVehicleBillsDialog,
   type LinkVehicleBillsSelection,
 } from '../components';
-import type { DispatchVehicleLinkPayload } from '../types';
+import type { CustomerBiltyPayload, DispatchVehicleLinkPayload } from '../types';
 import { invoiceFieldsFromBill } from '../utils/dispatchLinkPayload';
 
 /** How far the one shared SAP bills read reaches by default. The operator can
@@ -179,6 +198,28 @@ interface TruckCard {
   isInside: boolean;
   /** Any booked bill is frozen by a completed empty-vehicle gate-in. */
   isLinkLocked: boolean;
+}
+
+/**
+ * A truck's bills grouped by the company each one's plan lives in, for the
+ * send-to-warehouse dialog: its booked bills and the bills already on its
+ * gate-ins alike, since a truck at the gate may still need its sheets raised.
+ */
+function billSummaryBatchesOf(card: TruckCard): BillSummaryBatch[] {
+  const byCompany = new Map<string, Set<number>>();
+  const add = (companyCode: string, docEntry: number) => {
+    const entries = byCompany.get(companyCode) ?? new Set<number>();
+    entries.add(docEntry);
+    byCompany.set(companyCode, entries);
+  };
+  for (const bill of card.bookedBills) add(bill.company_code ?? '', bill.doc_entry);
+  for (const entry of card.entries) {
+    for (const bill of entry.bills) add(entry.company_code, bill.sap_doc_entry);
+  }
+  return [...byCompany].map(([companyCode, docEntries]) => ({
+    companyCode,
+    docEntries: [...docEntries],
+  }));
 }
 
 /**
@@ -388,6 +429,9 @@ export default function DispatchVehicleLinkingPage() {
   const canUnlink = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_UNLINK_ALL);
   const canMarkOut = hasPermission(DISPATCH_PERMISSIONS.INSIDE_VEHICLE_MARK_OUT);
   const canLink = hasPermission(DISPATCH_PERMISSIONS.LINK_VEHICLE);
+  /* Offering the bill summaries is only worth doing for somebody who can raise
+     them; without the permission the dialog would appear and then be refused. */
+  const canRaiseBillSummary = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
 
   const [search, setSearch] = useState('');
   const [addForVehicleEntryId, setAddForVehicleEntryId] = useState<number | null>(null);
@@ -410,8 +454,18 @@ export default function DispatchVehicleLinkingPage() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [sheetBills, setSheetBills] = useState<DispatchBill[] | null>(null);
   const [sheetVehicle, setSheetVehicle] = useState<{ id: number; number: string } | null>(null);
+  /* The truck whose bills have just been linked, offered for bill summaries.
+     Held outside the linking sheet's own state because the sheet closes on a
+     clean save and the offer outlives it. */
+  const [summaryOffer, setSummaryOffer] = useState<{
+    /** Opened from the truck card rather than offered after a link. */
+    asked?: boolean;
+    vehicleNo: string;
+    batches: BillSummaryBatch[];
+  } | null>(null);
   // The truck whose late gate-in approval is open in the dialog.
   const [approvalTarget, setApprovalTarget] = useState<LateDispatchApprovalTarget | null>(null);
+  const [freightTarget, setFreightTarget] = useState<TruckFreightTarget | null>(null);
 
   const vehiclesQuery = useInsideDispatchVehicles({ enabled: canViewInside });
 
@@ -471,6 +525,18 @@ export default function DispatchVehicleLinkingPage() {
     }
     return map;
   }, [approvalsQuery.data]);
+
+  // Each booked truck's freight against its benchmark, in one call, for the
+  // card badges. Only for the linking desk, which is who can act on it.
+  const truckFreightsQuery = useTruckFreights(canLink);
+  const freightByVehicle = useMemo(
+    () =>
+      new Map<number, TruckFreightRow>(
+        (truckFreightsQuery.data ?? []).map((row) => [row.vehicle_id, row]),
+      ),
+    [truckFreightsQuery.data],
+  );
+  const recordFreight = useRecordTruckFreight();
 
   const addBill = useAddBillToInsideVehicle();
   const addBillToTruck = useAddBillToTruck();
@@ -703,9 +769,20 @@ export default function DispatchVehicleLinkingPage() {
    * invoice fields per bill only when that company's batch holds more than one —
    * so every call re-seeds them from its own primary bill.
    */
-  const handleLinkSave = async (docEntry: number, payload: DispatchVehicleLinkPayload) => {
+  const handleLinkSave = async (
+    docEntry: number,
+    payload: DispatchVehicleLinkPayload,
+    bilties: CustomerBiltyPayload[],
+    freight: TruckFreightInput,
+  ) => {
     const targetBills = sheetBills ?? [];
     if (targetBills.length === 0) return;
+
+    // Which company owns each bill's plan, so the bilty writes below can name it
+    // the way the link writes do.
+    const companyByDocEntry = new Map<number, string>(
+      targetBills.map((item) => [item.doc_entry, item.company_code ?? '']),
+    );
 
     const perCompany = new Map<string, DispatchBill[]>();
     for (const bill of targetBills) {
@@ -717,6 +794,9 @@ export default function DispatchVehicleLinkingPage() {
 
     const linked: string[] = [];
     const failures: string[] = [];
+    /* What actually landed, per company — the bill summary offer below is built
+       from this rather than from what was attempted. */
+    const linkedByCompany: BillSummaryBatch[] = [];
     for (const [companyCode, companyBills] of perCompany) {
       const primary = companyBills[0];
       try {
@@ -732,11 +812,93 @@ export default function DispatchVehicleLinkingPage() {
           },
         });
         linked.push(`${companyBills.length} in ${companyCode || 'the selected company'}`);
+        linkedByCompany.push({
+          companyCode,
+          docEntries: companyBills.map((bill) => bill.doc_entry),
+        });
       } catch (error) {
         failures.push(
           `${companyCode || 'selected company'}: ${getErrorMessage(error, 'link failed')}`,
         );
       }
+    }
+
+    /* The bilty, one write per consignee, now that every bill has a plan to
+       hang it on. After the link rather than with it: the link payload is
+       shared across the whole vehicle, and an LR is issued per consignee.
+
+       A customer whose bills span two companies is split, because a plan write
+       names the company that owns it. */
+    const linkedDocEntries = new Set(
+      linkedByCompany.flatMap((batch) => batch.docEntries),
+    );
+    for (const bilty of bilties) {
+      const byCompany = new Map<string, number[]>();
+      for (const entry of bilty.doc_entries) {
+        if (!linkedDocEntries.has(entry)) continue;
+        const code = companyByDocEntry.get(entry) ?? '';
+        const existing = byCompany.get(code);
+        if (existing) existing.push(entry);
+        else byCompany.set(code, [entry]);
+      }
+      for (const [companyCode, docEntries] of byCompany) {
+        try {
+          await dispatchLinkingApi.recordCustomerBilty(
+            { ...bilty, doc_entries: docEntries },
+            companyCode || undefined,
+          );
+        } catch (error) {
+          // The vehicle is linked either way; say which bilty did not land so
+          // it can be fixed rather than leaving the load looking complete.
+          failures.push(
+            `bilty ${bilty.bilty_no}: ${getErrorMessage(error, 'could not be saved')}`,
+          );
+        }
+      }
+    }
+
+    /* The truck's freight, once for the whole truck now that its bills are on
+       it: the server splits it over every booked bill the truck carries and
+       holds it against the benchmark. Over it, the truck waits for Admin. */
+    let freightPending = false;
+    if (linkedByCompany.length > 0) {
+      try {
+        // The bills whose link landed (one that failed is not on the truck),
+        // and the bills the truck's card already shows, so a truck with no
+        // freight yet is freighted as the desk sees it — never its every old
+        // booking, which the card does not show.
+        const onCard = freightBillsOf(
+          cards.find((card) => card.vehicleId === freight.vehicle_id)?.bookedBills ?? [],
+        );
+        const bills = new Map(
+          [...onCard, ...freight.bills.filter((bill) => linkedDocEntries.has(bill.doc_entry))].map(
+            (bill) => [`${bill.company_code}:${bill.doc_entry}`, bill],
+          ),
+        );
+        const { approval } = await recordFreight.mutateAsync({
+          ...freight,
+          bills: [...bills.values()],
+        });
+        freightPending = approval.status === 'PENDING';
+      } catch (error) {
+        failures.push(`freight: ${getErrorMessage(error, 'could not be saved')}`);
+      }
+    }
+    if (freightPending) {
+      toast.warning(
+        `${payload.vehicle_no || 'The truck'}'s freight is over the benchmark. It waits in Admin > Freight Approvals before the truck can gate in.`,
+      );
+    }
+
+    /* The truck is now known, which is the moment its bill summaries can be
+       raised — so offer it. Only the companies that actually linked: a bill
+       whose plan write failed is not on this vehicle, and raising a sheet
+       naming it would be a sheet for a load that does not exist. */
+    if (linkedByCompany.length > 0 && canRaiseBillSummary) {
+      setSummaryOffer({
+        vehicleNo: payload.vehicle_no || sheetVehicle?.number || '',
+        batches: linkedByCompany,
+      });
     }
 
     if (failures.length === 0) {
@@ -903,13 +1065,6 @@ export default function DispatchVehicleLinkingPage() {
         >
           Reset
         </Button>
-        <p className="text-xs text-muted-foreground sm:min-w-[16rem] sm:flex-1">
-          Invoice dates this board reads from SAP — the bills booked onto the trucks below and both
-          bill pickers come from it. For an old bill going out today, move the window to around its
-          invoice date: a read returns a bounded number of bills, newest first, so simply reaching
-          further back drops the oldest end (you will be told when that happens). Booked and pending
-          bills only, whatever the window.
-        </p>
       </div>
 
       {billsQuery.data?.meta?.window_truncated ? (
@@ -976,6 +1131,7 @@ export default function DispatchVehicleLinkingPage() {
             const isTruckAddOpen = addTruckId === card.vehicleId;
             const totalBills = card.attachedBillCount + card.bookedBills.length;
             const lateApproval = approvalByVehicle.get(card.vehicleId) ?? null;
+            const truckFreight = freightByVehicle.get(card.vehicleId);
 
             return (
               <Card key={card.vehicleId}>
@@ -1017,6 +1173,9 @@ export default function DispatchVehicleLinkingPage() {
                             {lateApprovalBadgeLabel(lateApproval)}
                           </Badge>
                         ) : null}
+                        {!card.isInside && (
+                          <TruckFreightBadge row={truckFreight} bills={card.bookedBills} />
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {card.isInside
@@ -1027,6 +1186,28 @@ export default function DispatchVehicleLinkingPage() {
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {/* The send-to-warehouse dialog is offered once, right
+                          after a link; this brings it back for a truck whose
+                          offer was closed, or whose bilty came later. */}
+                      {canRaiseBillSummary &&
+                        (card.bookedBills.length > 0 ||
+                          card.entries.some((entry) => entry.bills.length > 0)) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setSummaryOffer({
+                                asked: true,
+                                vehicleNo: compact(card.vehicleNumber),
+                                batches: billSummaryBatchesOf(card),
+                              })
+                            }
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Bill summaries
+                          </Button>
+                        )}
                       {card.isInside && canAdd && candidateCompanies.length > 0 && (
                         <Button
                           type="button"
@@ -1084,6 +1265,29 @@ export default function DispatchVehicleLinkingPage() {
                         >
                           <MoonStar className="mr-2 h-4 w-4" />
                           {lateApproval ? 'Late Gate-In' : 'Late Gate-In Approval'}
+                        </Button>
+                      )}
+                      {!card.isInside && canLink && card.bookedBills.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={card.isLinkLocked}
+                          onClick={() =>
+                            setFreightTarget({
+                              vehicleId: card.vehicleId,
+                              vehicleNumber: compact(card.vehicleNumber),
+                              bills: freightBillsOf(card.bookedBills),
+                              loadKg:
+                                card.bookedBills.reduce(
+                                  (sum, bill) => sum + (bill.total_weight || 0),
+                                  0,
+                                ) || null,
+                            })
+                          }
+                        >
+                          <IndianRupee className="mr-2 h-4 w-4" />
+                          Freight
                         </Button>
                       )}
                       {!card.isInside && canUnlink && card.bookedBills.length > 0 && (
@@ -1534,6 +1738,26 @@ export default function DispatchVehicleLinkingPage() {
         today={today}
         onClose={() => setApprovalTarget(null)}
       />
+
+      <TruckFreightDialog
+        // Keyed on the truck so each one opens on its own freight.
+        key={freightTarget?.vehicleId ?? 'none'}
+        target={freightTarget}
+        onClose={() => setFreightTarget(null)}
+      />
+
+      {/* Asked straight after a link lands: the load is now known, so this is
+          the moment its bill summaries can be raised. Keyed on the truck so a
+          second link opens a fresh check rather than reusing the first one's. */}
+      {summaryOffer && (
+        <SubmitBillSummariesDialog
+          key={summaryOffer.batches.flatMap((batch) => batch.docEntries).join('-')}
+          batches={summaryOffer.batches}
+          vehicleNo={summaryOffer.vehicleNo}
+          showSent={summaryOffer.asked}
+          onClose={() => setSummaryOffer(null)}
+        />
+      )}
 
       <LinkVehicleBillsDialog
         open={pickerFor !== null}

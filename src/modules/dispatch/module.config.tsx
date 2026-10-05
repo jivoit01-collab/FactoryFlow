@@ -23,6 +23,8 @@ const PreviouslyRegisteredVehiclePage = lazy(
 );
 const DispatchTrackingPage = lazy(() => import('@/modules/dispatch/pages/DispatchTrackingPage'));
 const DispatchSheetPage = lazy(() => import('./pages/DispatchSheetPage'));
+const FreightBenchmarksPage = lazy(() => import('./pages/FreightBenchmarksPage'));
+const SentBillSummariesPage = lazy(() => import('./pages/SentBillSummariesPage'));
 const ServiceGRPODashboardPage = lazy(
   () => import('@/modules/warehouse/grpo/pages/ServiceGRPODashboardPage'),
 );
@@ -71,6 +73,9 @@ const dispatchViewPermissions = [
   DISPATCH_PERMISSIONS.INSIDE_VEHICLE_VIEW,
   DISPATCH_PERMISSIONS.DISPATCH_TRACKING_VIEW,
   DISPATCH_PERMISSIONS.VIEW_SHEET,
+  DISPATCH_PERMISSIONS.VIEW_FREIGHT_BENCHMARKS,
+  DISPATCH_PERMISSIONS.MANAGE_FREIGHT_BENCHMARKS,
+  DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY,
   // Service GRPO (transporter bilty) is a dispatch function — gate the module on
   // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
   // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
@@ -163,6 +168,29 @@ export const dispatchModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DISPATCH_PERMISSIONS.VIEW_SHEET],
       breadcrumb: { label: 'Dispatch Sheet' },
+    },
+    {
+      // The bill summaries the desk has sent to the warehouse, bill by bill,
+      // and the Print button for the approved ones. The desk that raises the
+      // sheets is the one that prints them, so it carries that right. Not
+      // `/dispatch/bill-summaries`: that path redirects to the warehouse pages.
+      path: '/dispatch/bill-summary-prints',
+      element: <SentBillSummariesPage />,
+      layout: 'main',
+      permissions: [DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY],
+      breadcrumb: { label: 'Sent Bill Summaries' },
+    },
+    {
+      // What a truckload should cost to each destination, by vehicle size.
+      // Editing it is a separate right; either one opens the page.
+      path: '/dispatch/freight-benchmarks',
+      element: <FreightBenchmarksPage />,
+      layout: 'main',
+      permissions: [
+        DISPATCH_PERMISSIONS.VIEW_FREIGHT_BENCHMARKS,
+        DISPATCH_PERMISSIONS.MANAGE_FREIGHT_BENCHMARKS,
+      ],
+      breadcrumb: { label: 'Freight Benchmarks' },
     },
     {
       path: '/dispatch/tracking',
@@ -367,6 +395,19 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/vehicle-linking',
           title: 'Vehicle Linking',
           permissions: [DISPATCH_PERMISSIONS.LINK_VEHICLE],
+        },
+        {
+          path: '/dispatch/bill-summary-prints',
+          title: 'Sent Bill Summaries',
+          permissions: [DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY],
+        },
+        {
+          path: '/dispatch/freight-benchmarks',
+          title: 'Freight Benchmarks',
+          permissions: [
+            DISPATCH_PERMISSIONS.VIEW_FREIGHT_BENCHMARKS,
+            DISPATCH_PERMISSIONS.MANAGE_FREIGHT_BENCHMARKS,
+          ],
         },
         {
           path: '/dispatch/docking',

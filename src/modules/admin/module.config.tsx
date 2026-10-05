@@ -4,6 +4,7 @@ import {
   ADMIN_PERMISSIONS,
   AR_INVOICE_PERMISSIONS,
   COST_MASTER_PERMISSIONS,
+  DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
   GOODS_RETURN_PERMISSIONS,
   MAINTENANCE_PERMISSIONS,
@@ -18,6 +19,7 @@ import type { ModuleConfig } from '@/core/types';
 
 import { BstApprovalsBadge } from './components/BstApprovalsBadge';
 import { DockingApprovalsBadge } from './components/DockingApprovalsBadge';
+import { FreightApprovalsBadge } from './components/FreightApprovalsBadge';
 import { GoodsReturnApprovalsBadge } from './components/GoodsReturnApprovalsBadge';
 import { LateDispatchApprovalsBadge } from './components/LateDispatchApprovalsBadge';
 import { MaterialIndentApprovalsBadge } from './components/MaterialIndentApprovalsBadge';
@@ -31,6 +33,7 @@ const DockingPartialScanApprovalsPage = lazy(
   () => import('./pages/DockingPartialScanApprovalsPage'),
 );
 const LateDispatchApprovalsPage = lazy(() => import('./pages/LateDispatchApprovalsPage'));
+const FreightApprovalsPage = lazy(() => import('./pages/FreightApprovalsPage'));
 const MaterialIndentApprovalsPage = lazy(() => import('./pages/MaterialIndentApprovalsPage'));
 const ReturnableApprovalsPage = lazy(() => import('./pages/ReturnableApprovalsPage'));
 const GoodsReturnApprovalsPage = lazy(() => import('./pages/GoodsReturnApprovalsPage'));
@@ -65,6 +68,12 @@ const partialApprovalPermissions = [
 const lateDispatchApprovalPermissions = [
   GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN.VIEW,
   GATE_PERMISSIONS.LATE_DISPATCH_GATE_IN.APPROVE,
+] as const;
+
+// Trucks linked at a freight over the benchmark for where they are going.
+const freightApprovalPermissions = [
+  DISPATCH_PERMISSIONS.VIEW_FREIGHT_APPROVALS,
+  DISPATCH_PERMISSIONS.APPROVE_FREIGHT_APPROVALS,
 ] as const;
 
 // Approve-only: this admin queue is for approvers. VIEW_MATERIAL_INDENT is held
@@ -123,6 +132,7 @@ const adminPermissions = [
   ...dockingApprovalPermissions,
   ...partialApprovalPermissions,
   ...lateDispatchApprovalPermissions,
+  ...freightApprovalPermissions,
   ...materialIndentApprovalPermissions,
   ...returnableApprovalPermissions,
   ...bstApprovalPermissions,
@@ -159,6 +169,13 @@ export const adminModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: lateDispatchApprovalPermissions,
       breadcrumb: { label: 'Late Dispatch Gate-In Approvals' },
+    },
+    {
+      path: '/admin/freight-approvals',
+      element: <FreightApprovalsPage />,
+      layout: 'main',
+      permissions: freightApprovalPermissions,
+      breadcrumb: { label: 'Freight Approvals' },
     },
     {
       path: '/admin/material-indent-approvals',
@@ -265,6 +282,12 @@ export const adminModuleConfig: ModuleConfig = {
           title: 'Late Dispatch Gate-In Approvals',
           permissions: lateDispatchApprovalPermissions,
           badge: LateDispatchApprovalsBadge,
+        },
+        {
+          path: '/admin/freight-approvals',
+          title: 'Freight Approvals',
+          permissions: freightApprovalPermissions,
+          badge: FreightApprovalsBadge,
         },
         {
           path: '/admin/material-indent-approvals',

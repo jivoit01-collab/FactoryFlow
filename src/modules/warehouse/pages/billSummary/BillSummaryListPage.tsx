@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Plus, Search, X } from 'lucide-react';
+import { AlertTriangle, ClipboardCheck, FileText, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -19,6 +19,7 @@ import { useDebounce } from '@/shared/hooks';
 import { getErrorMessage } from '@/shared/utils';
 
 import {
+  BILL_SUMMARY_STATUS_LABELS,
   type BillSummary,
   type BillSummaryStatus,
   useBillSummaries,
@@ -30,15 +31,12 @@ import { matchesBillSummary } from './billSummarySearch';
 const DEFAULT_PAGE_SIZE = 25;
 
 const STATUS_STYLE: Record<string, string> = {
-  GENERATED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-400',
+  PENDING_APPROVAL: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-400',
+  REJECTED: 'bg-orange-100 dark:bg-orange-500/15 text-orange-800 dark:text-orange-400',
+  APPROVED: 'bg-sky-100 dark:bg-sky-500/15 text-sky-800 dark:text-sky-400',
+  PRINTED: 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-800 dark:text-indigo-400',
   PICKED: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400',
   CANCELLED: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-400',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  GENERATED: 'With the floor',
-  PICKED: 'Picked',
-  CANCELLED: 'Cancelled',
 };
 
 function formatDate(value?: string | null): string {
@@ -80,10 +78,11 @@ export default function BillSummaryListPage() {
     error: sapError,
   } = useSapBillSummaries(params, includeSap);
 
-  /* A SAP row is a live dispatch SAP is holding, which is what a GENERATED sheet
-     is. Filtering to any other status is therefore a question about the app's
-     own records, and these have no answer to it. */
-  const sapHidden = includeSap && status !== '' && status !== 'GENERATED';
+  /* A SAP row is a live dispatch SAP is holding, which is what an APPROVED sheet
+     is — it carries a dispatch date and nothing about it is still to be decided.
+     Filtering to any other status is therefore a question about the app's own
+     records, and these have no answer to it. */
+  const sapHidden = includeSap && status !== '' && status !== 'APPROVED';
 
   const allRows = useMemo(() => {
     const merged: BillSummary[] = includeSap && !sapHidden ? [...rows, ...sapRows] : [...rows];
@@ -114,12 +113,27 @@ export default function BillSummaryListPage() {
   );
 
   const canIssue = hasPermission(DISPATCH_PERMISSIONS.CREATE_BILL_SUMMARY);
+  const canApprove = hasPermission(DISPATCH_PERMISSIONS.APPROVE_BILL_SUMMARY);
+  /* Counted off the rows already in hand rather than asked for separately: this
+     screen has the whole list, and a second request for a number on a button is
+     a request nobody needs. */
+  const waiting = rows.filter((row) => row.status === 'PENDING_APPROVAL').length;
 
   return (
     <div className="space-y-6">
       <DashboardHeader
         title="Bill Summaries"
+        description="Raised by dispatch, dated by the warehouse, picked in the godown"
       >
+        {canApprove && (
+          <Button
+            variant={waiting > 0 ? 'default' : 'outline'}
+            onClick={() => navigate('/warehouse/bill-summaries/approvals')}
+          >
+            <ClipboardCheck className="mr-2 h-4 w-4" />
+            {waiting > 0 ? `${waiting} to approve` : 'To approve'}
+          </Button>
+        )}
         {canIssue && (
           <Button onClick={() => navigate('/warehouse/bill-summaries/new')}>
             <Plus className="mr-2 h-4 w-4" /> New bill summary
@@ -171,7 +185,10 @@ export default function BillSummaryListPage() {
                 className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
               >
                 <option value="">All</option>
-                <option value="GENERATED">With the floor</option>
+                <option value="PENDING_APPROVAL">With the warehouse</option>
+                <option value="REJECTED">Sent back</option>
+                <option value="APPROVED">Approved</option>
+                <option value="PRINTED">Printed</option>
                 <option value="PICKED">Picked</option>
                 <option value="CANCELLED">Cancelled</option>
               </select>
@@ -233,7 +250,7 @@ export default function BillSummaryListPage() {
       {sapHidden && (
         <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
           SAP-stamped dispatches are hidden while the status filter is set — they are all
-          live dispatches, so only “All” or “With the floor” can show them.
+          live, dated dispatches, so only “All” or “Approved” can show them.
         </p>
       )}
 
@@ -276,8 +293,13 @@ export default function BillSummaryListPage() {
                   </span>
                 </p>
                 <p className="text-xs text-muted-foreground tabular-nums">
-                  {row.customer_name || row.customer_code} · dispatch{' '}
-                  {formatDate(row.dispatch_date)} · {row.totals.lines} line(s)
+                  {row.customer_name || row.customer_code} ·{' '}
+                  {/* A sheet with the warehouse has no dispatch date to show —
+                      that is exactly what it is over there to collect. */}
+                  {row.dispatch_date
+                    ? `dispatch ${formatDate(row.dispatch_date)}`
+                    : 'awaiting a dispatch date'}{' '}
+                  · {row.totals.lines} line(s)
                   {row.warehouse_codes && ` · ${row.warehouse_codes}`}
                 </p>
               </div>
@@ -289,8 +311,11 @@ export default function BillSummaryListPage() {
                     Stamped in SAP
                   </Badge>
                 )}
-                {/* A picked sheet whose SAP write failed is the case that needs
-                    chasing, so it is called out rather than folded into status. */}
+                {/* An approved sheet whose SAP write failed is the case that
+                    needs chasing — the goods are moving and SAP does not know —
+                    so it is called out rather than folded into the status. A
+                    sheet still with the warehouse has simply not been posted
+                    yet, which is not news. */}
                 {row.sap_status === 'FAILED' && (
                   <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-400">
                     <AlertTriangle className="mr-1 h-3 w-3" /> Not in SAP
@@ -302,7 +327,7 @@ export default function BillSummaryListPage() {
                   </Badge>
                 )}
                 <Badge className={STATUS_STYLE[row.status] ?? ''}>
-                  {STATUS_LABEL[row.status] ?? row.status}
+                  {BILL_SUMMARY_STATUS_LABELS[row.status] ?? row.status}
                 </Badge>
               </div>
             </button>

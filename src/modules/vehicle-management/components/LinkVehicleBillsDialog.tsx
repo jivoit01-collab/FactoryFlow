@@ -19,6 +19,8 @@ import {
   Label,
 } from '@/shared/components/ui';
 
+import { branchClash, branchOf, firstBranchClash } from '../utils/branchCheck';
+
 /** The truck a dialog in `add` mode is filling — already chosen, so not editable. */
 export interface LinkDialogVehicle {
   id: number;
@@ -79,6 +81,10 @@ export function LinkVehicleBillsDialog({
   const [vehicleNumber, setVehicleNumber] = useState('');
   // One entry per bill field on screen; null while that field is still empty.
   const [rows, setRows] = useState<Array<number | null>>([null]);
+  // Why the last bill picked in a row was refused, keyed by that row.
+  const [refused, setRefused] = useState<Record<number, string>>({});
+  // Bumped on a refusal so that row's search box forgets the refused bill.
+  const [refusals, setRefusals] = useState(0);
 
   const { data: vehicleNames = [], isLoading: vehiclesLoading } = useVehicleNames(
     open && mode === 'new',
@@ -90,6 +96,7 @@ export function LinkVehicleBillsDialog({
     setVehicleId(null);
     setVehicleNumber('');
     setRows([null]);
+    setRefused({});
   }, [open]);
 
   const billsByDocEntry = useMemo(() => {
@@ -123,10 +130,36 @@ export function LinkVehicleBillsDialog({
 
   const effectiveVehicleId = mode === 'add' ? vehicle?.id ?? null : vehicleId;
   const effectiveVehicleNumber = mode === 'add' ? vehicle?.number ?? '' : vehicleNumber;
-  const canConfirm = effectiveVehicleId !== null && chosenBills.length > 0;
+  // The server refuses one company's bills from two SAP branches on one link,
+  // but only after the whole linking form is filled in. Say so here instead.
+  const clash = useMemo(() => firstBranchClash(chosenBills), [chosenBills]);
+  const canConfirm = effectiveVehicleId !== null && chosenBills.length > 0 && !clash;
 
   function setRow(index: number, docEntry: number | null) {
     setRows((current) => current.map((value, i) => (i === index ? docEntry : value)));
+    setRefused((current) => {
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  }
+
+  /** The bills chosen in every row but this one. */
+  function chosenElsewhere(index: number): DispatchBill[] {
+    return rows
+      .filter((_, i) => i !== index)
+      .map((value) => (value === null ? null : billsByDocEntry.get(value) ?? null))
+      .filter((bill): bill is DispatchBill => bill !== null);
+  }
+
+  function pickBill(index: number, bill: DispatchBill) {
+    const why = branchClash(bill, chosenElsewhere(index));
+    if (why) {
+      setRefused((current) => ({ ...current, [index]: why }));
+      setRefusals((count) => count + 1);
+      return;
+    }
+    setRow(index, bill.doc_entry);
   }
 
   function addRow() {
@@ -135,6 +168,8 @@ export function LinkVehicleBillsDialog({
 
   function removeRow(index: number) {
     setRows((current) => (current.length === 1 ? [null] : current.filter((_, i) => i !== index)));
+    // Notes are keyed by row, and the rows below this one move up.
+    setRefused({});
   }
 
   return (
@@ -208,11 +243,13 @@ export function LinkVehicleBillsDialog({
               );
               const rowItems = bills.filter((bill) => !takenElsewhere.has(bill.doc_entry));
               const selected = docEntry === null ? null : billsByDocEntry.get(docEntry) ?? null;
+              const others = chosenElsewhere(index);
 
               return (
                 <div key={index} className="flex items-end gap-2">
                   <div className="min-w-0 flex-1">
                     <SearchableSelect<DispatchBill>
+                      key={refused[index] ? `refused-${refusals}` : 'row'}
                       inputId={`link-vehicle-bill-${index}`}
                       label={index === 0 ? 'Bills' : undefined}
                       value={docEntry !== null ? String(docEntry) : ''}
@@ -235,21 +272,33 @@ export function LinkVehicleBillsDialog({
                       emptyText="Search a bill to add"
                       notFoundText="No unlinked bill found — type a full bill number"
                       errorText="Failed to load bills"
-                      onItemSelect={(bill) => setRow(index, bill.doc_entry)}
+                      onItemSelect={(bill) => pickBill(index, bill)}
                       onClear={() => setRow(index, null)}
-                      renderItem={(bill) => (
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">
-                            {bill.doc_num} - {compactText(bill.card_name)}
+                      renderItem={(bill) => {
+                        const blocked = Boolean(branchClash(bill, others));
+                        return (
+                          <div className={`min-w-0 flex-1 ${blocked ? 'opacity-60' : ''}`}>
+                            <div className="truncate text-sm font-medium">
+                              {bill.doc_num} - {compactText(bill.card_name)}
+                            </div>
+                            <div className="truncate text-xs text-muted-foreground">
+                              {compactText(bill.city)} {compactText(bill.state)} ·{' '}
+                              {formatNumber(bill.total_weight, 3)} kg ·{' '}
+                              {compactText(bill.company_code)}
+                              {branchOf(bill) ? ` · ${branchOf(bill)}` : ''}
+                            </div>
+                            {blocked && (
+                              <div className="truncate text-xs font-medium text-rose-600">
+                                Another SAP branch than the bills already picked
+                              </div>
+                            )}
                           </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {compactText(bill.city)} {compactText(bill.state)} ·{' '}
-                            {formatNumber(bill.total_weight, 3)} kg ·{' '}
-                            {compactText(bill.company_code)}
-                          </div>
-                        </div>
-                      )}
+                        );
+                      }}
                     />
+                    {refused[index] && (
+                      <p className="mt-1 text-xs text-rose-600">{refused[index]}</p>
+                    )}
                   </div>
                   <Button
                     type="button"
@@ -293,7 +342,11 @@ export function LinkVehicleBillsDialog({
                 )}
               </div>
             )}
-            <p>Bills of one company on one vehicle must belong to the same SAP branch.</p>
+            {clash ? (
+              <p className="font-medium text-rose-600">{clash}</p>
+            ) : (
+              <p>Bills of one company on one vehicle must belong to the same SAP branch.</p>
+            )}
           </div>
         </div>
 
