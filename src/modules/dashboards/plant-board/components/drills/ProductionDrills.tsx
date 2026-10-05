@@ -1,6 +1,8 @@
+import { useState } from 'react';
+
 import { useBoardPeriod } from '../../../hooks/boardPeriod.context';
 import { DrillSub, OpsDrill, useExpandedRow } from '../../../logistics-control/components';
-import type { DailyQty, PlantBoardProduction, WasteDay } from '../../types';
+import type { DailyQty, PlantBoardProduction, UnplannedItem, WasteDay } from '../../types';
 import { decimal, money, NO_ROWS, shortDate, whole } from './format';
 
 /** Today on the lines. Totals only — the runs are on the execution screen. */
@@ -51,6 +53,62 @@ export function TodayLinesDrill({
   );
 }
 
+/**
+ * The SKUs the floor made that the plan never listed, opened from the
+ * Unplanned figure. A level down, so the back arrow returns to the days.
+ */
+function UnplannedSkusDrill({
+  production,
+  onBack,
+  onClose,
+}: {
+  production: PlantBoardProduction | null;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  const { monthWord } = useBoardPeriod();
+  const rows = production?.unplanned_items;
+  const tons = (rows ?? []).reduce((sum, row) => sum + row.tons, 0);
+  const unweighed = (rows ?? []).filter((row) => !row.weighed).length;
+
+  return (
+    <OpsDrill<UnplannedItem>
+      title="Unplanned SKUs"
+      subtitle="Received onto BH-PF off SAP's movement journal, and not on the month's plan"
+      domain="production"
+      onBack={onBack}
+      backLabel="Monthly planning"
+      onClose={onClose}
+      stats={[
+        { label: 'SKUs', value: whole(production?.unplanned_item_count ?? rows?.length) },
+        { label: 'Produced', value: `${whole(tons)} t` },
+        { label: 'Pieces', value: `${whole(production?.unplanned_qty)} pcs` },
+        { label: 'No litre volume', value: whole(unweighed) },
+      ]}
+      rows={rows ?? []}
+      rowKey={(row) => row.item_code}
+      empty={
+        rows === undefined
+          ? 'This server does not list the unplanned SKUs yet.'
+          : `Everything made ${monthWord} was on the plan.`
+      }
+      columns={[
+        { label: 'SKU', cell: (row) => row.item_code, dim: true },
+        { label: 'Item', cell: (row) => row.item_name || '—' },
+        { label: 'Pieces', cell: (row) => whole(row.pieces), numeric: true },
+        {
+          label: 'Tonnes',
+          // A SKU with no litre volume has no tonnage, which is not zero.
+          cell: (row) => (row.weighed ? decimal(row.tons) : '—'),
+          numeric: true,
+        },
+        { label: 'Days', cell: (row) => whole(row.days), numeric: true },
+        { label: 'Last made', cell: (row) => shortDate(row.last_day), dim: true },
+      ]}
+    />
+  );
+}
+
 /** The plan against production, day by day. */
 export function MonthlyPlanningDrill({
   production,
@@ -61,6 +119,18 @@ export function MonthlyPlanningDrill({
 }) {
   // "this month", or "in Sep" on a board stepped back to an ended month.
   const { monthWord } = useBoardPeriod();
+  const [showUnplanned, setShowUnplanned] = useState(false);
+
+  if (showUnplanned) {
+    return (
+      <UnplannedSkusDrill
+        production={production}
+        onBack={() => setShowUnplanned(false)}
+        onClose={onClose}
+      />
+    );
+  }
+
   return (
     <OpsDrill<DailyQty>
       title="Monthly planning"
@@ -77,6 +147,12 @@ export function MonthlyPlanningDrill({
         { label: 'Planned', value: `${whole(production?.planned_tons)} t` },
         { label: 'Produced', value: `${whole(production?.produced_tons)} t` },
         { label: 'Days that ran', value: whole(production?.active_days) },
+        {
+          // The tile's own figure; opened, the SKUs that make it up.
+          label: 'Unplanned',
+          value: `${whole(production?.produced_unplanned_tons)} t`,
+          onClick: () => setShowUnplanned(true),
+        },
       ]}
       rows={production?.daily ?? []}
       rowKey={(row) => row.date}

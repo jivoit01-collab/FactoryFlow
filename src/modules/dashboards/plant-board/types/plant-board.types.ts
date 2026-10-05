@@ -496,6 +496,20 @@ export interface TodayOnTheLines {
   unconverted_runs: number;
 }
 
+/** One SKU the floor made this month that the plan never listed. */
+export interface UnplannedItem {
+  item_code: string;
+  item_name: string;
+  /** In the item's own inventory unit, as SAP posts the receipt. */
+  pieces: number;
+  tons: number;
+  /** False where SAP holds no litre volume: in the pieces, in no ton. */
+  weighed: boolean;
+  /** Days it was received on, and the last of them. */
+  days: number;
+  last_day: string | null;
+}
+
 export interface PlantBoardProduction {
   /**
    * PIECES on both sides — the unit SAP already holds them in, so the
@@ -522,6 +536,15 @@ export interface PlantBoardProduction {
   attainment_planned_pct: number | null;
   /** Output the plan never listed: `produced_tons` less `produced_planned_tons`. */
   produced_unplanned_tons: number;
+  /**
+   * The SKUs behind that figure: received onto the floor this month and not on
+   * the plan at all. Heaviest first. Optional because a backend deployed
+   * before the list existed answers without it.
+   */
+  unplanned_items?: UnplannedItem[];
+  unplanned_item_count?: number;
+  /** Pieces across `unplanned_items`. */
+  unplanned_qty?: number;
   /** The same ratio on the tonnage, which is what the tile reads in. */
   attainment_tons_pct: number | null;
   /** Planned SKUs with no litre volume in SAP, so absent from the tons. */

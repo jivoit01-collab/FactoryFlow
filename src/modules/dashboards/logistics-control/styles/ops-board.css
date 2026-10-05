@@ -1697,6 +1697,24 @@
   border-left: calc(0.22 * var(--du)) solid var(--d2);
   min-width: calc(7.5 * var(--du));
 }
+/* A figure that opens its own rows: a button that still reads as a stat. */
+.ops-drill__statopen {
+  font: inherit;
+  text-align: left;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  cursor: pointer;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+.ops-drill__statopen:hover {
+  background: color-mix(in srgb, var(--d3) 42%, #fff);
+  box-shadow: inset 0 0 0 1px var(--d2);
+}
+.ops-drill__statopen:focus-visible {
+  outline: calc(0.14 * var(--du)) solid var(--d1);
+  outline-offset: calc(0.1 * var(--du));
+}
 .ops-drill__stat .k {
   display: block;
   font-size: calc(0.9 * var(--du));

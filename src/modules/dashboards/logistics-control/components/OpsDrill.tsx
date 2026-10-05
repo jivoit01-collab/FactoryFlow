@@ -68,8 +68,14 @@ export interface OpsDrillProps<Row> {
   /** What the rows are and where they came from. */
   subtitle?: string;
   domain: OpsDomain;
-  /** The figures the table adds up to — the tile's own numbers. */
-  stats?: { label: string; value: string }[];
+  /**
+   * The figures the table adds up to — the tile's own numbers.
+   *
+   * A stat with `onClick` opens the rows behind that one figure, and wears a
+   * pointer and a chevron so it says so. Without it a stat is a plain figure,
+   * exactly as before.
+   */
+  stats?: { label: string; value: string; onClick?: () => void }[];
   /**
    * A second cut of the same rows, between the stats and the table.
    *
@@ -293,12 +299,29 @@ export function OpsDrill<Row>({
 
         {stats && stats.length > 0 && (
           <div className="ops-drill__stats">
-            {stats.map((stat) => (
-              <div key={stat.label} className="ops-drill__stat">
-                <span className="k">{stat.label}</span>
-                <span className="v">{stat.value}</span>
-              </div>
-            ))}
+            {/* Keyed by position: a panel may name two figures alike, as
+                Monthly planning does with its pieces and its tonnes. */}
+            {stats.map((stat, index) =>
+              stat.onClick ? (
+                <button
+                  key={index}
+                  type="button"
+                  className="ops-drill__stat ops-drill__statopen"
+                  onClick={stat.onClick}
+                  title={`Open ${stat.label}`}
+                >
+                  <span className="k">
+                    {stat.label} <span aria-hidden="true">›</span>
+                  </span>
+                  <span className="v">{stat.value}</span>
+                </button>
+              ) : (
+                <div key={index} className="ops-drill__stat">
+                  <span className="k">{stat.label}</span>
+                  <span className="v">{stat.value}</span>
+                </div>
+              ),
+            )}
           </div>
         )}
 

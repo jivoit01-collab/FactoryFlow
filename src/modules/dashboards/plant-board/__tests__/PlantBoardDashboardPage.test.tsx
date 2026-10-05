@@ -1598,6 +1598,49 @@ describe('PlantBoardDashboardPage', () => {
       expect(rows.length).toBeGreaterThan(1);
     });
 
+    it('opens the unplanned SKUs from the Unplanned figure, and goes back', () => {
+      const data = board();
+      data.production!.unplanned_items = [
+        {
+          item_code: 'FG-CP1',
+          item_name: 'COLD PRESS GROUNDNUT 1 LTR',
+          pieces: 60_000,
+          tons: 60,
+          weighed: true,
+          days: 3,
+          last_day: '2026-09-08',
+        },
+        {
+          item_code: 'FG-NOL',
+          item_name: 'GIFT PACK',
+          pieces: 500,
+          tons: 0,
+          weighed: false,
+          days: 1,
+          last_day: '2026-09-04',
+        },
+      ];
+      data.production!.unplanned_item_count = 2;
+      data.production!.unplanned_qty = 60_500;
+      const { container } = renderBoard(data);
+      const panel = openTile(container, 'Monthly planning');
+
+      // The tile's own figure, offered as a way in.
+      fireEvent.click(within(panel).getByRole('button', { name: /Unplanned/ }));
+      const skus = screen.getByRole('dialog');
+      expect(within(skus).getByRole('heading', { level: 2 }).textContent).toBe('Unplanned SKUs');
+      expect(skus.textContent).toContain('COLD PRESS GROUNDNUT 1 LTR');
+      expect(skus.textContent).toContain('GIFT PACK');
+      // Heaviest first, as the feed sends them.
+      const rows = within(skus).getAllByRole('row').slice(1);
+      expect(rows[0].textContent).toContain('FG-CP1');
+
+      fireEvent.click(within(skus).getByRole('button', { name: 'Back to Monthly planning' }));
+      expect(within(screen.getByRole('dialog')).getByRole('heading', { level: 2 }).textContent).toBe(
+        'Monthly planning',
+      );
+    });
+
     it('lists the items still on order, most outstanding first', () => {
       const { container } = renderBoard(board());
       const panel = openTile(container, 'Open POs');
