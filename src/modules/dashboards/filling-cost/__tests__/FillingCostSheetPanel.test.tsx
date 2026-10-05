@@ -98,6 +98,14 @@ vi.mock('../api', () => ({
   },
 }));
 
+const workedOut = vi.hoisted(() => ({ data: undefined as unknown, asked: [] as unknown[] }));
+vi.mock('@/modules/production/execution/api', () => ({
+  useFillingCostDefaults: (date: string, line: unknown, shift: string, enabled: boolean) => {
+    if (enabled) workedOut.asked.push({ date, line, shift });
+    return { data: enabled ? workedOut.data : undefined, isLoading: false };
+  },
+}));
+
 vi.mock('@/shared/contexts', () => ({ useTheme: () => ({ resolvedTheme: 'light' }) }));
 
 const renderPanel = (date = '2026-09-28') =>
@@ -115,6 +123,8 @@ describe('Filling cost on the production board', () => {
     asked.length = 0;
     answer.day = DAY;
     answer.rest = {};
+    workedOut.data = undefined;
+    workedOut.asked.length = 0;
   });
 
   it('asks for the day it is given', () => {
@@ -216,6 +226,62 @@ describe('Filling cost on the production board', () => {
 
     fireEvent.click(table.getByText(/^27 Sep/));
     expect(onDateChange).toHaveBeenCalledWith('2026-09-27');
+  });
+
+  it('reads a day nobody saved from its runs, as the Filling Cost page does', () => {
+    answer.day = null;
+    workedOut.data = {
+      date: '2026-09-29',
+      shift: '',
+      produced_cases: '2000.00',
+      run_count: 2,
+      bottles: '48000',
+      litres: '24000',
+      running_hours: '20',
+      skus: [
+        {
+          product: 'JIVO WATER 500 ML',
+          sku: '500 ML',
+          litres_per_piece: '0.5',
+          pieces_per_case: 24,
+          cases: '2000.00',
+        },
+      ],
+      entries: [
+        {
+          head: 'Electricity',
+          aliases: [],
+          amount: '20000.00',
+          explain: '',
+          source: 'electricity',
+        },
+        { head: 'Lab', aliases: [], amount: null, explain: '', source: 'cost_master' },
+        {
+          head: 'Fixed Manpower',
+          aliases: [],
+          amount: '16000.00',
+          explain: '',
+          source: 'cost_master',
+        },
+      ],
+      warnings: ['Lab has no rate in the Cost Master.'],
+    };
+    renderPanel('2026-09-29');
+
+    expect(workedOut.asked).toEqual([{ date: '2026-09-29', line: 'none', shift: '' }]);
+    expect(screen.getByText(/Not saved yet/)).toBeInTheDocument();
+    expect(screen.getByText('Lab has no rate in the Cost Master.')).toBeInTheDocument();
+    expect(sheetRow('PRODUCTION').getByText('2,000')).toBeInTheDocument();
+    expect(sheetRow('Electricity').getByText('₹10.00')).toBeInTheDocument();
+    expect(sheetRow('TOTAL').getByText('₹36,000')).toBeInTheDocument();
+    expect(sheetRow('TOTAL').getByText('₹18.00')).toBeInTheDocument();
+    expect(sheetRow('PER BOTTLE').getByText('₹0.7500')).toBeInTheDocument();
+  });
+
+  it('does not work a saved day out again', () => {
+    renderPanel();
+    expect(workedOut.asked).toEqual([]);
+    expect(screen.queryByText(/Not saved yet/)).not.toBeInTheDocument();
   });
 
   it('says so when the day has no sheet', () => {

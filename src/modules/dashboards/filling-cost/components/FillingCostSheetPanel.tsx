@@ -3,13 +3,20 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
+import { useFillingCostDefaults } from '@/modules/production/execution/api';
+import type { FillingCostDefaults } from '@/modules/production/execution/types';
 import { Button, Input } from '@/shared/components/ui';
 import { useTheme } from '@/shared/contexts';
 import { cn, getErrorMessage } from '@/shared/utils';
 
 import { useFillingCostBoard } from '../api';
 import { FILLING_COST_SHEET_ROUTE } from '../constants';
-import type { FillingCostBoard, FillingCostHeadRow, FillingCostSku } from '../types';
+import type {
+  FillingCostBoard,
+  FillingCostFigures,
+  FillingCostHeadRow,
+  FillingCostSku,
+} from '../types';
 import { count, longDay, rate, rupees } from '../utils/format';
 
 /**
@@ -66,6 +73,38 @@ function boxText(skus: FillingCostSku[]) {
   return sizes.length ? `${sizes.join(' / ')} PCS` : '—';
 }
 
+const ratio = (amount: number, over: number, places: number) =>
+  over > 0 ? (amount / over).toFixed(places) : null;
+
+/**
+ * A day nobody has saved, as the Filling Cost page opens it: the cases its
+ * runs produced and each head worked out from them. Null when the runs made
+ * nothing and no head costs anything — a day with nothing to show.
+ */
+function workedOut(defaults: FillingCostDefaults | undefined) {
+  if (!defaults) return null;
+  const cases = Number(defaults.produced_cases);
+  const bottles = Number(defaults.bottles);
+  const priced = defaults.entries.filter((entry) => entry.amount !== null);
+  const total = priced.reduce((sum, entry) => sum + Number(entry.amount), 0);
+  if (!(cases > 0) && total === 0) return null;
+  const heads: FillingCostHeadRow[] = priced.map((entry) => ({
+    head: entry.head,
+    amount: entry.amount as string,
+    share: null,
+    per_case: ratio(Number(entry.amount), cases, 2),
+    per_bottle: ratio(Number(entry.amount), bottles, 4),
+  }));
+  const view: FillingCostFigures = {
+    cases: defaults.produced_cases,
+    bottles: defaults.bottles,
+    total: total.toFixed(2),
+    per_case: ratio(total, cases, 2),
+    per_bottle: ratio(total, bottles, 4),
+  };
+  return { view, heads, skus: defaults.skus as FillingCostSku[], warnings: defaults.warnings };
+}
+
 /** A two-column label row at the top of the sheet. */
 function InfoRow({ label, value, unit = '' }: { label: string; value: string; unit?: string }) {
   return (
@@ -99,10 +138,14 @@ export function FillingCostSheetPanel({
   const { data, isLoading, isError, error } = useFillingCostBoard(date.slice(0, 7), date);
 
   const day = data?.day ?? null;
+  // No sheet saved for the day: read it as the Filling Cost page does, from
+  // the day's runs, rather than show the day blank until someone saves.
+  const defaultsQuery = useFillingCostDefaults(date, 'none', '', Boolean(data) && !day);
+  const fallback = day ? null : workedOut(defaultsQuery.data);
   const shift = scope ? day?.shifts.find((s) => s.shift === scope) : undefined;
-  const view = shift ?? day;
-  const heads = shift ? shift.heads : (day?.sheet_heads ?? []);
-  const skus = shift ? shift.skus : (day?.skus ?? []);
+  const view = shift ?? day ?? fallback?.view ?? null;
+  const heads = shift ? shift.heads : (day?.sheet_heads ?? fallback?.heads ?? []);
+  const skus = shift ? shift.skus : (day?.skus ?? fallback?.skus ?? []);
   const pie = slices(heads, theme);
   const pieTotal = pie.reduce((sum, slice) => sum + slice.amount, 0);
   const credits = heads.filter((row) => Number(row.amount) < 0);
@@ -157,7 +200,18 @@ export function FillingCostSheetPanel({
         </div>
       </div>
 
-      {isLoading ? (
+      {fallback && (
+        <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+          Not saved yet — worked out from the day's runs, as the Filling Cost page shows it.
+          {fallback.warnings.map((warning) => (
+            <span key={warning} className="mt-1 block">
+              {warning}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {isLoading || (!day && defaultsQuery.isLoading) ? (
         <div className="h-64 animate-pulse rounded-2xl bg-muted/40" />
       ) : isError && !data ? (
         <p className="py-10 text-center text-sm text-destructive">

@@ -5,7 +5,6 @@ import ProductionDashboardPage from '../pages/ProductionDashboardPage';
 
 const who = vi.hoisted(() => ({ code: 'JIVO_BEVERAGES', allowed: true }));
 const shown = vi.hoisted(() => [] as string[]);
-const newest = vi.hoisted(() => ({ dates: [] as string[] }));
 
 vi.mock('@/core/auth', () => ({
   useAuth: () => ({ currentCompany: { company_code: who.code, company_name: 'Jivo Beverages' } }),
@@ -17,14 +16,6 @@ vi.mock('../../filling-cost/components/FillingCostSheetPanel', () => ({
     shown.push(date);
     return <div>filling cost sheet for {date}</div>;
   },
-}));
-
-vi.mock('@/modules/production/execution/api', () => ({
-  useLines: () => ({ data: [] }),
-  useFillingCostSheets: () => ({
-    isLoading: false,
-    data: newest.dates.map((date) => ({ date })),
-  }),
 }));
 
 // The wall's own reads: Beverages must never start them.
@@ -41,21 +32,7 @@ vi.mock('../hooks', () => ({
 }));
 
 describe('Production board for Jivo Beverages', () => {
-  it('opens on the newest saved sheet, even when that is not yesterday', () => {
-    newest.dates = ['2026-09-25'];
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-29T10:00:00'));
-    try {
-      render(<ProductionDashboardPage />);
-    } finally {
-      vi.useRealTimers();
-      newest.dates = [];
-    }
-
-    expect(screen.getByText('filling cost sheet for 2026-09-25')).toBeInTheDocument();
-  });
-
-  it('is the filling cost sheet and nothing else, opening on yesterday with no sheet saved', () => {
+  it('is the filling cost sheet and nothing else, opening on yesterday', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-29T10:00:00'));
     try {
