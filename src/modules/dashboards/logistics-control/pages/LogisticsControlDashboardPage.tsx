@@ -686,6 +686,18 @@ export function LogisticsControlDashboardPage({
                         },
                       ]}
                     />
+                    {/* The day plan split by company, so OIL and MART can each
+                        see what they are committed to move. */}
+                    {todayDispatch.plan.sides.length > 1 && (
+                      <p className="ops-note">
+                        {todayDispatch.plan.sides
+                          .map(
+                            (side) =>
+                              `${companyLabel(side.companyCode)} plan ${decimal(side.tonnes, 0)} T`,
+                          )
+                          .join(' · ')}
+                      </p>
+                    )}
                     {/* Why the bar can read full while trucks are still loading,
                         and what is NOT in the target. */}
                     <p className="ops-note">

@@ -839,12 +839,23 @@ export function useLogisticsControlBoard(
    */
   const dispatchTodayTile = useMemo(() => {
     const tonnes = (dispatchToday.data?.totals?.dispatched?.weight ?? 0) / 1000;
-    const plan = dayPlan(
-      (dayPlanBills.data?.bills ?? []).map((bill) => ({
-        weightKg: bill.total_weight ?? 0,
-        vehicleId: bill.plan?.vehicle_id ?? null,
-      })),
-    );
+    const bills = dayPlanBills.data?.bills ?? [];
+    const toPlanBill = (bill: (typeof bills)[number]) => ({
+      weightKg: bill.total_weight ?? 0,
+      vehicleId: bill.plan?.vehicle_id ?? null,
+    });
+    const plan = dayPlan(bills.map(toPlanBill));
+    // Each company's share of the plan. A company whose feed failed is left
+    // out rather than shown as 0 T — the tile already names it as unread.
+    const unread = dayPlanBills.data?.unread ?? [];
+    const sides = scope.dispatchCompanies
+      .filter((companyCode) => !unread.includes(companyCode))
+      .map((companyCode) => ({
+        companyCode,
+        ...dayPlan(
+          bills.filter((bill) => bill.company_code === companyCode).map(toPlanBill),
+        ),
+      }));
 
     return {
       tonnes,
@@ -860,7 +871,8 @@ export function useLogisticsControlBoard(
         configured: plan.bills > 0,
         // Named companies whose feed failed — their bills are missing from the
         // total, so the tile says so rather than showing a short plan.
-        unread: dayPlanBills.data?.unread ?? [],
+        unread,
+        sides,
         loading: dayPlanBills.isLoading,
         error: dayPlanBills.error ?? null,
       },
@@ -875,6 +887,7 @@ export function useLogisticsControlBoard(
     dayPlanBills.data,
     dayPlanBills.isLoading,
     dayPlanBills.error,
+    scope.dispatchCompanies,
   ]);
 
   /**
