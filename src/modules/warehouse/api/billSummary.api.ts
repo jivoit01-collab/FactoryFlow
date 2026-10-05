@@ -28,7 +28,8 @@ export const BILL_SUMMARY_STATUS_LABELS: Record<BillSummaryStatus, string> = {
   PICKED: 'Picked',
   CANCELLED: 'Cancelled',
 };
-export type BillSummarySapStatus = 'NOT_POSTED' | 'POSTED' | 'FAILED';
+/** `WAITING`: SAP did not answer; the SAP posting queue stamps it once SAP is back. */
+export type BillSummarySapStatus = 'NOT_POSTED' | 'POSTED' | 'FAILED' | 'WAITING';
 
 /**
  * Where a row came from: a sheet this app issued, or a dispatch somebody typed

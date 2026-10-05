@@ -23,6 +23,11 @@ const sheet = (id: number, docNum: string, bilty: string): BillSummary =>
   }) as unknown as BillSummary;
 
 const confirmSapPost = vi.hoisted(() => vi.fn());
+const toast = vi.hoisted(() => ({ success: vi.fn(), info: vi.fn(), error: vi.fn(), warning: vi.fn() }));
+vi.mock('sonner', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('sonner')>()),
+  toast,
+}));
 const approve = vi.hoisted(() => vi.fn());
 
 vi.mock('@/shared/components', () => ({ confirmSapPost: (o: unknown) => confirmSapPost(o) }));
@@ -47,6 +52,7 @@ describe('approving a truck asks before it stamps SAP', () => {
   beforeEach(() => {
     confirmSapPost.mockReset();
     approve.mockReset();
+    Object.values(toast).forEach((fn) => fn.mockReset());
     approve.mockResolvedValue({ approved: [1, 2], refused: [] });
   });
 
@@ -75,5 +81,27 @@ describe('approving a truck asks before it stamps SAP', () => {
     expect(rows['SAP invoices (2)']).toBe('626098260, 626098261');
     expect(rows['No bilty']).toMatch(/1 of these/);
     expect(approve.mock.calls[0][0].ids).toEqual([1, 2]);
+  });
+
+  it('says the stamp waits for SAP rather than failing when SAP is not answering', async () => {
+    confirmSapPost.mockResolvedValue(true);
+    approve.mockResolvedValue({
+      approved: [
+        { id: 1, sap_status: 'WAITING' },
+        { id: 2, sap_status: 'POSTED' },
+      ],
+      refused: [],
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /Approve 2 sheet/ }));
+
+    await waitFor(() =>
+      expect(toast.info).toHaveBeenCalledWith(
+        'SAP is not answering, so 1 sheet(s) will be stamped on the SAP invoice by itself once SAP is back.',
+      ),
+    );
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

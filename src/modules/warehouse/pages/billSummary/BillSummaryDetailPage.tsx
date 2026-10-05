@@ -250,6 +250,10 @@ export default function BillSummaryDetailPage() {
         toast.error(updated.sap_error || 'SAP refused it again');
         return;
       }
+      if (updated.sap_status === 'WAITING') {
+        toast.info('SAP is still not answering. It will be stamped by itself once SAP is back.');
+        return;
+      }
       toast.success(cancelled ? 'Cleared from SAP' : 'Posted to SAP');
       if (updated.sap_note) toast.warning(updated.sap_note);
     } catch (err) {
@@ -533,6 +537,34 @@ export default function BillSummaryDetailPage() {
               {summary.status === 'CANCELLED'
                 ? 'Retry clearing it from SAP'
                 : 'Retry the SAP posting'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* SAP not answering is not a refusal: the SAP posting queue stamps the
+          invoice by itself once SAP is back. */}
+      {summary.sap_status === 'WAITING' && (
+        <div className="space-y-2 rounded-lg border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300">
+          <p className="font-semibold">Waiting for SAP</p>
+          <p>
+            {summary.status === 'CANCELLED'
+              ? `SAP is not answering, so the dispatch is cleared from invoice ${summary.sap_invoice_doc_num} by itself once SAP is back.`
+              : `SAP is not answering, so the dispatch date and quantities go onto invoice ${summary.sap_invoice_doc_num} by itself once SAP is back. Nothing here waits for it.`}
+          </p>
+          {canRetrySap && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={post.isPending}
+              onClick={() => void retrySap()}
+            >
+              {post.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              Try now
             </Button>
           )}
         </div>

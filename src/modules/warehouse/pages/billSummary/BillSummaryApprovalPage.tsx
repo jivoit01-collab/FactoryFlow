@@ -129,6 +129,14 @@ export default function BillSummaryApprovalPage() {
           `${result.approved.length} sheet(s) approved for ${dispatchDate} and sent to SAP`,
         );
       }
+      // Approved all the same: SAP not answering only delays the stamp, which
+      // the SAP posting queue puts on the invoices once SAP is back.
+      const waiting = result.approved.filter((sheet) => sheet.sap_status === 'WAITING').length;
+      if (waiting > 0) {
+        toast.info(
+          `SAP is not answering, so ${waiting} sheet(s) will be stamped on the SAP invoice by itself once SAP is back.`,
+        );
+      }
       // Reported one by one rather than counted: each refusal names a different
       // bill and a different thing to fix.
       for (const refusal of result.refused) {

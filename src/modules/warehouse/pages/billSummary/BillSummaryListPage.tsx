@@ -330,6 +330,12 @@ export default function BillSummaryListPage() {
                     In SAP
                   </Badge>
                 )}
+                {/* SAP not answering: stamped by itself once it is back. */}
+                {row.sap_status === 'WAITING' && (
+                  <Badge variant="outline" className="border-violet-400 text-violet-700 dark:text-violet-400">
+                    Waiting for SAP
+                  </Badge>
+                )}
                 <Badge className={STATUS_STYLE[row.status] ?? ''}>
                   {BILL_SUMMARY_STATUS_LABELS[row.status] ?? row.status}
                 </Badge>
