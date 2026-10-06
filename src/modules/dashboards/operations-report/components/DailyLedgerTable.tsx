@@ -14,6 +14,7 @@ function Figures({ row }: { row: ReportTotals }) {
       <Td numeric>{rupees(row.wastageValue)}</Td>
       <Td numeric>{whole(row.heads)}</Td>
       <Td numeric>{rupees(row.labourCost)}</Td>
+      <Td numeric>{rupees(row.salaryCost)}</Td>
       <Td numeric>{whole(row.kwh)}</Td>
       <Td numeric>{rupees(row.powerCost)}</Td>
       <Td numeric className="font-semibold">
@@ -54,6 +55,7 @@ export function DailyLedgerTable({
               <Th align="right">Wastage</Th>
               <Th align="right">People</Th>
               <Th align="right">Labour</Th>
+              <Th align="right">Salary</Th>
               <Th align="right">kWh</Th>
               <Th align="right">Power</Th>
               <Th align="right">₹ / L</Th>

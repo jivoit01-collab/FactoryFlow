@@ -8,6 +8,7 @@ import {
   Trash2,
   Undo2,
   Users,
+  Wallet,
   Zap,
 } from 'lucide-react';
 
@@ -31,6 +32,8 @@ interface Tile {
   sub: string;
   change: number | null;
   goodWhen: GoodWhen;
+  /** Extra grid classes, for the tile that has to fill out a short row. */
+  className?: string;
 }
 
 function Delta({ pct, goodWhen, vs }: { pct: number | null; goodWhen: GoodWhen; vs: string }) {
@@ -63,11 +66,16 @@ function Delta({ pct, goodWhen, vs }: { pct: number | null; goodWhen: GoodWhen; 
 }
 
 /**
- * The five headline figures, each against the period before.
+ * The headline figures, each against the period before.
+ *
+ * Every cost tile leads with its rupees, the units it was bought in (kWh, man-
+ * days) under it. Production is the one tile in litres: it is what the money
+ * bought, and the report has no rupee figure for it.
  *
  * Green and red only where the direction is a judgement — more litres, less
- * wastage, a cheaper litre. Labour and power spend rise with output, so their
- * change is drawn in grey; a busier day is not a worse one.
+ * wastage, a cheaper litre. Labour, salary and power spend rise with output or
+ * with the days in the span, so their change is drawn in grey; a busier day is
+ * not a worse one.
  *
  * A figure that is not known says why under it rather than showing a zero.
  */
@@ -86,6 +94,18 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
     return view === 'day' ? people : `${people} · ${days}`;
   })();
 
+  const salarySub = (() => {
+    if (gap('salary')) return gap('salary') as string;
+    if (now.salaryCost === null) {
+      return now.salaryUncostedDays
+        ? `No salary rate on ${whole(now.salaryUncostedDays)} day${now.salaryUncostedDays === 1 ? '' : 's'}`
+        : 'No salary rate';
+    }
+    // The day view is one day's share of the month, so it says of what.
+    if (view === 'day') return `Staff · 1 day of ${rupeesCompact(now.salaryMonthly)} a month`;
+    return `Staff · ${perLitre(now.perLitre.salary)} a litre`;
+  })();
+
   const powerSub = (() => {
     if (gap('power')) return gap('power') as string;
     if (now.kwh === null) return 'No meter readings';
@@ -93,17 +113,18 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
     const unread = now.powerUnreadDays
       ? ` · ${now.powerUnreadDays} day${now.powerUnreadDays === 1 ? '' : 's'} unread`
       : '';
-    return `${rupeesCompact(now.powerCost)} · ${perKl} kWh per KL${unread}`;
+    return `${compact(now.kwh)} kWh · ${perKl} kWh per KL${unread}`;
   })();
 
   const costSub = (() => {
-    if (now.perLitre.total !== null) return 'Labour, power and wastage';
+    if (now.perLitre.total !== null) return 'Labour, salary, power and wastage';
     if (now.litres === 0) return 'Nothing was filled';
     // Without litres every head is unknown per litre; say the cause, not the
-    // three symptoms.
+    // four symptoms.
     if (now.litres === null) return 'Litres not known';
     const missing = [
       now.labourCost === null && 'labour',
+      now.salaryCost === null && 'salary',
       now.powerCost === null && 'power',
       now.wastageValue === null && 'wastage',
     ].filter(Boolean);
@@ -156,12 +177,21 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       goodWhen: null,
     },
     {
+      label: 'Salary',
+      icon: Wallet,
+      accent: 'amber',
+      value: rupeesCompact(now.salaryCost),
+      sub: salarySub,
+      change: change(now.salaryCost, was.salaryCost),
+      goodWhen: null,
+    },
+    {
       label: 'Electricity',
       icon: Zap,
       accent: 'orange',
-      value: now.kwh === null ? NIL : `${compact(now.kwh)} kWh`,
+      value: rupeesCompact(now.powerCost),
       sub: powerSub,
-      change: powerComparable ? change(now.kwh, was.kwh) : null,
+      change: powerComparable ? change(now.powerCost, was.powerCost) : null,
       goodWhen: null,
     },
     {
@@ -183,17 +213,25 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       sub: gap('returns') ?? grSub,
       change: change(now.grValue, was.grValue),
       goodWhen: 'down',
+      // Seven tiles leave the last row short at two, three and four across; the
+      // returns tile, outside the cost per litre, is the one that widens to
+      // close it.
+      className: 'sm:col-span-2 lg:col-span-3 xl:col-span-2',
     },
   ];
 
   return (
-    // Three across at a desk, so six tiles sit as two even rows; six across only
-    // on a screen wide enough for "₹ 17.37 lakh" in each.
-    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    // Two across on a tablet, three at a laptop desk, four from xl — never seven
+    // in a row: with the sidebar open even a 1920 screen leaves each tile too
+    // narrow for its line under the figure.
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {tiles.map((tile) => {
         const tone = ACCENTS[tile.accent];
         return (
-          <div key={tile.label} className="rounded-xl border bg-card p-4 shadow-sm">
+          <div
+            key={tile.label}
+            className={cn('min-w-0 rounded-xl border bg-card p-4 shadow-sm', tile.className)}
+          >
             <div className="flex items-start justify-between gap-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {tile.label}

@@ -8,7 +8,8 @@ import { ReportPanel } from './ReportPanel';
 /**
  * What a litre cost, and what it was made of.
  *
- * One stacked bar — labour, power, wastage, left to right — because the
+ * One stacked bar — labour, power, wastage, salary, left to right (the
+ * palette's slot order, which is what keeps neighbours apart) — because the
  * question is composition: which head is the big one. Every segment's figure
  * is printed in the table beside it, so the bar is never read off by colour
  * alone and nobody has to estimate a width.
@@ -44,9 +45,16 @@ export function CostPerLitrePanel({
       per: totals.perLitre.wastage,
       hue: palette.wastage,
     },
+    {
+      key: 'salary',
+      label: 'Salary',
+      spend: totals.salaryCost,
+      per: totals.perLitre.salary,
+      hue: palette.salary,
+    },
   ];
-  // Shares and the total only when every head is known: a bar of two heads
-  // with the third missing would show the other two as bigger than they are.
+  // Shares and the total only when every head is known: a bar of three heads
+  // with the fourth missing would show the other two as bigger than they are.
   const complete = heads.every((head) => head.spend !== null);
   const spend = complete ? heads.reduce((sum, head) => sum + (head.spend ?? 0), 0) : null;
   const missing = heads.filter((head) => head.spend === null).map((head) => head.label);
@@ -54,7 +62,7 @@ export function CostPerLitrePanel({
   return (
     <ReportPanel
       title="Cost per litre"
-      subtitle="Contract labour, electricity and priced packing waste, over the litres filled"
+      subtitle="Contract labour, electricity, priced packing waste and staff salary, over the litres filled"
       icon={IndianRupee}
       accent="slate"
     >

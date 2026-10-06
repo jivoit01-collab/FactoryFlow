@@ -11,7 +11,7 @@ function rightsFor(sections: ReportMeta['withheld']): string {
     sections.map((section) =>
       section === 'returns'
         ? 'goods return'
-        : section === 'labour' || section === 'power'
+        : section === 'labour' || section === 'salary' || section === 'power'
           ? 'factory expense'
           : 'production cost',
     ),
@@ -25,6 +25,7 @@ function gapsOf(totals: ReportTotals): string[] {
   return [
     totals.powerUnreadDays > 0 && `no meter readings on ${days(totals.powerUnreadDays)}`,
     totals.labourUncostedDays > 0 && `no labour rate on ${days(totals.labourUncostedDays)}`,
+    totals.salaryUncostedDays > 0 && `no salary rate on ${days(totals.salaryUncostedDays)}`,
     totals.litresUnknownDays > 0 && `a run with no pack size on ${days(totals.litresUnknownDays)}`,
   ].filter((gap): gap is string => Boolean(gap));
 }

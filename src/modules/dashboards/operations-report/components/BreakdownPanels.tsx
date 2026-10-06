@@ -1,4 +1,4 @@
-import { Factory, Trash2, Undo2, Users, Zap } from 'lucide-react';
+import { Factory, Trash2, Undo2, Users, Wallet, Zap } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Td, Th } from '@/shared/components/page';
@@ -10,6 +10,7 @@ import type {
   OperationsReport,
   PowerEntry,
   ReturnEntry,
+  SalaryEntry,
   WastageEntry,
 } from '../types';
 import { perLitre, quantity, rupees, sectionGap, whole } from '../utils';
@@ -119,8 +120,9 @@ function BreakdownTable<T>({
 }
 
 /**
- * The four registers behind the headline figures: which line filled what,
- * what was lost, who came through the gate, and where the power went.
+ * The registers behind the headline figures: which line filled what, what was
+ * lost, who came through the gate, what the staff cost, and where the power
+ * went.
  */
 export function BreakdownPanels({
   report,
@@ -215,6 +217,33 @@ export function BreakdownPanels({
       numeric: true,
       cell: (row) => rupees(row.cost),
       total: rupees(totals.labourCost),
+    },
+  ];
+
+  const salary: Column<SalaryEntry>[] = [
+    { header: 'Department', cell: (row) => <span className="font-medium">{row.department}</span> },
+    {
+      header: 'A month',
+      numeric: true,
+      cell: (row) => rupees(row.monthly),
+      total: rupees(totals.salaryMonthly),
+    },
+    {
+      header: month ? 'This month' : 'This day',
+      numeric: true,
+      cell: (row) => rupees(row.cost),
+      total: rupees(totals.salaryCost),
+    },
+    {
+      header: 'Per litre',
+      numeric: true,
+      cell: (row) =>
+        perLitre(totals.litres !== null && totals.litres > 0 ? row.cost / totals.litres : null),
+      total: perLitre(totals.perLitre.salary),
+    },
+    {
+      header: 'Share',
+      cell: (row) => <ShareBar share={share(row.cost, totals.salaryCost)} hue={palette.salary} />,
     },
   ];
 
@@ -337,6 +366,29 @@ export function BreakdownPanels({
       </ReportPanel>
 
       <ReportPanel
+        title="Salary"
+        subtitle={
+          month
+            ? "Staff on the payroll, by department: each month's bill at the Cost Master salary rate, spread over its days"
+            : "Staff on the payroll, by department: one day's share of the month's bill at the Cost Master salary rate"
+        }
+        icon={Wallet}
+        accent="amber"
+        flush
+      >
+        <BreakdownTable
+          rows={breakdown.salary}
+          rowKey={(row) => row.department}
+          columns={salary}
+          empty="No salary is set for any department."
+          gap={
+            sectionGap(meta, 'salary') ??
+            'No salary rate is in force for these days. Set one in Admin › Cost Master.'
+          }
+        />
+      </ReportPanel>
+
+      <ReportPanel
         title="Electricity"
         subtitle="This company's share of each meter's own units (reading less sub-meters)"
         icon={Zap}
@@ -357,7 +409,6 @@ export function BreakdownPanels({
         subtitle="Customer returns by the day the truck arrived (or was booked, if it has not), valued at the invoice price; not part of the cost per litre"
         icon={Undo2}
         accent="pink"
-        className="xl:col-span-2"
         flush
       >
         <BreakdownTable

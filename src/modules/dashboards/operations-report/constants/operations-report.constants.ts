@@ -15,8 +15,8 @@ import {
  * be created on the live database and added to each group before anybody could
  * open the page.
  *
- * The factory expense pair, because the report's money is the factory's wage
- * and power bill — the disclosure those rights already carry (see
+ * The factory expense pair, because the report's money is the factory's wage,
+ * salary and power bill — the disclosure those rights already carry (see
  * `admin_board/permissions.py`). And the production COST feed rather than the
  * production reports one: a cost per litre is exactly what that right was kept
  * separate to protect, so a shift supervisor who reads output does not read
@@ -25,7 +25,7 @@ import {
  * The server (`operations_report/views.py`) opens on exactly these: the two
  * feeds and the operational rights they mirror. Each half of the report is
  * then shown only to a holder of its own right — production and wastage to the
- * run cost right, labour and power to the factory expense one.
+ * run cost right, labour, salary and power to the factory expense one.
  *
  * These must ALSO be present on the parent `/dashboards` navigation entry, or
  * the whole Dashboards menu hides from a user who holds only one of them.
@@ -48,11 +48,12 @@ export const DAY_VIEW_TREND_DAYS = 14;
  * Series colours. One hue per measure, the same on every chart and every legend
  * chip, so "orange" means power wherever it appears.
  *
- * The three cost heads are the reference palette's first three categorical
+ * The four cost heads are the reference palette's first four categorical
  * slots, in its order — validated as a set for colour-blind separation in both
- * themes, because they sit side by side in the per-litre stack. Production, Goods
- * Return (the reference palette's magenta) and the per-litre total never share
- * a chart with them.
+ * themes, because they sit side by side in the per-litre stack, in that order.
+ * Salary (slot 4, yellow) therefore comes last in the stack, never beside
+ * electricity's orange. Production, Goods Return (the reference palette's
+ * magenta) and the per-litre total never share a chart with them.
  */
 export interface ReportPalette {
   production: string;
@@ -60,6 +61,7 @@ export interface ReportPalette {
   labour: string;
   power: string;
   wastage: string;
+  salary: string;
   total: string;
   grid: string;
   axis: string;
@@ -72,6 +74,7 @@ export const REPORT_PALETTES: Record<'light' | 'dark', ReportPalette> = {
     labour: '#2a78d6',
     power: '#eb6834',
     wastage: '#1baf7a',
+    salary: '#eda100',
     total: '#334155',
     grid: '#e5e7eb',
     axis: '#6b7280',
@@ -82,6 +85,7 @@ export const REPORT_PALETTES: Record<'light' | 'dark', ReportPalette> = {
     labour: '#3987e5',
     power: '#d95926',
     wastage: '#199e70',
+    salary: '#c98500',
     total: '#cbd5e1',
     grid: '#2a2a28',
     axis: '#9ca3af',

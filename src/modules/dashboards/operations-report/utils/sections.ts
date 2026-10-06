@@ -16,6 +16,7 @@ export const SECTION_LABEL: Record<ReportSection, string> = {
   production: 'Production',
   wastage: 'Wastage',
   labour: 'Labour',
+  salary: 'Salary',
   power: 'Electricity',
   returns: 'Goods Return (GR)',
 };

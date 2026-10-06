@@ -12,6 +12,7 @@ const day = (date: string, overrides: Partial<ReportDay> = {}): ReportDay => ({
   lines: [{ line: '10 Head', runs: 2, cases: 100, litres: 1_200 }],
   wastage: [{ item: 'Caps', unit: 'pcs', quantity: 50, value: 30, unpriced: 0 }],
   labour: [{ group: 'Imran', heads: 10, day_shift: 8, night_shift: 2, cost: 6_500 }],
+  salary: [{ department: 'Packing', monthly: 30_000, cost: 1_000 }],
   power: [{ area: 'Blowing', kwh: 300, cost: 2_505 }],
   returns: [
     {
@@ -37,18 +38,25 @@ const day = (date: string, overrides: Partial<ReportDay> = {}): ReportDay => ({
 });
 
 describe('totalsOf', () => {
-  it('costs a litre as labour, power and priced waste over litres filled', () => {
+  it('costs a litre as labour, salary, power and priced waste over litres filled', () => {
     const totals = totalsOf([day('2026-09-01')]);
     expect(totals.perLitre.labour).toBeCloseTo(6_500 / 1_200, 6);
+    expect(totals.perLitre.salary).toBeCloseTo(1_000 / 1_200, 6);
     expect(totals.perLitre.power).toBeCloseTo(2_505 / 1_200, 6);
     expect(totals.perLitre.wastage).toBeCloseTo(30 / 1_200, 6);
-    expect(totals.perLitre.total).toBeCloseTo((6_500 + 2_505 + 30) / 1_200, 6);
+    expect(totals.perLitre.total).toBeCloseTo((6_500 + 1_000 + 2_505 + 30) / 1_200, 6);
     expect(totals.kwhPerKl).toBeCloseTo(300 / 1.2, 6);
   });
 
   it('gives no cost per litre, rather than zero, for a day nothing was filled', () => {
     const totals = totalsOf([day('2026-09-06', { lines: [] })]);
-    expect(totals.perLitre).toEqual({ labour: null, power: null, wastage: null, total: null });
+    expect(totals.perLitre).toEqual({
+      labour: null,
+      salary: null,
+      power: null,
+      wastage: null,
+      total: null,
+    });
     // The spend is still there — the day cost something.
     expect(totals.labourCost).toBe(6_500);
   });
@@ -97,6 +105,35 @@ describe('totalsOf', () => {
     expect(totals.perLitre.total).toBeNull();
   });
 
+  it('sums salary over the days, and gives the bill in force on the last one', () => {
+    const totals = totalsOf([
+      day('2026-09-30'),
+      day('2026-10-01', { salary: [{ department: 'Packing', monthly: 31_000, cost: 1_000 }] }),
+    ]);
+    expect(totals.salaryCost).toBe(2_000);
+    expect(totals.salaryMonthly).toBe(31_000);
+    expect(totals.salaryUncostedDays).toBe(0);
+  });
+
+  it('will not total salary with a day that had no rate, and counts the day', () => {
+    const totals = totalsOf([day('2026-09-01'), day('2026-09-02', { salary: null })]);
+    expect(totals.salaryCost).toBeNull();
+    expect(totals.salaryUncostedDays).toBe(1);
+    expect(totals.perLitre.salary).toBeNull();
+    expect(totals.perLitre.total).toBeNull();
+  });
+
+  it('reads a server that sends no salary as not read, never as nobody paid', () => {
+    const old = day('2026-09-01');
+    delete old.salary;
+    const totals = totalsOf([old]);
+    expect(totals.salaryCost).toBeNull();
+    // Not a month of missing rates: the section is simply not there.
+    expect(totals.salaryUncostedDays).toBe(0);
+    expect(totals.perLitre.total).toBeNull();
+    expect(breakdownOf([old]).salary).toBeNull();
+  });
+
   it('sums electricity past an unread day and counts it', () => {
     const totals = totalsOf([day('2026-09-01'), day('2026-09-02', { power: null })]);
     expect(totals.kwh).toBe(300);
@@ -132,7 +169,7 @@ describe('Goods Return (GR)', () => {
 
   it('keeps returns out of the cost per litre', () => {
     const totals = totalsOf([day('2026-09-01')]);
-    expect(totals.perLitre.total).toBeCloseTo((6_500 + 2_505 + 30) / 1_200, 6);
+    expect(totals.perLitre.total).toBeCloseTo((6_500 + 1_000 + 2_505 + 30) / 1_200, 6);
   });
 
   it('reads a server that sends no returns as not read, never as nothing returned', () => {
@@ -161,6 +198,7 @@ describe('breakdownOf', () => {
       cost: 13_000,
     });
     expect(merged.power).toEqual([{ area: 'Blowing', kwh: 600, cost: 5_010 }]);
+    expect(merged.salary).toEqual([{ department: 'Packing', monthly: 30_000, cost: 2_000 }]);
   });
 
   it('keeps a withheld section withheld', () => {
@@ -231,6 +269,7 @@ describe('buildReport', () => {
     const report = buildReport(period, { company: OIL, days, meta: NO_META });
 
     expect(report.daily).toHaveLength(30);
+    expect(report.dailyTotals.salaryCost).toBe(30 * 1_000);
     expect(report.totals.litres).toBe(30 * 1_200);
     expect(report.previous.litres).toBe(31 * 600);
     expect(report.previousLabel).toBe('Aug');

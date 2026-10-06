@@ -8,8 +8,8 @@
  *
  * NULL MEANS NOT KNOWN, AND SURVIVES THE ADDITION. A section the reader may not
  * see, or that could not be read, is null on every day, and its totals are null
- * — never zero. Labour with no rate in force is null too: a wage bill missing a
- * day is not a wage bill. A day nobody read the meters is the one gap that is
+ * — never zero. Labour or salary with no rate in force is null too: a wage bill
+ * missing a day is not a wage bill. A day nobody read the meters is the one gap that is
  * summed past, and counted, because a month of electricity should not vanish
  * over one unread Sunday.
  */
@@ -26,6 +26,7 @@ import type {
   ReportPeriod,
   ReportTotals,
   ReturnEntry,
+  SalaryEntry,
   WastageEntry,
 } from '../types';
 import { comparisonSpan, daysBetween, trendSpan } from './period';
@@ -50,7 +51,15 @@ function rowsOf<T>(days: readonly ReportDay[], pick: (day: ReportDay) => T[] | n
 
 /** A day with nothing in it — what a day outside the fetched span reads as. */
 export function emptyDay(date: string): ReportDay {
-  return { date, lines: null, wastage: null, labour: null, power: null, returns: null };
+  return {
+    date,
+    lines: null,
+    wastage: null,
+    labour: null,
+    salary: null,
+    power: null,
+    returns: null,
+  };
 }
 
 /**
@@ -58,14 +67,21 @@ export function emptyDay(date: string): ReportDay {
  *
  * - Litres are what the runs with known volumes filled.
  * - Heads are averaged over the days; man-days and money are summed.
- * - A litre's cost is labour, power and priced packing waste, over litres
- *   filled. Null if any head is unknown, so the total never quietly drops a part.
+ * - Salary is summed over the days, each carrying its share of the month: a
+ *   span missing a day's rate has no salary total.
+ * - A litre's cost is labour, salary, power and priced packing waste, over
+ *   litres filled. Null if any head is unknown, so the total never quietly
+ *   drops a part.
  */
 export function totalsOf(days: readonly ReportDay[]): ReportTotals {
   const lines = rowsOf(days, (day) => day.lines);
   const wastage = rowsOf(days, (day) => day.wastage);
   const labour = rowsOf(days, (day) => day.labour);
   const returns = rowsOf(days, (day) => day.returns ?? null);
+
+  const readSalary = days.filter((day) => (day.salary ?? null) !== null);
+  const salary = readSalary.flatMap((day) => day.salary ?? []);
+  const lastSalaried = readSalary[readSalary.length - 1]?.salary ?? null;
 
   const readPower = days.filter((day) => day.power !== null);
   const power = readPower.length > 0 ? readPower.flatMap((day) => day.power ?? []) : null;
@@ -79,21 +95,22 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
     labour && labour.every((entry) => entry.cost !== null)
       ? sum(labour, (entry) => entry.cost ?? 0)
       : null;
+  const salaryCost =
+    days.length > 0 && readSalary.length === days.length ? sum(salary, (entry) => entry.cost) : null;
   const manDays = labour ? sum(labour, (entry) => entry.heads) : null;
   const kwh = power ? sum(power, (entry) => entry.kwh) : null;
   const powerCost = power ? sum(power, (entry) => entry.cost) : null;
 
-  const labourPerLitre = perLitre(labourCost, litres);
-  const powerPerLitre = perLitre(powerCost, litres);
-  const wastagePerLitre = perLitre(wastageValue, litres);
+  const heads = {
+    labour: perLitre(labourCost, litres),
+    salary: perLitre(salaryCost, litres),
+    power: perLitre(powerCost, litres),
+    wastage: perLitre(wastageValue, litres),
+  };
+  const parts = Object.values(heads);
   const cost: PerLitreCost = {
-    labour: labourPerLitre,
-    power: powerPerLitre,
-    wastage: wastagePerLitre,
-    total:
-      labourPerLitre !== null && powerPerLitre !== null && wastagePerLitre !== null
-        ? labourPerLitre + powerPerLitre + wastagePerLitre
-        : null,
+    ...heads,
+    total: parts.every((part) => part !== null) ? sum(parts, (part) => part ?? 0) : null,
   };
 
   return {
@@ -106,12 +123,18 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
     heads: manDays !== null && days.length > 0 ? manDays / days.length : null,
     manDays,
     labourCost,
+    salaryCost,
+    salaryMonthly: lastSalaried ? sum(lastSalaried, (entry) => entry.monthly) : null,
     kwh,
     powerCost,
     powerUnreadDays: power === null ? 0 : days.length - readPower.length,
     litresUnknownDays: days.filter((day) => day.lines?.some((line) => line.litres === null)).length,
     labourUncostedDays: days.filter((day) => day.labour?.some((entry) => entry.cost === null))
       .length,
+    // Like unread meter days, counted only where the section was read at all:
+    // a section withheld from this reader is null on every day, and is not a
+    // month of missing rates.
+    salaryUncostedDays: readSalary.length === 0 ? 0 : days.length - readSalary.length,
     kwhPerKl: kwh !== null && litres !== null && litres > 0 ? kwh / (litres / 1000) : null,
     perLitre: cost,
     // A return with lines in two conditions is one return, so they are counted
@@ -153,12 +176,16 @@ function mergeBy<T>(
   return [...merged.values()].sort((a, b) => size(b) - size(a));
 }
 
-/** The four breakdowns, added up over the days. People stay a daily average. */
+/**
+ * The breakdowns, added up over the days. People stay a daily average; a
+ * department's monthly bill is the one in force on its last day.
+ */
 export function breakdownOf(days: readonly ReportDay[]): OperationsReport['breakdown'] {
   const dayCount = Math.max(days.length, 1);
   const lines = rowsOf(days, (day) => day.lines);
   const wastage = rowsOf(days, (day) => day.wastage);
   const labour = rowsOf(days, (day) => day.labour);
+  const readSalary = days.filter((day) => (day.salary ?? null) !== null);
   const readPower = days.filter((day) => day.power !== null);
   const returns = rowsOf(days, (day) => day.returns ?? null);
 
@@ -208,6 +235,15 @@ export function breakdownOf(days: readonly ReportDay[]): OperationsReport['break
         day_shift: row.day_shift / dayCount,
         night_shift: row.night_shift / dayCount,
       })),
+    salary:
+      readSalary.length === 0
+        ? null
+        : mergeBy<SalaryEntry>(
+            readSalary.flatMap((day) => day.salary ?? []),
+            (row) => row.department,
+            (into, row) => ({ ...into, monthly: row.monthly, cost: into.cost + row.cost }),
+            (row) => row.cost,
+          ),
     power:
       readPower.length === 0
         ? null
@@ -265,9 +301,10 @@ export function buildReport(
   const comparison = comparisonSpan(period);
   const trend = trendSpan(period);
 
-  const daily: ReportDaySummary[] = daysBetween(trend.from, trend.to).map((date) => ({
-    date,
-    ...totalsOf([readDay(date)]),
+  const trendDays = daysBetween(trend.from, trend.to).map(readDay);
+  const daily: ReportDaySummary[] = trendDays.map((day) => ({
+    date: day.date,
+    ...totalsOf([day]),
   }));
 
   return {
@@ -280,6 +317,7 @@ export function buildReport(
     previousLabel: comparison.label,
     breakdown: breakdownOf(days),
     daily,
+    dailyTotals: totalsOf(trendDays),
     meta: response.meta,
   };
 }

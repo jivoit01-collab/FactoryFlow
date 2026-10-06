@@ -1,6 +1,6 @@
 /**
- * The Operations Report: production, wastage, labour and electricity for a day
- * or a month, and what each litre cost to make.
+ * The Operations Report: production, wastage, labour, salary and electricity for
+ * a day or a month, and what each litre cost to make.
  *
  * `ReportDay` is what `GET /dashboards/operations-report/days/` sends per day
  * (`operations_report/services.py`). Everything else here is worked out from
@@ -49,6 +49,19 @@ export interface LabourEntry {
   cost: number | null;
 }
 
+/**
+ * One department's staff salary for a day: its month's bill over the month's
+ * days, the Cost Master `factory-salary` rate the Factory Expense board uses.
+ */
+export interface SalaryEntry {
+  /** "Packing", or "All departments" where one figure covers the payroll. */
+  department: string;
+  /** Rupees a month, the rate in force that day. */
+  monthly: number;
+  /** Rupees for the day — over a span, added up. */
+  cost: number;
+}
+
 /** One meter's share of the company's units. */
 export interface PowerEntry {
   /** The meter's name in Daily Electricity++. */
@@ -89,6 +102,12 @@ export interface ReportDay {
   lines: LineOutput[] | null;
   wastage: WastageEntry[] | null;
   labour: LabourEntry[] | null;
+  /**
+   * Staff salary. Null on a day with no salary rate in force, as well as when
+   * the section was not read. Optional because a server that predates it does
+   * not send it — read as not read, never as nobody paid.
+   */
+  salary?: SalaryEntry[] | null;
   power: PowerEntry[] | null;
   /**
    * Customer returns that arrived that day. Optional because a server that
@@ -97,7 +116,7 @@ export interface ReportDay {
   returns?: ReturnEntry[] | null;
 }
 
-export type ReportSection = 'production' | 'wastage' | 'labour' | 'power' | 'returns';
+export type ReportSection = 'production' | 'wastage' | 'labour' | 'salary' | 'power' | 'returns';
 
 export interface ReportMeta {
   /** Sections the server tried to read and could not. */
@@ -123,6 +142,7 @@ export interface ReportDaysResponse {
  */
 export interface PerLitreCost {
   labour: number | null;
+  salary: number | null;
   power: number | null;
   wastage: number | null;
   total: number | null;
@@ -148,6 +168,10 @@ export interface ReportTotals {
   manDays: number | null;
   /** Null when any day's labour had no rate — a total missing a part is not a total. */
   labourCost: number | null;
+  /** Staff salary accrued over the span; null when any day had no rate in force. */
+  salaryCost: number | null;
+  /** The monthly bill in force on the span's last salaried day. */
+  salaryMonthly: number | null;
   kwh: number | null;
   powerCost: number | null;
   /** Days in the span nobody entered the meter register. */
@@ -156,6 +180,8 @@ export interface ReportTotals {
   litresUnknownDays: number;
   /** Days in the span whose labour had no rate in force. */
   labourUncostedDays: number;
+  /** Days in the span with no salary rate in force. */
+  salaryUncostedDays: number;
   /** Goods Return (GR): distinct returns, pieces, and rupees over priced lines. */
   grReturns: number | null;
   grQuantity: number | null;
@@ -189,6 +215,7 @@ export interface OperationsReport {
     lines: LineOutput[] | null;
     wastage: WastageEntry[] | null;
     labour: LabourEntry[] | null;
+    salary: SalaryEntry[] | null;
     power: PowerEntry[] | null;
     returns: ReturnEntry[] | null;
   };
@@ -197,6 +224,8 @@ export interface OperationsReport {
    * on the day view the fortnight ending on the day.
    */
   daily: ReportDaySummary[];
+  /** The days of `daily` added up — the month on the month view, the fortnight on the day view. */
+  dailyTotals: ReportTotals;
   meta: ReportMeta;
 }
 
