@@ -164,8 +164,21 @@ export interface BillSummary {
   totals: BillSummaryTotals;
 }
 
+/** The transport details the bill's dispatch plan holds now. */
+export interface BillSummaryPlanTransport {
+  bilty_no: string;
+  bilty_date: string | null;
+  transporter_name: string;
+  vehicle_no: string;
+  driver_name: string;
+  driver_mobile: string;
+}
+
 export interface BillSummaryDetail extends BillSummary {
   lines: BillSummaryLine[];
+  /** The plan as it is now, which the sheet copied when it was raised. The
+   *  re-send form fills its blanks from here. Null when the bill has no plan. */
+  plan_transport?: BillSummaryPlanTransport | null;
   /** Set on a SAP row somebody has already taken over: open that sheet instead. */
   app_summary_id?: number | null;
 }
@@ -267,9 +280,11 @@ export const billSummaryApi = {
     return data;
   },
 
-  async detail(id: number): Promise<BillSummaryDetail> {
+  /** `companyCode` names the sheet's company, for a screen spanning several. */
+  async detail(id: number, companyCode?: string): Promise<BillSummaryDetail> {
     const { data } = await apiClient.get<BillSummaryDetail>(
       API_ENDPOINTS.DISPATCH.BILL_SUMMARY_DETAIL(id),
+      companyCode ? { headers: { 'Company-Code': companyCode } } : undefined,
     );
     return data;
   },
@@ -329,10 +344,12 @@ export const billSummaryApi = {
   async resubmit(
     id: number,
     payload: ResubmitBillSummaryPayload,
+    companyCode?: string,
   ): Promise<BillSummaryDetail> {
     const { data } = await apiClient.post<BillSummaryDetail>(
       API_ENDPOINTS.DISPATCH.BILL_SUMMARY_RESUBMIT(id),
       payload,
+      companyCode ? { headers: { 'Company-Code': companyCode } } : undefined,
     );
     return data;
   },

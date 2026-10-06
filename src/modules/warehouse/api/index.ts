@@ -7,6 +7,7 @@ export type {
   BillSummaryDetail,
   BillSummaryLine,
   BillSummaryListParams,
+  BillSummaryPlanTransport,
   BillSummaryStatus,
   BulkSubmitCandidate,
   BulkSubmitResult,

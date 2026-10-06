@@ -80,10 +80,12 @@ export function useAdoptSapBillSummary() {
   });
 }
 
-export function useBillSummary(id: number | null) {
+/** `companyCode` names the sheet's company, for a screen spanning several. The
+ *  id alone keys the cache: a sheet's id is unique across companies. */
+export function useBillSummary(id: number | null, companyCode?: string) {
   return useQuery({
     queryKey: BILL_SUMMARY_QUERY_KEYS.detail(id ?? 0),
-    queryFn: () => billSummaryApi.detail(id as number),
+    queryFn: () => billSummaryApi.detail(id as number, companyCode),
     enabled: Boolean(id),
   });
 }
@@ -166,11 +168,11 @@ export function useRejectBillSummary() {
   });
 }
 
-export function useResubmitBillSummary(id: number) {
+export function useResubmitBillSummary(id: number, companyCode?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: ResubmitBillSummaryPayload) =>
-      billSummaryApi.resubmit(id, payload),
+      billSummaryApi.resubmit(id, payload, companyCode),
     onSuccess: (data) => {
       qc.setQueryData(BILL_SUMMARY_QUERY_KEYS.detail(id), data);
       void qc.invalidateQueries({ queryKey: BILL_SUMMARY_QUERY_KEYS.all });

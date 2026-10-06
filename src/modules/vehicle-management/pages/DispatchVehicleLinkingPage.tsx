@@ -77,11 +77,14 @@ import {
   useUnlinkDispatchVehicle,
 } from '../api';
 import {
+  AddBillBiltyDialog,
+  type AddedBilty,
   DispatchLinkingSheet,
   LateDispatchApprovalDialog,
   type LateDispatchApprovalTarget,
   LinkVehicleBillsDialog,
   type LinkVehicleBillsSelection,
+  type TruckBiltySuggestion,
 } from '../components';
 import type { CustomerBiltyPayload, DispatchVehicleLinkPayload } from '../types';
 import { invoiceFieldsFromBill } from '../utils/dispatchLinkPayload';
@@ -334,6 +337,57 @@ function matchesSearch(card: TruckCard, query: string) {
   );
 }
 
+/**
+ * The bilty already on this truck for the bill's consignee, if any.
+ *
+ * Linking puts one LR on all of a consignee's bills on a truck, across
+ * companies, so a bill added later for the same customer most likely shares
+ * it. It is offered, not assumed: the desk sees it and can change it.
+ */
+function truckBiltyFor(card: TruckCard, bill: DispatchBill): TruckBiltySuggestion | null {
+  const code = (bill.card_code ?? '').trim();
+  const name = (bill.card_name ?? '').trim();
+  const sameCustomer = (otherCode?: string | null, otherName?: string | null) =>
+    code ? (otherCode ?? '').trim() === code : name !== '' && (otherName ?? '').trim() === name;
+
+  for (const entry of card.entries) {
+    for (const other of entry.bills) {
+      const biltyNo = other.bilty_no?.trim();
+      if (biltyNo && other.bilty_date && sameCustomer(other.customer_code, other.customer_name)) {
+        return {
+          bilty_no: biltyNo,
+          bilty_date: other.bilty_date.slice(0, 10),
+          docNum: other.sap_doc_num,
+        };
+      }
+    }
+  }
+  for (const other of card.bookedBills) {
+    const biltyNo = other.plan.bilty_no?.trim();
+    if (other === bill || !biltyNo || !other.plan.bilty_date) continue;
+    if (sameCustomer(other.card_code, other.card_name)) {
+      return {
+        bilty_no: biltyNo,
+        bilty_date: other.plan.bilty_date.slice(0, 10),
+        docNum: other.doc_num,
+      };
+    }
+  }
+  return null;
+}
+
+/** A bill on its way onto a truck that is already inside, waiting for its bilty. */
+interface PendingAdd {
+  card: TruckCard;
+  bill: DispatchBill;
+  /** The company gate-in it joins. Null puts it on the truck under its own
+   *  company, creating that company's chain there. */
+  entry: InsideDispatchVehicle | null;
+  companyCode: string;
+  /** Which control it came from, so that picker can close once it lands. */
+  from: 'entry' | 'truck' | 'attach';
+}
+
 /** A destination truck option for the Move action. */
 interface MoveTarget {
   vehicleId: number;
@@ -447,6 +501,7 @@ export default function DispatchVehicleLinkingPage() {
     null,
   );
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<PendingAdd | null>(null);
   // Linking flow: the bill/vehicle picker, then the transport sheet.
   const [pickerFor, setPickerFor] = useState<
     { mode: 'new' } | { mode: 'add'; card: TruckCard } | null
@@ -624,64 +679,64 @@ export default function DispatchVehicleLinkingPage() {
     return extra.length > 0 ? [...extra, ...linkableBills] : linkableBills;
   }, [linkableBills, linkLookup.bills]);
 
-  const handleAdd = async (entry: InsideDispatchVehicle, bill: DispatchBill) => {
-    try {
-      const res = await addBill.mutateAsync({
-        vehicle_entry_id: entry.vehicle_entry_id,
-        sap_doc_entry: bill.doc_entry,
-      });
-      toast.success(res.detail || 'Bill added');
-      setAddForVehicleEntryId(null);
-      setAddSearch('');
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to add the bill'));
-    }
-  };
+  /* Every way onto a truck already inside goes through the bilty first, as
+     linking does: a bill added without one used to reach the warehouse as a
+     bill summary with no bilty, and come straight back. */
+  const handleAdd = (card: TruckCard, entry: InsideDispatchVehicle, bill: DispatchBill) =>
+    setPendingAdd({ card, bill, entry, companyCode: entry.company_code, from: 'entry' });
 
-  const handleAddToTruck = async (vehicleId: number, companyCode: string, bill: DispatchBill) => {
-    try {
-      const res = await addBillToTruck.mutateAsync({
-        vehicle_id: vehicleId,
-        company_code: companyCode,
-        sap_doc_entry: bill.doc_entry,
-      });
-      toast.success(res.detail || 'Bill added');
-      setAddTruckId(null);
-      setAddTruckCompany(null);
-      setAddTruckSearch('');
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to add the bill'));
-    }
-  };
+  const handleAddToTruck = (card: TruckCard, companyCode: string, bill: DispatchBill) =>
+    setPendingAdd({ card, bill, entry: null, companyCode, from: 'truck' });
 
   /**
    * Put a bill that is already booked onto this truck on one of its gate-ins —
    * the late-booked-bill case. Goes to that company's gate-in when the truck has
    * one, otherwise creates the company's chain on the truck.
    */
-  const handleAttachBooked = async (card: TruckCard, bill: DispatchBill) => {
-    const entry = card.entries.find((item) => item.company_code === bill.company_code);
+  const handleAttachBooked = (card: TruckCard, bill: DispatchBill) => {
+    const entry = card.entries.find((item) => item.company_code === bill.company_code) ?? null;
+    if (!entry && !bill.company_code) {
+      toast.error('This bill has no company tag — reload the page and try again.');
+      return;
+    }
+    setPendingAdd({ card, bill, entry, companyCode: bill.company_code ?? '', from: 'attach' });
+  };
+
+  const addBillWithBilty = async (pending: PendingAdd, bilty: AddedBilty) => {
+    const attaching = pending.from === 'attach';
     try {
-      if (entry) {
-        const res = await addBill.mutateAsync({
-          vehicle_entry_id: entry.vehicle_entry_id,
-          sap_doc_entry: bill.doc_entry,
-        });
-        toast.success(res.detail || 'Bill attached to the gate-in');
-        return;
+      const res = pending.entry
+        ? await addBill.mutateAsync({
+            vehicle_entry_id: pending.entry.vehicle_entry_id,
+            sap_doc_entry: pending.bill.doc_entry,
+            ...bilty,
+          })
+        : await addBillToTruck.mutateAsync({
+            vehicle_id: pending.card.vehicleId,
+            company_code: pending.companyCode,
+            sap_doc_entry: pending.bill.doc_entry,
+            ...bilty,
+          });
+      const done = !attaching
+        ? 'Bill added'
+        : pending.entry
+          ? 'Bill attached to the gate-in'
+          : 'Bill attached to the truck';
+      toast.success(res.detail || done);
+      setPendingAdd(null);
+      if (pending.from === 'entry') {
+        setAddForVehicleEntryId(null);
+        setAddSearch('');
       }
-      if (!bill.company_code) {
-        toast.error('This bill has no company tag — reload the page and try again.');
-        return;
+      if (pending.from === 'truck') {
+        setAddTruckId(null);
+        setAddTruckCompany(null);
+        setAddTruckSearch('');
       }
-      const res = await addBillToTruck.mutateAsync({
-        vehicle_id: card.vehicleId,
-        company_code: bill.company_code,
-        sap_doc_entry: bill.doc_entry,
-      });
-      toast.success(res.detail || 'Bill attached to the truck');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to attach the bill'));
+      toast.error(
+        getErrorMessage(error, attaching ? 'Failed to attach the bill' : 'Failed to add the bill'),
+      );
     }
   };
 
@@ -1370,9 +1425,7 @@ export default function DispatchVehicleLinkingPage() {
                             notFoundText="No addable bills found"
                             errorText="Failed to load bills"
                             onClear={() => undefined}
-                            onItemSelect={(bill) =>
-                              void handleAddToTruck(card.vehicleId, addTruckCompany, bill)
-                            }
+                            onItemSelect={(bill) => handleAddToTruck(card, addTruckCompany, bill)}
                             renderItem={(bill) => (
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-medium">
@@ -1387,7 +1440,8 @@ export default function DispatchVehicleLinkingPage() {
                           />
                           <p className="mt-2 text-xs text-muted-foreground">
                             Adds the bill to this truck under a new gate-in for the selected
-                            company. Type a full bill number to find one outside the recent list.
+                            company, with its bilty. Type a full bill number to find one outside
+                            the recent list.
                           </p>
                         </div>
                       )}
@@ -1609,7 +1663,7 @@ export default function DispatchVehicleLinkingPage() {
                               notFoundText="No addable bills found"
                               errorText="Failed to load bills"
                               onClear={() => undefined}
-                              onItemSelect={(bill) => void handleAdd(entry, bill)}
+                              onItemSelect={(bill) => handleAdd(card, entry, bill)}
                               renderItem={(bill) => (
                                 <div className="min-w-0 flex-1">
                                   <div className="truncate text-sm font-medium">
@@ -1624,9 +1678,9 @@ export default function DispatchVehicleLinkingPage() {
                             />
                             <p className="mt-2 text-xs text-muted-foreground">
                               Only booked/pending, not-yet-attached bills for {entry.company_name}{' '}
-                              are addable. The list shows recent bills; type a full bill number to
-                              find an older one. Adding is blocked once the truck photo is taken at
-                              docking.
+                              are addable, each with its bilty. The list shows recent bills; type a
+                              full bill number to find an older one. Adding is blocked once the
+                              truck photo is taken at docking.
                             </p>
                           </div>
                         )}
@@ -1681,7 +1735,7 @@ export default function DispatchVehicleLinkingPage() {
                                   variant="ghost"
                                   disabled={addBill.isPending || addBillToTruck.isPending}
                                   title="Put this bill on the truck's gate-in"
-                                  onClick={() => void handleAttachBooked(card, bill)}
+                                  onClick={() => handleAttachBooked(card, bill)}
                                 >
                                   <PackagePlus className="mr-1 h-4 w-4" />
                                   Attach
@@ -1737,6 +1791,21 @@ export default function DispatchVehicleLinkingPage() {
         existing={approvalTarget ? (approvalByVehicle.get(approvalTarget.vehicleId) ?? null) : null}
         today={today}
         onClose={() => setApprovalTarget(null)}
+      />
+
+      <AddBillBiltyDialog
+        target={
+          pendingAdd && {
+            bill: pendingAdd.bill,
+            vehicleNo: compact(pendingAdd.card.vehicleNumber),
+            suggestion: truckBiltyFor(pendingAdd.card, pendingAdd.bill),
+          }
+        }
+        isSaving={addBill.isPending || addBillToTruck.isPending}
+        onCancel={() => setPendingAdd(null)}
+        onConfirm={(bilty) => {
+          if (pendingAdd) void addBillWithBilty(pendingAdd, bilty);
+        }}
       />
 
       <TruckFreightDialog

@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Loader2, Printer } from 'lucide-react';
+import { AlertTriangle, FileText, Loader2, Printer, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ import {
   type BulkSubmitSkipped,
 } from '../api';
 import { BillSummaryTimes } from '../pages/billSummary/BillSummaryTimes';
+import { ResendBillSummaryForm } from '../pages/billSummary/ResendBillSummaryForm';
 import {
   PRINTABLE_BILL_SUMMARY_STATUSES,
   sheetsForBills,
@@ -47,6 +48,41 @@ interface SubmitBillSummariesDialogProps {
   showSent?: boolean;
   /** Called once the user has answered, either way, so the caller can move on. */
   onClose: () => void;
+}
+
+/**
+ * Where the truck's sheets have got to, said in the dialog's opening line.
+ *
+ * It used to read "Every bill on this truck already has a sheet. Print the
+ * approved ones" whatever the sheets said, including over three that had been
+ * sent back with nothing on screen to fix them.
+ */
+function describeSentSheets(sent: BillSummary[]): string {
+  if (sent.length === 0) return 'There is nothing on this truck to send. See below for why.';
+  const count = (statuses: BillSummary['status'][]) =>
+    sent.filter((row) => statuses.includes(row.status)).length;
+  const back = count(['REJECTED']);
+  const waiting = count(['PENDING_APPROVAL']);
+  const printable = count(PRINTABLE_BILL_SUMMARY_STATUSES);
+  const parts = ['Every bill on this truck already has a sheet.'];
+  if (back > 0) {
+    parts.push(
+      back === 1
+        ? 'One was sent back by the warehouse: fix it below and send it over again.'
+        : `${back} were sent back by the warehouse: fix them below and send them over again.`,
+    );
+  }
+  if (waiting > 0) {
+    parts.push(
+      waiting === 1
+        ? 'One is with the warehouse, waiting for a dispatch date.'
+        : `${waiting} are with the warehouse, waiting for a dispatch date.`,
+    );
+  }
+  if (printable > 0) {
+    parts.push('Print the approved ones to sign and take down to the godown.');
+  }
+  return parts.join(' ');
 }
 
 interface Preview {
@@ -81,6 +117,8 @@ export function SubmitBillSummariesDialog({
   const printer = useBillSummaryPrinter();
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  /** The sent-back sheet whose fix-and-re-send form is open. */
+  const [fixingId, setFixingId] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +202,20 @@ export function SubmitBillSummariesDialog({
     );
   }
 
+  /* Re-sent from here: the row now reads "With the warehouse", in place. */
+  function resent(updated: BillSummary) {
+    setFixingId(null);
+    setPreview(
+      (current) =>
+        current && {
+          ...current,
+          sent: current.sent.map((sheet) =>
+            sheet.id === updated.id ? { ...sheet, ...updated } : sheet,
+          ),
+        },
+    );
+  }
+
   async function submit() {
     setSubmitting(true);
     let created = 0;
@@ -222,7 +274,7 @@ export function SubmitBillSummariesDialog({
             </DialogTitle>
             <DialogDescription>
               {nothingToSend
-                ? 'Every bill on this truck already has a sheet. Print the approved ones to sign and take down to the godown.'
+                ? describeSentSheets(sent)
                 : `${vehicleNo ? `${vehicleNo} — ` : ''}the sheets go to the warehouse, which sets the dispatch date and approves. Nothing is written to SAP until then.`}
             </DialogDescription>
           </DialogHeader>
@@ -232,7 +284,7 @@ export function SubmitBillSummariesDialog({
               <Loader2 className="h-4 w-4 animate-spin" /> Reading the bills…
             </p>
           ) : (
-            <div className="max-h-72 space-y-2 overflow-y-auto">
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto">
               {eligible.map((row) => (
                 <div
                   key={row.doc_entry}
@@ -278,39 +330,78 @@ export function SubmitBillSummariesDialog({
                   {sent.map((row) => {
                     const printable =
                       PRINTABLE_BILL_SUMMARY_STATUSES.includes(row.status) && row.id !== null;
+                    const sentBack = row.status === 'REJECTED' && row.id !== null;
+                    const fixing = sentBack && fixingId === row.id;
                     return (
-                      <div
-                        key={row.key}
-                        className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"
-                      >
-                        <span className="min-w-0">
-                          <FileText className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                          <strong>{row.sap_invoice_doc_num}</strong>
-                          <span className="text-muted-foreground"> · {row.entry_no}</span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {row.customer_name}
+                      <div key={row.key} className="space-y-2 rounded-md border p-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="min-w-0">
+                            <FileText className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                            <strong>{row.sap_invoice_doc_num}</strong>
+                            <span className="text-muted-foreground"> · {row.entry_no}</span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {row.customer_name}
+                            </span>
+                            <BillSummaryTimes sheet={row} />
+                            {/* The reason is the whole message: "sent back" alone
+                                sends somebody off to find out what for. */}
+                            {sentBack && (
+                              <span className="block text-xs text-orange-800 dark:text-orange-400">
+                                {row.rejected_by_name || 'The warehouse'}: {row.reject_reason}
+                              </span>
+                            )}
                           </span>
-                          <BillSummaryTimes sheet={row} />
-                        </span>
-                        <span className="flex shrink-0 items-center gap-2">
-                          <Badge variant="outline">{BILL_SUMMARY_STATUS_LABELS[row.status]}</Badge>
-                          {printable && (
-                            <Button
-                              size="sm"
-                              variant={row.status === 'APPROVED' ? 'default' : 'outline'}
-                              disabled={printer.printingId !== null}
-                              aria-label={`Print ${row.sap_invoice_doc_num}`}
-                              onClick={() => void printSheet(row)}
+                          <span className="flex shrink-0 items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={
+                                sentBack
+                                  ? 'border-orange-300 text-orange-800 dark:border-orange-500/40 dark:text-orange-400'
+                                  : undefined
+                              }
                             >
-                              {printer.printingId === row.id ? (
-                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Printer className="mr-1.5 h-3.5 w-3.5" />
-                              )}
-                              {row.status === 'APPROVED' ? 'Print' : 'Reprint'}
-                            </Button>
-                          )}
-                        </span>
+                              {BILL_SUMMARY_STATUS_LABELS[row.status]}
+                            </Badge>
+                            {sentBack && (
+                              <Button
+                                size="sm"
+                                variant={fixing ? 'ghost' : 'default'}
+                                aria-label={`Fix ${row.sap_invoice_doc_num}`}
+                                aria-expanded={fixing}
+                                onClick={() => setFixingId(fixing ? null : row.id)}
+                              >
+                                <Wrench className="mr-1.5 h-3.5 w-3.5" />
+                                {fixing ? 'Close' : 'Fix'}
+                              </Button>
+                            )}
+                            {printable && (
+                              <Button
+                                size="sm"
+                                variant={row.status === 'APPROVED' ? 'default' : 'outline'}
+                                disabled={printer.printingId !== null}
+                                aria-label={`Print ${row.sap_invoice_doc_num}`}
+                                onClick={() => void printSheet(row)}
+                              >
+                                {printer.printingId === row.id ? (
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Printer className="mr-1.5 h-3.5 w-3.5" />
+                                )}
+                                {row.status === 'APPROVED' ? 'Print' : 'Reprint'}
+                              </Button>
+                            )}
+                          </span>
+                        </div>
+                        {fixing && row.id !== null && (
+                          <div className="border-t pt-2">
+                            <ResendBillSummaryForm
+                              sheetId={row.id}
+                              companyCode={row.company_code}
+                              idPrefix={`bs-fix-${row.id}`}
+                              onSent={resent}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

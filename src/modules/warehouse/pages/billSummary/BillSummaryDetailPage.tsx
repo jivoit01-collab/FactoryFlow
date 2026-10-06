@@ -39,7 +39,6 @@ import {
   useMarkBillSummaryPrinted,
   usePostBillSummaryToSap,
   useRejectBillSummary,
-  useResubmitBillSummary,
   useSapBillSummary,
   useWarehouseScope,
 } from '../../api';
@@ -47,6 +46,7 @@ import { BillInvoicePrintButton } from './BillInvoicePrintButton';
 import { billSummaryEvents } from './billSummaryEvents';
 import { BILL_SUMMARY_PRINT_STYLE, BillSummaryPrint } from './BillSummaryPrint';
 import { decidesSheet } from './billSummaryScope';
+import { ResendBillSummaryForm } from './ResendBillSummaryForm';
 
 function num(value: string | number, dp = 0): string {
   const n = Number(value ?? 0);
@@ -79,7 +79,6 @@ export default function BillSummaryDetailPage() {
   const adopt = useAdoptSapBillSummary();
   const approve = useApproveBillSummaries();
   const reject = useRejectBillSummary();
-  const resubmit = useResubmitBillSummary(sheetId);
   const markPrinted = useMarkBillSummaryPrinted(sheetId);
   const markPicked = useMarkBillSummaryPicked(sheetId);
 
@@ -95,8 +94,6 @@ export default function BillSummaryDetailPage() {
   const [dispatchDate, setDispatchDate] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [showSendBack, setShowSendBack] = useState(false);
   const [sendBackReason, setSendBackReason] = useState('');
-  /** The bilty the dispatch desk is adding before sending a sheet back over. */
-  const [fixBilty, setFixBilty] = useState<string | null>(null);
 
   if (isLoading) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
   if (!summary) return <p className="p-6 text-sm text-red-600">Bill summary not found.</p>;
@@ -192,15 +189,6 @@ export default function BillSummaryDetailPage() {
     );
     setShowSendBack(false);
     setSendBackReason('');
-  }
-
-  async function resend() {
-    await run(
-      () => resubmit.mutateAsync({ bilty_no: fixBilty ?? summary!.bilty_no }),
-      'Sent to the warehouse',
-      'Could not send it over.',
-    );
-    setFixBilty(null);
   }
 
   async function printAndRecord() {
@@ -486,32 +474,9 @@ export default function BillSummaryDetailPage() {
               )}
             </p>
             <p className="text-sm">{summary.reject_reason}</p>
-            {canPost && (
-              <div className="space-y-2 border-t pt-3">
-                <Label htmlFor="bs-fix-bilty">Bilty number</Label>
-                <Input
-                  id="bs-fix-bilty"
-                  value={fixBilty ?? summary.bilty_no}
-                  onChange={(event) => setFixBilty(event.target.value)}
-                  placeholder="NCR-4494"
-                />
-                <p className="text-xs text-muted-foreground">
-                  The usual reason a sheet comes back. Anything else on it is corrected on
-                  the dispatch plan, and the sheet re-sent from here.
-                </p>
-                <div className="flex justify-end">
-                  <Button
-                    disabled={resubmit.isPending}
-                    onClick={() => void resend()}
-                  >
-                    {resubmit.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="mr-2 h-4 w-4" />
-                    )}
-                    Send back to the warehouse
-                  </Button>
-                </div>
+            {canPost && summary.id !== null && (
+              <div className="border-t pt-3">
+                <ResendBillSummaryForm sheetId={summary.id} idPrefix="bs-fix" />
               </div>
             )}
           </CardContent>

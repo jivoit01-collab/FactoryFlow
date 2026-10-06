@@ -110,7 +110,18 @@ export interface EmptyVehicleGateInUpdateRequest {
   remarks?: string;
 }
 
-export interface AddBillToInsideVehicleRequest {
+/**
+ * The consignee's bilty, asked for when a bill joins a truck already inside, as
+ * linking asks for it. Number and date go together. Leaving both out keeps the
+ * bilty the plan already holds, and the server refuses a plan that has none.
+ */
+export interface AddedBillBilty {
+  bilty_no?: string;
+  /** `yyyy-MM-dd`. */
+  bilty_date?: string;
+}
+
+export interface AddBillToInsideVehicleRequest extends AddedBillBilty {
   /** VehicleEntry id of the inside dispatch gate-in to add the bill to. */
   vehicle_entry_id: number;
   /** SAP doc_entry of the dispatch bill to add. */
@@ -123,7 +134,7 @@ export interface AddBillToInsideVehicleResponse {
   sap_doc_entry: number;
 }
 
-export interface AddBillToTruckRequest {
+export interface AddBillToTruckRequest extends AddedBillBilty {
   /** Physical truck (vehicle id) to add the bill to. */
   vehicle_id: number;
   /** The bill's own company — its gate-in chain is created on the truck if absent. */
@@ -142,6 +153,12 @@ export interface InsideVehicleBill {
   not_removable_reason: string | null;
   /** entry_nos of OTHER gate-ins also carrying this bill (stale duplicate covers). */
   duplicate_on: string[];
+  /** Whose bill it is and which LR covers it, so a bill added for the same
+   *  consignee can be offered the same bilty. */
+  customer_code: string;
+  customer_name: string;
+  bilty_no: string;
+  bilty_date: string | null;
 }
 
 export interface InsideDispatchVehicle {
