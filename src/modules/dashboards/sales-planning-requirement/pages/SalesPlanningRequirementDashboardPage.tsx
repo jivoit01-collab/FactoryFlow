@@ -1,87 +1,60 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api';
 import { usePermission } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
+import { Input } from '@/shared/components/ui';
 
 import { SAPUnavailableBanner } from '../../components/SAPUnavailableBanner';
 import {
   useRefreshSalesPlanningRequirement,
   useSalesPlanningRequirementAnalysis,
-  useSalesPlanningRequirementReport,
+  useSalesPlanningRequirementSheet,
   useSalesPlanningRequirementStatus,
 } from '../api';
 import {
   SalesPlanningRequirementAnalysis,
-  SalesPlanningRequirementFilters,
-  SalesPlanningRequirementMetaCards,
   SalesPlanningRequirementRefreshPanel,
   SalesPlanningRequirementTable,
 } from '../components';
-import {
-  SALES_PLANNING_REQUIREMENT_PAGE_SIZE,
-} from '../constants';
-import type { SalesPlanningRequirementFilters as SalesPlanningRequirementFiltersType } from '../types';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
   return status === 502 || status === 503;
 }
 
+/**
+ * Sales Planning vs Requirement, laid out as a sheet.
+ *
+ * The whole report comes down at once and every filter works over the rows in
+ * hand: the Find box here, and an Excel funnel on each column of the sheet —
+ * the Status column's funnel is what the old Shortage / PO Covered drop-down
+ * was. A keystroke or a tick costs no round trip.
+ */
 export default function SalesPlanningRequirementDashboardPage() {
   const { hasPermission } = usePermission();
-  const [filters, setFilters] = useState<SalesPlanningRequirementFiltersType>({
-    status: 'all',
-    page: 1,
-    page_size: SALES_PLANNING_REQUIREMENT_PAGE_SIZE,
-  });
+  const [search, setSearch] = useState('');
 
-  const reportQuery = useSalesPlanningRequirementReport(filters);
+  const sheetQuery = useSalesPlanningRequirementSheet();
   const statusQuery = useSalesPlanningRequirementStatus();
   const analysisQuery = useSalesPlanningRequirementAnalysis();
   const refreshMutation = useRefreshSalesPlanningRequirement();
 
-  const refresh = reportQuery.data?.refresh ?? statusQuery.data;
-  const hasSAPError = isSAPError(reportQuery.error);
-
-  const handleFiltersChange = useCallback((nextFilters: SalesPlanningRequirementFiltersType) => {
-    setFilters((current) => ({
-      ...current,
-      ...nextFilters,
-      page_size: current.page_size,
-    }));
-  }, []);
-
-  const handlePageChange = useCallback((page: number) => {
-    setFilters((current) => ({ ...current, page }));
-  }, []);
-
-  const handleSearchSelect = useCallback((term: string) => {
-    const search = term.trim().toUpperCase();
-    if (!search) return;
-    setFilters((current) => ({ ...current, search, page: 1 }));
-  }, []);
-
-  const statusSummary = useMemo(() => {
-    const summary = reportQuery.data?.summary;
-    if (!summary) return undefined;
-    return {
-      ...summary,
-      total_items:
-        filters.status === 'shortage'
-          ? summary.shortage_items
-          : filters.status === 'po_covered'
-            ? summary.po_covered_items
-            : summary.total_items,
-    };
-  }, [filters.status, reportQuery.data?.summary]);
+  const refresh = sheetQuery.data?.refresh ?? statusQuery.data;
+  const hasSAPError = isSAPError(sheetQuery.error);
 
   return (
     <div className="space-y-6 p-6">
-      <DashboardHeader
-        title="Sales Planning vs Requirement"
-      />
+      <DashboardHeader title="Sales Planning vs Requirement">
+        <Input
+          placeholder="Item code, item name, month…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label="Find"
+          className="h-9 w-64"
+        />
+      </DashboardHeader>
 
       <SalesPlanningRequirementRefreshPanel
         refresh={refresh}
@@ -92,27 +65,17 @@ export default function SalesPlanningRequirementDashboardPage() {
         }}
       />
 
-      <SalesPlanningRequirementFilters
-        key={filters.search ?? 'empty-search'}
-        filters={filters}
-        isFetching={reportQuery.isFetching}
-        onFiltersChange={handleFiltersChange}
-      />
-
       {hasSAPError && (
-        <SAPUnavailableBanner error={reportQuery.error as ApiError} onRetry={reportQuery.refetch} />
+        <SAPUnavailableBanner error={sheetQuery.error as ApiError} onRetry={sheetQuery.refetch} />
       )}
 
       {!hasSAPError && (
         <>
-          <SalesPlanningRequirementMetaCards summary={statusSummary} />
           <SalesPlanningRequirementAnalysis analysis={analysisQuery.data} />
           <SalesPlanningRequirementTable
-            items={reportQuery.data?.data ?? []}
-            meta={reportQuery.data?.meta}
-            isLoading={reportQuery.isLoading || reportQuery.isFetching}
-            onPageChange={handlePageChange}
-            onSearchSelect={handleSearchSelect}
+            items={sheetQuery.data?.data ?? []}
+            isLoading={sheetQuery.isLoading}
+            search={search}
           />
         </>
       )}

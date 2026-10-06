@@ -4,11 +4,16 @@ import { toast } from 'sonner';
 import { useAuth } from '@/core/auth';
 
 import { SALES_PLANNING_REQUIREMENT_STALE_TIME } from '../constants';
-import type { SalesPlanningRequirementFilters } from '../types';
+import type {
+  SalesPlanningRequirementFilters,
+  SalesPlanningRequirementReportResponse,
+} from '../types';
 import { salesPlanningRequirementApi } from './sales-planning-requirement.api';
 
 export const SALES_PLANNING_REQUIREMENT_QUERY_KEYS = {
   all: ['sales-planning-requirement'] as const,
+  sheet: (companyId?: number | string) =>
+    [...SALES_PLANNING_REQUIREMENT_QUERY_KEYS.all, 'sheet', companyId] as const,
   report: (filters: SalesPlanningRequirementFilters, companyId?: number | string) =>
     [...SALES_PLANNING_REQUIREMENT_QUERY_KEYS.all, 'report', companyId, filters] as const,
   status: (companyId?: number | string) =>
@@ -40,6 +45,40 @@ export function useSalesPlanningRequirementReport(
     staleTime: SALES_PLANNING_REQUIREMENT_STALE_TIME,
     retry: sapRetry,
     enabled,
+  });
+}
+
+/** The server's ceiling on one page of the report. */
+const SHEET_PAGE_SIZE = 200;
+
+/**
+ * The whole report, every page of it, for the sheet.
+ *
+ * The sheet's column filters, sorts and footing line work over the rows in
+ * hand, so they have to be all of them: a funnel built from one page of fifty
+ * would offer a fraction of the items and total a fraction of the shortage,
+ * and say nothing about it. The report is one line per item for one forecast
+ * -- hundreds, not tens of thousands -- so reading it whole is a few requests.
+ */
+export function useSalesPlanningRequirementSheet() {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: SALES_PLANNING_REQUIREMENT_QUERY_KEYS.sheet(currentCompany?.company_id),
+    queryFn: async (): Promise<SalesPlanningRequirementReportResponse> => {
+      const first = await salesPlanningRequirementApi.getReport({
+        page: 1,
+        page_size: SHEET_PAGE_SIZE,
+      });
+      const rest = await Promise.all(
+        Array.from({ length: first.meta.total_pages - 1 }, (_, index) =>
+          salesPlanningRequirementApi.getReport({ page: index + 2, page_size: SHEET_PAGE_SIZE }),
+        ),
+      );
+      return { ...first, data: [first, ...rest].flatMap((page) => page.data) };
+    },
+    staleTime: SALES_PLANNING_REQUIREMENT_STALE_TIME,
+    retry: sapRetry,
   });
 }
 

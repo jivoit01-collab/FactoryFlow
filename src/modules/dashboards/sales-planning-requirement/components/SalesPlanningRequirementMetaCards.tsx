@@ -6,7 +6,10 @@ import { formatNumber } from '@/shared/utils';
 import type { SalesPlanningRequirementSummary } from '../types';
 
 interface SalesPlanningRequirementMetaCardsProps {
-  summary?: SalesPlanningRequirementSummary;
+  summary?: Pick<
+    SalesPlanningRequirementSummary,
+    'total_items' | 'total_required_qty' | 'total_open_po_qty' | 'total_net_shortage_qty'
+  >;
 }
 
 function formatQuantity(value?: number): string {
