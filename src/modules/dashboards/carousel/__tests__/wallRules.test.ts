@@ -47,6 +47,9 @@ const SLIDE_MODULES: Record<(typeof CAROUSEL_SLIDES)[number]['key'], string> = {
   // the completeness assertion is the point: a slide with no entry here is a
   // slide nothing checks.
   accounts: 'accounts-board',
+  // Drawn on the Admin board's stylesheet (`.admin-board`), whose `.ops-wall`
+  // twin it inherits; its own sheet has no `:fullscreen` rules to pair.
+  amounts: 'amounts',
 };
 
 /** Every stylesheet belonging to a board in the rotation, with its path. */

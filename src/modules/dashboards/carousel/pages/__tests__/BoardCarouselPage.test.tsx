@@ -29,6 +29,9 @@ vi.mock('@/modules/dashboards/logistics-control/pages/LogisticsControlDashboardP
 vi.mock('@/modules/dashboards/accounts-board/pages/AccountsDashboardPage', () => ({
   default: () => <div>accounts board</div>,
 }));
+vi.mock('@/modules/dashboards/amounts/pages/AmountsDashboardPage', () => ({
+  default: () => <div>amounts board</div>,
+}));
 
 /*
  * Built boards are stubbed the same way and for the same reason.
@@ -202,6 +205,30 @@ describe('BoardCarouselPage', () => {
     // And back round to Admin — a rotation of three, not a dead end.
     await tick(DEFAULT_DWELL_SECONDS * 1000 + 500);
     await waitFor(() => expect(screen.getByText('admin board')).toBeInTheDocument());
+  });
+
+  /*
+   * The Amounts board names debtors, so the carousel right alone must never
+   * bring it onto a wall: it rotates for whoever holds the board's own right,
+   * and a display login gets it only by being granted that right on purpose.
+   */
+  it('rotates Amounts for its own right and never for the carousel right alone', async () => {
+    const { unmount } = renderCarousel([DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL]);
+    expect(await screen.findByText('admin board')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Amounts/ })).not.toBeInTheDocument();
+    unmount();
+
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderCarousel([
+      DASHBOARDS_PERMISSIONS.VIEW_BOARD_CAROUSEL,
+      DASHBOARDS_PERMISSIONS.VIEW_AMOUNTS_BOARD,
+    ]);
+    expect(await screen.findByText('admin board')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Amounts/ })).toBeInTheDocument();
+
+    // Admin, Plant, Accounts, then Amounts -- after the cash box.
+    await tick(3 * (DEFAULT_DWELL_SECONDS * 1000 + 500));
+    await waitFor(() => expect(screen.getByText('amounts board')).toBeInTheDocument());
   });
 
   /*

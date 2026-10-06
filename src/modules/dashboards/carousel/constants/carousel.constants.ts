@@ -2,6 +2,7 @@ import { DASHBOARDS_PERMISSIONS } from '@/config/permissions';
 
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../../admin-control/constants';
+import { AMOUNTS_BOARD_VIEW_PERMISSIONS } from '../../amounts/constants';
 import { LOGISTICS_CONTROL_VIEW_PERMISSIONS } from '../../logistics-control/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
 
@@ -19,7 +20,7 @@ import { PLANT_BOARD_VIEW_PERMISSIONS } from '../../plant-board/constants';
  * the gate has to be restated at this level rather than assumed.
  */
 /** The three-plus hand-built pages the rotation knows how to mount by name. */
-export type FixedSlideKey = 'admin' | 'plant' | 'logistics' | 'accounts';
+export type FixedSlideKey = 'admin' | 'plant' | 'logistics' | 'accounts' | 'amounts';
 
 export interface CarouselSlide {
   /**
@@ -107,6 +108,21 @@ export const CAROUSEL_SLIDES: readonly CarouselSlide[] = [
     ],
     path: '/dashboards/accounts-board',
   },
+  {
+    // The plants' stock in rupees and what customers owe, after the cash box.
+    //
+    // NOT offered to a carousel-only login, unlike the cash box beside it, and
+    // that is a disclosure decision rather than a technical one: the board is
+    // one composed read like Admin and Plant, but it names debtors -- "Future
+    // Retail owes Rs 94 L since 2024" -- and it was given a right of its own
+    // precisely because no other right ever disclosed that. A wall screen that
+    // should show it is granted that right ("Dashboards — Amounts") on purpose;
+    // the carousel right never brings it in by accident.
+    key: 'amounts',
+    label: 'Amounts',
+    permissions: AMOUNTS_BOARD_VIEW_PERMISSIONS,
+    path: '/dashboards/amounts',
+  },
 ];
 
 /**
@@ -133,6 +149,7 @@ export const BOARD_CAROUSEL_VIEW_PERMISSIONS: readonly string[] = [
     ...PLANT_BOARD_VIEW_PERMISSIONS,
     ...LOGISTICS_CONTROL_VIEW_PERMISSIONS,
     ...ACCOUNTS_BOARD_VIEW_PERMISSIONS,
+    ...AMOUNTS_BOARD_VIEW_PERMISSIONS,
   ]),
 ];
 
