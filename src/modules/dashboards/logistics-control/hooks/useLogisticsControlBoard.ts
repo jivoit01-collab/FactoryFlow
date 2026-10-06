@@ -5,6 +5,7 @@ import { usePermission } from '@/core/auth';
 import { usePFMovements } from '@/modules/warehouse/api/pfMovement.queries';
 
 import { useDispatchFulfilment } from '../../dispatch-fulfilment/api';
+import type { DispatchBill } from '../../dispatch-plans/types';
 import { useExpenseBoard } from '../../factory-expense/api';
 import { useControlWmsCollection } from '../../warehouse-control/api';
 import { summarisePalletSpace } from '../../warehouse-control/utils/palletSpace';
@@ -232,7 +233,8 @@ export function useLogisticsControlBoard(
   });
 
   /**
-   * What today is committed to move: bills dated for today with a truck linked.
+   * The linked half of today's plan: bills dated for today with a truck on
+   * them. The unlinked half comes off the pending feed — see `dayPlan`.
    *
    * Read per company and merged, because the bills endpoint has no company
    * filter — the same reason the pending-bill and partial-scan feeds are
@@ -438,63 +440,6 @@ export function useLogisticsControlBoard(
     // them, as a string, where the sides themselves are new each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [floorToWarehouse.data, tickedKey]);
-
-  /**
-   * Bills with a dispatch date that have not gone out.
-   *
-   * Both un-booked and booked count: a bill with a truck against it still has
-   * not left. The existing Warehouse Control panel shows only the un-booked
-   * half and reports the booked ones separately, which is a narrower question
-   * than this tile asks.
-   */
-  const pendingDispatch = useMemo(() => {
-    const groups = planBills.data ?? [];
-
-    /** Bills dated to go that have not gone. */
-    const outstanding = (bills: (typeof groups)[number]['bills']) =>
-      bills.filter((bill) => bill.plan?.dispatch_date && bill.plan.booking_status !== 'DISPATCHED');
-
-    const tonnesOf = (bills: (typeof groups)[number]['bills']) =>
-      bills.reduce((total, bill) => total + (bill.total_weight ?? 0), 0) / 1000;
-
-    const byCompany = groups.map((group) => {
-      const open = outstanding(group.bills);
-      return {
-        companyCode: group.companyCode,
-        invoices: open.length,
-        tonnes: tonnesOf(open),
-        // The feed slices AFTER ordering by dispatch date descending, so a
-        // truncated page has dropped the oldest and most overdue bills —
-        // exactly the ones this card exists to show.
-        truncated: group.total > group.bills.length,
-      };
-    });
-
-    const all = groups.flatMap((group) => outstanding(group.bills));
-    const booked = all.filter((bill) => bill.plan?.vehicle_id != null);
-
-    return {
-      /** The outstanding bills themselves, for the drill-down. */
-      rows: all,
-      byCompany,
-      invoices: all.length,
-      tonnes: tonnesOf(all),
-      plannedBills: all.length,
-      bookedBills: booked.length,
-      plannedTonnes: tonnesOf(all),
-      bookedTonnes: tonnesOf(booked),
-      truncated: byCompany.some((company) => company.truncated),
-      /**
-       * Surfaced so the tile can say SAP is unreachable.
-       *
-       * This feed reads SAP for every bill, so a HANA outage answers 503 and
-       * the board received an empty list — which rendered as "0.0 tonnes, 0
-       * invoices", indistinguishable from a day with nothing pending.
-       */
-      error: planBills.error ?? null,
-      loading: planBills.isLoading,
-    };
-  }, [planBills.data, planBills.error, planBills.isLoading]);
 
   /** The freight funnel: three stages, each aged from its own clock. */
   const funnel = useMemo(() => {
@@ -830,32 +775,63 @@ export function useLogisticsControlBoard(
   ]);
 
   /**
-   * Today's tile: tonnage out, the day's booked plan, and yesterday's mark.
+   * Today's tile: tonnage out, the day's plan, and yesterday's mark.
    *
    * The plan is deliberately not the backend's `backlog` total, which is a
-   * snapshot of every open plan in the system and not window-bound at all —
-   * using it would put the whole outstanding pipeline behind a bar headed
-   * "today".
+   * snapshot of every open plan in the system — linked trucks from any day and
+   * bills dated weeks ahead alike. The plan here is today's linked bills plus
+   * the planned bills still waiting for a truck, which `dayPlan` explains.
    */
   const dispatchTodayTile = useMemo(() => {
     const tonnes = (dispatchToday.data?.totals?.dispatched?.weight ?? 0) / 1000;
-    const bills = dayPlanBills.data?.bills ?? [];
-    const toPlanBill = (bill: (typeof bills)[number]) => ({
+    const toPlanBill = (bill: DispatchBill, companyCode: string) => ({
+      key: `${companyCode}:${bill.doc_entry}`,
       weightKg: bill.total_weight ?? 0,
+      litres: Number(bill.total_litres) || 0,
       vehicleId: bill.plan?.vehicle_id ?? null,
+      dispatchDate: bill.plan?.dispatch_date ?? null,
+      // Gone when either the plan or its docking says so. Both were checked
+      // against live on 6 Oct 2026 and agreed; the docking is the fact, the
+      // status is what the app writes after it.
+      dispatched:
+        bill.plan?.booking_status === 'DISPATCHED' ||
+        bill.plan?.pipeline_status?.stage === 'DISPATCHED',
+      companyCode,
+      bill,
     });
-    const plan = dayPlan(bills.map(toPlanBill));
+    const todayBills = (dayPlanBills.data?.bills ?? []).map((bill) =>
+      toPlanBill(bill, bill.company_code ?? ''),
+    );
+    // The pending tile's own feed, so the two tiles agree on what is waiting.
+    const openBills = (planBills.data ?? []).flatMap((group) =>
+      group.bills
+        .filter((bill) => bill.plan?.booking_status !== 'DISPATCHED')
+        .map((bill) => toPlanBill(bill, group.companyCode)),
+    );
+    const planFor = (companyCode?: string) => {
+      const ofCompany = (row: { companyCode: string }) =>
+        !companyCode || row.companyCode === companyCode;
+      return dayPlan(todayBills.filter(ofCompany), openBills.filter(ofCompany), today);
+    };
+    const { rows, ...plan } = planFor();
+    // The pending feed's rows carry no company of their own.
+    const asBill = (row: (typeof rows)[number]) => ({ ...row.bill, company_code: row.companyCode });
+    // A company either feed failed to read. The pending feed drops a failed
+    // company rather than naming it, so it is whichever one did not come back.
+    const pendingRead = planBills.data?.map((group) => group.companyCode) ?? [];
+    const unread = scope.dispatchCompanies.filter(
+      (companyCode) =>
+        (dayPlanBills.data?.unread ?? []).includes(companyCode) ||
+        (!planBills.isLoading && !pendingRead.includes(companyCode)),
+    );
     // Each company's share of the plan. A company whose feed failed is left
-    // out rather than shown as 0 T — the tile already names it as unread.
-    const unread = dayPlanBills.data?.unread ?? [];
+    // out rather than shown short — the tile already names it as unread.
     const sides = scope.dispatchCompanies
       .filter((companyCode) => !unread.includes(companyCode))
-      .map((companyCode) => ({
-        companyCode,
-        ...dayPlan(
-          bills.filter((bill) => bill.company_code === companyCode).map(toPlanBill),
-        ),
-      }));
+      .map((companyCode) => {
+        const side = planFor(companyCode);
+        return { companyCode, tonnes: side.tonnes, litres: side.litres };
+      });
 
     return {
       tonnes,
@@ -866,14 +842,18 @@ export function useLogisticsControlBoard(
       invoices: dispatchToday.data?.totals?.dispatched?.bills ?? 0,
       plan: {
         ...plan,
-        // A day nobody has booked has no target, which is not a target of
+        /** The bills behind the plan, for the Planned against booked drill. */
+        rows: rows.map(asBill),
+        /** Those not yet gone, for the Pending dispatch tile. */
+        pendingRows: rows.filter((row) => !row.dispatched).map(asBill),
+        // A day with nothing planned has no target, which is not a target of
         // zero: the tile draws a note instead of a full bar.
         configured: plan.bills > 0,
         // Named companies whose feed failed — their bills are missing from the
         // total, so the tile says so rather than showing a short plan.
         unread,
         sides,
-        loading: dayPlanBills.isLoading,
+        loading: dayPlanBills.isLoading || planBills.isLoading,
         error: dayPlanBills.error ?? null,
       },
       vsYesterday: dayOnDay(
@@ -887,8 +867,54 @@ export function useLogisticsControlBoard(
     dayPlanBills.data,
     dayPlanBills.isLoading,
     dayPlanBills.error,
+    planBills.data,
+    planBills.isLoading,
+    today,
     scope.dispatchCompanies,
   ]);
+
+  /**
+   * The Pending dispatch tile: the day plan less what has already left.
+   *
+   * Trucks linked for today that are still at the dock or on their way to it,
+   * plus every planned bill — older ones too — still waiting for a truck. Built
+   * off the day plan so the two tiles can never disagree: Day plan minus
+   * Dispatched today, bill by bill.
+   *
+   * Not the pending feed on its own any more. That feed drops a bill once its
+   * bill summary stamps SAP, which happens when the truck is loaded and before
+   * it leaves — so the trucks at the dock, the bills most worth chasing, were
+   * the ones it could not show.
+   */
+  const pendingDispatch = useMemo(() => {
+    const { plan } = dispatchTodayTile;
+    const tonnesOf = (bills: readonly DispatchBill[]) =>
+      bills.reduce((total, bill) => total + (bill.total_weight ?? 0), 0) / 1000;
+
+    return {
+      /** The bills still to go out, for the drill-down. */
+      rows: plan.pendingRows,
+      byCompany: plan.sides.map(({ companyCode }) => {
+        const bills = plan.pendingRows.filter((bill) => bill.company_code === companyCode);
+        return { companyCode, invoices: bills.length, tonnes: tonnesOf(bills) };
+      }),
+      invoices: plan.pendingBills,
+      tonnes: plan.pendingTonnes,
+      // The pending feed slices AFTER ordering by dispatch date descending, so
+      // a truncated page has dropped the oldest and most overdue bills —
+      // exactly the ones this card exists to show.
+      truncated: (planBills.data ?? []).some((group) => group.total > group.bills.length),
+      /**
+       * Surfaced so the tile can say SAP is unreachable.
+       *
+       * Both feeds read SAP for every bill, so a HANA outage answers 503 and
+       * the board received an empty list — which rendered as "0.0 tonnes, 0
+       * invoices", indistinguishable from a day with nothing pending.
+       */
+      error: plan.error ?? planBills.error ?? null,
+      loading: plan.loading,
+    };
+  }, [dispatchTodayTile, planBills.data, planBills.error]);
 
   /**
    * What it costs to get a litre out of the gate, month to date.

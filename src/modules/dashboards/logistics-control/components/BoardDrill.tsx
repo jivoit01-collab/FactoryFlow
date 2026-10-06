@@ -96,11 +96,25 @@ export function BoardDrill({
       );
 
     case 'pending':
-    case 'planned':
       return (
         <PendingDispatchDrill
           which={which}
           pending={board.warehouse.pendingDispatch}
+          onClose={onClose}
+        />
+      );
+
+    case 'planned':
+      return (
+        <PendingDispatchDrill
+          which={which}
+          // The day plan's bills, the same ones the tile counts.
+          pending={{
+            rows: board.dispatch.today.plan.rows,
+            tonnes: board.dispatch.today.plan.tonnes,
+            invoices: board.dispatch.today.plan.bills,
+            loading: board.dispatch.today.plan.loading,
+          }}
           onClose={onClose}
         />
       );

@@ -137,7 +137,14 @@ function ConsignmentBills({
         },
         {
           label: 'Status',
-          cell: (bill) => BOOKING_STATUS_LABELS[bill.plan?.booking_status ?? ''] ?? '—',
+          // Where the truck is, for a bill on one: the docking's own stage
+          // ("Docked", "Print Committed") says what the booking status cannot.
+          cell: (bill) =>
+            bill.plan?.vehicle_id == null
+              ? 'Awaiting a truck'
+              : (bill.plan.pipeline_status?.stage_label ??
+                BOOKING_STATUS_LABELS[bill.plan.booking_status ?? ''] ??
+                '—'),
           dim: true,
           width: '12%',
         },
@@ -153,7 +160,8 @@ export function PendingDispatchDrill({
   onClose,
 }: {
   which: 'pending' | 'planned';
-  pending: Board['warehouse']['pendingDispatch'];
+  /** The bills to list: the pending feed's, or (for `planned`) the day plan's. */
+  pending: Pick<Board['warehouse']['pendingDispatch'], 'rows' | 'tonnes' | 'invoices' | 'loading'>;
   onClose: () => void;
 }) {
   const { openKey, toggle } = useExpandedRow();
@@ -242,7 +250,11 @@ export function PendingDispatchDrill({
   return (
     <OpsDrill
       title={which === 'planned' ? 'Planned against booked' : 'Pending dispatch'}
-      subtitle="Consignments with a dispatch date set that have not left — open one for its bills"
+      subtitle={
+        which === 'planned'
+          ? "Today's plan: bills on a truck for today, and planned bills — older ones too — still waiting for one"
+          : "Today's plan less what has left: trucks still to go out, and planned bills waiting for one — open one for its bills"
+      }
       domain={which === 'planned' ? 'dispatch' : 'warehouse'}
       onClose={onClose}
       stats={[
@@ -252,13 +264,17 @@ export function PendingDispatchDrill({
         { label: 'Awaiting a truck', value: whole(pending.invoices - bookedBills.length) },
       ]}
       breakdown={{
-        title: 'Waiting, by warehouse',
+        title: which === 'planned' ? 'By warehouse' : 'Waiting, by warehouse',
         items: byWarehouse,
         empty: 'No warehouse is holding anything dated to leave.',
       }}
       rows={consignments}
       rowKey={(row) => row.key}
-      empty="No bill is dated to leave and still waiting."
+      empty={
+        which === 'planned'
+          ? 'Nothing is planned for today.'
+          : "Nothing in today's plan is still to go out."
+      }
       loading={pending.loading}
       onRowClick={(row) => toggle(row.key)}
       expandedKey={openKey}

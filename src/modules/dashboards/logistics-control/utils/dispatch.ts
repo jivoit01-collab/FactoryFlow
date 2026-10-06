@@ -86,42 +86,93 @@ export function averagePerActiveDay(totals: DispatchTotals): number | null {
   return totals.kg / 1000 / totals.activeDays;
 }
 
-/** A planned bill, as the day-plan feed reports it. */
+/** A planned bill, as the day-plan and pending feeds report it. */
 export interface DayPlanBill {
+  /** Company and SAP doc-entry: one bill's identity across both feeds. */
+  key: string;
   /** Kilograms on the bill. */
   weightKg: number;
+  /** Litres on the bill — the dispatch team's own unit. */
+  litres: number;
   /** The vehicle linked to the plan, or null where none is. */
   vehicleId: number | null;
+  /** The plan's scheduled dispatch date, `YYYY-MM-DD`. */
+  dispatchDate: string | null;
+  /** Whether the bill has already left the gate. */
+  dispatched: boolean;
 }
 
 /** Today's committed tonnage and the bills behind it. */
-export interface DayPlan {
+export interface DayPlan<T extends DayPlanBill = DayPlanBill> {
+  /** Linked and not linked together — the target the bar measures against. */
   tonnes: number;
   bills: number;
-  /** Bills dated for today that nobody has put on a truck yet. */
-  unbookedBills: number;
+  /**
+   * The same bills in litres, which is how the dispatch team's own sheet
+   * totals the day. It also counts a bill SAP holds no weight for, which the
+   * tonnes cannot.
+   */
+  litres: number;
+  /** Bills dated for today with a truck linked, gone or not. */
+  linkedTonnes: number;
+  linkedBills: number;
+  /** Planned bills, today's or older, that nobody has put on a truck yet. */
+  unlinkedTonnes: number;
+  unlinkedBills: number;
+  /**
+   * The plan less what has already left: trucks still to go out, and every
+   * bill still waiting for one. The Pending dispatch tile.
+   */
+  pendingTonnes: number;
+  pendingBills: number;
+  /** The bills themselves, linked first — what the drill-down lists. */
+  rows: T[];
 }
 
 /**
- * What the day is committed to move — booked bills only.
+ * What the day has to move: today's linked bills, plus every planned bill
+ * still waiting for a truck.
  *
- * Booked means a vehicle is actually linked to the plan, read off `vehicle_id`
- * rather than the booking status: the status is client-writable and drifts,
- * while the link is the fact underneath it. A bill dated for today with no
- * truck against it is a plan somebody still has to arrange, not tonnage the
- * gate can be measured against — so it is counted separately and left out of
- * the target.
+ * Linked means a vehicle is actually on the plan, read off `vehicle_id` rather
+ * than the booking status: the status is client-writable and drifts, while the
+ * link is the fact underneath it. Linked bills are today's only, and already
+ * dispatched ones stay in — the plan must not shrink as trucks leave, or the
+ * bar would fill while the target fell.
  *
- * Bills already dispatched stay in. The plan is the whole day's commitment and
- * must not shrink as trucks leave, or the bar would fill while the target fell.
+ * The unlinked half comes off the pending feed instead, because a bill planned
+ * for an earlier day and never put on a truck is still today's work: it has no
+ * other day left to go on. Bills planned for a later day are not. A bill can
+ * reach both feeds if it is linked between the two reads; it counts as linked.
  */
-export function dayPlan(bills: readonly DayPlanBill[]): DayPlan {
-  const booked = bills.filter((bill) => bill.vehicleId != null);
+export function dayPlan<T extends DayPlanBill>(
+  todayBills: readonly T[],
+  openBills: readonly T[],
+  today: string,
+): DayPlan<T> {
+  const linked = todayBills.filter((bill) => bill.vehicleId != null);
+  const linkedKeys = new Set(linked.map((bill) => bill.key));
+  const unlinked = openBills.filter(
+    (bill) =>
+      bill.vehicleId == null &&
+      bill.dispatchDate != null &&
+      bill.dispatchDate <= today &&
+      !linkedKeys.has(bill.key),
+  );
+  const tonnesOf = (bills: readonly DayPlanBill[]) =>
+    bills.reduce((total, bill) => total + (bill.weightKg || 0), 0) / 1000;
+  const pending = [...linked, ...unlinked].filter((bill) => !bill.dispatched);
 
   return {
-    tonnes: booked.reduce((total, bill) => total + (bill.weightKg || 0), 0) / 1000,
-    bills: booked.length,
-    unbookedBills: bills.length - booked.length,
+    tonnes: tonnesOf(linked) + tonnesOf(unlinked),
+    bills: linked.length + unlinked.length,
+    litres: [...linked, ...unlinked].reduce((total, bill) => total + (bill.litres || 0), 0),
+    linkedTonnes: tonnesOf(linked),
+    linkedBills: linked.length,
+    unlinkedTonnes: tonnesOf(unlinked),
+    unlinkedBills: unlinked.length,
+    pendingTonnes: tonnesOf(pending),
+    pendingBills: pending.length,
+    rows: [...linked, ...unlinked],
   };
 }
 

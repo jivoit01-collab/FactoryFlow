@@ -179,11 +179,11 @@ export function LogisticsControlDashboardPage({
   const trend = board.dispatch.trend;
   const todayDispatch = board.dispatch.today;
   /**
-   * Today's tonnage as a share of the day's booked plan.
+   * Today's tonnage as a share of the day's plan.
    *
    * Capped at 100: a day that beats its plan fills the bar and says so in the
    * figure beside it, rather than drawing a segment wider than the bar it sits
-   * in. Null where no plan is booked — the tile draws a note instead.
+   * in. Null where nothing is planned — the tile draws a note instead.
    */
   const planPct =
     todayDispatch.plan.configured && todayDispatch.plan.tonnes > 0
@@ -666,8 +666,8 @@ export function LogisticsControlDashboardPage({
                   <p className="ops-note">Could not read today&apos;s dispatch plan.</p>
                 ) : planPct === null ? (
                   <p className="ops-note">
-                    No bill is booked onto a truck for today, so there is no day plan to measure
-                    against.
+                    No bill is linked for today or waiting for a truck, so there is no day plan to
+                    measure against.
                   </p>
                 ) : (
                   <>
@@ -687,27 +687,31 @@ export function LogisticsControlDashboardPage({
                       ]}
                     />
                     {/* The day plan split by company, so OIL and MART can each
-                        see what they are committed to move. */}
+                        see what they are committed to move — in tonnes, then
+                        in litres, the way the dispatch team's sheet totals
+                        each company's day. The two lines are built alike so
+                        they read as one table. */}
                     {todayDispatch.plan.sides.length > 1 && (
                       <p className="ops-note">
                         {todayDispatch.plan.sides
                           .map(
                             (side) =>
-                              `${companyLabel(side.companyCode)} plan ${decimal(side.tonnes, 0)} T`,
+                              `${companyLabel(side.companyCode)} ${decimal(side.tonnes, 0)} T`,
                           )
                           .join(' · ')}
                       </p>
                     )}
-                    {/* Why the bar can read full while trucks are still loading,
-                        and what is NOT in the target. */}
                     <p className="ops-note">
                       {todayDispatch.plan.unread.length > 0
                         ? `Plan missing ${todayDispatch.plan.unread.join(' and ')} — could not read it.`
-                        : `Booked bills ${whole(todayDispatch.plan.bills)}${
-                            todayDispatch.plan.unbookedBills > 0
-                              ? ` · Awaiting a truck ${whole(todayDispatch.plan.unbookedBills)}`
-                              : ''
-                          }`}
+                        : todayDispatch.plan.sides.length > 1
+                          ? todayDispatch.plan.sides
+                              .map(
+                                (side) =>
+                                  `${companyLabel(side.companyCode)} ${whole(side.litres)} L`,
+                              )
+                              .join(' · ')
+                          : `Day plan ${whole(todayDispatch.plan.litres)} L`}
                     </p>
                   </>
                 )
@@ -752,16 +756,26 @@ export function LogisticsControlDashboardPage({
               }
             />
 
+            {/* The day plan's own bills, so this tile and the Day plan bar
+                under Dispatched today can never disagree. Booked is read off
+                today's linked bills rather than the pending feed: that feed
+                drops a bill as soon as its bill summary stamps SAP, which
+                happens once the truck is loaded and before it leaves — so it
+                read "Booked 0" with two dozen trucks at the dock. */}
             <OpsGroup
               name="Planned against booked"
               now={past}
               onOpen={open('planned')}
+              loading={todayDispatch.plan.loading}
+              missing={
+                todayDispatch.plan.error ? "Could not read today's dispatch plan" : undefined
+              }
               tag={
-                pending.plannedBills === 0
+                todayDispatch.plan.bills === 0
                   ? { label: 'nothing planned', tone: 'ok' }
-                  : pending.bookedBills < pending.plannedBills
+                  : todayDispatch.plan.unlinkedBills > 0
                     ? {
-                        label: `${whole(pending.plannedBills - pending.bookedBills)} awaiting a truck`,
+                        label: `${whole(todayDispatch.plan.unlinkedBills)} awaiting a truck`,
                         tone: 'warn',
                       }
                     : { label: 'all booked', tone: 'ok' }
@@ -772,18 +786,18 @@ export function LogisticsControlDashboardPage({
                   rows={[
                     {
                       label: 'Planned',
-                      figure: `${whole(pending.plannedBills)} bills`,
+                      figure: `${whole(todayDispatch.plan.bills)} bills`,
                       pct: 100,
                       fill: 'mute',
                     },
                     {
                       label: 'Booked',
-                      figure: `${whole(pending.bookedBills)} bills`,
+                      figure: `${whole(todayDispatch.plan.linkedBills)} bills`,
                       // Scaled against planned, which is the larger by
                       // construction — booked is a subset of it.
                       pct:
-                        pending.plannedBills > 0
-                          ? (pending.bookedBills / pending.plannedBills) * 100
+                        todayDispatch.plan.bills > 0
+                          ? (todayDispatch.plan.linkedBills / todayDispatch.plan.bills) * 100
                           : 0,
                       fill: 'main',
                     },
@@ -791,8 +805,8 @@ export function LogisticsControlDashboardPage({
                   note={{
                     fill: 'main',
                     label: 'Booked',
-                    figure: `${decimal(pending.bookedTonnes)} T of ${decimal(
-                      pending.plannedTonnes,
+                    figure: `${decimal(todayDispatch.plan.linkedTonnes)} T of ${decimal(
+                      todayDispatch.plan.tonnes,
                     )} T`,
                   }}
                 />

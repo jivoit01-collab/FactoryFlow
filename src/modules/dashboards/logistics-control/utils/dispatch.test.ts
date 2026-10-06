@@ -6,6 +6,7 @@ import {
   costPerLitre,
   dayOnDay,
   dayPlan,
+  type DayPlanBill,
   type DispatchRow,
 } from './dispatch';
 
@@ -121,30 +122,113 @@ describe('averagePerActiveDay', () => {
 });
 
 describe('dayPlan', () => {
-  it('totals only the bills that have a truck against them', () => {
-    const plan = dayPlan([
-      { weightKg: 12_000, vehicleId: 41 },
-      { weightKg: 8_000, vehicleId: 42 },
-      // Dated for today, nobody has booked it — not tonnage the gate can be
-      // measured against.
-      { weightKg: 30_000, vehicleId: null },
-    ]);
+  const TODAY = '2026-10-06';
 
-    expect(plan.tonnes).toBe(20);
-    expect(plan.bills).toBe(2);
-    expect(plan.unbookedBills).toBe(1);
+  function bill(overrides: Partial<DayPlanBill> = {}): DayPlanBill {
+    return {
+      key: 'JIVO_OIL:5001',
+      weightKg: 10_000,
+      litres: 10_800,
+      vehicleId: null,
+      dispatchDate: TODAY,
+      dispatched: false,
+      ...overrides,
+    };
+  }
+
+  it("adds the bills still waiting for a truck to today's linked ones", () => {
+    const plan = dayPlan(
+      [
+        bill({ key: 'JIVO_OIL:1', weightKg: 12_000, litres: 13_000, vehicleId: 41 }),
+        bill({ key: 'JIVO_MART:2', weightKg: 8_000, litres: 8_500, vehicleId: 42 }),
+      ],
+      [
+        bill({ key: 'JIVO_OIL:3', weightKg: 30_000, litres: 32_000 }),
+        // Planned for last week and never put on a truck: still today's work.
+        bill({ key: 'JIVO_OIL:4', weightKg: 5_000, litres: 5_400, dispatchDate: '2026-09-29' }),
+      ],
+      TODAY,
+    );
+
+    const { rows, ...totals } = plan;
+    expect(totals).toEqual({
+      tonnes: 55,
+      bills: 4,
+      litres: 58_900,
+      linkedTonnes: 20,
+      linkedBills: 2,
+      unlinkedTonnes: 35,
+      unlinkedBills: 2,
+      pendingTonnes: 55,
+      pendingBills: 4,
+    });
+    // The bills behind the figures, linked first, for the drill-down.
+    expect(rows.map((row) => row.key)).toEqual([
+      'JIVO_OIL:1',
+      'JIVO_MART:2',
+      'JIVO_OIL:3',
+      'JIVO_OIL:4',
+    ]);
   });
 
-  it('keeps a dispatched bill in the plan', () => {
+  it('keeps a dispatched bill in the plan, and out of what is pending', () => {
     // The commitment does not shrink as trucks clear the gate: a plan that
     // fell as it was met would make every day look beaten.
-    const plan = dayPlan([{ weightKg: 25_000, vehicleId: 7 }]);
+    const plan = dayPlan(
+      [
+        bill({ key: 'JIVO_OIL:1', weightKg: 25_000, vehicleId: 7, dispatched: true }),
+        // On a truck at the dock: linked, not gone — still pending.
+        bill({ key: 'JIVO_OIL:2', weightKg: 6_000, vehicleId: 8 }),
+      ],
+      [bill({ key: 'JIVO_OIL:3', weightKg: 4_000 })],
+      TODAY,
+    );
 
-    expect(plan.tonnes).toBe(25);
+    expect(plan.tonnes).toBe(35);
+    expect(plan.pendingTonnes).toBe(10);
+    expect(plan.pendingBills).toBe(2);
+  });
+
+  it('counts in litres a bill SAP holds no weight for', () => {
+    // 626100147 on 6 Oct 2026: 5,000 L on the bill, 0 kg in SAP.
+    const plan = dayPlan([bill({ weightKg: 0, litres: 5_000, vehicleId: 7 })], [], TODAY);
+
+    expect(plan.tonnes).toBe(0);
+    expect(plan.litres).toBe(5_000);
+  });
+
+  it('leaves out a bill planned for a later day', () => {
+    const plan = dayPlan([], [bill({ dispatchDate: '2026-10-07' })], TODAY);
+
+    expect(plan.bills).toBe(0);
+  });
+
+  it('counts a bill linked between the two reads once, as linked', () => {
+    const plan = dayPlan(
+      [bill({ key: 'JIVO_OIL:9', vehicleId: 41 })],
+      [bill({ key: 'JIVO_OIL:9' })],
+      TODAY,
+    );
+
+    expect(plan.linkedBills).toBe(1);
+    expect(plan.unlinkedBills).toBe(0);
+    expect(plan.tonnes).toBe(10);
+    expect(plan.litres).toBe(10_800);
   });
 
   it('reads an empty day as a plan of nothing, not a missing one', () => {
-    expect(dayPlan([])).toEqual({ tonnes: 0, bills: 0, unbookedBills: 0 });
+    expect(dayPlan([], [], TODAY)).toEqual({
+      tonnes: 0,
+      bills: 0,
+      litres: 0,
+      linkedTonnes: 0,
+      linkedBills: 0,
+      unlinkedTonnes: 0,
+      unlinkedBills: 0,
+      pendingTonnes: 0,
+      pendingBills: 0,
+      rows: [],
+    });
   });
 });
 
