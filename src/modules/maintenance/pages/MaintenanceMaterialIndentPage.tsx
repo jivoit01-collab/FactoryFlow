@@ -986,7 +986,7 @@ function IndentDetailDialog({
 // Purchaser export — one grouped sheet mirroring the paper "Indent" register:
 // each indent starts with a "Raised by …" header row, then the item columns.
 // "To Purchase" is the shortfall (Req. Qty − Issued) the purchaser must buy.
-// Date and Purpose columns carry each indent's raise date and purpose onto every item row.
+// Posting Date, Approval Date and Purpose carry the indent's own values onto every item row.
 function exportIndentsToExcel(indents: MaterialIndent[]) {
   const rows: (string | number)[][] = [];
   indents.forEach((indent) => {
@@ -1001,7 +1001,8 @@ function exportIndentsToExcel(indents: MaterialIndent[]) {
     rows.push([header]);
     rows.push([
       '#',
-      'Date',
+      'Posting Date',
+      'Approval Date',
       'Purpose',
       'Particulars',
       'Spec / Make',
@@ -1014,6 +1015,7 @@ function exportIndentsToExcel(indents: MaterialIndent[]) {
       rows.push([
         item.line_num || index + 1,
         indent.indent_date || '',
+        asLocalDate(indent.approved_at),
         indent.purpose?.trim() || '-',
         item.particulars || '',
         item.specification?.trim() || '-',
@@ -1029,7 +1031,8 @@ function exportIndentsToExcel(indents: MaterialIndent[]) {
   const sheet = XLSX.utils.aoa_to_sheet(rows);
   sheet['!cols'] = [
     { wch: 5 }, // #
-    { wch: 12 }, // Date
+    { wch: 12 }, // Posting Date
+    { wch: 13 }, // Approval Date
     { wch: 32 }, // Purpose
     { wch: 42 }, // Particulars
     { wch: 22 }, // Spec / Make
