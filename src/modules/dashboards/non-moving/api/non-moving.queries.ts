@@ -39,24 +39,34 @@ function sapRetry(failureCount: number, error: unknown): boolean {
 // Hooks
 // ============================================================================
 
-export function useNonMovingReport(filters: NonMovingFilters, enabled = true) {
+/**
+ * `companyCode` pins the read to one company instead of the active one -- the
+ * Amounts board opens Beverages' report from its Beverage row, whichever
+ * company the reader is signed into. Keyed on the code then, so the pinned and
+ * the active company's answers never share a cache entry.
+ */
+export function useNonMovingReport(
+  filters: NonMovingFilters,
+  enabled = true,
+  companyCode?: string,
+) {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: NON_MOVING_QUERY_KEYS.report(filters, currentCompany?.company_id),
-    queryFn: () => nonMovingApi.getReport(filters),
+    queryKey: NON_MOVING_QUERY_KEYS.report(filters, companyCode ?? currentCompany?.company_id),
+    queryFn: () => nonMovingApi.getReport(filters, companyCode),
     staleTime: NON_MOVING_STALE_TIME,
     retry: sapRetry,
     enabled,
   });
 }
 
-export function useItemGroups() {
+export function useItemGroups(companyCode?: string) {
   const { currentCompany } = useAuth();
 
   return useQuery({
-    queryKey: NON_MOVING_QUERY_KEYS.itemGroups(currentCompany?.company_id),
-    queryFn: () => nonMovingApi.getItemGroups(),
+    queryKey: NON_MOVING_QUERY_KEYS.itemGroups(companyCode ?? currentCompany?.company_id),
+    queryFn: () => nonMovingApi.getItemGroups(companyCode),
     staleTime: NON_MOVING_STALE_TIME,
     retry: sapRetry,
   });

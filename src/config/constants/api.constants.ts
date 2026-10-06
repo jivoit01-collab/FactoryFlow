@@ -522,6 +522,17 @@ export const API_ENDPOINTS = {
     BOARD: '/dashboards/admin-board/board/',
     DISPATCH_BILLS: '/dashboards/admin-board/dispatch-bills/',
   },
+  // Amounts Board -- the Oil and Beverage plants' RM / PM / FG stock in rupees,
+  // godown by godown, and what customers owe JWPL, Mart and Beverages. Composed
+  // server-side across all three SAP schemas, so it does not follow the company
+  // switcher. The godown list rides on the board; the items inside one godown
+  // are read only when it is opened.
+  AMOUNTS_BOARD: {
+    BOARD: '/dashboards/amounts-board/board/',
+    GODOWN_ITEMS: '/dashboards/amounts-board/godown-items/',
+    /** Who each plant's RM / PM / FG tile names. GET lists, PUT sets one. */
+    OWNERS: '/dashboards/amounts-board/owners/',
+  },
   // HR Control Board -- who is on the rolls, and how many contract labourers
   // came through the gate today. One endpoint like its neighbours.
   //

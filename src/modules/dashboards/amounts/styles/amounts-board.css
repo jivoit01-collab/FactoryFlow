@@ -1,0 +1,33 @@
+/*
+ * The Amounts board rides on the Admin Control board's stylesheet -- the unit,
+ * the rail-and-tiles band, the corner badge, the open hint -- and only says
+ * where it differs. Scoped to `.admin-board.amounts-board` so it outranks the
+ * admin board's own rules without touching that board.
+ */
+
+/* Three bands of equal weight: two plants and the debtors, none of them a
+   growing list the way the admin board's action centre is. */
+.admin-board.amounts-board .ops-stack {
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+/* A line of prose under a figure: the oldest debt, who owns a category. */
+.admin-board.amounts-board .amt-line {
+  margin: 0;
+  font-size: calc(0.9 * var(--u));
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-board.amounts-board .amt-line b {
+  color: var(--ink);
+  font-weight: 700;
+}
+.admin-board.amounts-board .amt-line + .amt-line,
+.admin-board.amounts-board .amt-line + .ops-note,
+.admin-board.amounts-board .ops-pair + .adm-open-hint {
+  margin-top: calc(0.3 * var(--u));
+}

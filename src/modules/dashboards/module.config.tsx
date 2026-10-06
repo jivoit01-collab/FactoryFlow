@@ -14,6 +14,10 @@ import type { ModuleConfig } from '@/core/types';
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from './accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from './admin-control/constants';
 import {
+  AMOUNTS_BOARD_VIEW_PERMISSIONS,
+  AMOUNTS_OWNERS_PERMISSIONS,
+} from './amounts/constants';
+import {
   BOARD_BUILDER_PERMISSIONS,
   BOARD_LIST_VIEW_PERMISSIONS,
 } from './builder/constants';
@@ -93,6 +97,8 @@ const OperationsReportPage = lazy(
 const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
+const AmountsDashboardPage = lazy(() => import('./amounts/pages/AmountsDashboardPage'));
+const AmountsOwnersPage = lazy(() => import('./amounts/pages/AmountsOwnersPage'));
 const HrBoardDashboardPage = lazy(() => import('./hr-board/pages/HrBoardDashboardPage'));
 const AccountsDashboardPage = lazy(
   () => import('./accounts-board/pages/AccountsDashboardPage'),
@@ -150,6 +156,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // The Operations Report opens on the production COST feed, which
         // nothing else here carries.
         ...OPERATIONS_REPORT_VIEW_PERMISSIONS,
+        // The Amounts board has a right of its own that nothing above covers.
+        ...AMOUNTS_BOARD_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -259,6 +267,25 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Admin Control' },
+    },
+    {
+      // The two plants' stock in rupees -- RM, PM and FG godown by godown --
+      // and what customers owe JWPL, Mart and Beverages. Composed server-side
+      // across all three companies, behind a right of its own: no stock or
+      // warehouse right ever disclosed debtors.
+      path: '/dashboards/amounts',
+      element: <AmountsDashboardPage />,
+      layout: 'main',
+      permissions: AMOUNTS_BOARD_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Amounts' },
+    },
+    {
+      // Whom each plant's RM / PM / FG tile names. Reached from the board's cog.
+      path: '/dashboards/amounts/owners',
+      element: <AmountsOwnersPage />,
+      layout: 'main',
+      permissions: AMOUNTS_OWNERS_PERMISSIONS,
+      breadcrumb: { label: 'Amounts · stock owners' },
     },
     {
       // The whole plant on one wall screen, in the order material moves:
@@ -664,6 +691,9 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // gate later cannot silently hide the whole Dashboards menu from
         // whoever it was narrowed to -- the same reasoning as Logistics.
         ...ADMIN_BOARD_VIEW_PERMISSIONS,
+        // The Amounts board's own right is held by nobody for any other page,
+        // so without it a reader granted only this board finds no menu at all.
+        ...AMOUNTS_BOARD_VIEW_PERMISSIONS,
         // The Board Carousel lives here too. Every right in it is already listed
         // above -- it is the union of three boards that are all here -- but the
         // spread is kept for the same reason as the two above it: a display
@@ -737,6 +767,11 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/admin-control',
           title: 'Admin Control',
           permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+        },
+        {
+          path: '/dashboards/amounts',
+          title: 'Amounts',
+          permissions: AMOUNTS_BOARD_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/plant-board',

@@ -1,9 +1,11 @@
 import { Download } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 
 import type { ApiError } from '@/core/api';
+import { useAuth } from '@/core/auth';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button } from '@/shared/components/ui';
 
@@ -38,6 +40,7 @@ import {
   warehouseOptions,
   warehouseRowsForItem,
 } from '../utils/nonMovingRows';
+import { pinnedCompany } from '../utils/pinnedCompany';
 
 function isSAPError(err: unknown): err is ApiError {
   const status = (err as ApiError)?.status;
@@ -45,7 +48,13 @@ function isSAPError(err: unknown): err is ApiError {
 }
 
 export default function NonMovingDashboardPage() {
-  const itemGroupsQuery = useItemGroups();
+  // `?company=` from the Amounts board's Beverage row: that company's report,
+  // whichever one the reader is signed into. See utils/pinnedCompany.
+  const [searchParams] = useSearchParams();
+  const { currentCompany } = useAuth();
+  const pinned = pinnedCompany(searchParams.get('company'), currentCompany?.company_code);
+
+  const itemGroupsQuery = useItemGroups(pinned?.code);
 
   const [filters, setFilters] = useState<NonMovingFiltersType>({
     age: DEFAULT_NON_MOVING_AGE,
@@ -87,7 +96,7 @@ export default function NonMovingDashboardPage() {
     [defaultItemGroupCode, filters, hasSelectedMaterialType],
   );
 
-  const reportQuery = useNonMovingReport(effectiveFilters, materialTypesResolved);
+  const reportQuery = useNonMovingReport(effectiveFilters, materialTypesResolved, pinned?.code);
 
   // "All" on this page means all RM and PM — the report answers for every group
   // when no group code is sent, so the rest is dropped here rather than shown.
@@ -211,6 +220,7 @@ export default function NonMovingDashboardPage() {
     <div className="space-y-6 p-6">
       <DashboardHeader
         title="Non-Moving RM & PM"
+        description={pinned ? `Showing ${pinned.label}, not the company you are signed into` : undefined}
       >
         <Button
           type="button"

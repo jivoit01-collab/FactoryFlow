@@ -41,6 +41,7 @@ import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/compo
 
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
+import { AMOUNTS_BOARD_VIEW_PERMISSIONS } from '../amounts/constants';
 import { BOARD_LIST_VIEW_PERMISSIONS } from '../builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { CIVIL_BOARD_VIEW_PERMISSIONS } from '../civil-control/constants';
@@ -100,6 +101,13 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/admin-control',
     accent: 'rose',
     permissions: ADMIN_BOARD_VIEW_PERMISSIONS,
+  },
+  {
+    title: 'Amounts',
+    icon: <IndianRupee className="h-5 w-5" />,
+    route: '/dashboards/amounts',
+    accent: 'amber',
+    permissions: AMOUNTS_BOARD_VIEW_PERMISSIONS,
   },
   {
     title: 'Plant Control',

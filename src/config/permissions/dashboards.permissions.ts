@@ -61,6 +61,15 @@ export const DASHBOARDS_PERMISSIONS = {
    * reader needs nothing from this file to open a board shared with them.
    */
   BUILD_DASHBOARDS: 'board_builder.can_build_dashboards',
+  /**
+   * The Amounts board: the plants' stock in rupees and what customers owe.
+   * A right of its own, created by the backend's amounts_board migration --
+   * no stock or warehouse right ever disclosed debtors, so none of them opens
+   * this board.
+   */
+  VIEW_AMOUNTS_BOARD: 'amounts_board.can_view_amounts_board',
+  /** Choosing whom each plant's RM / PM / FG tile names. */
+  MANAGE_STOCK_OWNERS: 'amounts_board.can_manage_stock_owners',
 } as const;
 
 export type DashboardsPermission =
