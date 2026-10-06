@@ -40,20 +40,15 @@ import {
 import { formatDateToISOString } from '@/shared/utils';
 
 /**
- * The first of this month, and today — the block of the book anybody opens.
+ * Today, at both ends — the day's page of the book, which is what the desk
+ * opens it for. A longer stretch is a change of the From box away.
  *
- * Both ends are written from the LOCAL calendar. `toISOString` would read them
- * back in UTC, and the first of the month is built as local midnight: in IST
- * that instant is 18:30 on the last day of the month before, so the window
- * opened on 31-08 for the whole of September and quietly carried an extra
- * day's dispatches into every figure on the sheet.
+ * Written from the LOCAL calendar. `toISOString` would read it back in UTC,
+ * and before 05:30 IST that is still yesterday.
  */
-function thisMonth() {
-  const today = new Date();
-  return {
-    from: formatDateToISOString(new Date(today.getFullYear(), today.getMonth(), 1)),
-    to: formatDateToISOString(today),
-  };
+function todayOnly() {
+  const today = formatDateToISOString(new Date());
+  return { from: today, to: today };
 }
 
 /**
@@ -90,7 +85,7 @@ function thisMonth() {
  * the plan it is a view of, on the Plans page.
  */
 export default function DispatchSheetPage() {
-  const initial = thisMonth();
+  const initial = todayOnly();
   const [dateFrom, setDateFrom] = useState(initial.from);
   const [dateTo, setDateTo] = useState(initial.to);
   const [company, setCompany] = useState<string>(SHEET_COMPANIES[0].code);
