@@ -167,6 +167,10 @@ export interface BSTTransferListItem {
   driver: number | null;
   driver_name: string | null;
   requires_gate: boolean;
+  /** A gated invoice still at the dock: the destination can take pallets off it
+   *  now (dock handover) while the rest waits for the truck. False once the gate
+   *  marks the vehicle out. */
+  dock_handover_open: boolean;
   scanned_box_count: number;
   item_count: number;
   /** Number of SAP documents combined into this entry. */
@@ -331,4 +335,17 @@ export interface BSTReceiveScanResult {
   decision: 'ACCEPTED' | 'REJECTED';
   updated_count: number;
   unexpected: string[];
+}
+
+export interface BSTDockHandoverPayload {
+  barcode_raw: string;
+  /** True puts a handed-over pallet/box back on the truck. */
+  undo?: boolean;
+}
+
+export interface BSTDockHandoverResult {
+  action: 'handover' | 'undo';
+  updated_count: number;
+  /** Boxes the scan matched that were already in the asked-for state. */
+  unchanged_count: number;
 }

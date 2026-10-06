@@ -113,6 +113,12 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
   };
 
   const isInvoice = t.source_type === 'INVOICE';
+  // Boxes the destination took off this load at the dock (dock handover), before
+  // the truck left — the loaders must leave those pallets off the truck.
+  const dockTakenScans = t.dock_handover_open
+    ? t.box_scans.filter((s) => s.receive_status === 'ACCEPTED')
+    : [];
+  const dockTakenPallets = [...new Set(dockTakenScans.map((s) => s.pallet_code || s.box_barcode))];
   // Same tallies the bill table renders — reused for the header tiles and badges.
   const bill = summarizeBstBill(t.items, t.box_scans);
   const infoRows: Array<[string, string]> = [
@@ -201,6 +207,18 @@ export function BSTDetailView({ transferId, mode = 'page', readOnly = false }: B
         </DashboardHeader>
       ) : (
         <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
+      )}
+
+      {dockTakenPallets.length > 0 && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <PackageCheck className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {t.destination_company_name || 'The destination'} took{' '}
+            {formatBstNumber(dockTakenScans.length)} box{dockTakenScans.length === 1 ? '' : 'es'} at the
+            dock: <span className="font-mono font-medium">{dockTakenPallets.join(', ')}</span>. Leave{' '}
+            {dockTakenPallets.length === 1 ? 'it' : 'them'} off the truck.
+          </span>
+        </div>
       )}
 
       <Card>

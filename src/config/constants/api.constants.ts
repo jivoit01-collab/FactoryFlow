@@ -1374,6 +1374,7 @@ export const API_ENDPOINTS = {
     BST_INCOMING: '/warehouse/bst/incoming/',
     BST_INCOMING_DETAIL: (transferId: number) => `/warehouse/bst/incoming/${transferId}/`,
     BST_RECEIVE_SCAN: (transferId: number) => `/warehouse/bst/${transferId}/receive-scans/`,
+    BST_DOCK_HANDOVER: (transferId: number) => `/warehouse/bst/${transferId}/dock-handover/`,
     BST_RECEIVE_COMPLETE: (transferId: number) => `/warehouse/bst/${transferId}/receive/complete/`,
     BST_GATE_OUTWARDS: '/warehouse/bst/gate/expected-outwards/',
     BST_GATE_INWARDS: '/warehouse/bst/gate/expected-inwards/',

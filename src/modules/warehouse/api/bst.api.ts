@@ -4,6 +4,8 @@ import { apiClient } from '@/core/api';
 import type {
   BSTBatchScanResult,
   BSTCreatePayload,
+  BSTDockHandoverPayload,
+  BSTDockHandoverResult,
   BSTManualEntryPayload,
   BSTPartialTransferRequest,
   BSTReceiveScanPayload,
@@ -188,6 +190,19 @@ export const bstApi = {
   ): Promise<BSTReceiveScanResult> {
     const res = await apiClient.post<BSTReceiveScanResult>(
       EP.BST_RECEIVE_SCAN(transferId),
+      payload,
+    );
+    return res.data;
+  },
+
+  /** Take a pallet/box off a gated invoice BST at the dock, before the truck
+   *  leaves (or, with `undo`, put it back on the truck). */
+  async dockHandover(
+    transferId: number,
+    payload: BSTDockHandoverPayload,
+  ): Promise<BSTDockHandoverResult> {
+    const res = await apiClient.post<BSTDockHandoverResult>(
+      EP.BST_DOCK_HANDOVER(transferId),
       payload,
     );
     return res.data;

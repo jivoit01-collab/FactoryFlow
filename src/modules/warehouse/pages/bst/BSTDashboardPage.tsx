@@ -58,6 +58,7 @@ function searchHaystack(t: BSTTransferListItem): string {
     t.driver_name,
     t.status,
     t.source_type,
+    t.dock_handover_open ? 'at the dock' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -83,10 +84,14 @@ function TransferTable({
   transfers,
   emptyLabel,
   onRowClick,
+  showDock = false,
 }: {
   transfers: BSTTransferListItem[];
   emptyLabel: string;
   onRowClick: (t: BSTTransferListItem) => void;
+  /** Incoming tab: flag gated invoices still at the dock, whose pallets we can
+   *  take now (dock handover) before the truck leaves. */
+  showDock?: boolean;
 }) {
   if (transfers.length === 0) {
     return (
@@ -147,6 +152,11 @@ function TransferTable({
               <td className="py-2 px-3">{formatBstDateTime(t.received_at)}</td>
               <td className="py-2 px-3">
                 <BSTStatusBadge status={t.status} />
+                {showDock && t.dock_handover_open && (
+                  <span className="ml-1 inline-flex items-center rounded-full border border-amber-300 px-2 py-0.5 text-xs text-amber-700 dark:border-amber-500/40 dark:text-amber-400">
+                    At the dock
+                  </span>
+                )}
               </td>
             </tr>
           ))}
@@ -163,12 +173,14 @@ function PaginatedTable({
   onRowClick,
   page,
   onPageChange,
+  showDock = false,
 }: {
   transfers: BSTTransferListItem[];
   emptyLabel: string;
   onRowClick: (t: BSTTransferListItem) => void;
   page: number;
   onPageChange: (page: number) => void;
+  showDock?: boolean;
 }) {
   const total = transfers.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -178,7 +190,12 @@ function PaginatedTable({
 
   return (
     <div className="space-y-3">
-      <TransferTable transfers={rows} emptyLabel={emptyLabel} onRowClick={onRowClick} />
+      <TransferTable
+        transfers={rows}
+        emptyLabel={emptyLabel}
+        onRowClick={onRowClick}
+        showDock={showDock}
+      />
       {total > PAGE_SIZE && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
           <span>
@@ -356,6 +373,7 @@ export default function BSTDashboardPage() {
               onRowClick={(t) => navigate(`/warehouse/bst/incoming/${t.id}`)}
               page={page}
               onPageChange={setPage}
+              showDock
             />
           )}
         </TabsContent>

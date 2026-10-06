@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronRight, Loader2, Package, PackageCheck, X } from 'lucide-react';
+import { Check, ChevronRight, Loader2, Package, PackageCheck, Truck, Undo2, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -75,6 +75,11 @@ export default function BSTReceivePage() {
   const [decidingBarcode, setDecidingBarcode] = useState<string | null>(null);
 
   const receivable = transfer ? RECEIVABLE.includes(transfer.status) : false;
+  // A gated invoice still loading at the dock: we can take pallets off it now
+  // (dock handover) while the rest waits for the truck. That is the only action
+  // open — no reject, no finalize — until the gate marks the vehicle out.
+  const atDock = !!transfer && !receivable && transfer.dock_handover_open;
+  const canAct = receivable || atDock;
   // On a live transfer the sender may still be adding boxes until they seal it
   // (scan_approved_at). Finalizing before then risks recording not-yet-sent boxes
   // as short.
@@ -140,6 +145,12 @@ export default function BSTReceivePage() {
     [transferId],
   );
 
+  const handOver = useCallback(
+    (barcode: string, undo = false) =>
+      bstApi.dockHandover(transferId, { barcode_raw: barcode, undo }),
+    [transferId],
+  );
+
   const isAlreadyAccepted = useCallback(
     (barcode: string) =>
       (transfer?.box_scans ?? []).some(
@@ -150,10 +161,13 @@ export default function BSTReceivePage() {
 
   const { enqueue, pendingCount, flashing, failedScans, retryFailed, dismissFailed } =
     useBoxScanQueue({
-      scanOne: (barcode) => decide(barcode, 'ACCEPTED'),
+      scanOne: async (barcode) => {
+        if (atDock) await handOver(barcode);
+        else await decide(barcode, 'ACCEPTED');
+      },
       isAlreadyScanned: isAlreadyAccepted,
       onDrained: refreshBst,
-      onAlreadyInList: () => toast.info('Box already accepted'),
+      onAlreadyInList: () => toast.info(atDock ? 'Already taken at the dock' : 'Box already accepted'),
     });
 
   const handleCameraScan = useCallback((decoded: string) => enqueue(decoded), [enqueue]);
@@ -192,6 +206,40 @@ export default function BSTReceivePage() {
     } finally {
       setDecidingBarcode(null);
     }
+  };
+
+  const handleBoxDock = async (barcode: string, undo: boolean) => {
+    setDecidingBarcode(barcode);
+    try {
+      await handOver(barcode, undo);
+      await refreshBst();
+    } catch (err) {
+      toast.error(getErrorMessage(err, undo ? 'Could not put it back on the truck' : 'Could not take it at the dock'));
+    } finally {
+      setDecidingBarcode(null);
+    }
+  };
+
+  // Taking a whole pallet at the dock (or putting it back) asks first: a stray
+  // click would otherwise take stock off the truck that was meant to ride on it.
+  const handlePalletDock = async (palletCode: string, boxCount: number, undo: boolean) => {
+    if (!transfer) return;
+    const boxes = `${boxCount} box${boxCount === 1 ? '' : 'es'}`;
+    const confirmed = await confirmDialog(
+      undo
+        ? {
+            title: `Put ${palletCode} back on the truck?`,
+            description: `Its ${boxes} go back to ${transfer.company_name} and are received with the rest of the load when the truck arrives.`,
+            confirmLabel: 'Put back',
+          }
+        : {
+            title: `Take ${palletCode} at the dock?`,
+            description: `Its ${boxes} are received into ${transfer.destination_company_name || 'your company'} now and won't travel on the truck.`,
+            confirmLabel: 'Take at dock',
+          },
+    );
+    if (!confirmed) return;
+    await handleBoxDock(palletCode, undo);
   };
 
   const confirmReject = async () => {
@@ -249,7 +297,14 @@ export default function BSTReceivePage() {
           transfer.doc_count > 1 ? `${transfer.doc_count} SAP documents` : `SAP #${transfer.sap_doc_num}`
         }`}
       >
-        <BSTStatusBadge status={transfer.status} />
+        <div className="flex items-center gap-2">
+          <BSTStatusBadge status={transfer.status} />
+          {atDock && (
+            <Badge variant="outline" className="text-amber-700 dark:text-amber-400">
+              At the dock
+            </Badge>
+          )}
+        </div>
       </DashboardHeader>
 
       {/* The server refuses a receive into a warehouse this user does not manage
@@ -274,7 +329,18 @@ export default function BSTReceivePage() {
         </div>
       )}
 
-      {!receivable ? (
+      {atDock && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <Truck className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            This load is still at the dock — the truck hasn&apos;t left the gate. Scan only the
+            pallets you are <span className="font-medium">taking right now</span>; they are received
+            into your company at once. The rest are received when the truck arrives.
+          </span>
+        </div>
+      )}
+
+      {!canAct ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             This transfer is not open for receiving.
@@ -291,13 +357,15 @@ export default function BSTReceivePage() {
             <div className="flex gap-2">
               <Input
                 autoFocus
-                placeholder="Scan an arriving box to accept it"
+                placeholder={
+                  atDock ? 'Scan a pallet you are taking at the dock' : 'Scan an arriving box to accept it'
+                }
                 value={manualBarcode}
                 onChange={(e) => setManualBarcode(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                 className={cn(flashing && 'ring-2 ring-emerald-400 ring-offset-1')}
               />
-              <Button onClick={handleManualSubmit}>Accept</Button>
+              <Button onClick={handleManualSubmit}>{atDock ? 'Take at dock' : 'Accept'}</Button>
             </div>
 
             <BoxScanCamera scanner={scanner} flashing={flashing} />
@@ -346,7 +414,9 @@ export default function BSTReceivePage() {
             </p>
             <div className="flex gap-2 text-xs">
               <Badge variant="outline" className="text-green-700 dark:text-green-400">{accepted} accepted</Badge>
-              <Badge variant="outline" className="text-red-700 dark:text-red-400">{rejected} rejected</Badge>
+              {!atDock && (
+                <Badge variant="outline" className="text-red-700 dark:text-red-400">{rejected} rejected</Badge>
+              )}
               <Badge variant="outline" className="text-slate-600 dark:text-muted-foreground">{pending} pending</Badge>
             </div>
           </div>
@@ -398,6 +468,40 @@ export default function BSTReceivePage() {
                           <Badge variant="outline" className="text-slate-600 dark:text-muted-foreground">{g.pending}</Badge>
                         )}
                       </div>
+                      {atDock && g.palletCode && (
+                        <div className="flex shrink-0 gap-1">
+                          {g.pending > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7"
+                              disabled={deciding}
+                              onClick={() => handlePalletDock(g.palletCode, g.pending, false)}
+                            >
+                              {deciding ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="mr-1 h-3 w-3 text-green-600" /> Take at dock
+                                </>
+                              )}
+                            </Button>
+                          )}
+                          {g.accepted > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7"
+                              disabled={deciding}
+                              title="Put back on the truck"
+                              aria-label={`Put ${g.palletCode} back on the truck`}
+                              onClick={() => handlePalletDock(g.palletCode, g.accepted, true)}
+                            >
+                              <Undo2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {receivable && g.palletCode && (
                         <div className="flex shrink-0 gap-1">
                           {!allAccepted && (
@@ -445,7 +549,7 @@ export default function BSTReceivePage() {
                               <th className="py-1.5 px-3">Box</th>
                               <th className="py-1.5 px-3">Item</th>
                               <th className="py-1.5 px-3">Status</th>
-                              {receivable && <th className="py-1.5 px-3 text-right">Action</th>}
+                              {canAct && <th className="py-1.5 px-3 text-right">Action</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -464,6 +568,33 @@ export default function BSTReceivePage() {
                                     <span className="ml-1 text-xs text-muted-foreground">({s.reject_reason})</span>
                                   )}
                                 </td>
+                                {atDock && (
+                                  <td className="py-2 px-3">
+                                    <div className="flex justify-end gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7"
+                                        disabled={decidingBarcode === s.box_barcode}
+                                        title={s.receive_status === 'ACCEPTED' ? 'Put back on the truck' : 'Take at dock'}
+                                        aria-label={
+                                          s.receive_status === 'ACCEPTED'
+                                            ? `Put ${s.box_barcode} back on the truck`
+                                            : `Take ${s.box_barcode} at the dock`
+                                        }
+                                        onClick={() => handleBoxDock(s.box_barcode, s.receive_status === 'ACCEPTED')}
+                                      >
+                                        {decidingBarcode === s.box_barcode ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : s.receive_status === 'ACCEPTED' ? (
+                                          <Undo2 className="h-3 w-3" />
+                                        ) : (
+                                          <Check className="h-3 w-3 text-green-600" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                )}
                                 {receivable && (
                                   <td className="py-2 px-3">
                                     <div className="flex justify-end gap-1">
