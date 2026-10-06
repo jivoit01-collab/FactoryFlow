@@ -18,6 +18,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import {
   useCreateDailyWastageLog,
@@ -318,8 +319,7 @@ export default function MaintenanceDailyWastagePage() {
               <Input
                 id="waste-photo"
                 type="file"
-                accept="image/*"
-                onChange={(e) => onPhotoChange(e.target.files?.[0] ?? null)}
+                onChange={(e) => onPhotoChange(pickPhotos(e.target)[0] ?? null)}
               />
               {photoPreview && (
                 <img

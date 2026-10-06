@@ -215,10 +215,15 @@ describe('gate in', () => {
     ).toBeInTheDocument();
     expect(recordReturn).not.toHaveBeenCalled();
 
+    // No `accept`, so Android offers the camera; a file that is not a photo is dropped.
+    const input = screen.getByTestId('returnable-photo-input');
+    expect(input).not.toHaveAttribute('accept');
+    const challan = new File(['%PDF'], 'challan.pdf', { type: 'application/pdf' });
+    fireEvent.change(input, { target: { files: [challan] } });
+    expect(screen.queryByAltText('challan.pdf')).not.toBeInTheDocument();
+
     const returned = photo('back-at-gate.jpg');
-    fireEvent.change(screen.getByTestId('returnable-photo-input'), {
-      target: { files: [returned] },
-    });
+    fireEvent.change(input, { target: { files: [returned] } });
     expect(screen.getByAltText('back-at-gate.jpg')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /record return/i }));

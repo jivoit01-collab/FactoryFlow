@@ -40,7 +40,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage, resolveFileUrl } from '@/shared/utils';
+import { getErrorMessage, pickPhotos, resolveFileUrl } from '@/shared/utils';
 
 import { type BiltyTarget, biltyTargetsOf, type DockingCustomer } from './biltyTargets';
 import { ReviewModeBanner } from './ReviewModeBanner';
@@ -53,7 +53,8 @@ interface UploadPanelConfig {
   description: string;
   required?: boolean;
   needsGeolocation?: boolean;
-  accept?: string;
+  /** Photos only. Checked as picked rather than by `accept` (see `pickPhotos`). */
+  photoOnly?: boolean;
 }
 
 interface TransportDocumentForm {
@@ -77,7 +78,7 @@ const UPLOAD_PANELS: UploadPanelConfig[] = [
     description: 'Live vehicle photo with GPS coordinates',
     required: true,
     needsGeolocation: true,
-    accept: 'image/*',
+    photoOnly: true,
   },
   {
     type: 'INVOICE_COPY',
@@ -819,7 +820,9 @@ function DocumentUploadPanel({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const [file] = panel.photoOnly
+      ? pickPhotos(event.target)
+      : Array.from(event.target.files ?? []);
     if (!file) return;
     await onUpload(panel.type, file, customer);
     if (inputRef.current) inputRef.current.value = '';
@@ -851,7 +854,6 @@ function DocumentUploadPanel({
       <input
         ref={inputRef}
         type="file"
-        accept={panel.accept}
         className="hidden"
         disabled={disabled}
         onChange={handleFileSelect}

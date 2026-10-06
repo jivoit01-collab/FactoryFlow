@@ -39,6 +39,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import {
   useCreateSafetyFine,
@@ -374,11 +375,10 @@ function NewFineDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void
               Add photos
               <input
                 type="file"
-                accept="image/*"
                 multiple
                 className="hidden"
                 onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
+                  const files = pickPhotos(e.target);
                   e.target.value = '';
                   if (files.length) setPhotos((c) => [...c, ...files]);
                 }}
@@ -427,7 +427,7 @@ function FineDetailDialog({
   const fine = fineQuery.data;
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const [file] = pickPhotos(event.target);
     event.target.value = '';
     if (!file) return;
     await uploadPhoto.mutateAsync({ fine: fineId, file });
@@ -544,7 +544,6 @@ function FineDetailDialog({
                     <ImagePlus className="h-5 w-5" />
                     <input
                       type="file"
-                      accept="image/*"
                       className="hidden"
                       onChange={handleUpload}
                     />

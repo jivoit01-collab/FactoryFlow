@@ -62,7 +62,7 @@ import {
   Switch,
   Textarea,
 } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { getErrorMessage, pickPhotos } from '@/shared/utils';
 
 import { useCreateEmployee, useUpdateEmployee } from '../api';
 import type {
@@ -593,9 +593,8 @@ export function EmployeeFormDialog({
                 <Input
                   id="employee-photo"
                   type="file"
-                  accept="image/*"
                   className="mt-1"
-                  onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                  onChange={(event) => setPhoto(pickPhotos(event.target)[0] ?? null)}
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   {employee?.photo

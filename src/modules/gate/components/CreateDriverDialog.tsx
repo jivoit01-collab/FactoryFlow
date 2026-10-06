@@ -16,6 +16,7 @@ import {
   Label,
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
+import { pickPhotos } from '@/shared/utils';
 
 import { useCreateDriver, useUpdateDriver } from '../api/driver/driver.queries';
 import {
@@ -136,7 +137,7 @@ export function CreateDriverDialog({
   }, [photoFile]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const [file] = pickPhotos(e.target);
     if (file) {
       setValue('photo', file, { shouldValidate: true });
     }
@@ -348,7 +349,6 @@ export function CreateDriverDialog({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
                 onChange={handlePhotoChange}
                 disabled={mutation.isPending}
                 className="hidden"

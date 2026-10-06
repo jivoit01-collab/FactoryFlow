@@ -30,6 +30,7 @@ import {
   Label,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import {
   useCreateEtpSludgeEntry,
@@ -433,8 +434,7 @@ export default function EtpSludgePage() {
                 <Input
                   id="sludge-photo"
                   type="file"
-                  accept="image/*"
-                  onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                  onChange={(event) => setPhoto(pickPhotos(event.target)[0] ?? null)}
                 />
               </div>
               <div className="sm:col-span-2">

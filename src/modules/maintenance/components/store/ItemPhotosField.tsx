@@ -2,7 +2,7 @@ import { Camera, X } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { Button } from '@/shared/components/ui';
-import { resolveFileUrl } from '@/shared/utils';
+import { pickPhotos, resolveFileUrl } from '@/shared/utils';
 
 import type { MaintenanceSparePhoto } from '../../types';
 
@@ -35,8 +35,8 @@ function Thumb({
 
 /**
  * An item's photos in the Add / Edit form: the ones already saved, then the
- * ones picked now, then a tile to add more. `accept="image/*"` without
- * `capture`, so a phone offers both its camera and its gallery.
+ * ones picked now, then a tile to add more. No `accept` and no `capture`, so a
+ * phone offers both its camera and its files (see `pickPhotos`).
  */
 export function ItemPhotosField({
   saved,
@@ -55,11 +55,11 @@ export function ItemPhotosField({
   const previews = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
-  const addFiles = (picked: FileList | null) => {
-    if (!picked?.length) return;
-    onFilesChange([...files, ...Array.from(picked)]);
+  const addFiles = (input: HTMLInputElement) => {
+    const photos = pickPhotos(input);
     // Let the same photo be picked again after removal.
-    if (inputRef.current) inputRef.current.value = '';
+    input.value = '';
+    if (photos.length) onFilesChange([...files, ...photos]);
   };
 
   return (
@@ -95,11 +95,10 @@ export function ItemPhotosField({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
         multiple
         className="hidden"
         data-testid="item-photo-input"
-        onChange={(event) => addFiles(event.target.files)}
+        onChange={(event) => addFiles(event.target)}
       />
     </div>
   );

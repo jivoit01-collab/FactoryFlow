@@ -1,3 +1,33 @@
+import { toast } from 'sonner';
+
+const PHOTO_NAME_RE = /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i;
+
+/**
+ * The photos picked in a photo input, with a toast for anything else.
+ *
+ * Photo inputs carry no `accept`. Chrome on Android hands an images-only
+ * `accept="image/*"` to the system Photo Picker, which opens the gallery with
+ * no way to the camera; without one it asks "camera or files?" like any other
+ * upload. Any file can be picked then, so the non-photos are dropped here, and
+ * the input is cleared so it does not go on showing their name.
+ */
+export function pickPhotos(input: HTMLInputElement): File[] {
+  const picked = Array.from(input.files ?? []);
+  const photos = picked.filter(
+    (file) => file.type.startsWith('image/') || PHOTO_NAME_RE.test(file.name),
+  );
+  const others = picked.filter((file) => !photos.includes(file));
+  if (others.length) {
+    input.value = '';
+    toast.error(
+      others.length === 1
+        ? `"${others[0].name}" is not a photo.`
+        : `${others.length} of the files picked are not photos.`,
+    );
+  }
+  return photos;
+}
+
 /**
  * Shrink a camera photo to something a site's connection can actually send:
  * at most `maxEdge` pixels on the long side, as a JPEG. Anything that is not a

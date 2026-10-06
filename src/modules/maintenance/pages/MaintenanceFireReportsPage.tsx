@@ -40,6 +40,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import {
   useCreateFireReport,
@@ -325,11 +326,10 @@ function NewReportDialog({
                           Add photos
                           <input
                             type="file"
-                            accept="image/*"
                             multiple
                             className="hidden"
                             onChange={(event) => {
-                              const files = Array.from(event.target.files ?? []);
+                              const files = pickPhotos(event.target);
                               event.target.value = '';
                               if (files.length) setRow(index, { photos: [...row.photos, ...files] });
                             }}
@@ -458,7 +458,7 @@ function ReportDetailDialog({
   const report = reportQuery.data;
 
   const handleUpload = async (itemId: number, event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const [file] = pickPhotos(event.target);
     event.target.value = '';
     if (!file) return;
     await uploadPhoto.mutateAsync({ item: itemId, file });
@@ -572,7 +572,6 @@ function ReportDetailDialog({
                           <ImagePlus className="h-5 w-5" />
                           <input
                             type="file"
-                            accept="image/*"
                             className="hidden"
                             onChange={(event) => handleUpload(item.id, event)}
                           />

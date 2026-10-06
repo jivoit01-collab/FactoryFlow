@@ -15,6 +15,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import type {
   MaintenanceAsset,
@@ -761,7 +762,7 @@ export function WorkOrderPhotoUploadDialog({
   const [caption, setCaption] = useState('');
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0] ?? null;
+    const selectedFile = pickPhotos(event.target)[0] ?? null;
     setFile(selectedFile);
     if (selectedFile && !caption) {
       setCaption(titleFromFile(selectedFile));
@@ -791,7 +792,6 @@ export function WorkOrderPhotoUploadDialog({
             <Input
               id="work_photo_file"
               type="file"
-              accept="image/*"
               onChange={handleFileChange}
               required
             />

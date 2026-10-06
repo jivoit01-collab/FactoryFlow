@@ -2,6 +2,7 @@ import { Camera, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { Button } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 interface ReturnablePhotoPickerProps {
   value: File[];
@@ -11,8 +12,8 @@ interface ReturnablePhotoPickerProps {
 }
 
 /**
- * Photos only, previewed as they are picked. `accept="image/*"` without
- * `capture`, so a phone offers both its camera and its gallery.
+ * Photos only, previewed as they are picked. No `accept` and no `capture`, so a
+ * phone offers both its camera and its files (see `pickPhotos`).
  */
 export function ReturnablePhotoPicker({
   value,
@@ -24,11 +25,11 @@ export function ReturnablePhotoPicker({
   const previews = useMemo(() => value.map((file) => URL.createObjectURL(file)), [value]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
-  const addFiles = (files: FileList | null) => {
-    if (!files?.length) return;
-    onChange([...value, ...Array.from(files)]);
+  const addFiles = (input: HTMLInputElement) => {
+    const photos = pickPhotos(input);
     // Let the same photo be picked again after removal.
-    if (inputRef.current) inputRef.current.value = '';
+    input.value = '';
+    if (photos.length) onChange([...value, ...photos]);
   };
 
   return (
@@ -66,11 +67,10 @@ export function ReturnablePhotoPicker({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
           multiple
           className="hidden"
           data-testid="returnable-photo-input"
-          onChange={(event) => addFiles(event.target.files)}
+          onChange={(event) => addFiles(event.target)}
         />
       </div>
 

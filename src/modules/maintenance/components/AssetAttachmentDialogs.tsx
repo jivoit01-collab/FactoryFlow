@@ -16,6 +16,7 @@ import {
   SelectOption,
   Textarea,
 } from '@/shared/components/ui';
+import { pickPhotos } from '@/shared/utils';
 
 import type {
   AssetDocumentType,
@@ -64,7 +65,7 @@ export function AssetPhotoUploadDialog({
   const [isMonthlyPhoto, setIsMonthlyPhoto] = useState(true);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setFile(event.target.files?.[0] ?? null);
+    setFile(pickPhotos(event.target)[0] ?? null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -92,7 +93,6 @@ export function AssetPhotoUploadDialog({
             <Input
               id="asset_photo_file"
               type="file"
-              accept="image/*"
               onChange={handleFileChange}
               required
             />
