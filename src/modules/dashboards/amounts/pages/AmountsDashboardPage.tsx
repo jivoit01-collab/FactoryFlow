@@ -14,7 +14,7 @@ import { useFullscreen } from '../../dispatch/hooks';
 import { OpsGroup, OpsMeter, OpsPair, OpsTopbar } from '../../logistics-control/components';
 import { useFullBleed } from '../../logistics-control/hooks';
 import { useAmountsBoard } from '../api';
-import { AmountsGodownDrill } from '../components';
+import { AmountsDebtorDrill, AmountsGodownDrill } from '../components';
 import {
   AMOUNTS_OWNERS_ROUTE,
   AMOUNTS_PLANTS,
@@ -26,6 +26,7 @@ import {
 import type {
   AmountsCategory,
   AmountsDebtorFigures,
+  AmountsDebtorKey,
   AmountsDebtorTotal,
   AmountsNonMoving,
   AmountsPerson,
@@ -57,6 +58,7 @@ export default function AmountsDashboardPage() {
 
   const { data, error, isFetching, isRefetchError } = useAmountsBoard();
   const [open, setOpen] = useState<{ plant: string; category: StockCategoryKey } | null>(null);
+  const [openDebtor, setOpenDebtor] = useState<AmountsDebtorKey | null>(null);
 
   const canManageOwners = hasPermission(DASHBOARDS_PERMISSIONS.MANAGE_STOCK_OWNERS);
   const canOpenNonMoving = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_NON_MOVING_RM);
@@ -99,6 +101,13 @@ export default function AmountsDashboardPage() {
   const loading = !data;
   const plantFor = (code: string) => data?.plants.find((plant) => plant.company_code === code);
   const debtorTotal = data?.debtors.total ?? null;
+
+  // The open debtor tile's figures, looked up in the current read like the
+  // godown drill's category, so the panel's stats move with a refresh.
+  const openDebtorCompany = data?.debtors.companies.find((c) => c.key === openDebtor);
+  const openDebtorFigures =
+    openDebtor === 'TOTAL' ? debtorTotal : (openDebtorCompany?.figures ?? null);
+  const openDebtorLabel = openDebtor === 'TOTAL' ? 'Total' : (openDebtorCompany?.label ?? '');
 
   const openPlant = open ? plantFor(open.plant) : undefined;
   const openCategory = open
@@ -194,6 +203,7 @@ export default function AmountsDashboardPage() {
                   figures={company?.figures ?? null}
                   floor={data?.debtors.oldest_floor}
                   loading={loading}
+                  onOpen={() => setOpenDebtor(key)}
                 />
               );
             })}
@@ -203,6 +213,7 @@ export default function AmountsDashboardPage() {
               total={debtorTotal}
               floor={data?.debtors.oldest_floor}
               loading={loading}
+              onOpen={() => setOpenDebtor('TOTAL')}
             />
           </AdminBand>
         </main>
@@ -215,6 +226,15 @@ export default function AmountsDashboardPage() {
           category={openCategory}
           owner={openPlant.owners[openCategory.key]}
           onClose={() => setOpen(null)}
+        />
+      )}
+
+      {openDebtor && openDebtorFigures && (
+        <AmountsDebtorDrill
+          debtorKey={openDebtor}
+          label={openDebtorLabel}
+          figures={openDebtorFigures}
+          onClose={() => setOpenDebtor(null)}
         />
       )}
     </div>
@@ -353,6 +373,7 @@ function DebtorTile({
   total,
   floor,
   loading,
+  onOpen,
 }: {
   name: string;
   figures: AmountsDebtorFigures | null;
@@ -361,6 +382,8 @@ function DebtorTile({
   /** Balances under this set no oldest date (rounding residues). */
   floor?: number;
   loading: boolean;
+  /** Open the customers behind the figure. */
+  onOpen: () => void;
 }) {
   const headline = moneyParts(figures?.amount);
   const oldest = figures?.oldest ?? null;
@@ -376,6 +399,8 @@ function DebtorTile({
       unit={headline.unit}
       loading={loading}
       missing={!loading && !figures ? SAP_MISSING : undefined}
+      // Nobody in debit is nothing to list, so the tile does not offer to.
+      onOpen={figures && figures.customers > 0 ? onOpen : undefined}
       viz={
         figures && (
           <div>
@@ -403,6 +428,7 @@ function DebtorTile({
                 Group &amp; branches {money(figures.group_amount)} not counted
               </p>
             ) : null}
+            {figures.customers > 0 && <p className="adm-open-hint">open the customers →</p>}
           </div>
         )
       }

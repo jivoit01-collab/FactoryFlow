@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AMOUNTS_BOARD_REFRESH_MS } from '../constants';
-import type { StockCategoryKey } from '../types';
+import type { AmountsDebtorKey, StockCategoryKey } from '../types';
 import { amountsBoardApi } from './amounts.api';
 
 export const AMOUNTS_BOARD_QUERY_KEYS = {
@@ -9,6 +9,9 @@ export const AMOUNTS_BOARD_QUERY_KEYS = {
   board: () => ['amounts-board', 'board'] as const,
   godownItems: (companyCode: string, category: StockCategoryKey, warehouse: string) =>
     ['amounts-board', 'godown-items', companyCode, category, warehouse] as const,
+  debtors: (key: AmountsDebtorKey) => ['amounts-board', 'debtors', key] as const,
+  debtorBills: (companyCode: string, cardCode: string) =>
+    ['amounts-board', 'debtor-bills', companyCode, cardCode] as const,
   owners: () => ['amounts-board', 'owners'] as const,
 };
 
@@ -43,6 +46,26 @@ export function useAmountsGodownItems(
   return useQuery({
     queryKey: AMOUNTS_BOARD_QUERY_KEYS.godownItems(companyCode, category, warehouse),
     queryFn: () => amountsBoardApi.getGodownItems(companyCode, category, warehouse),
+    staleTime: AMOUNTS_BOARD_REFRESH_MS,
+    retry: false,
+  });
+}
+
+/** The customers behind a debtor tile, read when it is opened. */
+export function useAmountsDebtors(key: AmountsDebtorKey) {
+  return useQuery({
+    queryKey: AMOUNTS_BOARD_QUERY_KEYS.debtors(key),
+    queryFn: () => amountsBoardApi.getDebtors(key),
+    staleTime: AMOUNTS_BOARD_REFRESH_MS,
+    retry: false,
+  });
+}
+
+/** One customer's unpaid bills, read when the customer is opened. */
+export function useAmountsDebtorBills(companyCode: string, cardCode: string) {
+  return useQuery({
+    queryKey: AMOUNTS_BOARD_QUERY_KEYS.debtorBills(companyCode, cardCode),
+    queryFn: () => amountsBoardApi.getDebtorBills(companyCode, cardCode),
     staleTime: AMOUNTS_BOARD_REFRESH_MS,
     retry: false,
   });

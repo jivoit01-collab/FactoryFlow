@@ -124,6 +124,54 @@ export interface AmountsGodownItems {
   items: AmountsGodownItem[];
 }
 
+/** A debtor tile's key, or the Total's. */
+export type AmountsDebtorKey = AmountsDebtorCompany['key'] | 'TOTAL';
+
+export interface AmountsDebtorCustomer {
+  company_code: string;
+  /** JWPL, MART or Beverages -- the tile's own name for the company. */
+  company_label: string;
+  card_code: string;
+  card_name: string;
+  balance: number;
+  /** When the oldest unpaid debit was posted, payments taken oldest-first. */
+  since: string | null;
+}
+
+export interface AmountsDebtorDrill {
+  key: AmountsDebtorKey;
+  amount: number;
+  /** Largest balance first. */
+  customers: AmountsDebtorCustomer[];
+  /** On the Total only: companies that could not be read and are not listed. */
+  missing: string[];
+}
+
+export interface AmountsDebtorBill {
+  trans_id: number;
+  line_id: number;
+  /** Posting date. Bills carried over from the old SAP all read 2024-09-30. */
+  date: string | null;
+  due_date: string | null;
+  /** 'A/R Invoice', 'Journal Entry', 'Opening Balance'... */
+  type: string;
+  reference: string;
+  memo: string;
+  amount: number;
+  /** What is still owed of it. Only the oldest bill can be part-paid. */
+  unpaid: number;
+}
+
+export interface AmountsDebtorBills {
+  company_code: string;
+  company_label: string;
+  card_code: string;
+  card_name: string;
+  balance: number;
+  /** Oldest first; their `unpaid` parts add up to `balance`. */
+  bills: AmountsDebtorBill[];
+}
+
 export interface AmountsOwnersPlant {
   company_code: string;
   label: string;

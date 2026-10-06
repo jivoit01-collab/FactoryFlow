@@ -530,6 +530,10 @@ export const API_ENDPOINTS = {
   AMOUNTS_BOARD: {
     BOARD: '/dashboards/amounts-board/board/',
     GODOWN_ITEMS: '/dashboards/amounts-board/godown-items/',
+    /** The customers behind a debtor tile (`?debtor=JWPL|MART|BEVERAGES|TOTAL`). */
+    DEBTORS: '/dashboards/amounts-board/debtors/',
+    /** One customer's unpaid bills (`?company=&customer=`). */
+    DEBTOR_BILLS: '/dashboards/amounts-board/debtor-bills/',
     /** Who each plant's RM / PM / FG tile names. GET lists, PUT sets one. */
     OWNERS: '/dashboards/amounts-board/owners/',
   },

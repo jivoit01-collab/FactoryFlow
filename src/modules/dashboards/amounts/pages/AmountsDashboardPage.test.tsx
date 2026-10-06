@@ -16,6 +16,8 @@ const permissions = new Set<string>();
 vi.mock('../api', () => ({
   useAmountsBoard: () => useAmountsBoard(),
   useAmountsGodownItems: () => ({ data: undefined, isLoading: true, error: null }),
+  useAmountsDebtors: () => ({ data: undefined, isLoading: true, error: null }),
+  useAmountsDebtorBills: () => ({ data: undefined, isLoading: true, error: null }),
 }));
 
 vi.mock('@/core/auth', () => ({
@@ -231,6 +233,24 @@ describe('AmountsDashboardPage', () => {
     expect(
       within(tile(band('Debtors'), 'Beverages')).getByText('No customer owes anything.'),
     ).toBeInTheDocument();
+  });
+
+  it('opens a debtor tile on its customers, and only one that has some', () => {
+    renderBoard();
+    const debtors = band('Debtors');
+
+    // MART was not read and Beverages has nobody in debit: nothing to list.
+    expect(tile(debtors, 'MART')).not.toHaveAttribute('role', 'button');
+    expect(tile(debtors, 'Beverages')).not.toHaveAttribute('role', 'button');
+
+    fireEvent.click(tile(debtors, 'JWPL'));
+    expect(screen.getByText('JWPL · debtors')).toBeInTheDocument();
+  });
+
+  it('opens the Total on every company at once', () => {
+    renderBoard();
+    fireEvent.click(tile(band('Debtors'), 'Total'));
+    expect(screen.getByText('All debtors')).toBeInTheDocument();
   });
 
   it("sends the Beverage row's non-moving tile to Beverages' report", () => {

@@ -3,6 +3,9 @@ import { apiClient } from '@/core/api';
 
 import type {
   AmountsBoardResponse,
+  AmountsDebtorBills,
+  AmountsDebtorDrill,
+  AmountsDebtorKey,
   AmountsGodownItems,
   AmountsOwnersResponse,
   AmountsPerson,
@@ -26,6 +29,22 @@ export const amountsBoardApi = {
   ): Promise<AmountsGodownItems> {
     const response = await apiClient.get<AmountsGodownItems>(EP.GODOWN_ITEMS, {
       params: { company: companyCode, category, warehouse },
+    });
+    return response.data;
+  },
+
+  /** The customers behind one debtor tile, or all three companies' for the Total. */
+  async getDebtors(key: AmountsDebtorKey): Promise<AmountsDebtorDrill> {
+    const response = await apiClient.get<AmountsDebtorDrill>(EP.DEBTORS, {
+      params: { debtor: key },
+    });
+    return response.data;
+  },
+
+  /** One customer's unpaid bills, oldest first. */
+  async getDebtorBills(companyCode: string, cardCode: string): Promise<AmountsDebtorBills> {
+    const response = await apiClient.get<AmountsDebtorBills>(EP.DEBTOR_BILLS, {
+      params: { company: companyCode, customer: cardCode },
     });
     return response.data;
   },
