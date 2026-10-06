@@ -9,6 +9,15 @@ export interface SapComponentHealth {
   error: string;
 }
 
+/** How old the copy of SAP is that the current company's screens fall back on. */
+export interface SapCopyFreshness {
+  company_code: string;
+  /** Bills and open POs, refreshed every 15 minutes (ISO), the older of the two. */
+  frequent_as_of: string | null;
+  /** Items, BOMs, warehouses and vendors, refreshed nightly (ISO). */
+  nightly_as_of: string | null;
+}
+
 export interface SapHealth {
   ok: boolean;
   components: {
@@ -17,6 +26,10 @@ export interface SapHealth {
     /** Reads: open POs, stock, bills, anything shown from SAP. */
     hana: SapComponentHealth;
   };
+  /** Postings that wait for SAP and post by themselves (the SAP posting queue). */
+  waits_for_sap?: string[];
+  /** With HANA down: the copy the app is working from, or null if there is none. */
+  copy?: SapCopyFreshness | null;
 }
 
 // Kept beside its only caller rather than in API_ENDPOINTS: the app shell owns

@@ -16,6 +16,12 @@ function isDown(component?: SapComponentHealth): component is SapComponentHealth
   return component?.status === 'down';
 }
 
+/** "a, b and c" */
+function listed(items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 /**
  * The app-wide "SAP is down" strip, above every page.
  *
@@ -32,17 +38,34 @@ export function SapHealthBanner() {
   const lines: string[] = [];
   if (isDown(serviceLayer)) {
     const at = sinceClock(serviceLayer.since);
+    const waits = data?.waits_for_sap ?? [];
+    // What waits on the SAP posting queue is not a failure: it is saved and posts
+    // by itself once SAP is back. Only the rest has to be tried again.
     lines.push(
       `SAP is not accepting postings${at ? ` (not answering since ${at})` : ''}. ` +
-        'GRPOs, returns, transfers and other postings to SAP will fail until it is back — ' +
-        'try the SAP step again later.',
+        (waits.length > 0
+          ? `${listed(waits).replace(/^./, (c) => c.toUpperCase())} are saved and post by ` +
+            'themselves once SAP is back; other postings to SAP fail until then.'
+          : 'GRPOs, returns, transfers and other postings to SAP will fail until it is back — ' +
+            'try the SAP step again later.'),
     );
   }
   if (isDown(hana)) {
     const at = sinceClock(hana.since);
+    const copy = data?.copy;
+    // The screens fall back on the app's copy of SAP: say how old it is, so
+    // nobody mistakes it for SAP as it stands now.
+    const taken = [
+      copy?.frequent_as_of && `bills and open POs as of ${sinceClock(copy.frequent_as_of)}`,
+      copy?.nightly_as_of &&
+        `items, BOMs, warehouses and vendors as of ${sinceClock(copy.nightly_as_of)}`,
+    ].filter(Boolean) as string[];
     lines.push(
       `SAP data cannot be read${at ? ` (since ${at})` : ''}. ` +
-        'Lists, open POs and stock figures that come from SAP may be empty or out of date.',
+        (taken.length > 0
+          ? `The app is working from its copy of SAP — ${taken.join('; ')}. Anything ` +
+            'newer is not in it, and stock figures are not copied.'
+          : 'Lists, open POs and stock figures that come from SAP may be empty or out of date.'),
     );
   }
 

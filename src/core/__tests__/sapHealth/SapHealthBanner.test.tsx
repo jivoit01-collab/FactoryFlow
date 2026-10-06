@@ -61,6 +61,50 @@ describe('SapHealthBanner', () => {
     expect(await screen.findByText(/SAP data cannot be read/)).toBeInTheDocument();
   });
 
+  it('names what waits for SAP rather than calling every posting a failure', async () => {
+    fetchSapHealth.mockResolvedValue({
+      ...health('down'),
+      waits_for_sap: ['goods returns', 'GRPOs', 'bill summary stamps'],
+    });
+    renderBanner();
+    expect(
+      await screen.findByText(
+        /Goods returns, GRPOs and bill summary stamps are saved and post by themselves once SAP is back; other postings to SAP fail until then\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says how old the copy is that the screens are working from', async () => {
+    const at = (h: number, m: number) => {
+      const when = new Date();
+      when.setHours(h, m, 0, 0);
+      return when;
+    };
+    const clock = (when: Date) =>
+      when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    fetchSapHealth.mockResolvedValue({
+      ...health('up', 'down'),
+      copy: {
+        company_code: 'JIVO_OIL',
+        frequent_as_of: at(0, 30).toISOString(),
+        nightly_as_of: at(0, 5).toISOString(),
+      },
+    });
+    renderBanner();
+    const line = await screen.findByText(/working from its copy of SAP/);
+    expect(line.textContent).toContain(`bills and open POs as of ${clock(at(0, 30))}`);
+    expect(line.textContent).toContain(
+      `items, BOMs, warehouses and vendors as of ${clock(at(0, 5))}`,
+    );
+    expect(line.textContent).toContain('stock figures are not copied');
+  });
+
+  it('falls back to the old warning when there is no copy', async () => {
+    fetchSapHealth.mockResolvedValue({ ...health('up', 'down'), copy: null });
+    renderBanner();
+    expect(await screen.findByText(/may be empty or out of date/)).toBeInTheDocument();
+  });
+
   it.each([
     ['SAP is up', () => Promise.resolve(health('up'))],
     ['SAP has not been probed yet', () => Promise.resolve(health('unknown', 'unknown'))],
