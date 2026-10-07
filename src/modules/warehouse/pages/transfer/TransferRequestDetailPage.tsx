@@ -130,6 +130,14 @@ export default function TransferRequestDetailPage() {
   // it and whoever approved it — not to every holder of the post permission.
   const isOnRequest =
     !!user && (user.id === r.requested_by || user.id === r.reviewed_by);
+  // Often one person: a manager of both warehouses raises and approves it, and
+  // "Only Gautam or Gautam" read like a glitch.
+  const raisedBy = r.requested_by_name || 'the person who raised it';
+  const approvedBy = r.reviewed_by_name || 'the person who approved it';
+  const samePerson =
+    r.requested_by != null && r.reviewed_by != null
+      ? r.requested_by === r.reviewed_by
+      : raisedBy === approvedBy;
   const hasBatchLines = r.lines.some((l) => l.is_batch_managed);
   // Editable until it is decided, and only by whoever raised it.
   const canEdit =
@@ -378,8 +386,8 @@ export default function TransferRequestDetailPage() {
 
       {isApproved && notPosted && !isOnRequest && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-          Only {r.requested_by_name || 'the person who raised it'} or{' '}
-          {r.reviewed_by_name || 'the person who approved it'} can post this transfer to SAP.
+          Only {samePerson ? raisedBy : `${raisedBy} or ${approvedBy}`} can post this transfer to
+          SAP.
         </div>
       )}
 

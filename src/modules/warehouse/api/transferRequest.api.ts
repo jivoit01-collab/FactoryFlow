@@ -29,6 +29,15 @@ import type { BSTTransferDetail } from '../types';
 
 const EP = API_ENDPOINTS.WAREHOUSE;
 
+/**
+ * How long the browser waits on a call that posts a transfer to SAP. The
+ * server waits up to 180 s for SAP (`transfer_base.POST_TIMEOUT_SECONDS`); at
+ * the default 30 s the browser gave up first, the operator saw "no answer"
+ * while the server was still waiting, and pressed Post again — the start of
+ * TR-20261003-0002's four days marked "not posted" after its stock had moved.
+ */
+const SAP_TRANSFER_POST_TIMEOUT_MS = 200_000;
+
 export interface TransferRequestListParams {
   status?: string;
   posting_status?: string;
@@ -179,6 +188,7 @@ export const transferRequestApi = {
     const res = await apiClient.post<TransferRequestDetail>(
       EP.TRANSFER_REQUEST_POST(requestId),
       allocations?.length ? { lines: allocations } : {},
+      { timeout: SAP_TRANSFER_POST_TIMEOUT_MS },
     );
     return res.data;
   },
@@ -207,6 +217,7 @@ export const transferRequestApi = {
     const res = await apiClient.post<TransferRequestDetail>(
       EP.TRANSFER_REQUEST_SECOND_LEG(requestId),
       data,
+      { timeout: SAP_TRANSFER_POST_TIMEOUT_MS },
     );
     return res.data;
   },
@@ -268,9 +279,11 @@ export const sapTransferPostApi = {
    * request stays open for it.
    */
   async post(docEntry: number, quantities: Record<string, string>): Promise<SapTransferPostResult> {
-    const res = await apiClient.post<SapTransferPostResult>(EP.SAP_TRANSFER_POST(docEntry), {
-      quantities,
-    });
+    const res = await apiClient.post<SapTransferPostResult>(
+      EP.SAP_TRANSFER_POST(docEntry),
+      { quantities },
+      { timeout: SAP_TRANSFER_POST_TIMEOUT_MS },
+    );
     return res.data;
   },
 };
@@ -293,6 +306,8 @@ export const sapTransferDraftApi = {
   async post(draftEntry: number): Promise<SapTransferDraftPostResult> {
     const res = await apiClient.post<SapTransferDraftPostResult>(
       EP.SAP_TRANSFER_DRAFT_POST(draftEntry),
+      undefined,
+      { timeout: SAP_TRANSFER_POST_TIMEOUT_MS },
     );
     return res.data;
   },
