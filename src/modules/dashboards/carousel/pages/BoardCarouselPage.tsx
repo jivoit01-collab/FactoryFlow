@@ -238,7 +238,7 @@ export default function BoardCarouselPage() {
       <CarouselStrip
         slides={slides}
         index={rotation.index}
-        progress={rotation.progress}
+        turn={rotation.turn}
         remaining={rotation.remaining}
         paused={rotation.paused}
         dwellSeconds={rotation.dwellSeconds}

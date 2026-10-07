@@ -171,7 +171,10 @@ export const DWELL_CHOICES: readonly number[] = [15, 30, 45, 60, 90, 120, 300, 6
  */
 export const DEFAULT_DWELL_SECONDS = 45;
 
-/** How often the progress bar advances. Smooth enough to read as a countdown. */
+/**
+ * How often the rotation reads the clock: at most this late moving a board on.
+ * The progress bar animates by itself and does not wait for it.
+ */
 export const TICK_MS = 250;
 
 /** Chrome hides after this long without a pointer. A wall has no pointer. */

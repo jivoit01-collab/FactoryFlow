@@ -312,15 +312,35 @@
   display: block;
   height: 100%;
   background: var(--ok1);
-  /* Matches the tick, so the bar creeps rather than stepping. Not applied while
-     held — a paused bar should sit still, and an eased width would animate its
-     way back to zero on the next advance. */
-  transition: width 250ms linear;
+  /*
+   * An animation over the whole dwell, not a width set from the rotation's
+   * tick. The tick-driven width rounded to whole percent and eased for 250ms,
+   * so at a 45s dwell it moved for a quarter second and then sat still for
+   * one, and every tick re-rendered the board underneath, which held up the
+   * next. A transform animation runs off the main thread: however long a board
+   * takes to render, the bar keeps creeping.
+   *
+   * Each turn mounts a fresh element (it is keyed on the turn), so a new board
+   * starts the bar at zero rather than easing the old one back down.
+   */
+  transform-origin: left;
+  animation: bcx-fill var(--bcx-dwell) linear forwards;
 }
 
+/* Held: frozen exactly where it was. Releasing the hold starts a new turn. */
 .bcx-progress[data-paused='yes'] i {
   background: var(--wa1);
-  transition: none;
+  animation-play-state: paused;
+}
+
+@keyframes bcx-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* ───────── waiting and empty states ───────── */
@@ -367,12 +387,16 @@
 /*
  * Nobody stands at a wall screen, so nothing here may depend on motion to be
  * understood — but a reader who asks for less of it gets it: the progress bar
- * jumps between ticks instead of creeping, and the strip appears rather than
- * fades. The rotation itself is the content, not decoration, and stays.
+ * steps once a second, with the countdown, instead of creeping, and the strip
+ * appears rather than fades. The rotation itself is the content, not
+ * decoration, and stays.
  */
 @media (prefers-reduced-motion: reduce) {
-  .bcx-row,
-  .bcx-progress i {
+  .bcx-row {
     transition: none;
+  }
+
+  .bcx-progress i {
+    animation-timing-function: steps(var(--bcx-steps), end);
   }
 }

@@ -78,7 +78,8 @@ function FullscreenIcon({ exit }: { exit: boolean }) {
 export interface CarouselStripProps {
   slides: readonly CarouselSlide[];
   index: number;
-  progress: number;
+  /** This board's turn, from the rotation; null when nothing rotates. */
+  turn: string | null;
   remaining: number;
   paused: boolean;
   dwellSeconds: number;
@@ -117,7 +118,7 @@ export interface CarouselStripProps {
 export function CarouselStrip({
   slides,
   index,
-  progress,
+  turn,
   remaining,
   paused,
   dwellSeconds,
@@ -141,7 +142,20 @@ export function CarouselStrip({
           fading row on purpose, because it is what tells a wall this screen is
           a rotation at all. See the component note. */}
       <div className="bcx-progress" data-paused={paused ? 'yes' : 'no'}>
-        <i style={{ width: `${Math.round(progress * 100)}%` }} />
+        {/* Fills itself over the dwell, in CSS; see `carousel.css`. Keyed on
+            the turn so a new turn mounts a fresh bar at zero instead of
+            animating the old one back down. */}
+        {turn !== null && (
+          <i
+            key={turn}
+            style={
+              {
+                '--bcx-dwell': `${dwellSeconds}s`,
+                '--bcx-steps': dwellSeconds,
+              } as React.CSSProperties
+            }
+          />
+        )}
       </div>
 
       <div className="bcx-row" ref={rowRef}>

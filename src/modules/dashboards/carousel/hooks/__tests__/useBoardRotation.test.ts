@@ -155,6 +155,65 @@ describe('useBoardRotation', () => {
     expect(result.current.dwellSeconds).toBe(DEFAULT_DWELL_SECONDS);
   });
 
+  /*
+   * The progress bar is a CSS animation keyed on `turn`: a new value mounts a
+   * fresh bar at zero, an unchanged one leaves it running (or frozen, if held).
+   */
+  it('starts a new turn on every advance, and keeps it through a hold', async () => {
+    const { result } = renderHook(() => useBoardRotation(3));
+    const first = result.current.turn;
+
+    act(() => result.current.togglePaused());
+    // Held: the bar must freeze where it is, not remount at zero.
+    expect(result.current.turn).toBe(first);
+
+    act(() => result.current.togglePaused());
+    // Released: a full turn, so a fresh bar.
+    const released = result.current.turn;
+    expect(released).not.toBe(first);
+
+    await advance(DEFAULT_DWELL_SECONDS * 1000 + 500);
+    expect(result.current.index).toBe(1);
+    expect(result.current.turn).not.toBe(released);
+  });
+
+  it('starts the bar again when an advance lands back on the same board', async () => {
+    const { result, rerender } = renderHook(({ count }) => useBoardRotation(count), {
+      initialProps: { count: 3 },
+    });
+
+    await advance(DEFAULT_DWELL_SECONDS * 2 * 1000 + 1000);
+    // The last board drops out: the stored index (2) clamps to 1, and the next
+    // advance, (2 + 1) % 2, lands on 1 again.
+    rerender({ count: 2 });
+    const before = result.current.turn;
+
+    await advance(DEFAULT_DWELL_SECONDS * 1000 + 500);
+    expect(result.current.index).toBe(1);
+    expect(result.current.turn).not.toBe(before);
+  });
+
+  it('has no turn when there is nothing to rotate', () => {
+    const { result } = renderHook(() => useBoardRotation(1));
+
+    expect(result.current.turn).toBeNull();
+  });
+
+  it('moves on once a second for the countdown, not on every tick', async () => {
+    const { result } = renderHook(() => useBoardRotation(3));
+    const seen = new Set([result.current.progress]);
+
+    for (let tick = 0; tick < 40; tick += 1) {
+      await advance(250);
+      seen.add(result.current.progress);
+    }
+
+    // Forty ticks, ten whole seconds off the countdown. Each new value
+    // re-renders the board underneath, so it must be the ten.
+    expect(seen.size).toBe(11);
+    expect(result.current.remaining).toBe(DEFAULT_DWELL_SECONDS - 10);
+  });
+
   it('stays in range when a board disappears from under it', async () => {
     const { result, rerender } = renderHook(({ count }) => useBoardRotation(count), {
       initialProps: { count: 3 },

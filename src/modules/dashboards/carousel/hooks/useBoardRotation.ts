@@ -41,8 +41,19 @@ function write(key: string, value: string) {
 export interface BoardRotation {
   /** Index into the slide list the caller passed the length of. */
   index: number;
-  /** How far through this board's turn, 0–1. Drives the progress bar. */
+  /**
+   * How far through this board's turn, 0–1, as of the countdown's last whole
+   * second. Coarse on purpose; see the tick below.
+   */
   progress: number;
+  /**
+   * Names this board's turn: a new value whenever a turn starts over, the same
+   * one for as long as it runs or is held. Null when nothing rotates.
+   *
+   * The progress bar is keyed on it. The bar is a CSS animation that fills
+   * itself over the dwell, so all it needs from here is when to start again.
+   */
+  turn: string | null;
   paused: boolean;
   dwellSeconds: number;
   /** Whole seconds left on this board, for the countdown on the strip. */
@@ -81,6 +92,14 @@ export function useBoardRotation(count: number): BoardRotation {
     readNumber(DWELL_STORAGE_KEY, DEFAULT_DWELL_SECONDS),
   );
   const [progress, setProgress] = useState(0);
+  /**
+   * How many turns have started. Bumped alongside every zeroing of `progress`.
+   *
+   * Not the index: a slide dropped from under the rotation can leave the next
+   * advance landing on the same clamped index, and that board still gets a
+   * fresh turn, so the bar has to start again too.
+   */
+  const [turns, setTurns] = useState(0);
 
   /**
    * When the current board came up.
@@ -93,11 +112,20 @@ export function useBoardRotation(count: number): BoardRotation {
    */
   const startedAt = useRef(0);
 
-  /** Put a board on screen and give it a full turn, however it was chosen. */
-  const show = useCallback((next: number) => {
+  /** Zero the countdown and start the bar again. The clock is the effect's. */
+  const restart = useCallback(() => {
     setProgress(0);
-    setIndex(next);
+    setTurns((n) => n + 1);
   }, []);
+
+  /** Put a board on screen and give it a full turn, however it was chosen. */
+  const show = useCallback(
+    (next: number) => {
+      restart();
+      setIndex(next);
+    },
+    [restart],
+  );
 
   /**
    * The index actually in use.
@@ -137,16 +165,19 @@ export function useBoardRotation(count: number): BoardRotation {
       // whoever just un-paused wants to read this board, not to be moved off it
       // two seconds later. The clock itself is re-stamped by the effect, which
       // re-runs because `paused` is one of its dependencies.
-      if (!now) setProgress(0);
+      if (!now) restart();
       return now;
     });
-  }, []);
+  }, [restart]);
 
-  const setDwellSeconds = useCallback((seconds: number) => {
-    setDwell(seconds);
-    write(DWELL_STORAGE_KEY, String(seconds));
-    setProgress(0);
-  }, []);
+  const setDwellSeconds = useCallback(
+    (seconds: number) => {
+      setDwell(seconds);
+      write(DWELL_STORAGE_KEY, String(seconds));
+      restart();
+    },
+    [restart],
+  );
 
   useEffect(() => {
     if (paused || count < 2) return;
@@ -161,21 +192,33 @@ export function useBoardRotation(count: number): BoardRotation {
       const elapsed = (Date.now() - startedAt.current) / 1000;
       if (elapsed >= dwellSeconds) {
         startedAt.current = Date.now();
-        setProgress(0);
+        restart();
         setIndex((current) => (current + 1) % count);
         return;
       }
-      setProgress(elapsed / dwellSeconds);
+      // Only when the countdown's whole second changes. The bar no longer reads
+      // this, and every new value re-renders the board underneath: at the tick
+      // rate that was four whole-board renders a second, for a number that
+      // moves once.
+      const fraction = elapsed / dwellSeconds;
+      setProgress((was) =>
+        Math.ceil(dwellSeconds * (1 - was)) === Math.ceil(dwellSeconds * (1 - fraction))
+          ? was
+          : fraction,
+      );
     }, TICK_MS);
 
     return () => window.clearInterval(id);
     // `index` is in the list so that a manual jump restarts the interval phase
     // with the board rather than leaving up to one tick of the old turn on it.
-  }, [paused, count, dwellSeconds, safeIndex]);
+  }, [paused, count, dwellSeconds, safeIndex, restart]);
 
   return {
     index: safeIndex,
     progress,
+    // `count` too: a board added or dropped re-runs the effect, which restarts
+    // the clock without going through `restart`.
+    turn: count < 2 ? null : `${turns}:${count}`,
     paused,
     dwellSeconds,
     remaining: Math.max(0, Math.ceil(dwellSeconds * (1 - progress))),
