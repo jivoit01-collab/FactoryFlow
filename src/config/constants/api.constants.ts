@@ -2128,6 +2128,19 @@ export const API_ENDPOINTS = {
     BUNCH_SENT: (bunchId: number) => `/cash-book/bunches/${bunchId}/sent/`,
     ENTRY_BUNCH: (entryId: number) => `/cash-book/entries/${entryId}/bunch/`,
   },
+  // Expense claims, common to every company. The entry page puts the whole
+  // expense in (CLAIMS POST), its pickers read COMPANIES, BUDGETS (SAP OBPL),
+  // GL_ACCOUNTS and APPROVERS (every active user), and whoever it was sent to
+  // decides on the approval page (CLAIMS GET, DECIDE). Posts nothing to SAP.
+  EXPENSE_CLAIMS: {
+    CLAIMS: '/expense-claims/claims/',
+    DETAIL: (claimId: number) => `/expense-claims/claims/${claimId}/`,
+    DECIDE: (claimId: number) => `/expense-claims/claims/${claimId}/decide/`,
+    COMPANIES: '/expense-claims/companies/',
+    BUDGETS: '/expense-claims/budgets/',
+    GL_ACCOUNTS: '/expense-claims/gl-accounts/',
+    APPROVERS: '/expense-claims/approvers/',
+  },
   // The company's OWN vehicles and what they cost to run. Nothing to do with
   // VEHICLE above, which is the gate's register of outside trucks.
   FLEET: {

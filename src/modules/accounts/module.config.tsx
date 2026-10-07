@@ -12,9 +12,15 @@
  * and **Branches** configures the short list every payment is filed under --
  * Oil, Beverage, Water, Common.
  *
- * The sidebar hides the whole module from anyone without a `cash_book.*`
- * permission (`modulePrefix`), so the groups the backend ships with are the
- * only way in. Two pages are narrowed further. Approvals is the approver's,
+ * Two more pages carry **expense claims**, a separate app (`expense_claims`)
+ * common to every company: **Expense Entry** is anybody's — branch, budget,
+ * G/L account, comment, amount, and who it goes to (any user); **Expense
+ * Approval** is where that person approves or rejects it.
+ *
+ * The sidebar hides the whole module from anyone without a `cash_book.*` or
+ * `expense_claims.*` permission (`modulePrefix`), so the groups the backend
+ * ships with are the only way in. The group link itself goes to `/accounts`,
+ * which sends each reader on to the first page they can open. Two pages are narrowed further. Approvals is the approver's,
  * because deciding is theirs. Advance Salary is the odd one out and reaches
  * *wider*: a Salary Advance HR user holds `can_approve_salary_advances` and no
  * other cash book right, which shares the module prefix and so reveals the
@@ -28,6 +34,8 @@ import {
   HandCoins,
   IndianRupee,
   Package,
+  ReceiptText,
+  UserCheck,
   Wallet,
 } from 'lucide-react';
 
@@ -36,6 +44,9 @@ import {
   CASH_BOOK_APPROVALS_ACCESS,
   CASH_BOOK_MODULE_PREFIX,
   CASH_BOOK_SETTINGS_ACCESS,
+  EXPENSE_APPROVAL_ACCESS,
+  EXPENSE_CLAIM_MODULE_PREFIX,
+  EXPENSE_ENTRY_ACCESS,
   SALARY_ADVANCE_ACCESS,
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
@@ -48,10 +59,20 @@ const AtmPage = lazy(() => import('./pages/AtmPage'));
 const AdvancesPage = lazy(() => import('./pages/AdvancesPage'));
 const AdvanceSalaryPage = lazy(() => import('./pages/AdvanceSalaryPage'));
 const BunchesPage = lazy(() => import('./pages/BunchesPage'));
+const AccountsLandingPage = lazy(() => import('./pages/AccountsLandingPage'));
+const ExpenseEntryPage = lazy(() => import('./pages/ExpenseEntryPage'));
+const ExpenseApprovalPage = lazy(() => import('./pages/ExpenseApprovalPage'));
 
 export const accountsModuleConfig: ModuleConfig = {
   name: 'accounts',
   routes: [
+    {
+      // The group link. No permission of its own: it only redirects, and the
+      // page it lands on does the checking.
+      path: '/accounts',
+      element: <AccountsLandingPage />,
+      layout: 'main',
+    },
     {
       path: '/accounts/cash-book',
       element: <CashBookPage />,
@@ -106,15 +127,29 @@ export const accountsModuleConfig: ModuleConfig = {
       permissions: CASH_BOOK_ACCESS,
       breadcrumb: { label: 'Cash Book Branches' },
     },
+    {
+      path: '/accounts/expense-entry',
+      element: <ExpenseEntryPage />,
+      layout: 'main',
+      permissions: EXPENSE_ENTRY_ACCESS,
+      breadcrumb: { label: 'Expense Entry' },
+    },
+    {
+      path: '/accounts/expense-approval',
+      element: <ExpenseApprovalPage />,
+      layout: 'main',
+      permissions: EXPENSE_APPROVAL_ACCESS,
+      breadcrumb: { label: 'Expense Approval' },
+    },
   ],
   navigation: [
     {
-      path: '/accounts/cash-book',
+      path: '/accounts',
       title: 'Accounts',
       icon: IndianRupee,
       showInSidebar: true,
       hasSubmenu: true,
-      modulePrefix: CASH_BOOK_MODULE_PREFIX,
+      modulePrefix: [CASH_BOOK_MODULE_PREFIX, EXPENSE_CLAIM_MODULE_PREFIX],
       children: [
         {
           path: '/accounts/cash-book',
@@ -157,6 +192,18 @@ export const accountsModuleConfig: ModuleConfig = {
           title: 'Branches',
           icon: Building2,
           permissions: CASH_BOOK_SETTINGS_ACCESS,
+        },
+        {
+          path: '/accounts/expense-entry',
+          title: 'Expense Entry',
+          icon: ReceiptText,
+          permissions: EXPENSE_ENTRY_ACCESS,
+        },
+        {
+          path: '/accounts/expense-approval',
+          title: 'Expense Approval',
+          icon: UserCheck,
+          permissions: EXPENSE_APPROVAL_ACCESS,
         },
       ],
     },

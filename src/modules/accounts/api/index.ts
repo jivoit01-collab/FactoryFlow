@@ -75,6 +75,29 @@ export {
   useUpdateCashEntry,
 } from './cashBook.queries';
 export {
+  type ExpenseApprover,
+  type ExpenseBudget,
+  type ExpenseClaim,
+  type ExpenseClaimList,
+  expenseClaimsApi,
+  type ExpenseClaimStatus,
+  type ExpenseCompany,
+  type ExpenseListParams,
+  type SapGLAccount,
+  type SubmitExpensePayload,
+} from './expenseClaims.api';
+export {
+  EXPENSE_CLAIM_QUERY_KEYS,
+  useDecideExpense,
+  useExpenseApprovers,
+  useExpenseBudgets,
+  useExpenseClaims,
+  useExpenseCompanies,
+  useSapGLAccounts,
+  useSubmitExpense,
+  useUpdateExpense,
+} from './expenseClaims.queries';
+export {
   type DecideSalaryAdvancePayload,
   type RecordSalaryAdvancePayload,
   type SalaryAdvance,

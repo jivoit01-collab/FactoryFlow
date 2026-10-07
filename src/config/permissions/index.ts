@@ -345,3 +345,12 @@ export {
   type CashBookPermission,
   SALARY_ADVANCE_ACCESS,
 } from './cash-book.permissions';
+
+// Expense claims (anybody puts one in; accounts file it; an HOD approves)
+export {
+  EXPENSE_APPROVAL_ACCESS,
+  EXPENSE_CLAIM_MODULE_PREFIX,
+  EXPENSE_CLAIM_PERMISSIONS,
+  EXPENSE_ENTRY_ACCESS,
+  type ExpenseClaimPermission,
+} from './expense-claims.permissions';
