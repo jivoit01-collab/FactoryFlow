@@ -51,22 +51,37 @@ function quantity(key: string, label: string, pick: (row: Row) => number): Sheet
   };
 }
 
+/**
+ * What kind of packing material a line is -- LABEL, CAPS, CARTON, TIN, PET.
+ *
+ * The procedure returns no item group, and the planning workbook never had
+ * one either: its Item column is the first word of the item name, because
+ * that is how every PM item is named. Read the same way here, so the funnel
+ * on it offers exactly the groups the workbook's did.
+ */
+function itemType(row: Row) {
+  return row.item_name.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
+}
+
+// The planning workbook's columns first, in its order; what the app adds
+// after them.
 const COLUMNS: SheetColumn[] = [
   { key: 'item_code', label: 'Item Code', value: (row) => row.item_code },
   { key: 'item_name', label: 'Item Name', value: (row) => row.item_name, wide: true },
-  { key: 'planning_month', label: 'Planning Month', value: (row) => row.planning_month },
-  quantity('planned_qty', 'Planned', (row) => row.planned_qty),
-  quantity('base_required_qty', 'Base Req.', (row) => row.base_required_qty),
+  { key: 'item_type', label: 'Item', value: itemType },
+  quantity('planned_qty', 'Planned Qty', (row) => row.planned_qty),
   quantity('min_stock', 'Min Stock', (row) => row.min_stock),
   quantity('stock_in_hand', 'Stock In Hand', (row) => row.stock_in_hand),
-  quantity('required_qty', 'Required', (row) => row.required_qty),
-  quantity('open_po_qty', 'Open PO', (row) => row.open_po_qty),
+  quantity('required_qty', 'Required Qty', (row) => row.required_qty),
+  quantity('open_po_qty', 'Open PO Qty', (row) => row.open_po_qty),
   quantity('net_shortage_qty', 'Net Shortage', (row) => row.net_shortage_qty),
   {
     key: 'status',
     label: 'Status',
     value: (row) => (isShortage(row) ? 'Shortage' : 'PO Covered'),
   },
+  quantity('base_required_qty', 'Base Req.', (row) => row.base_required_qty),
+  { key: 'planning_month', label: 'Planning Month', value: (row) => row.planning_month },
   {
     key: 'loaded_at',
     label: 'Loaded',
