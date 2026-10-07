@@ -3,9 +3,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@/core/auth/hooks/useAuth';
-import type { ExpenseApprover, ExpenseClaim, SapGLAccount } from '@/modules/accounts/api';
+import type { ExpenseClaim, SapGLAccount } from '@/modules/accounts/api';
 import {
-  useExpenseApprovers,
   useExpenseBudgets,
   useExpenseCompanies,
   useSapGLAccounts,
@@ -15,6 +14,7 @@ import {
 import { SearchableSelect } from '@/shared/components';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -39,12 +39,14 @@ export interface ExpenseFormDialogProps {
  * One expense, whole: a new one, or one already sent, filled in.
  *
  * **Branch** is the company (Oil, Mart or Beverages) and decides whose SAP the
- * next two are read from. **Budget** is SAP's business place, starting on
- * FACTORY. **G/L account** is searched in that company's chart of accounts.
- * Changing the branch resets both, since they belong to its SAP.
+ * next two are read from. **Budget** is SAP's budget (dimension 3), starting on
+ * Factory. **G/L account** is searched among that company's expense accounts —
+ * or, for somebody who does not know it, skipped for a line saying what the
+ * expense is for. Changing the branch resets the budget and the account,
+ * since they belong to its SAP.
  *
- * An expense can be changed until it is approved; saving a rejected one sends
- * it again. An approved one opens read-only.
+ * It goes to the expense approvers. It can be changed until it is approved;
+ * saving a rejected one sends it again. An approved one opens read-only.
  *
  * Mounted only while open, so every opening starts from the expense as saved.
  */
@@ -66,63 +68,58 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
 
   const budgets = useExpenseBudgets(company);
   // A pick belongs to the company it was made under; another company starts
-  // on its own FACTORY again.
-  const [budgetPick, setBudgetPick] = useState<{ company: string; id: string } | null>(
-    claim ? { company: claim.company_code, id: String(claim.budget_id) } : null,
+  // on its own Factory again.
+  const [budgetPick, setBudgetPick] = useState<{ company: string; code: string } | null>(
+    claim?.budget_code ? { company: claim.company_code, code: claim.budget_code } : null,
   );
-  const budgetId =
+  const budgetCode =
     budgetPick?.company === company
-      ? budgetPick.id
-      : String(budgets.data?.find((row) => row.is_default)?.budget_id ?? '');
+      ? budgetPick.code
+      : (budgets.data?.find((row) => row.is_default)?.budget_code ?? '');
 
   const [glSearch, setGlSearch] = useState('');
   const glAccounts = useSapGLAccounts(company, glSearch);
   const [glPick, setGlPick] = useState<{ company: string; code: string; name: string } | null>(
-    claim
+    claim?.gl_account_code
       ? { company: claim.company_code, code: claim.gl_account_code, name: claim.gl_account_name }
       : null,
   );
   const gl = glPick?.company === company ? glPick : null;
+  // "I don't know the G/L account": the account is skipped for a line saying
+  // what the expense is for, so accounts can find the account later.
+  const [glUnknown, setGlUnknown] = useState(claim != null && !claim.gl_account_code);
+  const [glDescription, setGlDescription] = useState(claim?.gl_description ?? '');
 
   const [comment, setComment] = useState(claim?.comment ?? '');
   const [amount, setAmount] = useState(claim ? String(Number(claim.amount)) : '');
 
-  // Every active user but you: nobody approves their own expense.
-  const approvers = useExpenseApprovers();
-  const [approver, setApprover] = useState<ExpenseApprover | null>(
-    claim ? { id: claim.approver, name: claim.approver_name ?? '', email: '' } : null,
-  );
-
   const ready =
     company !== '' &&
-    budgetId !== '' &&
-    gl != null &&
+    budgetCode !== '' &&
+    (glUnknown ? glDescription.trim() !== '' : gl != null) &&
     comment.trim() !== '' &&
-    Number(amount) > 0 &&
-    approver != null;
+    Number(amount) > 0;
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (locked || !ready || gl == null || approver == null) return;
+    if (locked || !ready) return;
     const payload = {
       company,
-      budget_id: Number(budgetId),
-      gl_account_code: gl.code,
+      budget_code: budgetCode,
+      gl_account_code: glUnknown ? '' : (gl?.code ?? ''),
+      gl_description: glUnknown ? glDescription.trim() : '',
       comment: comment.trim(),
       amount: String(amount),
-      approver: approver.id,
     };
     try {
       if (claim) {
         await update.mutateAsync({ id: claim.id, payload });
         toast.success(
-          claim.status === 'REJECTED'
-            ? `Expense sent to ${approver.name} again`
-            : 'Expense updated',
+          claim.status === 'REJECTED' ? 'Expense sent for approval again' : 'Expense updated',
         );
       } else {
         await submit.mutateAsync(payload);
-        toast.success(`Expense sent to ${approver.name} for approval`);
+        toast.success('Expense sent for approval');
       }
       onOpenChange(false);
     } catch (err) {
@@ -132,16 +129,16 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      {/* The whole dialog scrolls, not an inner body: the pickers' lists are
-          absolutely positioned and an inner scroller would clip them. */}
+      {/* The whole dialog scrolls, not an inner body: the G/L picker's list is
+          absolutely positioned and an inner scroller would clip it. */}
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-[620px]">
         <DialogHeader>
           <DialogTitle>{claim ? `Expense #${claim.id}` : 'New expense'}</DialogTitle>
           <DialogDescription>
             {!claim
-              ? 'It goes straight to the person you choose to approve it.'
+              ? 'It goes to the expense approvers.'
               : locked
-                ? `Approved by ${claim.decided_by_name ?? 'the approver'}, so it can no longer be changed.`
+                ? `Approved by ${claim.decided_by_name ?? 'an approver'}, so it can no longer be changed.`
                 : claim.status === 'REJECTED'
                   ? 'Rejected. Change what is needed and save to send it again.'
                   : 'Waiting for approval. You can change it until it is approved.'}
@@ -154,7 +151,7 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
           </p>
         )}
 
-        <form id="expense-form" onSubmit={onSubmit} className="space-y-4">
+        <form id="expense-form" onSubmit={onSubmit}>
           {/* A disabled fieldset locks every native field at once. */}
           <fieldset disabled={locked} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -177,15 +174,15 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
                 <Label htmlFor="expense-budget">Budget</Label>
                 <NativeSelect
                   id="expense-budget"
-                  value={budgetId}
+                  value={budgetCode}
                   disabled={budgets.isError}
-                  onChange={(e) => setBudgetPick({ company, id: e.target.value })}
+                  onChange={(e) => setBudgetPick({ company, code: e.target.value })}
                 >
                   <SelectOption value="">
                     {budgets.isLoading ? 'Reading SAP…' : 'Pick a budget…'}
                   </SelectOption>
                   {(budgets.data ?? []).map((row) => (
-                    <SelectOption key={row.budget_id} value={String(row.budget_id)}>
+                    <SelectOption key={row.budget_code} value={row.budget_code}>
                       {row.budget_name}
                     </SelectOption>
                   ))}
@@ -196,33 +193,62 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
               </div>
             </div>
 
-            <SearchableSelect<SapGLAccount>
-              // Remounted per company, so a box still showing another
-              // company's account cannot survive the switch.
-              key={company}
-              inputId="expense-gl-account"
-              label="G/L account"
-              disabled={locked}
-              value={gl ? `${gl.code} · ${gl.name}` : ''}
-              defaultDisplayText={gl ? `${gl.code} · ${gl.name}` : undefined}
-              items={glAccounts.data ?? []}
-              isLoading={glAccounts.isLoading}
-              isError={glAccounts.isError}
-              placeholder="Search SAP accounts…"
-              getItemKey={(account) => account.account_code}
-              getItemLabel={(account) => `${account.account_code} · ${account.account_name}`}
-              // Focusing the box puts the picked account's own label in it,
-              // which matches nothing as a search; search on the code alone.
-              onSearchChange={(text) => setGlSearch(text.split(' · ')[0])}
-              onItemSelect={(account) =>
-                setGlPick({ company, code: account.account_code, name: account.account_name })
-              }
-              onClear={() => setGlPick(null)}
-              loadingText="Reading the chart of accounts…"
-              emptyText="Type to search SAP's chart of accounts"
-              notFoundText="No account matches that"
-              errorText="SAP could not be reached, so accounts cannot be searched right now."
-            />
+            <div className="space-y-2">
+              {glUnknown ? (
+                <div className="space-y-1">
+                  <Label htmlFor="expense-gl-description">What is it for?</Label>
+                  <Input
+                    id="expense-gl-description"
+                    maxLength={500}
+                    placeholder="Repairs to the boiler feed pump"
+                    value={glDescription}
+                    onChange={(e) => setGlDescription(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Accounts will pick the G/L account from this.
+                  </p>
+                </div>
+              ) : (
+                <SearchableSelect<SapGLAccount>
+                  // Remounted per company, so a box still showing another
+                  // company's account cannot survive the switch.
+                  key={company}
+                  inputId="expense-gl-account"
+                  label="G/L account"
+                  disabled={locked}
+                  value={gl ? `${gl.code} · ${gl.name}` : ''}
+                  defaultDisplayText={gl ? `${gl.code} · ${gl.name}` : undefined}
+                  items={glAccounts.data ?? []}
+                  isLoading={glAccounts.isLoading}
+                  isError={glAccounts.isError}
+                  placeholder="Search SAP expense accounts…"
+                  getItemKey={(account) => account.account_code}
+                  getItemLabel={(account) => `${account.account_code} · ${account.account_name}`}
+                  // Focusing the box puts the picked account's own label in it,
+                  // which matches nothing as a search; search on the code alone.
+                  onSearchChange={(text) => setGlSearch(text.split(' · ')[0])}
+                  onItemSelect={(account) =>
+                    setGlPick({ company, code: account.account_code, name: account.account_name })
+                  }
+                  onClear={() => setGlPick(null)}
+                  loadingText="Reading the chart of accounts…"
+                  emptyText="Type to search SAP's expense accounts"
+                  notFoundText="No expense account matches that"
+                  errorText="SAP could not be reached, so accounts cannot be searched right now."
+                />
+              )}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="expense-gl-unknown"
+                  checked={glUnknown}
+                  disabled={locked}
+                  onCheckedChange={(checked) => setGlUnknown(checked === true)}
+                />
+                <Label htmlFor="expense-gl-unknown" className="text-sm font-normal">
+                  I don't know the G/L account
+                </Label>
+              </div>
+            </div>
 
             <div className="space-y-1">
               <Label htmlFor="expense-comment">Comment</Label>
@@ -249,39 +275,6 @@ export function ExpenseFormDialog({ claim, onOpenChange }: ExpenseFormDialogProp
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-
-            <SearchableSelect<ExpenseApprover>
-              inputId="expense-approver"
-              label="Approval goes to"
-              disabled={locked}
-              value={approver?.name ?? ''}
-              defaultDisplayText={approver?.name}
-              items={approvers.data ?? []}
-              isLoading={approvers.isLoading}
-              isError={approvers.isError}
-              placeholder="Search by name or email…"
-              getItemKey={(person) => person.id}
-              getItemLabel={(person) => person.name}
-              filterFn={(person, search) => {
-                const needle = search.toLowerCase();
-                return (
-                  person.name.toLowerCase().includes(needle) ||
-                  person.email.toLowerCase().includes(needle)
-                );
-              }}
-              renderItem={(person) => (
-                <div className="min-w-0">
-                  <p className="truncate">{person.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{person.email}</p>
-                </div>
-              )}
-              onItemSelect={setApprover}
-              onClear={() => setApprover(null)}
-              loadingText="Loading people…"
-              emptyText="Nobody to send it to"
-              notFoundText="Nobody matches that"
-              errorText="The list of people could not be loaded."
-            />
           </fieldset>
         </form>
 

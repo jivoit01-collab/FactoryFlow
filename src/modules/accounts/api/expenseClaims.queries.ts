@@ -18,7 +18,6 @@ export const EXPENSE_CLAIM_QUERY_KEYS = {
   budgets: (company: string) => [...EXPENSE_CLAIM_QUERY_KEYS.all, 'budgets', company] as const,
   glAccounts: (company: string, search: string) =>
     [...EXPENSE_CLAIM_QUERY_KEYS.all, 'gl-accounts', company, search] as const,
-  approvers: () => [...EXPENSE_CLAIM_QUERY_KEYS.all, 'approvers'] as const,
 };
 
 export function useExpenseClaims(params: ExpenseListParams) {
@@ -55,15 +54,6 @@ export function useSapGLAccounts(company: string, search: string) {
     enabled: company !== '',
     staleTime: 5 * 60 * 1000,
     retry: false,
-  });
-}
-
-/** Everyone an expense may go to: every active user but the caller. */
-export function useExpenseApprovers() {
-  return useQuery({
-    queryKey: EXPENSE_CLAIM_QUERY_KEYS.approvers(),
-    queryFn: () => expenseClaimsApi.approvers(),
-    staleTime: 10 * 60 * 1000,
   });
 }
 

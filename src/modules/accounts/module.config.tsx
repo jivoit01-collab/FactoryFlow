@@ -14,8 +14,8 @@
  *
  * Two more pages carry **expense claims**, a separate app (`expense_claims`)
  * common to every company: **Expense Entry** is anybody's — branch, budget,
- * G/L account, comment, amount, and who it goes to (any user); **Expense
- * Approval** is where that person approves or rejects it.
+ * G/L account (or what it is for), comment and amount; **Expense Approval** is
+ * where an expense approver approves or rejects it.
  *
  * The sidebar hides the whole module from anyone without a `cash_book.*` or
  * `expense_claims.*` permission (`modulePrefix`), so the groups the backend

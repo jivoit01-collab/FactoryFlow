@@ -2,44 +2,39 @@ import { Check, ClipboardList, Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { CASH_BOOK_PERMISSIONS } from '@/config/permissions';
 import { useAuth } from '@/core/auth/hooks/useAuth';
-import { usePermission } from '@/core/auth/hooks/usePermission';
-import type { ExpenseClaim, ExpenseListParams } from '@/modules/accounts/api';
+import type { ExpenseClaim, ExpenseClaimStatus } from '@/modules/accounts/api';
 import { useDecideExpense, useExpenseClaims } from '@/modules/accounts/api';
-import { expenseMoney } from '@/modules/accounts/components/expenseStatus';
+import { ExpenseGLCell } from '@/modules/accounts/components/ExpenseGLCell';
+import { EXPENSE_STATUS_LABEL, expenseMoney } from '@/modules/accounts/components/expenseStatus';
 import { ExpenseStatusBadge } from '@/modules/accounts/components/ExpenseStatusBadge';
 import { confirmDialog, promptDialog } from '@/shared/components';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
 import { Button, Card, CardContent, NativeSelect, SelectOption } from '@/shared/components/ui';
 import { formatDateTimeShort, getErrorMessage } from '@/shared/utils';
 
-const VIEWS: Record<string, { label: string; params: ExpenseListParams }> = {
-  waiting: { label: 'Waiting for me', params: { status: 'PENDING_APPROVAL', for_me: true } },
-  mine: { label: 'All sent to me', params: { for_me: true } },
-  all: { label: 'All expenses', params: {} },
-};
+type Filter = ExpenseClaimStatus | 'ALL';
+
+const STATUSES: ExpenseClaimStatus[] = ['PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
 
 /**
- * Expense Approval — whoever an expense was sent to decides it here.
+ * Expense Approval — every expense put in, across all companies, for the
+ * expense approvers.
  *
- * Opens on the expenses waiting for you, each with Approve and Reject. A
- * rejection needs a reason, which goes back to whoever put it in. "All sent to
- * me" shows what you already decided. Cash book approvers also get "All
- * expenses": every one put in, across all companies.
+ * Opens on those awaiting approval, each with Approve and Reject. Any approver
+ * may decide any expense but their own. A rejection needs a reason, which goes
+ * back to whoever put it in.
  */
 export default function ExpenseApprovalPage() {
   const { user } = useAuth();
-  const { hasPermission } = usePermission();
-  const seesAll = hasPermission(CASH_BOOK_PERMISSIONS.APPROVE);
-  const views = Object.entries(VIEWS).filter(([key]) => key !== 'all' || seesAll);
-  const [view, setView] = useState('waiting');
-  const { data, isLoading } = useExpenseClaims(VIEWS[view].params);
+  const [filter, setFilter] = useState<Filter>('PENDING_APPROVAL');
+  const { data, isLoading } = useExpenseClaims(filter === 'ALL' ? {} : { status: filter });
   const decide = useDecideExpense();
   const rows = data?.results ?? [];
+  const counts = data?.counts;
 
-  const waitsOnMe = (claim: ExpenseClaim) =>
-    claim.status === 'PENDING_APPROVAL' && claim.approver === user?.id;
+  const decidable = (claim: ExpenseClaim) =>
+    claim.status === 'PENDING_APPROVAL' && claim.submitted_by !== user?.id;
 
   async function approve(claim: ExpenseClaim) {
     const ok = await confirmDialog({
@@ -82,17 +77,16 @@ export default function ExpenseApprovalPage() {
         <NativeSelect
           aria-label="Which expenses to show"
           className="w-[220px]"
-          value={view}
-          onChange={(e) => setView(e.target.value)}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as Filter)}
         >
-          {views.map(([key, row]) => (
-            <SelectOption key={key} value={key}>
-              {row.label}
-              {key === 'waiting' && data && view === 'waiting'
-                ? ` (${data.counts.PENDING_APPROVAL})`
-                : ''}
+          {STATUSES.map((value) => (
+            <SelectOption key={value} value={value}>
+              {EXPENSE_STATUS_LABEL[value]}
+              {counts ? ` (${counts[value]})` : ''}
             </SelectOption>
           ))}
+          <SelectOption value="ALL">All</SelectOption>
         </NativeSelect>
       </DashboardHeader>
 
@@ -105,7 +99,9 @@ export default function ExpenseApprovalPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <ClipboardList className="mb-2 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">
-              {view === 'waiting' ? 'Nothing is waiting for your approval.' : 'No expenses here.'}
+              {filter === 'PENDING_APPROVAL'
+                ? 'Nothing is waiting for approval.'
+                : 'No expenses here.'}
             </p>
           </CardContent>
         </Card>
@@ -122,7 +118,6 @@ export default function ExpenseApprovalPage() {
                   <th className="px-3 py-2 font-medium">G/L account</th>
                   <th className="px-3 py-2 font-medium">Comment</th>
                   <th className="px-3 py-2 text-right font-medium">Amount</th>
-                  <th className="px-3 py-2 font-medium">Approval goes to</th>
                   <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -136,8 +131,7 @@ export default function ExpenseApprovalPage() {
                     <td className="px-3 py-2">{row.company_name}</td>
                     <td className="px-3 py-2">{row.budget_name}</td>
                     <td className="px-3 py-2">
-                      <p className="font-mono text-xs">{row.gl_account_code}</p>
-                      <p className="text-xs text-muted-foreground">{row.gl_account_name}</p>
+                      <ExpenseGLCell claim={row} />
                     </td>
                     <td className="max-w-[320px] px-3 py-2">
                       {row.comment}
@@ -150,9 +144,8 @@ export default function ExpenseApprovalPage() {
                     <td className="px-3 py-2 text-right font-medium tabular-nums">
                       {expenseMoney(row.amount)}
                     </td>
-                    <td className="px-3 py-2">{row.approver_name ?? '—'}</td>
                     <td className="px-3 py-2">
-                      {waitsOnMe(row) ? (
+                      {decidable(row) ? (
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -173,9 +166,14 @@ export default function ExpenseApprovalPage() {
                       ) : (
                         <>
                           <ExpenseStatusBadge status={row.status} />
+                          {row.status === 'PENDING_APPROVAL' && (
+                            <p className="mt-1 text-[10px] text-muted-foreground">
+                              Yours — somebody else approves it
+                            </p>
+                          )}
                           {row.decided_at && (
                             <p className="mt-1 text-[10px] text-muted-foreground">
-                              {formatDateTimeShort(row.decided_at)}
+                              {row.decided_by_name} · {formatDateTimeShort(row.decided_at)}
                             </p>
                           )}
                         </>

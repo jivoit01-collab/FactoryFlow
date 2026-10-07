@@ -75,7 +75,6 @@ export {
   useUpdateCashEntry,
 } from './cashBook.queries';
 export {
-  type ExpenseApprover,
   type ExpenseBudget,
   type ExpenseClaim,
   type ExpenseClaimList,
@@ -89,7 +88,6 @@ export {
 export {
   EXPENSE_CLAIM_QUERY_KEYS,
   useDecideExpense,
-  useExpenseApprovers,
   useExpenseBudgets,
   useExpenseClaims,
   useExpenseCompanies,

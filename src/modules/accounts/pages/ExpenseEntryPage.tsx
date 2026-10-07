@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { ExpenseClaim } from '@/modules/accounts/api';
 import { useExpenseClaims } from '@/modules/accounts/api';
 import { ExpenseFormDialog } from '@/modules/accounts/components/ExpenseFormDialog';
+import { ExpenseGLCell } from '@/modules/accounts/components/ExpenseGLCell';
 import { expenseMoney } from '@/modules/accounts/components/expenseStatus';
 import { ExpenseStatusBadge } from '@/modules/accounts/components/ExpenseStatusBadge';
 import { DashboardHeader } from '@/shared/components/dashboard/DashboardHeader';
@@ -57,7 +58,6 @@ export default function ExpenseEntryPage() {
                   <th className="px-3 py-2 font-medium">G/L account</th>
                   <th className="px-3 py-2 font-medium">Comment</th>
                   <th className="px-3 py-2 text-right font-medium">Amount</th>
-                  <th className="px-3 py-2 font-medium">Approval goes to</th>
                   <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -79,8 +79,7 @@ export default function ExpenseEntryPage() {
                     <td className="px-3 py-2">{row.company_name}</td>
                     <td className="px-3 py-2">{row.budget_name}</td>
                     <td className="px-3 py-2">
-                      <p className="font-mono text-xs">{row.gl_account_code}</p>
-                      <p className="text-xs text-muted-foreground">{row.gl_account_name}</p>
+                      <ExpenseGLCell claim={row} />
                     </td>
                     <td className="max-w-[320px] px-3 py-2">
                       {row.comment}
@@ -93,12 +92,11 @@ export default function ExpenseEntryPage() {
                     <td className="px-3 py-2 text-right font-medium tabular-nums">
                       {expenseMoney(row.amount)}
                     </td>
-                    <td className="px-3 py-2">{row.approver_name ?? '—'}</td>
                     <td className="px-3 py-2">
                       <ExpenseStatusBadge status={row.status} />
                       {row.decided_at && (
                         <p className="mt-1 text-[10px] text-muted-foreground">
-                          {formatDateTimeShort(row.decided_at)}
+                          {row.decided_by_name} · {formatDateTimeShort(row.decided_at)}
                         </p>
                       )}
                     </td>

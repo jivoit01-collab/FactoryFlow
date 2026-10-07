@@ -8,11 +8,14 @@ export interface ExpenseClaim {
   /** The page's "Branch": the company. */
   company_code: string;
   company_name: string;
-  /** The page's "Budget": SAP's business place (OBPL), as it read when put in. */
-  budget_id: number;
+  /** SAP's dimension 3 budget, as it read when saved. */
+  budget_code: string;
   budget_name: string;
+  /** Blank when the submitter did not know the account... */
   gl_account_code: string;
   gl_account_name: string;
+  /** ...and said what the expense is for instead. */
+  gl_description: string;
   comment: string;
   amount: string;
   status: ExpenseClaimStatus;
@@ -20,12 +23,9 @@ export interface ExpenseClaim {
   submitted_by: number | null;
   submitted_by_name: string | null;
   submitted_at: string;
-  /** Who it was sent to. */
-  approver: number;
-  approver_name: string | null;
   decided_at: string | null;
   decided_by_name: string | null;
-  /** Why the HOD rejected it. Blank otherwise. */
+  /** Why it was rejected. Blank otherwise. */
   decision_note: string;
 }
 
@@ -37,10 +37,8 @@ export interface ExpenseClaimList {
 
 export interface ExpenseListParams {
   status?: ExpenseClaimStatus;
-  /** Only those I put in. */
+  /** Only those I put in. Without it, every expense (approvers only). */
   by_me?: boolean;
-  /** Only those sent to me. */
-  for_me?: boolean;
 }
 
 /** Oil, Mart or Beverages. */
@@ -50,9 +48,9 @@ export interface ExpenseCompany {
 }
 
 export interface ExpenseBudget {
-  budget_id: number;
+  budget_code: string;
   budget_name: string;
-  /** FACTORY: what a new expense starts on. */
+  /** Factory: what a new expense starts on. */
   is_default: boolean;
 }
 
@@ -61,19 +59,14 @@ export interface SapGLAccount {
   account_name: string;
 }
 
-export interface ExpenseApprover {
-  id: number;
-  name: string;
-  email: string;
-}
-
 export interface SubmitExpensePayload {
   company: string;
-  budget_id: number;
+  budget_code: string;
+  /** One of these two: the account, or what the expense is for. */
   gl_account_code: string;
+  gl_description: string;
   comment: string;
   amount: string;
-  approver: number;
 }
 
 export const expenseClaimsApi = {
@@ -90,7 +83,6 @@ export const expenseClaimsApi = {
       params: {
         status: params.status,
         by_me: params.by_me ? 1 : undefined,
-        for_me: params.for_me ? 1 : undefined,
       },
     });
     return data;
@@ -129,12 +121,6 @@ export const expenseClaimsApi = {
     const { data } = await apiClient.get<SapGLAccount[]>(API_ENDPOINTS.EXPENSE_CLAIMS.GL_ACCOUNTS, {
       params: { company, search },
     });
-    return data;
-  },
-
-  /** Every active user but the caller. */
-  async approvers(): Promise<ExpenseApprover[]> {
-    const { data } = await apiClient.get<ExpenseApprover[]>(API_ENDPOINTS.EXPENSE_CLAIMS.APPROVERS);
     return data;
   },
 };
