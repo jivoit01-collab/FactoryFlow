@@ -7,7 +7,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TransferRequestLine } from '../../../types';
-import { draftFromLine, filledLines, sameAsSaved, toLineInputs } from '../transferDraftLines';
+import {
+  batchProblems,
+  draftFromLine,
+  filledLines,
+  sameAsSaved,
+  sameBatchesAsSaved,
+  toLineInputs,
+  withPick,
+} from '../transferDraftLines';
 
 function saved(overrides: Partial<TransferRequestLine> = {}): TransferRequestLine {
   return {
@@ -66,5 +74,77 @@ describe('transfer draft lines', () => {
         quantity: 40,
       },
     ]);
+  });
+});
+
+describe('batches picked on the raise form', () => {
+  const fg = (overrides: Partial<TransferRequestLine> = {}) =>
+    saved({
+      item_code: 'FG0000461',
+      requested_qty: '100.000',
+      is_batch_managed: true,
+      chosen_batches: [
+        { batch_number: 'L3003286 102603 02', quantity: '60' },
+        { batch_number: 'L3003056 102605 01', quantity: '40' },
+      ],
+      ...overrides,
+    });
+
+  it('opens a saved line with its picks', () => {
+    const draft = draftFromLine(fg());
+    expect(draft.isBatchManaged).toBe(true);
+    expect(draft.picks).toEqual([
+      { batch_number: 'L3003286 102603 02', quantity: '60' },
+      { batch_number: 'L3003056 102605 01', quantity: '40' },
+    ]);
+  });
+
+  it('keeps picks in shelf order, whatever order they were typed in', () => {
+    const shelf = ['OLD', 'NEW'];
+    let picks = withPick([], shelf, 'NEW', '40');
+    picks = withPick(picks, shelf, 'OLD', '60');
+    expect(picks.map((b) => b.batch_number)).toEqual(['OLD', 'NEW']);
+    // Cleared box: no longer a pick.
+    expect(withPick(picks, shelf, 'OLD', '')).toEqual([{ batch_number: 'NEW', quantity: '40' }]);
+  });
+
+  it('keeps a pick whose batch has left the shelf, after the rest, until it is cleared', () => {
+    const picks = withPick([{ batch_number: 'GONE', quantity: '10' }], ['A'], 'A', '90');
+    expect(picks.map((b) => b.batch_number)).toEqual(['A', 'GONE']);
+  });
+
+  it('sends the picks with a quantity, and nothing when none were made', () => {
+    const [input] = toLineInputs([
+      {
+        ...draftFromLine(fg()),
+        picks: [
+          { batch_number: 'L3003286 102603 02', quantity: '100' },
+          { batch_number: 'L3003056 102605 01', quantity: '0' },
+        ],
+      },
+    ]);
+    expect(input.batches).toEqual([{ batch_number: 'L3003286 102603 02', quantity: 100 }]);
+    expect(toLineInputs([draftFromLine(saved())])[0]).not.toHaveProperty('batches');
+  });
+
+  it('flags picks that do not add up to the line', () => {
+    const draft = draftFromLine(fg());
+    expect(batchProblems([draft])).toEqual([]);
+    expect(batchProblems([{ ...draft, quantity: '120' }])).toEqual([
+      'FG0000461: the batches picked add up to 100, but 120 is asked for.',
+    ]);
+    // Nothing picked is oldest first, never a problem.
+    expect(batchProblems([{ ...draft, picks: [] }])).toEqual([]);
+  });
+
+  it('sees a change of batches that SAP would never see', () => {
+    const lines = [fg()];
+    const drafts = lines.map(draftFromLine);
+    expect(sameAsSaved(drafts, lines)).toBe(true);
+    expect(sameBatchesAsSaved(drafts, lines)).toBe(true);
+
+    const repicked = [{ ...drafts[0], picks: [{ batch_number: 'L3003056 102605 01', quantity: '100' }] }];
+    expect(sameAsSaved(repicked, lines)).toBe(true);
+    expect(sameBatchesAsSaved(repicked, lines)).toBe(false);
   });
 });

@@ -1422,6 +1422,7 @@ export const API_ENDPOINTS = {
     TRANSFER_REQUESTS_IN_TRANSIT: '/warehouse/transfer-requests/in-transit/',
     TRANSFER_REQUESTS_RECONCILE: '/warehouse/transfer-requests/reconcile/',
     TRANSFER_REQUESTS_STOCK: '/warehouse/transfer-requests/stock/',
+    TRANSFER_REQUESTS_BATCHES: '/warehouse/transfer-requests/batches/',
     TRANSFER_REQUEST_DETAIL: (requestId: number) => `/warehouse/transfer-requests/${requestId}/`,
     TRANSFER_REQUEST_APPROVE: (requestId: number) =>
       `/warehouse/transfer-requests/${requestId}/approve/`,

@@ -23,7 +23,7 @@ type Picked = Record<number, Record<string, string>>;
 
 const TOLERANCE = 0.0005;
 
-/** The server's oldest-first proposal, as editable form state. */
+/** The server's proposal — the requester's pick, else oldest first — as form state. */
 function seedFromProposal(lines: TransferAllocationLine[]): Picked {
   const seeded: Picked = {};
   for (const line of lines) {
@@ -74,8 +74,9 @@ function findProblems(lines: TransferAllocationLine[], picked: Picked): string[]
  *
  * Oldest-first is the right default but not always the right answer — a customer
  * may specify a production date, or the floor may want short-dated stock cleared
- * first. Nothing is reserved by opening this; the preview is read-only until
- * Post is pressed.
+ * first. A requester who picked batches when raising it starts the split from
+ * those instead. Nothing is reserved by opening this; the preview is read-only
+ * until Post is pressed.
  *
  * The edited split is *derived* rather than synced into state: `edits` is null
  * until the operator touches something, and the proposal shows through until
@@ -107,6 +108,7 @@ export function BatchAllocationDialog({
   const seeded = useMemo(() => seedFromProposal(preview?.lines ?? []), [preview]);
   const picked = edits ?? seeded;
   const problems = useMemo(() => findProblems(batchLines, picked), [batchLines, picked]);
+  const anyChosen = batchLines.some((line) => !!line.chosen?.length);
 
   function setBatch(lineNum: number, batchNumber: string, value: string) {
     setEdits((previous) => {
@@ -144,9 +146,11 @@ export function BatchAllocationDialog({
         <DialogHeader>
           <DialogTitle>Choose the batches to move</DialogTitle>
           <DialogDescription>
-            {crossBranch
-              ? 'This is leg 1, into the in-transit warehouse. Oldest batches first unless you change it.'
-              : 'Oldest batches first unless you change it. Nothing moves until you post.'}
+            {crossBranch ? 'This is leg 1, into the in-transit warehouse. ' : ''}
+            {anyChosen
+              ? 'Starts from the batches picked when the request was raised; the rest oldest first.'
+              : 'Oldest batches first unless you change it.'}
+            {crossBranch ? '' : ' Nothing moves until you post.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -172,6 +176,11 @@ export function BatchAllocationDialog({
                     <div>
                       <div className="text-sm font-medium">{line.item_code}</div>
                       <div className="text-xs text-muted-foreground">{line.item_name}</div>
+                      {!!line.chosen?.length && (
+                        <div className="text-xs text-muted-foreground">
+                          Batches picked when the request was raised
+                        </div>
+                      )}
                     </div>
                     <div
                       className={`text-sm tabular-nums ${
@@ -185,6 +194,12 @@ export function BatchAllocationDialog({
                   {line.error && (
                     <p className="border-b bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:text-red-400">
                       {line.error}
+                    </p>
+                  )}
+
+                  {line.note && (
+                    <p className="border-b bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-400">
+                      {line.note}
                     </p>
                   )}
 
@@ -265,7 +280,7 @@ export function BatchAllocationDialog({
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={() => setEdits(null)} disabled={!edits || isPosting}>
             <RotateCcw className="mr-2 h-4 w-4" />
-            Back to oldest first
+            {anyChosen ? 'Undo my changes' : 'Back to oldest first'}
           </Button>
           <Button variant="outline" onClick={() => close(false)} disabled={isPosting}>
             Cancel

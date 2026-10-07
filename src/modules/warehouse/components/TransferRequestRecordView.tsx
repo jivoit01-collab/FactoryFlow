@@ -8,6 +8,7 @@ import { Button, Card, CardContent } from '@/shared/components/ui';
 import { useTransferRequest, useWarehousePrintInfo } from '../api';
 import { ApprovalBadge, PostingBadge, Route, RouteBadge } from '../pages/transfer/TransferBadges';
 import { qty, shortDate } from '../pages/transfer/transferFormat';
+import { TransferLineBatches } from '../pages/transfer/TransferLineBatches';
 import type { TransferRequestDetail, TransferRequestLine } from '../types';
 import { BranchStockTransferPrint, BST_DOC_PRINT_PAGE_STYLE } from './BranchStockTransferPrint';
 
@@ -212,17 +213,7 @@ export function TransferRequestRecordView({
                       {qty(line.transferred_qty)}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {!line.is_batch_managed ? (
-                        <span>not batch-tracked</span>
-                      ) : line.batch_allocation.length ? (
-                        line.batch_allocation.map((b) => (
-                          <div key={b.BatchNumber} className="tabular-nums">
-                            {b.BatchNumber} × {qty(b.Quantity)}
-                          </div>
-                        ))
-                      ) : (
-                        <span>chosen at posting</span>
-                      )}
+                      <TransferLineBatches line={line} />
                     </td>
                   </tr>
                 ))}

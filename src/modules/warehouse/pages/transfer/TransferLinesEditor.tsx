@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button, Card, CardContent, Input } from '@/shared/components/ui';
 
@@ -7,21 +8,31 @@ import { ItemPicker } from './ItemPicker';
 import { QuantityInput } from './QuantityInput';
 import { type DraftLine, newDraftLine } from './transferDraftLines';
 import { isWholeUnit, qty } from './transferFormat';
+import { TransferLineBatchButton, TransferLineBatchPicker } from './TransferLineBatchPicker';
 
 /**
  * The items card of a transfer request — raising one, or editing one before it
  * is decided. Items are picked from what `warehouse` holds in SAP, with what is
- * free to move beside each; the parent owns the lines.
+ * free to move beside each, and a batch-tracked item can be pinned to batches;
+ * the parent owns the lines.
  */
 export function TransferLinesEditor({
   warehouse,
   lines,
   onChange,
+  excludeRequest,
 }: {
   warehouse: string;
   lines: DraftLine[];
   onChange: (lines: DraftLine[]) => void;
+  /** The request being edited, so its own batch picks are not shown as another's. */
+  excludeRequest?: number;
 }) {
+  // Which lines have their batch panel open, by line key.
+  const [batchesOpen, setBatchesOpen] = useState<string[]>([]);
+  const setPanel = (key: string, open: boolean) =>
+    setBatchesOpen((keys) => (open ? [...keys, key] : keys.filter((k) => k !== key)));
+
   function updateLine(key: string, patch: Partial<DraftLine>) {
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
@@ -42,7 +53,7 @@ export function TransferLinesEditor({
             warehouse holds, before anything promised is netted off — so the
             two figures on a line can be compared against the SAP client. */}
         <div
-          className="hidden gap-2 px-1 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_130px_90px_110px_auto]"
+          className="hidden gap-2 px-1 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_130px_90px_110px_180px_auto]"
           aria-hidden="true"
         >
           <span>Item</span>
@@ -55,6 +66,7 @@ export function TransferLinesEditor({
           >
             In {warehouse || 'whse'}
           </span>
+          <span className="pl-4">Batches</span>
           <span className="w-9" />
         </div>
 
@@ -68,13 +80,14 @@ export function TransferLinesEditor({
               isWholeUnit(line.uom) && requested > 0 && !Number.isInteger(requested);
             return (
               <div key={line.key} className="space-y-1">
-                <div className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_130px_90px_110px_auto]">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_130px_90px_110px_180px_auto]">
                   <ItemPicker
                     warehouse={warehouse}
                     value={line.item_code}
                     inputId={`transfer-item-${line.key}`}
                     ariaLabel={`Item for line ${index + 1}`}
-                    onSelect={(item: WarehouseStockItem | null) =>
+                    onSelect={(item: WarehouseStockItem | null) => {
+                      setPanel(line.key, false);
                       updateLine(line.key, {
                         item_code: item?.item_code ?? '',
                         item_name: item?.item_name ?? '',
@@ -83,8 +96,11 @@ export function TransferLinesEditor({
                         appReserved: item?.app_reserved,
                         freeToMove: item?.free_to_move,
                         committed: item?.committed,
-                      })
-                    }
+                        // Another item's batches mean nothing here.
+                        isBatchManaged: item?.is_batch_managed,
+                        picks: [],
+                      });
+                    }}
                   />
                   <Input
                     aria-label={`Description for line ${index + 1}`}
@@ -119,6 +135,12 @@ export function TransferLinesEditor({
                       placeholder="In whse"
                     />
                   </div>
+                  <TransferLineBatchButton
+                    line={line}
+                    lineNumber={index + 1}
+                    open={batchesOpen.includes(line.key)}
+                    onToggle={() => setPanel(line.key, !batchesOpen.includes(line.key))}
+                  />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -180,15 +202,32 @@ export function TransferLinesEditor({
                     )}
                   </>
                 )}
+
+                {line.item_code && line.isBatchManaged && (
+                  <TransferLineBatchPicker
+                    warehouse={warehouse}
+                    line={line}
+                    open={batchesOpen.includes(line.key)}
+                    onClose={() => setPanel(line.key, false)}
+                    excludeRequest={excludeRequest}
+                    onChange={(picks) => updateLine(line.key, { picks })}
+                  />
+                )}
               </div>
             );
           })}
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Batches are chosen automatically, oldest first, when the transfer is posted — you do not
-          pick them here.
-        </p>
+        {/* Only where there are batches to speak of: packaging and most raw
+            materials are not batch-tracked in SAP, and telling someone moving
+            caps that batches are chosen for them only raises the question. */}
+        {lines.some((l) => l.item_code && l.isBatchManaged) && (
+          <p className="text-xs text-muted-foreground">
+            Use <strong className="font-medium text-foreground">Choose batches</strong> on a line
+            to send particular batches. Lines left alone take the oldest batches when the transfer
+            is posted, and whoever posts it can still change them then.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -35,6 +35,14 @@ export const TRANSFER_REQUEST_QUERY_KEYS = {
   allocation: (id: number) => [...TRANSFER_REQUEST_QUERY_KEYS.all, 'allocation', id] as const,
   stock: (warehouse: string, search: string) =>
     [...TRANSFER_REQUEST_QUERY_KEYS.all, 'stock', warehouse, search] as const,
+  itemBatches: (warehouse: string, itemCode: string, excludeRequest?: number) =>
+    [
+      ...TRANSFER_REQUEST_QUERY_KEYS.all,
+      'item-batches',
+      warehouse,
+      itemCode,
+      excludeRequest ?? 0,
+    ] as const,
 };
 
 // ============================================================================
@@ -92,6 +100,23 @@ export function useWarehouseStock(warehouse: string, search = '') {
     enabled: !!warehouse,
     // Stock moves constantly, but a picker re-reading SAP on every keystroke is
     // worse than a slightly stale list; posting revalidates anyway.
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * One item's released batches, read only while its picker is open. The server
+ * re-checks the pick against the shelf when the request is saved.
+ */
+export function useItemBatches(
+  warehouse: string,
+  itemCode: string,
+  { enabled, excludeRequest }: { enabled: boolean; excludeRequest?: number },
+) {
+  return useQuery({
+    queryKey: TRANSFER_REQUEST_QUERY_KEYS.itemBatches(warehouse, itemCode, excludeRequest),
+    queryFn: () => transferRequestApi.itemBatches({ warehouse, itemCode, excludeRequest }),
+    enabled: enabled && !!warehouse && !!itemCode,
     staleTime: 30_000,
   });
 }

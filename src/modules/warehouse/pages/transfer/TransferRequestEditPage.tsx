@@ -24,11 +24,13 @@ import { useTransferRequest, useUpdateTransferRequest } from '../../api';
 import type { TransferRequestDetail } from '../../types';
 import { Route, RouteBadge } from './TransferBadges';
 import {
+  batchProblems,
   draftFromLine,
   type DraftLine,
   filledLines,
   hasFractionalWholeUnit,
   sameAsSaved,
+  sameBatchesAsSaved,
   toLineInputs,
 } from './transferDraftLines';
 import { TransferLinesEditor } from './TransferLinesEditor';
@@ -58,8 +60,15 @@ function EditForm({ request: r }: { request: TransferRequestDetail }) {
 
   const filled = useMemo(() => filledLines(lines), [lines]);
   const linesChanged = !sameAsSaved(filled, r.lines);
+  // Batches never reach SAP, so a change to them alone saves without replacing
+  // SAP's request — and without asking to.
+  const batchesChanged = !linesChanged && !sameBatchesAsSaved(filled, r.lines);
+  const unbalanced = useMemo(() => batchProblems(filled), [filled]);
   const canSave =
-    filled.length > 0 && !hasFractionalWholeUnit(filled) && (linesChanged || remarks !== r.remarks);
+    filled.length > 0 &&
+    !hasFractionalWholeUnit(filled) &&
+    unbalanced.length === 0 &&
+    (linesChanged || batchesChanged || remarks !== r.remarks);
 
   const backToRequest = () => navigate(`/warehouse/inventory-transfer/${r.id}`);
 
@@ -113,7 +122,7 @@ function EditForm({ request: r }: { request: TransferRequestDetail }) {
     <div className="space-y-6">
       <DashboardHeader
         title={`Edit ${r.entry_no}`}
-        description="Items, quantities and remarks can change until the request is approved or rejected."
+        description="Items, quantities, batches and remarks can change until the request is approved or rejected."
       >
         <Button variant="outline" onClick={backToRequest}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -154,13 +163,26 @@ function EditForm({ request: r }: { request: TransferRequestDetail }) {
             </CardContent>
           </Card>
 
-          <TransferLinesEditor warehouse={r.from_warehouse} lines={lines} onChange={setLines} />
+          <TransferLinesEditor
+            warehouse={r.from_warehouse}
+            lines={lines}
+            onChange={setLines}
+            excludeRequest={r.id}
+          />
 
           {linesChanged && r.sap_request_doc_num && (
             <p className="text-xs text-muted-foreground">
               Saving closes SAP request {r.sap_request_doc_num} and raises a new one with these
               lines.
             </p>
+          )}
+
+          {unbalanced.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+              {unbalanced.map((problem) => (
+                <p key={problem}>{problem}</p>
+              ))}
+            </div>
           )}
 
           {error && (

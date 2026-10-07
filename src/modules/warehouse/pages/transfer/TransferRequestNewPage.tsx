@@ -8,6 +8,7 @@ import { Button, Card, CardContent, Label, NativeSelect, Textarea } from '@/shar
 
 import { useCreateTransferRequest, useWarehouseScope, useWMSWarehouses } from '../../api';
 import {
+  batchProblems,
   type DraftLine,
   filledLines,
   hasFractionalWholeUnit,
@@ -43,6 +44,7 @@ export default function TransferRequestNewPage() {
   const [error, setError] = useState('');
 
   const filled = useMemo(() => filledLines(lines), [lines]);
+  const unbalanced = useMemo(() => batchProblems(filled), [filled]);
 
   const sameWarehouse = !!fromWarehouse && fromWarehouse === toWarehouse;
   const canSubmit =
@@ -50,7 +52,8 @@ export default function TransferRequestNewPage() {
     !!toWarehouse &&
     !sameWarehouse &&
     filled.length > 0 &&
-    !hasFractionalWholeUnit(filled);
+    !hasFractionalWholeUnit(filled) &&
+    unbalanced.length === 0;
 
   // Items are picked from a specific warehouse's stock, so changing the source
   // invalidates every line — keeping them would show another warehouse's
@@ -168,6 +171,15 @@ export default function TransferRequestNewPage() {
       </Card>
 
       <TransferLinesEditor warehouse={fromWarehouse} lines={lines} onChange={setLines} />
+
+      {/* Said by the button as well as on the line, which may be scrolled away. */}
+      {unbalanced.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+          {unbalanced.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-3 text-sm text-red-800 dark:text-red-400">

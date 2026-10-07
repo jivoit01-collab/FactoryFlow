@@ -14,6 +14,7 @@ import type {
   TransferApprovePayload,
   TransferBatchVerification,
   TransferCreateBSTPayload,
+  TransferItemBatches,
   TransferPostAllocation,
   TransferReconcileReport,
   TransferRejectPayload,
@@ -84,6 +85,23 @@ export const transferRequestApi = {
         warehouse: params.warehouse,
         ...(params.search ? { search: params.search } : {}),
         ...(params.limit ? { limit: params.limit } : {}),
+      },
+    });
+    return res.data;
+  },
+
+  /** One item's released batches in the source warehouse, for the request form. */
+  async itemBatches(params: {
+    warehouse: string;
+    itemCode: string;
+    /** The request being edited, so its own picks are not shown as held by another. */
+    excludeRequest?: number;
+  }): Promise<TransferItemBatches> {
+    const res = await apiClient.get<TransferItemBatches>(EP.TRANSFER_REQUESTS_BATCHES, {
+      params: {
+        warehouse: params.warehouse,
+        item_code: params.itemCode,
+        ...(params.excludeRequest ? { exclude_request: params.excludeRequest } : {}),
       },
     });
     return res.data;

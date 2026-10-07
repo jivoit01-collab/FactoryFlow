@@ -39,6 +39,15 @@ export interface TransferBatchAllocation {
   Quantity: number;
 }
 
+/**
+ * A batch the requester pinned a line to when raising it. The picks add up to
+ * the requested quantity; posting starts from them, cut to what was approved.
+ */
+export interface TransferChosenBatch {
+  batch_number: string;
+  quantity: string;
+}
+
 export interface TransferRequestLine {
   id: number;
   line_num: number;
@@ -57,6 +66,9 @@ export interface TransferRequestLine {
   outstanding_qty: string;
   is_batch_managed: boolean;
   batch_allocation: TransferBatchAllocation[];
+  /** Empty when nothing was picked — posting then takes the oldest. Absent
+   *  from a backend older than the raise-form batch picker. */
+  chosen_batches?: TransferChosenBatch[];
   status: TransferLineStatus;
   notes: string;
 }
@@ -126,6 +138,8 @@ export interface TransferRequestLineInput {
   quantity: number | string;
   from_warehouse?: string;
   to_warehouse?: string;
+  /** Left out: the oldest batches are taken when the transfer is posted. */
+  batches?: { batch_number: string; quantity: number }[];
 }
 
 export interface TransferRequestCreatePayload {
@@ -180,9 +194,13 @@ export interface TransferAllocationLine {
   to_warehouse: string;
   is_batch_managed: boolean;
   proposed: TransferBatchAllocation[];
+  /** What the requester picked when raising it, cut to what was approved. */
+  chosen?: TransferBatchAllocation[];
   available: TransferAvailableBatch[];
   /** Set when the line cannot be allocated at all, e.g. not enough on the shelf. */
   error: string;
+  /** Something the poster can fix by picking again, e.g. a picked batch that moved. */
+  note?: string;
 }
 
 export interface TransferAllocationPreview {
@@ -198,6 +216,19 @@ export interface TransferAllocationPreview {
 export interface TransferPostAllocation {
   line_num: number;
   batches: { batch_number: string; quantity: number }[];
+}
+
+/** One released batch, for the raise form's picker. */
+export interface TransferItemBatch extends TransferAvailableBatch {
+  /** Picked by this app's other open requests — shown, never subtracted. */
+  held_by_requests: number;
+}
+
+export interface TransferItemBatches {
+  item_code: string;
+  warehouse: string;
+  is_batch_managed: boolean;
+  batches: TransferItemBatch[];
 }
 
 /** Lines left out use whatever leg 1 moved. */
