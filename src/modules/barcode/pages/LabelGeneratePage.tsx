@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui';
+import { formatDateToISOString } from '@/shared/utils';
 
 import {
   useAddBoxesToPallet,
@@ -46,6 +47,19 @@ const MAX_BOX_LABELS_PER_REQUEST = 5000;
 
 const getOitmItemLabel = (item: OitmItemRow) => `${item.item_code} - ${item.item_name}`;
 
+// Two years' shelf life: made on 8 Oct 2026, it expires on 7 Oct 2028. A mfg
+// date on the 1st rolls back to the last day of the month before.
+const defaultExpDate = (mfgDate: string) => {
+  if (!mfgDate) return '';
+  const [year, month, day] = mfgDate.split('-').map(Number);
+  return formatDateToISOString(new Date(year + 2, month - 1, day - 1));
+};
+
+const datesFromToday = () => {
+  const mfgDate = formatDateToISOString(new Date());
+  return { mfg_date: mfgDate, exp_date: defaultExpDate(mfgDate) };
+};
+
 const formatCopyTime = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', {
     day: '2-digit',
@@ -62,6 +76,9 @@ export default function LabelGeneratePage() {
   const [itemSearch, setItemSearch] = useState('');
   const [scannedPalletSearch, setScannedPalletSearch] = useState('');
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null);
+  // The pallet the labels below were printed on; the picker itself is cleared
+  // once a print goes through, ready for the next empty pallet.
+  const [printedPallet, setPrintedPallet] = useState<Pallet | null>(null);
   const [selectedItem, setSelectedItem] = useState<OitmItemRow | null>(null);
   const [generatedBoxes, setGeneratedBoxes] = useState<Box[]>([]);
   const [labelDataList, setLabelDataList] = useState<LabelData[]>([]);
@@ -106,8 +123,7 @@ export default function LabelGeneratePage() {
     qty: '',
     box_count: '',
     uom: 'PCS',
-    mfg_date: '',
-    exp_date: '',
+    ...datesFromToday(),
     warehouse: '',
     production_line: '',
     g_weight: '',
@@ -143,8 +159,7 @@ export default function LabelGeneratePage() {
       qty: lockedQty,
       box_count: '',
       uom: item.inventory_uom.trim() || prev.uom || 'PCS',
-      mfg_date: '',
-      exp_date: '',
+      ...datesFromToday(),
     }));
   };
 
@@ -205,10 +220,12 @@ export default function LabelGeneratePage() {
     return { itemCode, batchNumber, warehouse, qty, boxCount };
   };
 
-  // Boxes already linked to the selected pallet — either pre-existing on the
-  // record or generated onto it earlier in this same session (the record's
-  // box_count stays stale after the first print, so we add both).
-  const linkedBoxCount = (selectedPallet?.box_count ?? 0) + generatedBoxes.length;
+  // A pallet with labels already linked can never be printed onto again. The
+  // list only offers empty pallets, but until it refetches the one just
+  // printed can still be picked from it with a stale box_count of 0.
+  const palletAlreadyPrinted =
+    !!selectedPallet &&
+    (selectedPallet.box_count > 0 || selectedPallet.id === printedPallet?.id);
 
   const runGenerateAndPrint = async () => {
     const valid = validateForm();
@@ -255,6 +272,8 @@ export default function LabelGeneratePage() {
 
       setGeneratedBoxes(boxes);
       setLabelDataList(labels);
+      setPrintedPallet(selectedPallet);
+      setSelectedPallet(null);
       toast.success('Printing 2 pallet labels first, then item labels linked to the pallet.');
       setTimeout(() => handlePrint(), 50);
     } catch (err: unknown) {
@@ -265,9 +284,7 @@ export default function LabelGeneratePage() {
   const handleGenerateClick = () => {
     const valid = validateForm();
     if (!valid || !selectedPallet) return;
-    // Hard lock: a pallet that already has labels linked can never be printed
-    // onto again. Block the run and force the user to pick a fresh empty pallet.
-    if (linkedBoxCount > 0) return;
+    if (palletAlreadyPrinted) return;
     void runGenerateAndPrint();
   };
 
@@ -524,7 +541,18 @@ export default function LabelGeneratePage() {
                 type="date"
                 className="mt-1 w-full rounded border px-3 py-2 text-sm"
                 value={form.mfg_date}
-                onChange={(e) => updateForm('mfg_date', e.target.value)}
+                onChange={(e) => {
+                  const mfgDate = e.target.value;
+                  // The expiry follows the mfg date until someone types their own.
+                  setForm((prev) => ({
+                    ...prev,
+                    mfg_date: mfgDate,
+                    exp_date:
+                      prev.exp_date === defaultExpDate(prev.mfg_date)
+                        ? defaultExpDate(mfgDate)
+                        : prev.exp_date,
+                  }));
+                }}
               />
             </div>
             <div>
@@ -617,7 +645,7 @@ export default function LabelGeneratePage() {
                 generateMutation.isPending ||
                 addBoxesMutation.isPending ||
                 printBulkMutation.isPending ||
-                linkedBoxCount > 0
+                palletAlreadyPrinted
               }
             >
               <Plus className="h-4 w-4 mr-1" />
@@ -627,7 +655,7 @@ export default function LabelGeneratePage() {
                 ? 'Preparing...'
                 : 'Generate Linked Labels & Print'}
             </Button>
-            {linkedBoxCount > 0 && (
+            {palletAlreadyPrinted && (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <span>
@@ -648,7 +676,7 @@ export default function LabelGeneratePage() {
           <CardContent className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="font-semibold">
-                Linked {generatedBoxes.length} item labels to {selectedPallet?.pallet_id}
+                Linked {generatedBoxes.length} item labels to {printedPallet?.pallet_id}
               </h3>
               <Button size="sm" onClick={() => handlePrint()}>
                 <Printer className="h-4 w-4 mr-1" /> Print Again
@@ -672,7 +700,7 @@ export default function LabelGeneratePage() {
                       <td className="p-2 text-right">
                         {box.qty} {box.uom}
                       </td>
-                      <td className="p-2 font-mono text-xs">{selectedPallet?.pallet_id}</td>
+                      <td className="p-2 font-mono text-xs">{printedPallet?.pallet_id}</td>
                       <td className="p-2">{box.current_warehouse}</td>
                     </tr>
                   ))}
