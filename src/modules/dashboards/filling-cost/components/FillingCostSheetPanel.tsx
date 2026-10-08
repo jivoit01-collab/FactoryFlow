@@ -1,7 +1,19 @@
 import { FileSpreadsheet } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 import { useFillingCostDefaults } from '@/modules/production/execution/api';
 import type { FillingCostDefaults } from '@/modules/production/execution/types';
@@ -64,6 +76,39 @@ function slices(heads: FillingCostHeadRow[], theme: 'light' | 'dark'): Slice[] {
   return named;
 }
 
+/** Heads the dashboard counts as maintenance: the AMC and servicing contracts. */
+const MAINTENANCE_PART = /^(AMC|SERVICING COST)\b/i;
+
+const plus = (a: string | null, b: string | null, places: number) =>
+  a == null && b == null ? null : (Number(a ?? 0) + Number(b ?? 0)).toFixed(places);
+
+/**
+ * The heads with AMC and servicing cost added into Maintenance, which takes
+ * the place of whichever of them comes first. The total is unchanged.
+ */
+function foldMaintenance(heads: FillingCostHeadRow[]): FillingCostHeadRow[] {
+  if (!heads.some((row) => MAINTENANCE_PART.test(row.head))) return heads;
+  const out: FillingCostHeadRow[] = [];
+  let maintenance: FillingCostHeadRow | null = null;
+  heads.forEach((row) => {
+    const isPart = MAINTENANCE_PART.test(row.head);
+    if (!isPart && row.head !== 'Maintenance') {
+      out.push(row);
+      return;
+    }
+    if (!maintenance) {
+      maintenance = { ...row, head: 'Maintenance' };
+      out.push(maintenance);
+      return;
+    }
+    maintenance.amount = plus(maintenance.amount, row.amount, 2) as string;
+    maintenance.share = plus(maintenance.share, row.share, 2);
+    maintenance.per_case = plus(maintenance.per_case, row.per_case, 2);
+    maintenance.per_bottle = plus(maintenance.per_bottle, row.per_bottle, 4);
+  });
+  return out;
+}
+
 function skuText(skus: FillingCostSku[]) {
   return skus.length ? [...new Set(skus.map((sku) => sku.sku || sku.product))].join(', ') : '—';
 }
@@ -106,12 +151,12 @@ function workedOut(defaults: FillingCostDefaults | undefined) {
 }
 
 /** A two-column label row at the top of the sheet. */
-function InfoRow({ label, value, unit = '' }: { label: string; value: string; unit?: string }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <tr className="border-b">
       <td className="px-3 py-1.5 font-medium">{label}</td>
       <td className="px-3 py-1.5 text-right tabular-nums">{value}</td>
-      <td className="px-3 py-1.5 text-muted-foreground">{unit}</td>
+      <td />
     </tr>
   );
 }
@@ -144,7 +189,7 @@ export function FillingCostSheetPanel({
   const fallback = day ? null : workedOut(defaultsQuery.data);
   const shift = scope ? day?.shifts.find((s) => s.shift === scope) : undefined;
   const view = shift ?? day ?? fallback?.view ?? null;
-  const heads = shift ? shift.heads : (day?.sheet_heads ?? fallback?.heads ?? []);
+  const heads = foldMaintenance(shift ? shift.heads : (day?.sheet_heads ?? fallback?.heads ?? []));
   const skus = shift ? shift.skus : (day?.skus ?? fallback?.skus ?? []);
   const pie = slices(heads, theme);
   const pieTotal = pie.reduce((sum, slice) => sum + slice.amount, 0);
@@ -200,6 +245,10 @@ export function FillingCostSheetPanel({
         </div>
       </div>
 
+      {data && data.days.length > 0 && (
+        <DayByDay board={data} selected={date} theme={theme} onPick={onDateChange} />
+      )}
+
       {fallback && (
         <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
           Not saved yet — worked out from the day's runs, as the Filling Cost page shows it.
@@ -231,12 +280,24 @@ export function FillingCostSheetPanel({
                     {title}
                   </th>
                 </tr>
+                <tr className="border-b text-xs uppercase text-muted-foreground">
+                  <th />
+                  <th className="px-3 py-1.5 text-right font-semibold">Amount</th>
+                  <th className="px-3 py-1.5 text-right font-semibold">Per box</th>
+                </tr>
               </thead>
               <tbody>
-                <InfoRow label="DATE" value={String(Number(date.slice(8)))} unit="PER BOX" />
+                <InfoRow label="DATE" value={String(Number(date.slice(8)))} />
                 <InfoRow label="SKU" value={skuText(skus)} />
                 <InfoRow label="BOX SIZE" value={boxText(skus)} />
-                <InfoRow label="PRODUCTION" value={count(view.cases)} unit="BOXES" />
+                <tr className="border-b">
+                  <td className="px-3 py-1.5 font-medium">PRODUCTION</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    <span>{count(view.cases)}</span>{' '}
+                    <span className="text-xs text-muted-foreground">boxes</span>
+                  </td>
+                  <td />
+                </tr>
                 {heads.map((row) => (
                   <tr key={row.head} className="border-b">
                     <td className="px-3 py-1.5 uppercase">{row.head}</td>
@@ -325,10 +386,6 @@ export function FillingCostSheetPanel({
           </div>
         </div>
       )}
-
-      {data && data.days.length > 0 && (
-        <DayByDay board={data} selected={date} onPick={onDateChange} />
-      )}
     </section>
   );
 }
@@ -339,18 +396,124 @@ function shortDay(date: string) {
   return `${d.getDate()} ${d.toLocaleDateString('en-IN', { month: 'short' })}, ${d.toLocaleDateString('en-IN', { weekday: 'short' })}`;
 }
 
+const BAR = { light: '#2a78d6', dark: '#3987e5' };
+const BAR_PICKED = { light: '#eb6834', dark: '#d95926' };
+
 /**
- * The month's cost a day: every day a sheet was saved for, with the month's
- * total under it. Picking a day opens its sheet above, when the panel owns
- * the day.
+ * The month's cost a box, one bar a calendar day so the days nobody entered
+ * show as gaps, with the month's own rate as a line across. Picking a bar
+ * opens that day, when the panel owns the day.
  */
-function DayByDay({
+function DayByDayChart({
   board,
   selected,
+  theme,
   onPick,
 }: {
   board: FillingCostBoard;
   selected: string;
+  theme: 'light' | 'dark';
+  onPick?: (date: string) => void;
+}) {
+  const byDate = new Map(board.days.map((day) => [day.date, day]));
+  const today = todayISO();
+  const points = Array.from({ length: board.days_in_month }, (_, i) => {
+    const date = `${board.month}-${String(i + 1).padStart(2, '0')}`;
+    const day = byDate.get(date);
+    return {
+      date,
+      label: String(i + 1),
+      perBox: day?.per_case != null ? Number(day.per_case) : null,
+      day,
+    };
+  }).filter((point) => point.day || point.date <= today);
+  const monthRate = board.totals.per_case != null ? Number(board.totals.per_case) : null;
+
+  return (
+    <div className="mb-4 h-56" role="img" aria-label="Filling cost a box, day by day">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          <CartesianGrid vertical={false} strokeOpacity={0.15} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} interval={0} />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={48}
+            tickFormatter={(value) => `₹${value}`}
+          />
+          {monthRate != null && (
+            <ReferenceLine
+              y={monthRate}
+              stroke={OTHER[theme]}
+              strokeDasharray="4 4"
+              label={{
+                value: `Month ${rate(board.totals.per_case)}`,
+                position: 'insideTopRight',
+                fontSize: 11,
+                fill: OTHER[theme],
+              }}
+            />
+          )}
+          <Tooltip
+            cursor={{ fillOpacity: 0.06 }}
+            contentStyle={{ borderRadius: 12, fontSize: 12 }}
+            labelFormatter={(_, payload) => {
+              const date = payload?.[0]?.payload?.date as string | undefined;
+              return date ? shortDay(date) : '';
+            }}
+            formatter={(_, __, item) => {
+              const day = (item.payload as (typeof points)[number]).day;
+              return day
+                ? [
+                    `${rate(day.per_case)} a box · ${count(day.cases)} boxes · ${rupees(day.total)}`,
+                    'Cost',
+                  ]
+                : ['Not entered', 'Cost'];
+            }}
+          />
+          <Bar
+            dataKey="perBox"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={28}
+            isAnimationActive={false}
+            onClick={
+              onPick
+                ? (point: { payload?: (typeof points)[number] }) => {
+                    const date = point.payload?.date;
+                    if (date && date !== selected && point.payload?.day) onPick(date);
+                  }
+                : undefined
+            }
+            cursor={onPick ? 'pointer' : undefined}
+          >
+            {points.map((point) => (
+              <Cell
+                key={point.date}
+                fill={point.date === selected ? BAR_PICKED[theme] : BAR[theme]}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/**
+ * The month's cost a day: a chart of the cost a box, then every day a sheet
+ * was saved for with the month's total under it. Picking a day opens its
+ * sheet below, when the panel owns the day.
+ */
+function DayByDay({
+  board,
+  selected,
+  theme,
+  onPick,
+}: {
+  board: FillingCostBoard;
+  selected: string;
+  theme: 'light' | 'dark';
   onPick?: (date: string) => void;
 }) {
   const month = new Date(`${board.month}-01T00:00:00`).toLocaleDateString('en-IN', {
@@ -358,13 +521,14 @@ function DayByDay({
     year: 'numeric',
   });
   return (
-    <div className="mt-6">
+    <div className="mb-6">
       <p className="mb-2 text-sm font-medium">
         Day by day — {month}{' '}
         <span className="font-normal text-muted-foreground">
           ({board.days_entered} of {board.days_in_month} days entered)
         </span>
       </p>
+      <DayByDayChart board={board} selected={selected} theme={theme} onPick={onPick} />
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full text-sm" aria-label="Filling cost day by day">
           <thead>
