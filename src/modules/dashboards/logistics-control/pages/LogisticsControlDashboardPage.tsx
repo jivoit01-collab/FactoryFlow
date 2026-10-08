@@ -189,6 +189,8 @@ export function LogisticsControlDashboardPage({
   const space = board.warehouse.space;
   /** Why there are no pallet slots behind this scope, where that is settled. */
   const nonMoving = board.warehouse.nonMoving;
+  /** What the idle stock is worth, at SAP's stock value. */
+  const nonMovingValue = nonMoving.rows.reduce((total, row) => total + (Number(row.value) || 0), 0);
   const pending = board.warehouse.pendingDispatch;
   const allocated = board.warehouse.allocated;
   const unscanned = board.warehouse.unscanned;
@@ -540,12 +542,22 @@ export function LogisticsControlDashboardPage({
                 // rated capacity where one is set — that is the space it
                 // occupies — falling back to a share of stock on hand, which
                 // answers a near enough question when capacity is unknown.
-                nonMovingSpacePct === null
-                  ? { label: `${whole(nonMoving.items)} items`, tone: 'neut' }
-                  : {
-                      label: `${decimal(nonMovingSpacePct)}% of space`,
-                      tone: nonMovingSpacePct >= 10 ? 'warn' : 'neut',
+                // Beverages leads with what the idle stock is worth, at the
+                // plant's request.
+                scope.key === 'beverages' && nonMoving.items > 0
+                  ? {
+                      label:
+                        nonMovingSpacePct === null
+                          ? money(nonMovingValue)
+                          : `${money(nonMovingValue)} · ${decimal(nonMovingSpacePct)}% of space`,
+                      tone: 'bad',
                     }
+                  : nonMovingSpacePct === null
+                    ? { label: `${whole(nonMoving.items)} items`, tone: 'neut' }
+                    : {
+                        label: `${decimal(nonMovingSpacePct)}% of space`,
+                        tone: nonMovingSpacePct >= 10 ? 'warn' : 'neut',
+                      }
               }
               sub={
                 // With the split in the tile, the older band moves up here: the
