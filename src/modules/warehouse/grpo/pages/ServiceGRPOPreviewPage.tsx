@@ -518,7 +518,8 @@ export default function ServiceGRPOPreviewPage() {
     const defaultBranch = branchOptions.find((branch) => branch.branch_id === DEFAULT_BRANCH_ID);
     const amount = parseAmount(preview.default_amount);
     return {
-      vendorCode: '',
+      // The truck's transporter, when it was picked from SAP for the vehicle.
+      vendorCode: preview.default_vendor_code || '',
       branchId: DEFAULT_BRANCH_ID,
       serviceDescription: preview.default_service_description,
       amount,
@@ -1107,6 +1108,11 @@ export default function ServiceGRPOPreviewPage() {
                     label="SAP Vendor"
                     required
                     placeholder="Search transporter / vendor"
+                    defaultDisplayText={
+                      preview?.default_vendor_code
+                        ? `${preview.default_vendor_name} (${preview.default_vendor_code})`
+                        : undefined
+                    }
                     error={apiErrors.vendorCode}
                     onChange={(vendor: Vendor | null) =>
                       updateFormField('vendorCode', vendor?.vendor_code || '')

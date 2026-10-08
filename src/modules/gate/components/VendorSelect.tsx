@@ -13,6 +13,8 @@ interface VendorSelectProps {
   error?: string;
   label?: string;
   required?: boolean;
+  /** Shown for a preset `value` before the vendor list is loaded (it loads on open). */
+  defaultDisplayText?: string;
 }
 
 export function VendorSelect({
@@ -23,6 +25,7 @@ export function VendorSelect({
   error,
   label,
   required = false,
+  defaultDisplayText,
 }: VendorSelectProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -38,6 +41,7 @@ export function VendorSelect({
       error={error}
       label={label}
       required={required}
+      defaultDisplayText={defaultDisplayText}
       inputId="vendor-select"
       getItemKey={(v) => v.vendor_code}
       getItemLabel={(v) => `${v.vendor_name} (${v.vendor_code})`}

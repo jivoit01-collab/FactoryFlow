@@ -533,6 +533,9 @@ export interface ServiceGRPOPendingEntry {
 export interface ServiceGRPOPreview extends ServiceGRPOPendingEntry {
   is_ready_for_grpo: boolean;
   default_amount: string;
+  /** The transporter's SAP vendor in this company, when it was picked from SAP. */
+  default_vendor_code?: string;
+  default_vendor_name?: string;
   default_service_description: string;
   default_place_of_supply: string;
   default_effective_month: string | null;
