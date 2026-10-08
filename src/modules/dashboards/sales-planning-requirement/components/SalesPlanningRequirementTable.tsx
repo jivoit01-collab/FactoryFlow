@@ -31,7 +31,7 @@ interface SheetColumn {
   label: string;
   value: (row: Row) => string;
   /** The figure behind a quantity cell: what it sorts, sums and selects by. */
-  number?: (row: Row) => number;
+  number?: (row: Row) => number | null;
   sort?: (row: Row) => string | number | null;
   align?: 'right';
   wide?: boolean;
@@ -73,6 +73,15 @@ const COLUMNS: SheetColumn[] = [
   quantity('min_stock', 'Min Stock', (row) => row.min_stock),
   quantity('stock_in_hand', 'Stock In Hand', (row) => row.stock_in_hand),
   quantity('required_qty', 'Required Qty', (row) => row.required_qty),
+  {
+    key: 'received_qty',
+    label: 'Receiving',
+    // Blank, not 0, on rows loaded before the app read GRPOs: "nothing
+    // received" and "not looked" are different answers.
+    value: (row) => (row.received_qty === null ? '' : formatNumber(row.received_qty, 0)),
+    number: (row) => row.received_qty,
+    align: 'right',
+  },
   quantity('open_po_qty', 'Open PO Qty', (row) => row.open_po_qty),
   quantity('net_shortage_qty', 'Net Shortage', (row) => row.net_shortage_qty),
   {

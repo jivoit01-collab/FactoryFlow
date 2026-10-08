@@ -23,6 +23,8 @@ export interface SalesPlanningRequirementItem {
   min_stock: number;
   stock_in_hand: number;
   required_qty: number;
+  /** On posted GRPOs within the forecast's dates; null until the next refresh. */
+  received_qty: number | null;
   open_po_qty: number;
   net_shortage_qty: number;
   status: SalesPlanningRequirementStatus;
