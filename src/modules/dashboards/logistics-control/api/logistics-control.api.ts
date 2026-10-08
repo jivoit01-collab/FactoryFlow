@@ -177,6 +177,10 @@ export async function getPendingBillsForCompany(
         date_to: window.date_to,
         by_dispatch_date: 'true',
         selected_only: 'true',
+        // Selected bills not yet given a plan date come back too. The Oil
+        // board's day plan drops them (it needs a date); Beverages counts every
+        // open bill without a vehicle, dated or not.
+        include_unscheduled: 'true',
         // Omitted rather than sent as "all", the way every other flag here is
         // built: an absent filter is the endpoint's own default.
         ...(bookingStatus ? { booking_status: bookingStatus } : {}),

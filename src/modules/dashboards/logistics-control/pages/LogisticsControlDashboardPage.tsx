@@ -626,7 +626,7 @@ export function LogisticsControlDashboardPage({
               name="Pending dispatch"
               now={past}
               onOpen={open('pending')}
-              sub={scope.key === 'beverages' ? 'Plan date set, no vehicle' : undefined}
+              sub={scope.key === 'beverages' ? 'All open bills, no vehicle' : undefined}
               tag={{ label: `${whole(pending.invoices)} invoices`, tone: 'neut' }}
               value={inBoxes ? whole(pending.boxes) : decimal(pending.tonnes)}
               unit={unitWord}

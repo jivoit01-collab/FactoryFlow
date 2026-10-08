@@ -907,9 +907,10 @@ export function useLogisticsControlBoard(
       bills.reduce((total, bill) => total + (Number(bill.total_boxes) || 0), 0);
 
     /**
-     * Beverages asks a narrower question, at the plant's request: bills given a
-     * plan date that still have no vehicle on them, whatever the date. A bill
-     * with a truck linked is the bay's to load, not the planner's to chase.
+     * Beverages asks a different question, at the plant's request: every open
+     * bill with no vehicle on it, with no date filter at all — dated for any
+     * day, or not given a plan date yet. A bill with a truck linked is the
+     * bay's to load, not the planner's to chase.
      */
     const awaitingVehicle =
       scope.key === 'beverages'
@@ -917,7 +918,6 @@ export function useLogisticsControlBoard(
             group.bills
               .filter(
                 (bill) =>
-                  bill.plan?.dispatch_date != null &&
                   bill.plan?.vehicle_id == null &&
                   bill.plan?.booking_status !== 'DISPATCHED' &&
                   bill.plan?.pipeline_status?.stage !== 'DISPATCHED',
