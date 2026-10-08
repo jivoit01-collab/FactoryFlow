@@ -42,6 +42,10 @@ import { ModuleTile, ModuleTileGrid, ModuleTileGroupLabel } from '@/shared/compo
 import { ACCOUNTS_BOARD_VIEW_PERMISSIONS } from '../accounts-board/constants';
 import { ADMIN_BOARD_VIEW_PERMISSIONS } from '../admin-control/constants';
 import { AMOUNTS_BOARD_VIEW_PERMISSIONS } from '../amounts/constants';
+import {
+  BEVERAGES_PM_COMPANIES,
+  BEVERAGES_PM_VIEW_PERMISSIONS,
+} from '../beverages-pm/constants';
 import { BOARD_LIST_VIEW_PERMISSIONS } from '../builder/constants';
 import { BOARD_CAROUSEL_VIEW_PERMISSIONS } from '../carousel/constants';
 import { CIVIL_BOARD_VIEW_PERMISSIONS } from '../civil-control/constants';
@@ -210,6 +214,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/packing-material',
     accent: 'blue',
     permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+  },
+  {
+    title: 'Beverages PM Stock',
+    icon: <Boxes className="h-5 w-5" />,
+    route: '/dashboards/beverages-pm',
+    accent: 'violet',
+    permissions: BEVERAGES_PM_VIEW_PERMISSIONS,
+    companies: BEVERAGES_PM_COMPANIES,
   },
   {
     title: 'Production Movement',

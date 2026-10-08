@@ -651,6 +651,8 @@ export const API_ENDPOINTS = {
   // changes when the SAP/FactoryFlow toggle is flipped.
   PACKING_MATERIAL: {
     STOCK: '/packing-material/stock/',
+    // Every store's packaging converted to pieces — the Beverages PM Stock page.
+    STOCK_PIECES: '/packing-material/stock-pieces/',
     PRODUCTION: '/packing-material/production/',
     DISPATCH: '/packing-material/dispatch/',
     // The requirement board. One endpoint rather than several, because every

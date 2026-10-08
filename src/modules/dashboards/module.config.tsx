@@ -18,6 +18,10 @@ import {
   AMOUNTS_OWNERS_PERMISSIONS,
 } from './amounts/constants';
 import {
+  BEVERAGES_PM_COMPANIES,
+  BEVERAGES_PM_VIEW_PERMISSIONS,
+} from './beverages-pm/constants';
+import {
   BOARD_BUILDER_PERMISSIONS,
   BOARD_LIST_VIEW_PERMISSIONS,
 } from './builder/constants';
@@ -60,6 +64,7 @@ const ProductionMovementDashboardPage = lazy(
 const PackingMaterialDashboardPage = lazy(
   () => import('./packing-material/pages/PackingMaterialDashboardPage'),
 );
+const BeveragesPmStockPage = lazy(() => import('./beverages-pm/pages/BeveragesPmStockPage'));
 const TomorrowRunPage = lazy(() => import('./tomorrow-run/pages/TomorrowRunPage'));
 const DispatchDayDashboardPage = lazy(() => import('./dispatch/pages/DispatchDayDashboardPage'));
 const DispatchPipelineDashboardPage = lazy(
@@ -467,6 +472,16 @@ export const dashboardsModuleConfig: ModuleConfig = {
       breadcrumb: { label: 'Packing Material' },
     },
     {
+      // Every Beverages warehouse's packaging, counted in pieces through each
+      // item's SAP unit group. Beverages only: see BEVERAGES_PM_COMPANIES.
+      path: '/dashboards/beverages-pm',
+      element: <BeveragesPmStockPage />,
+      layout: 'main',
+      companies: BEVERAGES_PM_COMPANIES,
+      permissions: BEVERAGES_PM_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Beverages PM Stock' },
+    },
+    {
       // PM Requirement, Sales Plan vs Req. and Stock Benchmark moved to
       // Planning & Purchase -- planners and buyers read them. These three
       // only forward, so bookmarks, wall screens and notification links
@@ -862,6 +877,12 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/packing-material',
           title: 'Packing Material',
           permissions: [DASHBOARDS_PERMISSIONS.VIEW_PACKING_MATERIAL],
+        },
+        {
+          path: '/dashboards/beverages-pm',
+          title: 'Beverages PM Stock',
+          permissions: BEVERAGES_PM_VIEW_PERMISSIONS,
+          companies: BEVERAGES_PM_COMPANIES,
         },
         {
           path: '/dashboards/dispatch',
