@@ -251,12 +251,13 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
    * board is the warehouse and the dispatch bay, and nothing else.
    */
   hiddenBands: ['transport'],
-  // The plant's three Arshdeep packs, at its request, so the floor sees what it
-  // holds of each without opening the drill.
+  // The plant's three Arshdeep special-edition packs, at its request, so the
+  // floor sees what it holds of each without opening the drill. By code, as
+  // confirmed by the plant: FG0000333 also carries the name and is not one.
   featuredSkus: [
-    { label: '1 L', name: 'Arshdeep', ml: 1000 },
-    { label: '500 ml', name: 'Arshdeep', ml: 500 },
-    { label: '250 ml', name: 'Arshdeep', ml: 250 },
+    { label: '1 L', itemCode: 'FG0000323' },
+    { label: '500 ml', itemCode: 'FG0000324' },
+    { label: '250 ml', itemCode: 'FG0000328' },
   ],
   measure: 'boxes',
 };

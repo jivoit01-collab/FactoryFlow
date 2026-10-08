@@ -497,7 +497,7 @@ export function LogisticsControlDashboardPage({
                           <div key={sku.label}>
                             <span className="k">{sku.label}</span>
                             <span className="v">
-                              {sku.itemCodes.length === 0
+                              {!sku.found
                                 ? '—'
                                 : sku.cases !== null
                                   ? whole(sku.cases)
@@ -507,9 +507,8 @@ export function LogisticsControlDashboardPage({
                         ))}
                       </div>
                       <p className="ops-note" style={{ marginTop: 'calc(0.3 * var(--u))' }}>
-                        {scope.featuredSkus[0].name}, {inBoxes ? 'boxes' : 'cases'} on hand
-                        {featured.some((sku) => sku.itemCodes.length === 0) &&
-                          ' · — means no stock row matched'}
+                        Arshdeep, {inBoxes ? 'boxes' : 'cases'} on hand
+                        {featured.some((sku) => !sku.found) && ' · — means none in stock'}
                       </p>
                     </>
                   )}
