@@ -831,7 +831,6 @@ export const API_ENDPOINTS = {
     BILTY_GRPO_POST: '/dispatch/bilty-grpo/post/',
     BILTY_GRPO_ATTACHMENT: (dispatchPlanId: number) =>
       `/dispatch/bilty-grpo/attachment/${dispatchPlanId}/`,
-    BILTY_GRPO_SUMMARY: '/dispatch/bilty-grpo/summary/',
     BILTY_GRPO_HISTORY: '/dispatch/bilty-grpo/history/',
     BILTY_GRPO_DETAIL: (postingId: number) => `/dispatch/bilty-grpo/${postingId}/`,
     TRANSPORTER_INVOICE_PREVIEW: '/dispatch/transporter-invoices/preview/',

@@ -21,8 +21,6 @@ export const GRPO_QUERY_KEYS = {
   draft: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'draft', postingId] as const,
   servicePending: (params?: GRPOListParams) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'pending', params] as const,
-  serviceSummary: (params?: { year?: number; month?: number }) =>
-    [...GRPO_QUERY_KEYS.all, 'service', 'summary', params] as const,
   serviceOptions: () => [...GRPO_QUERY_KEYS.all, 'service', 'options'] as const,
   servicePreview: (dispatchPlanId: number) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'preview', dispatchPlanId] as const,
@@ -165,17 +163,6 @@ export function usePendingServiceGRPOEntries(params: GRPOListParams = {}) {
   return useQuery({
     queryKey: GRPO_QUERY_KEYS.servicePending(params),
     queryFn: () => grpoApi.getServicePendingEntries(params),
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
-  });
-}
-
-/** Queue KPIs + breakdowns for the Service GRPO page header. Kept on the same
- *  refresh cadence as the queue itself so the tiles and the table move together. */
-export function useServiceGRPOSummary(params: { year?: number; month?: number } = {}) {
-  return useQuery({
-    queryKey: GRPO_QUERY_KEYS.serviceSummary(params),
-    queryFn: () => grpoApi.getServiceSummary(params),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });

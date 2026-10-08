@@ -63,7 +63,6 @@ export type {
   ServiceGRPOSACCodeOption,
   ServiceGRPOStage,
   ServiceGRPOSubAccountOption,
-  ServiceGRPOSummary,
   ServiceGRPOTaxCodeOption,
   ServiceGRPOVarietyOption,
   UpdatePOPrintSettingsRequest,

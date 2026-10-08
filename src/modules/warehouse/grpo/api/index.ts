@@ -26,7 +26,6 @@ export {
   useServiceGRPOHistory,
   useServiceGRPOOptions,
   useServiceGRPOPreview,
-  useServiceGRPOSummary,
   useUpdatePOPrintSettings,
   useUploadGRPOAttachment,
   useWarehouses,

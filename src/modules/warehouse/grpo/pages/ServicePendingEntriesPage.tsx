@@ -13,11 +13,19 @@ import { useNavigate } from 'react-router-dom';
 import type { ApiError } from '@/core/api/types';
 import { PageHeader } from '@/shared/components/page';
 import { PaginationControls } from '@/shared/components/PaginationControls';
-import { Button, Input } from '@/shared/components/ui';
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
 import { usePendingServiceGRPOEntries } from '../api';
-import { GRPOMonthFilter, ServiceGRPOInsights } from '../components';
+import { GRPOMonthFilter } from '../components';
 import type { ServiceGRPOPendingEntry, ServiceGRPOStage } from '../types';
 
 const formatDate = (dateStr?: string | null) => {
@@ -85,13 +93,11 @@ export default function ServicePendingEntriesPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [stage, setStage] = useState<ServiceGRPOStage | ''>('');
-  const [state, setState] = useState('');
-  const [transporter, setTransporter] = useState('');
   const debouncedSearch = useDebounce(search);
 
   useEffect(() => {
     setPage(1);
-  }, [year, month, debouncedSearch, pageSize, stage, state, transporter]);
+  }, [year, month, debouncedSearch, pageSize, stage]);
 
   const { data, isLoading, refetch, error } = usePendingServiceGRPOEntries({
     page,
@@ -100,8 +106,6 @@ export default function ServicePendingEntriesPage({
     month,
     search: debouncedSearch || undefined,
     stage: stage || undefined,
-    state: state || undefined,
-    transporter: transporter || undefined,
   });
 
   const pendingEntries = data?.results ?? [];
@@ -163,42 +167,7 @@ export default function ServicePendingEntriesPage({
       )}
 
       {!isPermissionError && (
-        <ServiceGRPOInsights
-          year={year}
-          month={month}
-          stage={stage}
-          onStageChange={setStage}
-          onStateChange={(value) => setState((prev) => (prev === value ? '' : value))}
-          onTransporterChange={(value) => setTransporter((prev) => (prev === value ? '' : value))}
-        />
-      )}
-
-      {!isPermissionError && (
         <div>
-          {(stage || state || transporter) && (
-            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Filtered by</span>
-              {stage && (
-                <FilterChip
-                  label={stage === 'READY' ? 'Ready to post' : 'Awaiting bilty'}
-                  onClear={() => setStage('')}
-                />
-              )}
-              {transporter && <FilterChip label={transporter} onClear={() => setTransporter('')} />}
-              {state && <FilterChip label={state} onClear={() => setState('')} />}
-              <button
-                type="button"
-                onClick={() => {
-                  setStage('');
-                  setState('');
-                  setTransporter('');
-                }}
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
           <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full sm:max-w-md">
@@ -229,6 +198,19 @@ export default function ServicePendingEntriesPage({
                   setMonth(m);
                 }}
               />
+              <Select
+                value={stage || 'ALL'}
+                onValueChange={(v) => setStage(v === 'ALL' ? '' : (v as ServiceGRPOStage))}
+              >
+                <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="READY">Ready to post</SelectItem>
+                  <SelectItem value="AWAITING_BILTY">Awaiting bilty</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
               Pending ({total})
@@ -384,22 +366,5 @@ export default function ServicePendingEntriesPage({
         </div>
       )}
     </div>
-  );
-}
-
-/** An active filter, clearable in place. */
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-      {label}
-      <button
-        type="button"
-        onClick={onClear}
-        className="rounded-full p-0.5 hover:bg-background"
-        aria-label={`Clear ${label} filter`}
-      >
-        <X className="h-3 w-3" />
-      </button>
-    </span>
   );
 }

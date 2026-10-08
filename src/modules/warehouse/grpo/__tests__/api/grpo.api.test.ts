@@ -121,7 +121,6 @@ describe('grpoApi', () => {
       'getServiceOptions',
       'getServicePendingEntries',
       'getServicePreview',
-      'getServiceSummary',
       'getSummary',
       'getWarehouses',
       'post',

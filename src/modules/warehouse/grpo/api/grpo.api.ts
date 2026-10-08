@@ -26,7 +26,6 @@ import type {
   ServiceGRPOOptions,
   ServiceGRPOPendingEntry,
   ServiceGRPOPreview,
-  ServiceGRPOSummary,
   UpdatePOPrintSettingsRequest,
   Warehouse,
 } from '../types';
@@ -247,14 +246,6 @@ export const grpoApi = {
       ServiceGRPOPendingEntry[] | PaginatedResponse<ServiceGRPOPendingEntry>
     >(API_ENDPOINTS.DISPATCH.BILTY_GRPO_PENDING, { params });
     return normalizePage(response.data, params);
-  },
-
-  async getServiceSummary(params: { year?: number; month?: number } = {}) {
-    const response = await apiClient.get<ServiceGRPOSummary>(
-      API_ENDPOINTS.DISPATCH.BILTY_GRPO_SUMMARY,
-      { params },
-    );
-    return response.data;
   },
 
   async getServiceOptions(): Promise<ServiceGRPOOptions> {
