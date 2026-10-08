@@ -1,5 +1,6 @@
 import { COMPANY_CODES } from '@/config/constants';
 
+import type { FeaturedSku } from '../utils/featuredSkus';
 import {
   LOGISTICS_CONTROL_DISPATCH_COMPANIES,
   LOGISTICS_CONTROL_SECTION_DEPARTMENTS,
@@ -117,6 +118,8 @@ export interface LogisticsControlScope {
   hidden: readonly LogisticsHiddenTile[];
   /** Bands this scope does not show at all. Their feeds are not fetched. */
   hiddenBands: readonly LogisticsHiddenBand[];
+  /** SKUs whose own stock the Stock on hand tile lists under its tonnage. */
+  featuredSkus: readonly FeaturedSku[];
 }
 
 /**
@@ -147,6 +150,7 @@ export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
   absent: {},
   hidden: [],
   hiddenBands: [],
+  featuredSkus: [],
 };
 
 /**
@@ -234,6 +238,13 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
    * board is the warehouse and the dispatch bay, and nothing else.
    */
   hiddenBands: ['transport'],
+  // The plant's three Arshdeep packs, at its request, so the floor sees what it
+  // holds of each without opening the drill.
+  featuredSkus: [
+    { label: '1 L', name: 'Arshdeep', ml: 1000 },
+    { label: '500 ml', name: 'Arshdeep', ml: 500 },
+    { label: '250 ml', name: 'Arshdeep', ml: 250 },
+  ],
 };
 
 /**

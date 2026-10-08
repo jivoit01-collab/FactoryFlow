@@ -30,7 +30,7 @@ import {
   type LogisticsHiddenTile,
 } from '../constants';
 import { useFullBleed, useLogisticsControlBoard, useLogisticsControlScope } from '../hooks';
-import { companyLabel, warehouseCaption } from '../utils';
+import { companyLabel, featuredSkuStock, warehouseCaption } from '../utils';
 
 /** Whole number, Indian grouping. */
 function whole(value: number): string {
@@ -156,6 +156,8 @@ export function LogisticsControlDashboardPage({
    * figure; one is a single-company board, whose tiles read as they always did.
    */
   const sides = board.warehouse.sides;
+  /** The scope's pinned SKUs, read off the same stock rows as the tonnage. */
+  const featured = featuredSkuStock(board.warehouse.stockRows, scope.featuredSkus);
   const split = sides.length > 1;
   const warehouseCodes = board.warehouse.codes;
   /** Every side's stock read failed — the band has no figure, not a zero one. */
@@ -451,6 +453,29 @@ export function LogisticsControlDashboardPage({
                     // is read as an error.
                     null
                   }
+                  {featured.length > 0 && hasTonnage && (
+                    <>
+                      <div className="ops-duo" style={{ marginTop: 'calc(0.6 * var(--u))' }}>
+                        {featured.map((sku) => (
+                          <div key={sku.label}>
+                            <span className="k">{sku.label}</span>
+                            <span className="v">
+                              {sku.itemCodes.length === 0
+                                ? '—'
+                                : sku.cases !== null
+                                  ? whole(sku.cases)
+                                  : `${whole(sku.pieces)} pcs`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="ops-note" style={{ marginTop: 'calc(0.3 * var(--u))' }}>
+                        {scope.featuredSkus[0].name}, cases on hand
+                        {featured.some((sku) => sku.itemCodes.length === 0) &&
+                          ' · — means no stock row matched'}
+                      </p>
+                    </>
+                  )}
                   {/* A partial figure says which half it is missing, and a
                       "% full" over some floors says which it left out. */}
                   {board.warehouse.unread.length > 0 && !stockUnread ? (
