@@ -215,24 +215,9 @@ export function LogisticsControlDashboardPage({
    * figure beside it, rather than drawing a segment wider than the bar it sits
    * in. Null where nothing is planned — the tile draws a note instead.
    */
-  /**
-   * The day plan the Dispatched today bar measures against.
-   *
-   * Beverages counts only today's bills with a vehicle linked — the booked
-   * half — at the plant's request; a bill still waiting for a truck is not yet
-   * a load the bay can be held to. Every other board keeps both halves.
-   */
-  const bookedOnly = scope.key === 'beverages';
-  const dayPlan = bookedOnly
-    ? {
-        tonnes: todayDispatch.plan.linkedTonnes,
-        boxes: todayDispatch.plan.linkedBoxes,
-        configured: todayDispatch.plan.linkedBills > 0,
-      }
-    : todayDispatch.plan;
-  const planned = inBoxes ? dayPlan.boxes : dayPlan.tonnes;
+  const planned = inBoxes ? todayDispatch.plan.boxes : todayDispatch.plan.tonnes;
   const planPct =
-    dayPlan.configured && planned > 0
+    todayDispatch.plan.configured && planned > 0
       ? Math.min(100, ((inBoxes ? todayDispatch.boxes : todayDispatch.tonnes) / planned) * 100)
       : null;
 
@@ -773,9 +758,8 @@ export function LogisticsControlDashboardPage({
                   <p className="ops-note">Could not read today&apos;s dispatch plan.</p>
                 ) : planPct === null ? (
                   <p className="ops-note">
-                    {bookedOnly
-                      ? 'No bill has a vehicle linked for today, so there is no day plan to measure against.'
-                      : 'No bill is linked for today or waiting for a truck, so there is no day plan to measure against.'}
+                    No bill is linked for today or waiting for a truck, so there is no day plan to
+                    measure against.
                   </p>
                 ) : (
                   <>
@@ -789,8 +773,8 @@ export function LogisticsControlDashboardPage({
                         {
                           fill: 'mute',
                           pct: 100 - planPct,
-                          label: bookedOnly ? 'Day plan (booked)' : 'Day plan',
-                          figure: short(dayPlan.tonnes, dayPlan.boxes, 0),
+                          label: 'Day plan',
+                          figure: short(todayDispatch.plan.tonnes, todayDispatch.plan.boxes, 0),
                         },
                       ]}
                     />
