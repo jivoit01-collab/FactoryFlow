@@ -584,6 +584,22 @@
 }
 
 /*
+ * One tile in red inside its band — the stripe, the wash and every bar in it.
+ * Redefines the band's hue variables on the tile alone, so nothing else in the
+ * band changes.
+ */
+.ops-grp.ops-g-alert {
+  --d1: #be123c;
+  --d2: #f43f5e;
+  --d3: #fda4af;
+  --d4: #ffe4e6;
+  --soft: rgba(244, 63, 94, 0.07);
+  --tint1: rgba(244, 63, 94, 0.28);
+  --tint2: rgba(244, 63, 94, 0.09);
+  --glow: rgba(244, 63, 94, 0.26);
+}
+
+/*
  * The Plant board's four stages: bought, stored, made, shifted — a cool
  * progression, one spectral step apart, and deliberately no green (reserved
  * for condition).
