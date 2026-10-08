@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
+  Download,
   FileText,
   PackageOpen,
   Plus,
@@ -34,6 +35,7 @@ import {
   RETURNABLE_STATUS_OPTIONS,
 } from '../constants/returnable.constants';
 import type { ReturnableFilters } from '../types';
+import { exportReturnableGatePasses } from '../utils/returnableExport';
 
 type TypeFilter = 'ALL' | 'RETURNABLE' | 'NON_RETURNABLE';
 
@@ -136,7 +138,17 @@ export default function MaintenanceReturnablePage() {
               }
             : undefined
         }
-      />
+      >
+        {/* The register as filtered below — what is on screen is what is exported. */}
+        <Button
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => exportReturnableGatePasses(passes ?? [])}
+          disabled={!passes?.length}
+        >
+          <Download className="mr-2 h-4 w-4" /> Excel
+        </Button>
+      </DashboardHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <SummaryCard title="Draft" value={counts.draft} icon={FileText} />
