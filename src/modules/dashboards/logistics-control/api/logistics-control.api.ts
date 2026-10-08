@@ -556,6 +556,9 @@ export async function getTransporterAccount(
         {
           params: { payment_days: paymentDays },
           headers: { 'Company-Code': companyCode },
+          // A wall tile: a company SAP cannot answer for shows as unread, so
+          // a toast per poll during an outage is only noise.
+          suppressErrorToast: true,
         },
       );
       return response.data;
@@ -751,6 +754,8 @@ export async function getFreightRate(
       const response = await apiClient.get<FreightRate>(API_ENDPOINTS.DISPATCH.FREIGHT_RATE, {
         params: { date_from: dateFrom, date_to: dateTo },
         headers: { 'Company-Code': companyCode },
+        // As for the transporter account: an unread company, not a toast.
+        suppressErrorToast: true,
       });
       return response.data;
     }),
