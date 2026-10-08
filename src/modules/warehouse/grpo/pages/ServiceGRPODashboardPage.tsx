@@ -10,6 +10,8 @@ import ServicePendingEntriesPage from './ServicePendingEntriesPage';
 const TABS = [
   { key: 'pending', label: 'Pending' },
   { key: 'history', label: 'History' },
+  // Both at once: the bilties still to post and the GRPOs posted.
+  { key: 'all', label: 'All' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
@@ -53,6 +55,7 @@ export default function ServiceGRPODashboardPage() {
 
       {tab === 'pending' && <ServicePendingEntriesPage embedded />}
       {tab === 'history' && <ServiceGRPOHistoryPage embedded />}
+      {tab === 'all' && <ServicePendingEntriesPage embedded scope="all" />}
     </div>
   );
 }

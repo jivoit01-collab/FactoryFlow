@@ -24,9 +24,16 @@ import {
 } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
 
-import { usePendingServiceGRPOEntries } from '../api';
+import { useAllServiceGRPOEntries, usePendingServiceGRPOEntries } from '../api';
 import { GRPOMonthFilter } from '../components';
-import type { ServiceGRPOPendingEntry, ServiceGRPOStage } from '../types';
+import type { ServiceGRPOAllEntry, ServiceGRPOPendingEntry } from '../types';
+
+/** A queue row, or on the All tab also a posted GRPO (`posting_id` set). */
+type Row = Omit<ServiceGRPOPendingEntry, 'stage'> &
+  Partial<Omit<ServiceGRPOAllEntry, keyof ServiceGRPOPendingEntry>> & {
+    stage?: ServiceGRPOAllEntry['stage'];
+  };
+type StageFilter = ServiceGRPOAllEntry['stage'] | '';
 
 const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return '-';
@@ -53,7 +60,14 @@ const BLOCKER_LABELS: Record<string, string> = {
   NO_BILTY_ATTACHMENT: 'No bilty document',
 };
 
-function StageBadge({ entry }: { entry: ServiceGRPOPendingEntry }) {
+function StageBadge({ entry }: { entry: Row }) {
+  if (entry.stage === 'POSTED') {
+    return (
+      <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-500/15 dark:text-sky-400">
+        Posted
+      </span>
+    );
+  }
   if (entry.stage === 'READY') {
     return (
       <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-500/15 dark:text-green-400">
@@ -83,8 +97,14 @@ function AgeCell({ days }: { days?: number | null }) {
 
 export default function ServicePendingEntriesPage({
   embedded = false,
-}: { embedded?: boolean } = {}) {
+  scope = 'pending',
+}: {
+  embedded?: boolean;
+  /** 'all' lists the posted GRPOs beside the bilties still to post. */
+  scope?: 'pending' | 'all';
+} = {}) {
   const navigate = useNavigate();
+  const isAll = scope === 'all';
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -92,23 +112,26 @@ export default function ServicePendingEntriesPage({
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [stage, setStage] = useState<ServiceGRPOStage | ''>('');
+  const [stage, setStage] = useState<StageFilter>('');
   const debouncedSearch = useDebounce(search);
 
   useEffect(() => {
     setPage(1);
   }, [year, month, debouncedSearch, pageSize, stage]);
 
-  const { data, isLoading, refetch, error } = usePendingServiceGRPOEntries({
+  const params = {
     page,
     page_size: pageSize,
     // Month 0 is "All months".
     ...(month === 0 ? { all_months: true } : { year, month }),
     search: debouncedSearch || undefined,
     stage: stage || undefined,
-  });
+  };
+  const pendingQuery = usePendingServiceGRPOEntries(params, !isAll);
+  const allQuery = useAllServiceGRPOEntries(params, isAll);
+  const { data, isLoading, refetch, error } = isAll ? allQuery : pendingQuery;
 
-  const pendingEntries = data?.results ?? [];
+  const pendingEntries: Row[] = data?.results ?? [];
   const total = data?.count ?? 0;
 
   const apiError = error as ApiError | null;
@@ -201,7 +224,7 @@ export default function ServicePendingEntriesPage({
               />
               <Select
                 value={stage || 'ALL'}
-                onValueChange={(v) => setStage(v === 'ALL' ? '' : (v as ServiceGRPOStage))}
+                onValueChange={(v) => setStage(v === 'ALL' ? '' : (v as StageFilter))}
               >
                 <SelectTrigger className="h-9 w-[160px]" aria-label="Filter by status">
                   <SelectValue />
@@ -210,11 +233,12 @@ export default function ServicePendingEntriesPage({
                   <SelectItem value="ALL">All statuses</SelectItem>
                   <SelectItem value="READY">Ready to post</SelectItem>
                   <SelectItem value="AWAITING_BILTY">Awaiting bilty</SelectItem>
+                  {isAll && <SelectItem value="POSTED">Posted</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
             <h3 className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-              Pending ({total})
+              {isAll ? 'All' : 'Pending'} ({total})
             </h3>
           </div>
 
@@ -224,7 +248,9 @@ export default function ServicePendingEntriesPage({
             </div>
           ) : pendingEntries.length === 0 ? (
             <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border rounded-lg">
-              No booked dispatch plans match the current filters.
+              {isAll
+                ? 'Nothing matches the current filters.'
+                : 'No booked dispatch plans match the current filters.'}
             </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
@@ -263,7 +289,7 @@ export default function ServicePendingEntriesPage({
                         Age
                       </th>
                       <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Freight
+                        {isAll ? 'Amount' : 'Freight'}
                       </th>
                       <th className="p-3 w-8" aria-hidden="true" />
                     </tr>
@@ -271,14 +297,23 @@ export default function ServicePendingEntriesPage({
                   <tbody>
                     {pendingEntries.map((entry) => (
                       <tr
-                        key={entry.dispatch_plan_id}
+                        key={`${entry.posting_id ?? 'queue'}-${entry.dispatch_plan_id}`}
                         className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
                         onClick={() =>
-                          navigate(`/dispatch/bilty-grpo/preview/${entry.dispatch_plan_id}`)
+                          navigate(
+                            entry.posting_id
+                              ? `/dispatch/bilty-grpo/history/${entry.posting_id}`
+                              : `/dispatch/bilty-grpo/preview/${entry.dispatch_plan_id}`,
+                          )
                         }
                       >
                         <td className="p-3 text-sm whitespace-nowrap">
                           <StageBadge entry={entry} />
+                          {entry.posting_id && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              GRPO {entry.sap_doc_num || '-'} · {formatDate(entry.posted_at)}
+                            </div>
+                          )}
                         </td>
                         <td className="p-3 text-sm font-medium">
                           <div className="flex flex-col">
@@ -343,7 +378,7 @@ export default function ServicePendingEntriesPage({
                           <AgeCell days={entry.age_days} />
                         </td>
                         <td className="p-3 text-sm whitespace-nowrap">
-                          {formatCurrency(entry.total_freight || entry.freight)}
+                          {formatCurrency(entry.amount ?? (entry.total_freight || entry.freight))}
                         </td>
                         <td className="p-3 text-right">
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />

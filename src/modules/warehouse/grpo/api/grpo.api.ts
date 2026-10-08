@@ -22,6 +22,7 @@ import type {
   PostServiceGRPORequest,
   PostServiceGRPOResponse,
   PreviewPOReceipt,
+  ServiceGRPOAllEntry,
   ServiceGRPOHistoryEntry,
   ServiceGRPOOptions,
   ServiceGRPOPendingEntry,
@@ -237,6 +238,16 @@ export const grpoApi = {
       data,
     );
     return response.data;
+  },
+
+  /** The All tab: bilties to post and posted GRPOs together, newest first. */
+  async getServiceAllEntries(
+    params: GRPOListParams = {},
+  ): Promise<PaginatedResponse<ServiceGRPOAllEntry>> {
+    const response = await apiClient.get<
+      ServiceGRPOAllEntry[] | PaginatedResponse<ServiceGRPOAllEntry>
+    >(API_ENDPOINTS.DISPATCH.BILTY_GRPO_ALL, { params });
+    return normalizePage(response.data, params);
   },
 
   async getServicePendingEntries(

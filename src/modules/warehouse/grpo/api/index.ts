@@ -2,6 +2,7 @@ export { grpoApi } from './grpo.api';
 export {
   GRPO_QUERY_KEYS,
   useAllGRPOEntries,
+  useAllServiceGRPOEntries,
   useDeleteGRPOAttachment,
   useDeleteGRPODraft,
   useDeletePlanBiltyAttachment,

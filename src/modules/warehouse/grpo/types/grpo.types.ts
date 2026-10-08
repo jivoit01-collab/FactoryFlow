@@ -487,6 +487,17 @@ export type ServiceGRPOBlocker = 'NO_BILTY_NO' | 'NO_BILTY_ATTACHMENT';
  *  gone, so AWAITING_BILTY is a stage in the flow, not a fault. */
 export type ServiceGRPOStage = 'READY' | 'AWAITING_BILTY';
 
+/** A row of the All tab: a bilty still to post, or a GRPO already posted. */
+export interface ServiceGRPOAllEntry extends Omit<ServiceGRPOPendingEntry, 'stage'> {
+  stage: ServiceGRPOStage | 'POSTED';
+  /** Set for a posted GRPO, which opens its posting; null for a bilty to post. */
+  posting_id: number | null;
+  sap_doc_num: string;
+  /** The posted GRPO's SAP total, or the bilty's freight still to post. */
+  amount: string | null;
+  posted_at: string | null;
+}
+
 export interface ServiceGRPOPendingEntry {
   dispatch_plan_id: number;
   stage?: ServiceGRPOStage;

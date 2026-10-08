@@ -47,6 +47,7 @@ export type {
   PreviewItem,
   PreviewPOReceipt,
   QCStatus,
+  ServiceGRPOAllEntry,
   ServiceGRPOAlreadyInSAPConflict,
   ServiceGRPOBlocker,
   ServiceGRPOBranchOption,

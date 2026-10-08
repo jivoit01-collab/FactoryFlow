@@ -825,6 +825,7 @@ export const API_ENDPOINTS = {
     FREIGHT_APPROVAL_APPROVE: (id: number) => `/dispatch/freight-approvals/${id}/approve/`,
     FREIGHT_APPROVAL_REJECT: (id: number) => `/dispatch/freight-approvals/${id}/reject/`,
     BILTY_GRPO_PENDING: '/dispatch/bilty-grpo/pending/',
+    BILTY_GRPO_ALL: '/dispatch/bilty-grpo/all/',
     BILTY_GRPO_OPTIONS: '/dispatch/bilty-grpo/options/',
     BILTY_GRPO_PREVIEW: (dispatchPlanId: number) =>
       `/dispatch/bilty-grpo/preview/${dispatchPlanId}/`,

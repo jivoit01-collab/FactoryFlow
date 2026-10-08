@@ -116,6 +116,7 @@ describe('grpoApi', () => {
       'getPlanBiltyAttachment',
       'getPreview',
       'getPrint',
+      'getServiceAllEntries',
       'getServiceDetail',
       'getServiceHistory',
       'getServiceOptions',

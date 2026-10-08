@@ -21,6 +21,8 @@ export const GRPO_QUERY_KEYS = {
   draft: (postingId: number) => [...GRPO_QUERY_KEYS.all, 'draft', postingId] as const,
   servicePending: (params?: GRPOListParams) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'pending', params] as const,
+  serviceAll: (params?: GRPOListParams) =>
+    [...GRPO_QUERY_KEYS.all, 'service', 'all', params] as const,
   serviceOptions: () => [...GRPO_QUERY_KEYS.all, 'service', 'options'] as const,
   servicePreview: (dispatchPlanId: number) =>
     [...GRPO_QUERY_KEYS.all, 'service', 'preview', dispatchPlanId] as const,
@@ -159,10 +161,22 @@ export function useGRPODetail(postingId: number | null) {
   });
 }
 
-export function usePendingServiceGRPOEntries(params: GRPOListParams = {}) {
+/** The All tab: the queue and the posted GRPOs as one list. */
+export function useAllServiceGRPOEntries(params: GRPOListParams = {}, enabled = true) {
+  return useQuery({
+    queryKey: GRPO_QUERY_KEYS.serviceAll(params),
+    queryFn: () => grpoApi.getServiceAllEntries(params),
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+    enabled,
+  });
+}
+
+export function usePendingServiceGRPOEntries(params: GRPOListParams = {}, enabled = true) {
   return useQuery({
     queryKey: GRPO_QUERY_KEYS.servicePending(params),
     queryFn: () => grpoApi.getServicePendingEntries(params),
+    enabled,
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });
@@ -197,6 +211,9 @@ function usePlanBiltyAttachmentInvalidation() {
     });
     queryClient.invalidateQueries({
       queryKey: [...GRPO_QUERY_KEYS.all, 'service', 'pending'],
+    });
+    queryClient.invalidateQueries({
+      queryKey: [...GRPO_QUERY_KEYS.all, 'service', 'all'],
     });
   };
 }
@@ -253,6 +270,9 @@ export function usePostServiceGRPO() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [...GRPO_QUERY_KEYS.all, 'service', 'pending'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...GRPO_QUERY_KEYS.all, 'service', 'all'],
       });
       queryClient.invalidateQueries({
         queryKey: GRPO_QUERY_KEYS.servicePreview(variables.dispatch_plan_id),
