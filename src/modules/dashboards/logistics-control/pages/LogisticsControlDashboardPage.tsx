@@ -108,6 +108,9 @@ export function LogisticsControlDashboardPage({
   const bandColumns = (tiles: readonly LogisticsHiddenTile[]) =>
     `repeat(${4 - tiles.filter((tile) => !shows(tile)).length}, minmax(0, 1fr))`;
 
+  /** Whether this plant runs the transportation band at all. */
+  const showsTransport = !scope.hiddenBands.includes('transport');
+
   const { hasAnyPermission } = usePermission();
   const canSeeWarehouse = hasAnyPermission(LOGISTICS_CONTROL_WAREHOUSE_PERMISSIONS);
   const canSeeDispatch = hasAnyPermission(LOGISTICS_CONTROL_DISPATCH_PERMISSIONS);
@@ -345,7 +348,12 @@ export function LogisticsControlDashboardPage({
           ]}
         />
 
-        <main className="ops-stack">
+        <main
+          className="ops-stack"
+          // The bands left share the height, rather than leaving a gap where
+          // a dropped one stood.
+          style={{ gridTemplateRows: `repeat(${3 - scope.hiddenBands.length}, minmax(0, 1fr))` }}
+        >
           {/* ═════ WAREHOUSE · teal ═════ */}
           <OpsBand
             domain="warehouse"
@@ -528,8 +536,8 @@ export function LogisticsControlDashboardPage({
                   )}
                   {board.warehouse.idleUnread.length > 0 ? (
                     <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
-                      {board.warehouse.idleUnread.map(companyLabel).join(' and ')} could not be
-                      read — its idle stock is missing.
+                      {board.warehouse.idleUnread.map(companyLabel).join(' and ')} could not be read
+                      — its idle stock is missing.
                     </p>
                   ) : (
                     nonMoving.unweighed > 0 && (
@@ -750,7 +758,9 @@ export function LogisticsControlDashboardPage({
                   />
                 ) : (
                   <p className="ops-note">
-                    {past ? `No dispatching days in ${month.label}.` : 'No dispatching days yet this month.'}
+                    {past
+                      ? `No dispatching days in ${month.label}.`
+                      : 'No dispatching days yet this month.'}
                   </p>
                 )
               }
@@ -866,280 +876,284 @@ export function LogisticsControlDashboardPage({
           </OpsBand>
 
           {/* ═════ TRANSPORTATION · violet ═════ */}
-          <OpsBand
-            domain="transport"
-            title="Transportation"
-            people={canSeeWorkforce ? board.workforce.transport : undefined}
-            unavailable={canSeeFreight ? undefined : 'No access to dispatch linking.'}
-          >
-            <OpsGroup
-              name="Owned vehicles"
-              now={past}
-              onOpen={open('fleet')}
-              tag={
-                !fleet.configured && fleet.owned === null
-                  ? { label: 'not set', tone: 'nil' }
-                  : !fleet.configured
-                    ? { label: 'count only', tone: 'neut' }
-                    : fleet.outOfService > 0
-                      ? { label: `${whole(fleet.outOfService)} out of service`, tone: 'bad' }
-                      : { label: `${whole(onDuty)} on duty`, tone: 'neut' }
-              }
-              /*
-               * Working over owned — "3/4" — rather than the fleet size alone.
-               *
-               * The size is a fact nobody has to look up; what the tile is read
-               * for is how much of the fleet is earning today. Only meaningful
-               * once the registrations are entered: without them the duty
-               * states are unknown, and "0/4" would report an idle fleet when
-               * the truth is an unconfigured one.
-               */
-              value={
-                fleet.owned === null
-                  ? undefined
-                  : fleet.configured
-                    ? `${whole(onDuty)}/${whole(fleet.owned)}`
-                    : whole(fleet.owned)
-              }
-              unit={fleet.configured ? 'in use' : 'vehicles'}
-              // Ownership is not a field on the vehicle master, so the fleet is
-              // the registration list from board settings.
-              missing={
-                fleet.owned === null ? 'List the owned registrations in board settings' : undefined
-              }
-              viz={
-                fleet.configured ? (
-                  <>
-                    <OpsMeter
-                      segments={[
-                        {
-                          fill: 'main',
-                          pct: share(fleet.onBst),
-                          label: 'On transfer',
-                          figure: whole(fleet.onBst),
-                        },
-                        {
-                          fill: 'light',
-                          pct: share(fleet.onDispatch + fleet.atPlant + fleet.out),
-                          label: 'On dispatch',
-                          figure: whole(fleet.onDispatch + fleet.atPlant + fleet.out),
-                        },
-                        {
-                          fill: 'mute',
-                          pct: share(fleet.free + fleet.outOfService),
-                          label: 'Idle',
-                          figure: whole(fleet.free + fleet.outOfService),
-                        },
-                      ]}
-                    />
-                    {fleet.outOfService > 0 && (
-                      <p className="ops-note">
-                        {whole(fleet.outOfService)} of the idle trucks are out of service.
-                      </p>
-                    )}
-                  </>
-                ) : fleet.owned === null ? undefined : (
-                  <p className="ops-note">
-                    Only a count is configured — list the registrations to see which trucks are
-                    working.
-                  </p>
-                )
-              }
-            />
+          {showsTransport && (
+            <OpsBand
+              domain="transport"
+              title="Transportation"
+              people={canSeeWorkforce ? board.workforce.transport : undefined}
+              unavailable={canSeeFreight ? undefined : 'No access to dispatch linking.'}
+            >
+              <OpsGroup
+                name="Owned vehicles"
+                now={past}
+                onOpen={open('fleet')}
+                tag={
+                  !fleet.configured && fleet.owned === null
+                    ? { label: 'not set', tone: 'nil' }
+                    : !fleet.configured
+                      ? { label: 'count only', tone: 'neut' }
+                      : fleet.outOfService > 0
+                        ? { label: `${whole(fleet.outOfService)} out of service`, tone: 'bad' }
+                        : { label: `${whole(onDuty)} on duty`, tone: 'neut' }
+                }
+                /*
+                 * Working over owned — "3/4" — rather than the fleet size alone.
+                 *
+                 * The size is a fact nobody has to look up; what the tile is read
+                 * for is how much of the fleet is earning today. Only meaningful
+                 * once the registrations are entered: without them the duty
+                 * states are unknown, and "0/4" would report an idle fleet when
+                 * the truth is an unconfigured one.
+                 */
+                value={
+                  fleet.owned === null
+                    ? undefined
+                    : fleet.configured
+                      ? `${whole(onDuty)}/${whole(fleet.owned)}`
+                      : whole(fleet.owned)
+                }
+                unit={fleet.configured ? 'in use' : 'vehicles'}
+                // Ownership is not a field on the vehicle master, so the fleet is
+                // the registration list from board settings.
+                missing={
+                  fleet.owned === null
+                    ? 'List the owned registrations in board settings'
+                    : undefined
+                }
+                viz={
+                  fleet.configured ? (
+                    <>
+                      <OpsMeter
+                        segments={[
+                          {
+                            fill: 'main',
+                            pct: share(fleet.onBst),
+                            label: 'On transfer',
+                            figure: whole(fleet.onBst),
+                          },
+                          {
+                            fill: 'light',
+                            pct: share(fleet.onDispatch + fleet.atPlant + fleet.out),
+                            label: 'On dispatch',
+                            figure: whole(fleet.onDispatch + fleet.atPlant + fleet.out),
+                          },
+                          {
+                            fill: 'mute',
+                            pct: share(fleet.free + fleet.outOfService),
+                            label: 'Idle',
+                            figure: whole(fleet.free + fleet.outOfService),
+                          },
+                        ]}
+                      />
+                      {fleet.outOfService > 0 && (
+                        <p className="ops-note">
+                          {whole(fleet.outOfService)} of the idle trucks are out of service.
+                        </p>
+                      )}
+                    </>
+                  ) : fleet.owned === null ? undefined : (
+                    <p className="ops-note">
+                      Only a count is configured — list the registrations to see which trucks are
+                      working.
+                    </p>
+                  )
+                }
+              />
 
-            <OpsGroup
-              name="Transport account"
-              now={past}
-              onOpen={open('freight-vendors')}
-              /* The oldest unpaid freight invoice, which is the fact that
+              <OpsGroup
+                name="Transport account"
+                now={past}
+                onOpen={open('freight-vendors')}
+                /* The oldest unpaid freight invoice, which is the fact that
                  decides whether this tile needs acting on today. Amber past a
                  month, red past a quarter — condition colours, earned. */
-              tag={
-                account.oldestDays === null
-                  ? { label: 'nothing outstanding', tone: 'ok' }
-                  : {
-                      label: `oldest ${whole(account.oldestDays)} days`,
-                      tone:
-                        account.oldestDays >= 90
-                          ? 'bad'
-                          : account.oldestDays >= 30
-                            ? 'warn'
-                            : 'neut',
-                    }
-              }
-              /* No subtitle. The matrix under it is four rows of two lines
+                tag={
+                  account.oldestDays === null
+                    ? { label: 'nothing outstanding', tone: 'ok' }
+                    : {
+                        label: `oldest ${whole(account.oldestDays)} days`,
+                        tone:
+                          account.oldestDays >= 90
+                            ? 'bad'
+                            : account.oldestDays >= 30
+                              ? 'warn'
+                              : 'neut',
+                      }
+                }
+                /* No subtitle. The matrix under it is four rows of two lines
                  and needs the whole card; the totals it summarised are all
                  present in the table itself. */
-              tallViz
-              viz={
-                <>
-                  <OpsMatrix columns={board.freight.funnel} money={money} />
-                  {/* Only ever a warning now. The explanatory note is gone, but
+                tallViz
+                viz={
+                  <>
+                    <OpsMatrix columns={board.freight.funnel} money={money} />
+                    {/* Only ever a warning now. The explanatory note is gone, but
                       a column missing a company's documents still has to say
                       so — a short queue reads as a queue somebody has been
                       working, and a short payable as a healthy one. */}
-                  {(account.unread.length > 0 || board.freight.queueUnread.length > 0) && (
-                    <p className="ops-note">
-                      {[
-                        account.unread.length > 0
-                          ? `Freight account missing ${account.unread
-                              .map(companyLabel)
-                              .join(' and ')}`
-                          : null,
-                        board.freight.queueUnread.length > 0
-                          ? `receipt queue missing ${board.freight.queueUnread
-                              .map(companyLabel)
-                              .join(' and ')}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}{' '}
-                      — could not be read.
-                    </p>
-                  )}
-                </>
-              }
-            />
-
-            <OpsGroup
-              name="Cost per litre"
-              onOpen={open('cost-litre')}
-              /* Coverage, not a condition. The freight half is divided over
-                 only the litres whose bilty carries an amount, so the pill says
-                 how much of the month the rate speaks for — under half and it
-                 is a sample worth distrusting. */
-              tag={
-                costLitre === null
-                  ? { label: 'no source', tone: 'nil' }
-                  : {
-                      label: `${whole(costLitre.documents)} freight GRPOs`,
-                      tone: 'neut' as const,
-                    }
-              }
-              sub={
-                costLitre === null
-                  ? 'Freight and litres from the same bilties'
-                  : `${format(new Date(costLitre.windowStart), 'd MMM')} – ${format(
-                      new Date(board.monthEnd),
-                      'd MMM',
-                    )} · ${whole(costLitre.coveredLitres)} L dispatched`
-              }
-              value={costLitre === null ? undefined : `₹${costLitre.total.toFixed(2)}`}
-              unit={costLitre === null ? undefined : 'per litre'}
-              missing={
-                costLitre === null
-                  ? 'No bilty carries a freight figure this month, so there is nothing to divide.'
-                  : undefined
-              }
-              viz={
-                costLitre === null ? undefined : (
-                  /*
-                   * The two halves of the rate, and nothing else.
-                   *
-                   * The per-haulier rows went because SAP cannot say which
-                   * dispatch a freight document paid for — those bars were
-                   * spend, not a rate, and the vendor names clipped to
-                   * "ABHIMAN E…". The explanatory note went because a wall
-                   * board is read at a distance: the caveats about freight
-                   * lagging the truck belong with whoever maintains this, not
-                   * in four lines of small print on the tile.
-                   */
-                  <div className="ops-duo">
-                    <div>
-                      <span className="k">Freight</span>
-                      <span className="v">₹{costLitre.freight.toFixed(2)}</span>
-                    </div>
-                    <div>
-                      <span className="k">Loading</span>
-                      <span className="v">₹{costLitre.loading.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )
-              }
-            />
-
-            <OpsGroup
-              name="Stock in transit"
-              now={past}
-              onOpen={transit.absent === null ? open('transit') : undefined}
-              tag={
-                transit.absent !== null
-                  ? { label: 'no route', tone: 'nil' }
-                  : transit.bands === null
-                    ? { label: 'no data', tone: 'nil' }
-                    : transit.bands.stale.loads > 0
-                      ? {
-                          label: `${whole(transit.bands.stale.loads)} over 7 days`,
-                          tone: 'bad',
-                        }
-                      : { label: `${whole(transit.totals.loads)} loads`, tone: 'neut' }
-              }
-              sub="Dispatched, no SAP receipt"
-              value={
-                transit.absent !== null || transit.bands === null || !transit.weightsAvailable
-                  ? undefined
-                  : decimal(transit.totals.tonnes)
-              }
-              unit={transit.absent === null ? 'tonnes' : undefined}
-              loading={transit.absent === null && transit.loading}
-              // Every no-data case needs its own reason. Leaving this undefined
-              // rendered an empty value beside a live "tonnes" unit, which reads
-              // as a broken tile rather than an absent figure. Both sides of the
-              // figure come from SAP now — the invoices out and the receipts
-              // against them — so an outage leaves nothing to show at all.
-              missing={
-                // The scope having no leg in the route table comes first: it is
-                // settled rather than transient, and reporting it as an outage
-                // would send somebody to check on a SAP box that is perfectly
-                // well.
-                transit.absent !== null
-                  ? transit.absent
-                  : transit.error
-                    ? 'Could not read dispatches from SAP'
-                    : transit.bands === null
-                      ? 'SAP did not answer'
-                      : !transit.weightsAvailable
-                        ? 'SAP unreachable — dispatches not read'
-                        : undefined
-              }
-              viz={
-                transit.absent !== null ||
-                transit.bands === null ||
-                !transit.weightsAvailable ? undefined : (
-                  <>
-                    <OpsMeter
-                      segments={[
-                        {
-                          fill: 'mute',
-                          pct: transitShare(transit.bands.fresh.tonnes),
-                          label: 'Up to 3 days',
-                          figure: `${decimal(transit.bands.fresh.tonnes)} T`,
-                        },
-                        {
-                          fill: 'light',
-                          pct: transitShare(transit.bands.ageing.tonnes),
-                          label: '4 - 7 days',
-                          figure: `${decimal(transit.bands.ageing.tonnes)} T`,
-                        },
-                        {
-                          fill: 'main',
-                          pct: transitShare(transit.bands.stale.tonnes),
-                          label: 'Over 7 days',
-                          figure: `${decimal(transit.bands.stale.tonnes)} T`,
-                        },
-                      ]}
-                    />
-                    {transit.unweighedLines > 0 && (
+                    {(account.unread.length > 0 || board.freight.queueUnread.length > 0) && (
                       <p className="ops-note">
-                        {whole(transit.unweighedLines)} lines have no case weight, so this is a
-                        floor.
+                        {[
+                          account.unread.length > 0
+                            ? `Freight account missing ${account.unread
+                                .map(companyLabel)
+                                .join(' and ')}`
+                            : null,
+                          board.freight.queueUnread.length > 0
+                            ? `receipt queue missing ${board.freight.queueUnread
+                                .map(companyLabel)
+                                .join(' and ')}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}{' '}
+                        — could not be read.
                       </p>
                     )}
                   </>
-                )
-              }
-            />
-          </OpsBand>
+                }
+              />
+
+              <OpsGroup
+                name="Cost per litre"
+                onOpen={open('cost-litre')}
+                /* Coverage, not a condition. The freight half is divided over
+                 only the litres whose bilty carries an amount, so the pill says
+                 how much of the month the rate speaks for — under half and it
+                 is a sample worth distrusting. */
+                tag={
+                  costLitre === null
+                    ? { label: 'no source', tone: 'nil' }
+                    : {
+                        label: `${whole(costLitre.documents)} freight GRPOs`,
+                        tone: 'neut' as const,
+                      }
+                }
+                sub={
+                  costLitre === null
+                    ? 'Freight and litres from the same bilties'
+                    : `${format(new Date(costLitre.windowStart), 'd MMM')} – ${format(
+                        new Date(board.monthEnd),
+                        'd MMM',
+                      )} · ${whole(costLitre.coveredLitres)} L dispatched`
+                }
+                value={costLitre === null ? undefined : `₹${costLitre.total.toFixed(2)}`}
+                unit={costLitre === null ? undefined : 'per litre'}
+                missing={
+                  costLitre === null
+                    ? 'No bilty carries a freight figure this month, so there is nothing to divide.'
+                    : undefined
+                }
+                viz={
+                  costLitre === null ? undefined : (
+                    /*
+                     * The two halves of the rate, and nothing else.
+                     *
+                     * The per-haulier rows went because SAP cannot say which
+                     * dispatch a freight document paid for — those bars were
+                     * spend, not a rate, and the vendor names clipped to
+                     * "ABHIMAN E…". The explanatory note went because a wall
+                     * board is read at a distance: the caveats about freight
+                     * lagging the truck belong with whoever maintains this, not
+                     * in four lines of small print on the tile.
+                     */
+                    <div className="ops-duo">
+                      <div>
+                        <span className="k">Freight</span>
+                        <span className="v">₹{costLitre.freight.toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="k">Loading</span>
+                        <span className="v">₹{costLitre.loading.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )
+                }
+              />
+
+              <OpsGroup
+                name="Stock in transit"
+                now={past}
+                onOpen={transit.absent === null ? open('transit') : undefined}
+                tag={
+                  transit.absent !== null
+                    ? { label: 'no route', tone: 'nil' }
+                    : transit.bands === null
+                      ? { label: 'no data', tone: 'nil' }
+                      : transit.bands.stale.loads > 0
+                        ? {
+                            label: `${whole(transit.bands.stale.loads)} over 7 days`,
+                            tone: 'bad',
+                          }
+                        : { label: `${whole(transit.totals.loads)} loads`, tone: 'neut' }
+                }
+                sub="Dispatched, no SAP receipt"
+                value={
+                  transit.absent !== null || transit.bands === null || !transit.weightsAvailable
+                    ? undefined
+                    : decimal(transit.totals.tonnes)
+                }
+                unit={transit.absent === null ? 'tonnes' : undefined}
+                loading={transit.absent === null && transit.loading}
+                // Every no-data case needs its own reason. Leaving this undefined
+                // rendered an empty value beside a live "tonnes" unit, which reads
+                // as a broken tile rather than an absent figure. Both sides of the
+                // figure come from SAP now — the invoices out and the receipts
+                // against them — so an outage leaves nothing to show at all.
+                missing={
+                  // The scope having no leg in the route table comes first: it is
+                  // settled rather than transient, and reporting it as an outage
+                  // would send somebody to check on a SAP box that is perfectly
+                  // well.
+                  transit.absent !== null
+                    ? transit.absent
+                    : transit.error
+                      ? 'Could not read dispatches from SAP'
+                      : transit.bands === null
+                        ? 'SAP did not answer'
+                        : !transit.weightsAvailable
+                          ? 'SAP unreachable — dispatches not read'
+                          : undefined
+                }
+                viz={
+                  transit.absent !== null ||
+                  transit.bands === null ||
+                  !transit.weightsAvailable ? undefined : (
+                    <>
+                      <OpsMeter
+                        segments={[
+                          {
+                            fill: 'mute',
+                            pct: transitShare(transit.bands.fresh.tonnes),
+                            label: 'Up to 3 days',
+                            figure: `${decimal(transit.bands.fresh.tonnes)} T`,
+                          },
+                          {
+                            fill: 'light',
+                            pct: transitShare(transit.bands.ageing.tonnes),
+                            label: '4 - 7 days',
+                            figure: `${decimal(transit.bands.ageing.tonnes)} T`,
+                          },
+                          {
+                            fill: 'main',
+                            pct: transitShare(transit.bands.stale.tonnes),
+                            label: 'Over 7 days',
+                            figure: `${decimal(transit.bands.stale.tonnes)} T`,
+                          },
+                        ]}
+                      />
+                      {transit.unweighedLines > 0 && (
+                        <p className="ops-note">
+                          {whole(transit.unweighedLines)} lines have no case weight, so this is a
+                          floor.
+                        </p>
+                      )}
+                    </>
+                  )
+                }
+              />
+            </OpsBand>
+          )}
         </main>
       </div>
 

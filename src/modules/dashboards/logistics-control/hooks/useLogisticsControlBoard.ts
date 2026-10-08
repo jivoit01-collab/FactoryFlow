@@ -105,7 +105,10 @@ export function useLogisticsControlBoard(
   // The SAP freight account is behind the same grant as the open-bilty queue,
   // and is three HANA aggregates per company — not worth firing for a viewer
   // who will only be shown a locked band.
-  const canSeeFreight = hasAnyPermission(LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS);
+  // A scope without the transport band reads none of its feeds: no wall would
+  // show them, and three of them are SAP round-trips.
+  const showsTransport = !scope.hiddenBands.includes('transport');
+  const canSeeFreight = showsTransport && hasAnyPermission(LOGISTICS_CONTROL_TRANSPORT_PERMISSIONS);
 
   // One clock for the whole board, so every card agrees on what "today" is even
   // if their queries resolve seconds apart. The page's month hook owns it where
@@ -348,14 +351,18 @@ export function useLogisticsControlBoard(
 
   // Today's duty state per owned truck. Polled with the board — gate arrivals
   // move through the day, unlike the fleet list itself.
-  const ownedVehicles = useOwnedVehicleStatus(LOGISTICS_CONTROL_REFRESH_MS, scope.settingsCompany);
+  const ownedVehicles = useOwnedVehicleStatus(
+    LOGISTICS_CONTROL_REFRESH_MS,
+    scope.settingsCompany,
+    showsTransport,
+  );
 
   // Stock dispatched from a godown and not yet received. Switched off entirely
   // for a scope the endpoint's route table has no leg for -- see `absent`.
   const transit = useStockInTransit(
     LOGISTICS_CONTROL_REFRESH_MS,
     scope.settingsCompany,
-    !scope.absent.stockInTransit,
+    showsTransport && !scope.absent.stockInTransit,
   );
 
   // ============================================================== derivations
@@ -721,7 +728,8 @@ export function useLogisticsControlBoard(
           // Every side's warehouse salary, not only the settings company's.
           warehouse.employeeCostPerDay,
           cfg?.dispatch_salary_daily ?? null,
-          cfg?.transport_salary_daily ?? null,
+          // A hidden band's salary is off the total with its strip.
+          showsTransport ? (cfg?.transport_salary_daily ?? null) : null,
         ].filter((value): value is number => value !== null);
 
         const employeeCost = salaries.length > 0 ? salaries.reduce((a, b) => a + b, 0) : null;
@@ -752,13 +760,11 @@ export function useLogisticsControlBoard(
       onBoard: boardHeadcount([
         ...warehouseSides.map((side) => ({
           name:
-            warehouseSides.length > 1
-              ? `${companyLabel(side.companyCode)} warehouse`
-              : 'Warehouse',
+            warehouseSides.length > 1 ? `${companyLabel(side.companyCode)} warehouse` : 'Warehouse',
           employees: side.strip.employees,
         })),
         { name: 'Dispatch', employees: dispatch.employees },
-        { name: 'Transport', employees: transport.employees },
+        ...(showsTransport ? [{ name: 'Transport', employees: transport.employees }] : []),
       ]),
     };
     // The side settings are read through `sideSettingsKey`, which changes when
@@ -771,6 +777,7 @@ export function useLogisticsControlBoard(
     scope.sectionDepartments,
     scope.sectionEmployeeDepartments,
     scope.warehouseSides,
+    showsTransport,
     sideSettingsKey,
   ]);
 

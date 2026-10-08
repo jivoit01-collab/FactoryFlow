@@ -62,11 +62,7 @@ export const LOGISTICS_CONTROL_QUERY_KEYS = {
  * screen and types, which is a few times a year, not on the board's refresh
  * cadence.
  */
-export function useWarehouseSettings(
-  warehouse: string,
-  enabled = true,
-  companyCode?: string,
-) {
+export function useWarehouseSettings(warehouse: string, enabled = true, companyCode?: string) {
   const { currentCompany } = useAuth();
   // The board's own company where it names one, the viewer's otherwise. Both go
   // into the key as well as the request, so the two boards never serve each
@@ -335,7 +331,6 @@ export function useApprovedPartialScans(companyCodes: readonly string[], enabled
   });
 }
 
-
 /**
  * Owned vehicles and per-section staffing.
  *
@@ -374,13 +369,18 @@ export function useSaveBoardSettings(companyCode?: string) {
  * Gate arrivals move through the day, so this follows the board's refresh
  * rather than the long stale window the configuration itself uses.
  */
-export function useOwnedVehicleStatus(refetchIntervalMs?: number, companyCode?: string) {
+export function useOwnedVehicleStatus(
+  refetchIntervalMs?: number,
+  companyCode?: string,
+  enabled = true,
+) {
   const { currentCompany } = useAuth();
   const scopeKey = companyCode ?? currentCompany?.company_id;
 
   return useQuery({
     queryKey: [...LOGISTICS_CONTROL_QUERY_KEYS.all, 'owned-vehicles', scopeKey] as const,
     queryFn: () => getOwnedVehicleStatus(companyCode),
+    enabled,
     staleTime: refetchIntervalMs ?? 60 * 1000,
     refetchInterval: refetchIntervalMs,
     refetchIntervalInBackground: refetchIntervalMs !== undefined,

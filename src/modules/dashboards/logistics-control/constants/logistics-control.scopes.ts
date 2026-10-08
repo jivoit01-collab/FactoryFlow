@@ -33,6 +33,17 @@ export type LogisticsSection = 'warehouse' | 'dispatch' | 'transport';
  */
 export type LogisticsHiddenTile = 'allocated' | 'unscanned';
 
+/**
+ * A band a scope drops from the wall entirely, people strip and all.
+ *
+ * The same reasoning as `LogisticsHiddenTile`, one size up: where a whole
+ * section is not run from this floor, its four tiles would each say so every
+ * day. The remaining bands share the height between them, and the section's
+ * people leave the topbar's totals too, so the headline still adds up to the
+ * bands under it.
+ */
+export type LogisticsHiddenBand = Exclude<LogisticsSection, 'warehouse'>;
+
 export interface LogisticsAbsentSources {
   /**
    * WMS pallet slots — the fallback for "how full" where no tonnage capacity is
@@ -104,6 +115,8 @@ export interface LogisticsControlScope {
   absent: LogisticsAbsentSources;
   /** Tiles this scope does not show at all. Their feeds are not fetched. */
   hidden: readonly LogisticsHiddenTile[];
+  /** Bands this scope does not show at all. Their feeds are not fetched. */
+  hiddenBands: readonly LogisticsHiddenBand[];
 }
 
 /**
@@ -133,6 +146,7 @@ export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
   sectionEmployeeDepartments: LOGISTICS_CONTROL_SECTION_EMPLOYEE_DEPARTMENTS,
   absent: {},
   hidden: [],
+  hiddenBands: [],
 };
 
 /**
@@ -215,6 +229,11 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
    * the point: what is left on this wall is what this plant can act on.
    */
   hidden: ['allocated', 'unscanned'],
+  /*
+   * Transportation off this wall too, at the plant's request: the Beverages
+   * board is the warehouse and the dispatch bay, and nothing else.
+   */
+  hiddenBands: ['transport'],
 };
 
 /**
