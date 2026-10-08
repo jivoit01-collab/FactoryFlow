@@ -12,6 +12,12 @@ import type { MonthKey } from '../../utils/month';
 
 export type ReportView = 'day' | 'month';
 
+/**
+ * What output is counted in, and so what a cost is "per". Oil reads in litres;
+ * Beverages in boxes — the cases off its runs, which is how that plant sells.
+ */
+export type ReportUnit = 'litre' | 'box';
+
 /** One line's output for a day. */
 export interface LineOutput {
   /** The line's own name: "10 Head", "Pouch Machine". */
@@ -137,8 +143,9 @@ export interface ReportDaysResponse {
 }
 
 /**
- * What a litre cost, by head. Null where it cannot be said: nothing was filled,
- * or the head itself could not be read or priced. Never zero for "unknown".
+ * What a litre (or a box) cost, by head. Null where it cannot be said: nothing
+ * was filled, or the head itself could not be read or priced. Never zero for
+ * "unknown".
  */
 export interface PerLitreCost {
   labour: number | null;
@@ -193,6 +200,10 @@ export interface ReportTotals {
   /** Units per kilolitre filled. */
   kwhPerKl: number | null;
   perLitre: PerLitreCost;
+  /** Units per box (case) packed — Beverages' measure. */
+  kwhPerBox: number | null;
+  /** The same heads over boxes packed rather than litres filled. */
+  perBox: PerLitreCost;
 }
 
 export interface ReportDaySummary extends ReportTotals {
@@ -206,6 +217,8 @@ export interface OperationsReport {
   from: string;
   to: string;
   company: { code: string; name: string };
+  /** Litres for Oil, boxes for Beverages — from the company the days were read for. */
+  unit: ReportUnit;
   totals: ReportTotals;
   /** The span compared against — the day before, or the same days last month. */
   previous: ReportTotals;

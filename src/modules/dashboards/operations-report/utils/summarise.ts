@@ -29,14 +29,15 @@ import type {
   SalaryEntry,
   WastageEntry,
 } from '../types';
+import { unitFor } from './measure';
 import { comparisonSpan, daysBetween, trendSpan } from './period';
 
 const sum = <T>(rows: readonly T[], pick: (row: T) => number): number =>
   rows.reduce((total, row) => total + pick(row), 0);
 
-/** A rupee figure over litres; null when either side is unknown or nothing was filled. */
-const perLitre = (rupees: number | null, litres: number | null): number | null =>
-  rupees !== null && litres !== null && litres > 0 ? rupees / litres : null;
+/** A figure over output; null when either side is unknown or nothing was filled. */
+const per = (figure: number | null, output: number | null): number | null =>
+  figure !== null && output !== null && output > 0 ? figure / output : null;
 
 /** Every day's rows of one section, or null if any day's section was not read. */
 function rowsOf<T>(days: readonly ReportDay[], pick: (day: ReportDay) => T[] | null): T[] | null {
@@ -71,7 +72,7 @@ export function emptyDay(date: string): ReportDay {
  *   span missing a day's rate has no salary total.
  * - A litre's cost is labour, salary, power and priced packing waste, over
  *   litres filled. Null if any head is unknown, so the total never quietly
- *   drops a part.
+ *   drops a part. A box's cost is the same heads over the cases packed.
  */
 export function totalsOf(days: readonly ReportDay[]): ReportTotals {
   const lines = rowsOf(days, (day) => day.lines);
@@ -96,27 +97,35 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
       ? sum(labour, (entry) => entry.cost ?? 0)
       : null;
   const salaryCost =
-    days.length > 0 && readSalary.length === days.length ? sum(salary, (entry) => entry.cost) : null;
+    days.length > 0 && readSalary.length === days.length
+      ? sum(salary, (entry) => entry.cost)
+      : null;
   const manDays = labour ? sum(labour, (entry) => entry.heads) : null;
   const kwh = power ? sum(power, (entry) => entry.kwh) : null;
   const powerCost = power ? sum(power, (entry) => entry.cost) : null;
 
-  const heads = {
-    labour: perLitre(labourCost, litres),
-    salary: perLitre(salaryCost, litres),
-    power: perLitre(powerCost, litres),
-    wastage: perLitre(wastageValue, litres),
-  };
-  const parts = Object.values(heads);
-  const cost: PerLitreCost = {
-    ...heads,
-    total: parts.every((part) => part !== null) ? sum(parts, (part) => part ?? 0) : null,
+  const cases = lines ? sum(lines, (line) => line.cases) : null;
+
+  // One cost basis, two divisors: the heads are the same rupees whether they
+  // are spread over litres (Oil) or boxes (Beverages).
+  const costOver = (output: number | null): PerLitreCost => {
+    const heads = {
+      labour: per(labourCost, output),
+      salary: per(salaryCost, output),
+      power: per(powerCost, output),
+      wastage: per(wastageValue, output),
+    };
+    const parts = Object.values(heads);
+    return {
+      ...heads,
+      total: parts.every((part) => part !== null) ? sum(parts, (part) => part ?? 0) : null,
+    };
   };
 
   return {
     days: days.length,
     litres,
-    cases: lines ? sum(lines, (line) => line.cases) : null,
+    cases,
     runs: lines ? sum(lines, (line) => line.runs) : null,
     wastageValue,
     wastageUnpriced: wastage ? sum(wastage, (entry) => entry.unpriced) : 0,
@@ -136,7 +145,9 @@ export function totalsOf(days: readonly ReportDay[]): ReportTotals {
     // month of missing rates.
     salaryUncostedDays: readSalary.length === 0 ? 0 : days.length - readSalary.length,
     kwhPerKl: kwh !== null && litres !== null && litres > 0 ? kwh / (litres / 1000) : null,
-    perLitre: cost,
+    perLitre: costOver(litres),
+    kwhPerBox: per(kwh, cases),
+    perBox: costOver(cases),
     // A return with lines in two conditions is one return, so they are counted
     // by GR number rather than added up per row.
     grReturns: returns ? new Set(returns.flatMap((entry) => entry.entries)).size : null,
@@ -312,6 +323,7 @@ export function buildReport(
     from: period.from,
     to: period.to,
     company: response.company,
+    unit: unitFor(response.company.code),
     totals: totalsOf(days),
     previous: totalsOf(daysBetween(comparison.from, comparison.to).map(readDay)),
     previousLabel: comparison.label,

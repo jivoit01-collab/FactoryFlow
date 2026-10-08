@@ -13,7 +13,7 @@ import type {
   SalaryEntry,
   WastageEntry,
 } from '../types';
-import { perLitre, quantity, rupees, sectionGap, whole } from '../utils';
+import { measureOf, perLitre, quantity, rupees, sectionGap, whole } from '../utils';
 import { ReportPanel } from './ReportPanel';
 
 interface Column<T> {
@@ -135,11 +135,25 @@ export function BreakdownPanels({
   const month = view === 'month';
   const share = (part: number, whole_: number | null) =>
     whole_ !== null && whole_ > 0 ? part / whole_ : 0;
+  const measure = measureOf(report);
+  const boxes = measure.unit === 'box';
+  const cost = measure.cost(totals);
+  const output = measure.output(totals);
+  /** A row's rupees over the period's litres, or boxes. */
+  const perUnit = (rupees_: number) =>
+    perLitre(output !== null && output > 0 ? rupees_ / output : null);
+  const perHeader = `Per ${measure.noun}`;
 
   const lines: Column<LineOutput>[] = [
     { header: 'Line', cell: (row) => <span className="font-medium">{row.line}</span> },
     { header: 'Runs', numeric: true, cell: (row) => whole(row.runs), total: whole(totals.runs) },
-    { header: 'Cases', numeric: true, cell: (row) => whole(row.cases), total: whole(totals.cases) },
+    // Cases are Beverages' boxes; the share is over whichever the report counts in.
+    {
+      header: boxes ? 'Boxes' : 'Cases',
+      numeric: true,
+      cell: (row) => whole(row.cases),
+      total: whole(totals.cases),
+    },
     {
       header: 'Litres',
       numeric: true,
@@ -149,7 +163,10 @@ export function BreakdownPanels({
     {
       header: 'Share',
       cell: (row) => (
-        <ShareBar share={share(row.litres ?? 0, totals.litres)} hue={palette.production} />
+        <ShareBar
+          share={share((boxes ? row.cases : row.litres) ?? 0, output)}
+          hue={palette.production}
+        />
       ),
     },
   ];
@@ -180,11 +197,10 @@ export function BreakdownPanels({
       total: rupees(totals.wastageValue),
     },
     {
-      header: 'Per litre',
+      header: perHeader,
       numeric: true,
-      cell: (row) =>
-        perLitre(totals.litres !== null && totals.litres > 0 ? row.value / totals.litres : null),
-      total: perLitre(totals.perLitre.wastage),
+      cell: (row) => perUnit(row.value),
+      total: perLitre(cost.wastage),
     },
     {
       header: 'Share',
@@ -235,11 +251,10 @@ export function BreakdownPanels({
       total: rupees(totals.salaryCost),
     },
     {
-      header: 'Per litre',
+      header: perHeader,
       numeric: true,
-      cell: (row) =>
-        perLitre(totals.litres !== null && totals.litres > 0 ? row.cost / totals.litres : null),
-      total: perLitre(totals.perLitre.salary),
+      cell: (row) => perUnit(row.cost),
+      total: perLitre(cost.salary),
     },
     {
       header: 'Share',
@@ -315,7 +330,11 @@ export function BreakdownPanels({
     <div className="grid gap-4 xl:grid-cols-2">
       <ReportPanel
         title="Production by line"
-        subtitle="Cases off each line's runs, in litres where the run knows its pack size"
+        subtitle={
+          boxes
+            ? "Boxes off each line's runs, and litres where the run knows its pack size"
+            : "Cases off each line's runs, in litres where the run knows its pack size"
+        }
         icon={Factory}
         accent="violet"
         flush
@@ -406,7 +425,7 @@ export function BreakdownPanels({
 
       <ReportPanel
         title="Goods Return (GR)"
-        subtitle="Customer returns by the day the truck arrived (or was booked, if it has not), valued at the invoice price; not part of the cost per litre"
+        subtitle={`Customer returns by the day the truck arrived (or was booked, if it has not), valued at the invoice price; not part of the cost per ${measure.noun}`}
         icon={Undo2}
         accent="pink"
         flush

@@ -6,11 +6,15 @@
  * disagree with the screen it was exported from. Numbers go in as numbers with
  * an Excel format, never as the page's formatted strings, so the sheet adds up.
  * An unknown figure is an empty cell — never a zero, the page's own rule.
+ *
+ * Beverages' workbook reads in boxes, as its page does: boxes before litres,
+ * every cost ₹/box and power kWh per box.
  */
 
 import * as XLSX from 'xlsx';
 
 import type { OperationsReport, ReportSection, ReportTotals } from '../types';
+import { measureOf } from './measure';
 import { SECTION_LABEL, sectionGap } from './sections';
 
 type Cell = string | number | null;
@@ -134,6 +138,19 @@ export function daySheet(report: OperationsReport): Table {
     value: pick,
     format: FORMAT.perLitre,
   });
+  const measure = measureOf(report);
+  const boxes = measure.unit === 'box';
+  const rate = measure.rate;
+  const litres: Column<DayRow> = {
+    header: 'Litres',
+    value: (row) => row.litres,
+    format: FORMAT.whole,
+  };
+  const cases: Column<DayRow> = {
+    header: boxes ? 'Boxes' : 'Cases',
+    value: (row) => row.cases,
+    format: FORMAT.whole,
+  };
 
   return table<DayRow>({
     name: 'Day by day',
@@ -144,8 +161,7 @@ export function daySheet(report: OperationsReport): Table {
     columns: [
       { header: 'Date', value: (row) => row.date ?? 'Total' },
       { header: 'Day', value: (row) => (row.date ? weekday(row.date) : null) },
-      { header: 'Litres', value: (row) => row.litres, format: FORMAT.whole },
-      { header: 'Cases', value: (row) => row.cases, format: FORMAT.whole },
+      ...(boxes ? [cases, litres] : [litres, cases]),
       { header: 'Runs', value: (row) => row.runs, format: FORMAT.whole },
       money('Wastage (₹)', (row) => row.wastageValue),
       { header: 'People', value: (row) => row.heads, format: FORMAT.decimal },
@@ -154,12 +170,17 @@ export function daySheet(report: OperationsReport): Table {
       { header: 'kWh', value: (row) => row.kwh, format: FORMAT.whole },
       money('Electricity (₹)', (row) => row.powerCost),
       money('Total cost (₹)', spendOf),
-      perLitre('Labour ₹/L', (row) => row.perLitre.labour),
-      perLitre('Salary ₹/L', (row) => row.perLitre.salary),
-      perLitre('Electricity ₹/L', (row) => row.perLitre.power),
-      perLitre('Wastage ₹/L', (row) => row.perLitre.wastage),
-      perLitre('Cost ₹/L', (row) => row.perLitre.total),
-      { header: 'kWh per KL', value: (row) => row.kwhPerKl, format: FORMAT.decimal },
+      perLitre(`Labour ${rate}`, (row) => measure.cost(row).labour),
+      perLitre(`Salary ${rate}`, (row) => measure.cost(row).salary),
+      perLitre(`Electricity ${rate}`, (row) => measure.cost(row).power),
+      perLitre(`Wastage ${rate}`, (row) => measure.cost(row).wastage),
+      perLitre(`Cost ${rate}`, (row) => measure.cost(row).total),
+      {
+        header: measure.energyLabel,
+        value: measure.energy,
+        // A box takes a fraction of a kWh; a KL takes tens of them.
+        format: boxes ? FORMAT.perLitre : FORMAT.decimal,
+      },
       { header: 'GR returns', value: (row) => row.grReturns, format: FORMAT.whole },
       { header: 'GR pieces', value: (row) => row.grQuantity, format: FORMAT.whole },
       money('GR value (₹)', (row) => row.grValue),
@@ -173,19 +194,25 @@ export function daySheet(report: OperationsReport): Table {
 export function breakdownSheets(report: OperationsReport): Table[] {
   const { breakdown, totals } = report;
   const month = report.view === 'month';
-  const perLitre = (value: number) =>
-    totals.litres !== null && totals.litres > 0 ? value / totals.litres : null;
+  const measure = measureOf(report);
+  const boxes = measure.unit === 'box';
+  const output = measure.output(totals);
+  const cost = measure.cost(totals);
+  /** A row's rupees over the period's litres, or boxes for Beverages. */
+  const perLitre = (value: number) => (output !== null && output > 0 ? value / output : null);
   const sheets: Table[] = [];
 
   if (breakdown.lines) {
     sheets.push(
       table<{ line: string; runs: Cell; cases: Cell; litres: Cell }>({
         name: 'By line',
-        note: "Cases off each line's runs, in litres where the run knows its pack size.",
+        note: boxes
+          ? "Boxes off each line's runs, and litres where the run knows its pack size."
+          : "Cases off each line's runs, in litres where the run knows its pack size.",
         columns: [
           { header: 'Line', value: (row) => row.line },
           { header: 'Runs', value: (row) => row.runs, format: FORMAT.whole },
-          { header: 'Cases', value: (row) => row.cases, format: FORMAT.whole },
+          { header: boxes ? 'Boxes' : 'Cases', value: (row) => row.cases, format: FORMAT.whole },
           { header: 'Litres', value: (row) => row.litres, format: FORMAT.whole },
         ],
         rows: breakdown.lines,
@@ -211,7 +238,7 @@ export function breakdownSheets(report: OperationsReport): Table[] {
           { header: 'Quantity', value: (row) => row.quantity, format: FORMAT.decimal },
           { header: 'Unit', value: (row) => row.unit },
           { header: 'Value (₹)', value: (row) => row.value, format: FORMAT.rupees },
-          { header: '₹/L', value: (row) => row.perLitre, format: FORMAT.perLitre },
+          { header: measure.rate, value: (row) => row.perLitre, format: FORMAT.perLitre },
           { header: 'Rows unpriced', value: (row) => row.unpriced, format: FORMAT.whole },
         ],
         rows: breakdown.wastage.map((row) => ({ ...row, perLitre: perLitre(row.value) })),
@@ -220,7 +247,7 @@ export function breakdownSheets(report: OperationsReport): Table[] {
           quantity: null,
           unit: null,
           value: totals.wastageValue,
-          perLitre: totals.perLitre.wastage,
+          perLitre: cost.wastage,
           unpriced: totals.wastageUnpriced,
         },
       }),
@@ -276,14 +303,14 @@ export function breakdownSheets(report: OperationsReport): Table[] {
             value: (row) => row.cost,
             format: FORMAT.rupees,
           },
-          { header: '₹/L', value: (row) => row.perLitre, format: FORMAT.perLitre },
+          { header: measure.rate, value: (row) => row.perLitre, format: FORMAT.perLitre },
         ],
         rows: breakdown.salary.map((row) => ({ ...row, perLitre: perLitre(row.cost) })),
         total: {
           department: 'Total',
           monthly: totals.salaryMonthly,
           cost: totals.salaryCost,
-          perLitre: totals.perLitre.salary,
+          perLitre: cost.salary,
         },
       }),
     );
@@ -316,7 +343,7 @@ export function breakdownSheets(report: OperationsReport): Table[] {
         unpriced: Cell;
       }>({
         name: 'Goods Return',
-        note: 'Customer returns by the day the truck arrived, valued at the invoice price; not part of the cost per litre.',
+        note: `Customer returns by the day the truck arrived, valued at the invoice price; not part of the cost per ${measure.noun}.`,
         columns: [
           { header: 'Condition', value: (row) => row.label },
           { header: 'Returns', value: (row) => row.returns, format: FORMAT.whole },

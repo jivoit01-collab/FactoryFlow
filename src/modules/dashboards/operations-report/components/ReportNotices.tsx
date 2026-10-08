@@ -1,7 +1,7 @@
 import { AlertTriangle, EyeOff, Info } from 'lucide-react';
 
 import type { OperationsReport, ReportMeta, ReportTotals } from '../types';
-import { SECTION_LABEL, spanLabel } from '../utils';
+import { measureOf, SECTION_LABEL, spanLabel } from '../utils';
 
 const days = (count: number) => `${count} day${count === 1 ? '' : 's'}`;
 
@@ -86,7 +86,7 @@ export function ReportNotices({ report }: { report: OperationsReport }) {
             <b>{names(meta.withheld)}</b> {meta.withheld.length === 1 ? 'is' : 'are'} not shown to
             you
             {meta.withheld.some((section) => section !== 'returns')
-              ? ', so the cost per litre cannot be worked out'
+              ? `, so the cost per ${measureOf(report).noun} cannot be worked out`
               : ''}
             . Ask an administrator for the {rightsFor(meta.withheld)}.
           </span>

@@ -2,11 +2,11 @@ import { IndianRupee } from 'lucide-react';
 
 import type { ReportPalette } from '../constants';
 import type { OperationsReport } from '../types';
-import { NIL, perLitre, rupees } from '../utils';
+import { measureOf, NIL, perLitre, rupees } from '../utils';
 import { ReportPanel } from './ReportPanel';
 
 /**
- * What a litre cost, and what it was made of.
+ * What a litre cost, and what it was made of — a box, for Beverages.
  *
  * One stacked bar — labour, power, wastage, salary, left to right (the
  * palette's slot order, which is what keeps neighbours apart) — because the
@@ -22,34 +22,37 @@ export function CostPerLitrePanel({
   palette: ReportPalette;
 }) {
   const { totals, previous, previousLabel } = report;
+  const measure = measureOf(report);
+  const cost = measure.cost(totals);
+  const { noun } = measure;
 
   const heads = [
     {
       key: 'labour',
       label: 'Labour',
       spend: totals.labourCost,
-      per: totals.perLitre.labour,
+      per: cost.labour,
       hue: palette.labour,
     },
     {
       key: 'power',
       label: 'Electricity',
       spend: totals.powerCost,
-      per: totals.perLitre.power,
+      per: cost.power,
       hue: palette.power,
     },
     {
       key: 'wastage',
       label: 'Wastage',
       spend: totals.wastageValue,
-      per: totals.perLitre.wastage,
+      per: cost.wastage,
       hue: palette.wastage,
     },
     {
       key: 'salary',
       label: 'Salary',
       spend: totals.salaryCost,
-      per: totals.perLitre.salary,
+      per: cost.salary,
       hue: palette.salary,
     },
   ];
@@ -61,27 +64,31 @@ export function CostPerLitrePanel({
 
   return (
     <ReportPanel
-      title="Cost per litre"
-      subtitle="Contract labour, electricity, priced packing waste and staff salary, over the litres filled"
+      title={`Cost per ${noun}`}
+      subtitle={`Contract labour, electricity, priced packing waste and staff salary, over the ${
+        measure.unit === 'box' ? 'boxes packed' : 'litres filled'
+      }`}
       icon={IndianRupee}
       accent="slate"
     >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:items-center">
         <div>
           <p className="text-4xl font-semibold tabular-nums tracking-tight">
-            {perLitre(totals.perLitre.total)}
-            {totals.perLitre.total !== null && (
-              <span className="ml-1 text-base font-medium text-muted-foreground">/ L</span>
+            {perLitre(cost.total)}
+            {cost.total !== null && (
+              <span className="ml-1 text-base font-medium text-muted-foreground">
+                / {measure.unit === 'box' ? 'box' : 'L'}
+              </span>
             )}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {totals.perLitre.total !== null
-              ? `${perLitre(previous.perLitre.total)} on ${previousLabel}`
-              : totals.litres === null
-                ? 'The litres filled are not known, so there is no cost per litre.'
+            {cost.total !== null
+              ? `${perLitre(measure.cost(previous).total)} on ${previousLabel}`
+              : measure.output(totals) === null
+                ? `The ${measure.plural.toLowerCase()} made are not known, so there is no cost per ${noun}.`
                 : missing.length
                   ? `No ${missing.join(' or ').toLowerCase()} figure, so no total.`
-                  : 'Nothing was filled, so there is no cost per litre.'}
+                  : `Nothing was filled, so there is no cost per ${noun}.`}
           </p>
         </div>
 
@@ -101,7 +108,7 @@ export function CostPerLitrePanel({
                     width: `${((head.spend ?? 0) / spend) * 100}%`,
                     backgroundColor: head.hue,
                   }}
-                  title={`${head.label}: ${perLitre(head.per)} a litre`}
+                  title={`${head.label}: ${perLitre(head.per)} a ${noun}`}
                 />
               ))}
             </div>
@@ -117,7 +124,7 @@ export function CostPerLitrePanel({
                   Spend
                 </th>
                 <th scope="col" className="py-1.5 text-right font-semibold">
-                  Per litre
+                  Per {noun}
                 </th>
                 <th scope="col" className="py-1.5 text-right font-semibold">
                   Share
@@ -151,9 +158,7 @@ export function CostPerLitrePanel({
               <tr className="border-t font-semibold">
                 <td className="py-1.5">Total</td>
                 <td className="py-1.5 text-right tabular-nums">{rupees(spend)}</td>
-                <td className="py-1.5 text-right tabular-nums">
-                  {perLitre(totals.perLitre.total)}
-                </td>
+                <td className="py-1.5 text-right tabular-nums">{perLitre(cost.total)}</td>
                 <td />
               </tr>
             </tfoot>

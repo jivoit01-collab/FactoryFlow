@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ReportDay, ReportMeta } from '../types';
+import { measureOf, unitFor } from './measure';
 import { comparisonSpan, daysBetween, resolvePeriod, trendSpan } from './period';
 import { breakdownOf, buildReport, fetchSpan, totalsOf } from './summarise';
 
@@ -205,6 +206,46 @@ describe('breakdownOf', () => {
     const merged = breakdownOf([day('2026-09-01', { labour: null, power: null })]);
     expect(merged.labour).toBeNull();
     expect(merged.power).toBeNull();
+  });
+});
+
+describe('Beverages, in boxes', () => {
+  const BEVERAGES = { code: 'JIVO_BEVERAGES', name: 'Jivo Beverages' };
+
+  it('costs a box as the same heads over the cases packed', () => {
+    const totals = totalsOf([day('2026-09-01')]);
+    expect(totals.perBox.labour).toBeCloseTo(6_500 / 100, 6);
+    expect(totals.perBox.salary).toBeCloseTo(1_000 / 100, 6);
+    expect(totals.perBox.total).toBeCloseTo((6_500 + 1_000 + 2_505 + 30) / 100, 6);
+    expect(totals.kwhPerBox).toBeCloseTo(300 / 100, 6);
+  });
+
+  it('still costs a box when a run has no pack size, so no litres', () => {
+    const totals = totalsOf([
+      day('2026-09-01', { lines: [{ line: 'PET', runs: 1, cases: 200, litres: null }] }),
+    ]);
+    expect(totals.perLitre.total).toBeNull();
+    expect(totals.perBox.total).toBeCloseTo((6_500 + 1_000 + 2_505 + 30) / 200, 6);
+  });
+
+  it('gives no cost per box, rather than zero, for a day nothing was packed', () => {
+    const totals = totalsOf([day('2026-09-06', { lines: [] })]);
+    expect(totals.perBox.total).toBeNull();
+    expect(totals.kwhPerBox).toBeNull();
+  });
+
+  it('reads a Beverages report in boxes, and every other company in litres', () => {
+    const period = resolvePeriod({ view: 'day', date: '2026-09-14', month: null }, '2026-10-03');
+    const days = [day('2026-09-14')];
+    const bev = buildReport(period, { company: BEVERAGES, days, meta: NO_META });
+    expect(bev.unit).toBe('box');
+    expect(measureOf(bev).output(bev.totals)).toBe(100);
+    expect(measureOf(bev).cost(bev.totals).total).toBeCloseTo(10_035 / 100, 6);
+
+    const oil = buildReport(period, { company: OIL, days, meta: NO_META });
+    expect(oil.unit).toBe('litre');
+    expect(measureOf(oil).output(oil.totals)).toBe(1_200);
+    expect(unitFor('JIVO_MART')).toBe('litre');
   });
 });
 

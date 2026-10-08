@@ -20,11 +20,17 @@ const day = (date: string, overrides: Partial<ReportDay> = {}): ReportDay => ({
   ...overrides,
 });
 
-function september(meta: ReportMeta = NO_META, overrides: Partial<ReportDay> = {}) {
+const BEVERAGES = { code: 'JIVO_BEVERAGES', name: 'Jivo Beverages' };
+
+function september(
+  meta: ReportMeta = NO_META,
+  overrides: Partial<ReportDay> = {},
+  company: { code: string; name: string } = OIL,
+) {
   const period = resolvePeriod({ view: 'month', date: null, month: '2026-09' }, '2026-10-06');
   const span = fetchSpan(period);
   const days = daysBetween(span.from, span.to).map((date) => day(date, overrides));
-  return buildReport(period, { company: OIL, days, meta });
+  return buildReport(period, { company, days, meta });
 }
 
 /** A sheet's table as objects, keyed by its header row. */
@@ -97,6 +103,34 @@ describe('buildReportWorkbook', () => {
     expect(workbook.SheetNames).not.toContain('Salary');
     expect(workbook.SheetNames).not.toContain('Labour');
     expect(String(workbook.Sheets['Day by day'].A2.v)).toContain('Salary: not shown to you');
+  });
+});
+
+describe('buildReportWorkbook for Beverages', () => {
+  const workbook = () => buildReportWorkbook(september(NO_META, {}, BEVERAGES), 'September 2026');
+
+  it('reads the days in boxes: boxes first, every cost per box, power per box', () => {
+    const sheet = workbook().Sheets['Day by day'];
+    expect(sheet[XLSX.utils.encode_cell({ r: TABLE_HEADER_ROW, c: 2 })].v).toBe('Boxes');
+    expect(sheet[XLSX.utils.encode_cell({ r: TABLE_HEADER_ROW, c: 3 })].v).toBe('Litres');
+
+    const table = rows(workbook(), 'Day by day');
+    expect(table[0]).toMatchObject({
+      Boxes: 100,
+      Litres: 1_000,
+      'Salary ₹/box': 3,
+      'Cost ₹/box': 10,
+      'kWh per box': 3,
+    });
+    expect(table[0]).not.toHaveProperty('Cost ₹/L');
+    expect(table[0]).not.toHaveProperty('kWh per KL');
+    expect(table[30]).toMatchObject({ Date: 'Total', Boxes: 3_000, 'Cost ₹/box': 10 });
+  });
+
+  it('heads the breakdowns in boxes', () => {
+    expect(rows(workbook(), 'By line')[0]).toMatchObject({ Boxes: 100 * 30, Litres: 30_000 });
+    expect(rows(workbook(), 'Wastage')[0]).toMatchObject({ '₹/box': 1 });
+    expect(rows(workbook(), 'Salary')[0]).toMatchObject({ '₹/box': 3 });
   });
 });
 

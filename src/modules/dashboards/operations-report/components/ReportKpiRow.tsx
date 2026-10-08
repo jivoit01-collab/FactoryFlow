@@ -16,7 +16,16 @@ import { type AccentKey, ACCENTS } from '@/shared/components/dashboard';
 import { cn } from '@/shared/utils';
 
 import type { OperationsReport } from '../types';
-import { change, compact, NIL, perLitre, rupeesCompact, sectionGap, whole } from '../utils';
+import {
+  change,
+  compact,
+  measureOf,
+  NIL,
+  perLitre,
+  rupeesCompact,
+  sectionGap,
+  whole,
+} from '../utils';
 
 /** Which way is better. Null for a figure that is neither — labour spend rises with output. */
 type GoodWhen = 'up' | 'down' | null;
@@ -69,8 +78,9 @@ function Delta({ pct, goodWhen, vs }: { pct: number | null; goodWhen: GoodWhen; 
  * The headline figures, each against the period before.
  *
  * Every cost tile leads with its rupees, the units it was bought in (kWh, man-
- * days) under it. Production is the one tile in litres: it is what the money
- * bought, and the report has no rupee figure for it.
+ * days) under it. Production is the one tile in litres — boxes for Beverages:
+ * it is what the money bought, and the report has no rupee figure for it.
+ * Every "per" figure is over the same unit, so Beverages reads per box.
  *
  * Green and red only where the direction is a judgement — more litres, less
  * wastage, a cheaper litre. Labour, salary and power spend rise with output or
@@ -85,6 +95,9 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
   // A span with unread meter days holds less electricity than it used, so it is
   // not set against one that was read in full: the gap would read as a saving.
   const powerComparable = !now.powerUnreadDays && !was.powerUnreadDays;
+  const measure = measureOf(report);
+  const cost = measure.cost(now);
+  const output = measure.output(now);
 
   const labourSub = (() => {
     if (gap('labour')) return gap('labour') as string;
@@ -103,25 +116,25 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
     }
     // The day view is one day's share of the month, so it says of what.
     if (view === 'day') return `Staff · 1 day of ${rupeesCompact(now.salaryMonthly)} a month`;
-    return `Staff · ${perLitre(now.perLitre.salary)} a litre`;
+    return `Staff · ${perLitre(cost.salary)} a ${measure.noun}`;
   })();
 
   const powerSub = (() => {
     if (gap('power')) return gap('power') as string;
     if (now.kwh === null) return 'No meter readings';
-    const perKl = now.kwhPerKl === null ? NIL : whole(now.kwhPerKl);
+    const perUnit = measure.energyText(measure.energy(now));
     const unread = now.powerUnreadDays
       ? ` · ${now.powerUnreadDays} day${now.powerUnreadDays === 1 ? '' : 's'} unread`
       : '';
-    return `${compact(now.kwh)} kWh · ${perKl} kWh per KL${unread}`;
+    return `${compact(now.kwh)} kWh · ${perUnit} ${measure.energyLabel}${unread}`;
   })();
 
   const costSub = (() => {
-    if (now.perLitre.total !== null) return 'Labour, salary, power and wastage';
-    if (now.litres === 0) return 'Nothing was filled';
+    if (cost.total !== null) return 'Labour, salary, power and wastage';
+    if (output === 0) return 'Nothing was filled';
     // Without litres every head is unknown per litre; say the cause, not the
     // four symptoms.
-    if (now.litres === null) return 'Litres not known';
+    if (output === null) return `${measure.plural} not known`;
     const missing = [
       now.labourCost === null && 'labour',
       now.salaryCost === null && 'salary',
@@ -146,9 +159,13 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       label: 'Production',
       icon: Factory,
       accent: 'violet',
-      value: now.litres === null ? NIL : `${compact(now.litres)} L`,
-      sub: gap('production') ?? `${whole(now.cases)} cases · ${whole(now.runs)} runs`,
-      change: change(now.litres, was.litres),
+      value: output === null ? NIL : `${compact(output)} ${measure.suffix}`,
+      sub:
+        gap('production') ??
+        (measure.unit === 'box'
+          ? `${now.litres === null ? NIL : compact(now.litres)} L · ${whole(now.runs)} runs`
+          : `${whole(now.cases)} cases · ${whole(now.runs)} runs`),
+      change: change(output, measure.output(was)),
       goodWhen: 'up',
     },
     {
@@ -160,7 +177,7 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
         gap('wastage') ??
         (now.wastageUnpriced
           ? `Packing waste · ${whole(now.wastageUnpriced)} rows unpriced`
-          : `Packing waste · ${perLitre(now.perLitre.wastage)} a litre`),
+          : `Packing waste · ${perLitre(cost.wastage)} a ${measure.noun}`),
       change: change(now.wastageValue, was.wastageValue),
       goodWhen: 'down',
     },
@@ -195,12 +212,12 @@ export function ReportKpiRow({ report }: { report: OperationsReport }) {
       goodWhen: null,
     },
     {
-      label: 'Cost per litre',
+      label: `Cost per ${measure.noun}`,
       icon: IndianRupee,
       accent: 'slate',
-      value: perLitre(now.perLitre.total),
+      value: perLitre(cost.total),
       sub: costSub,
-      change: powerComparable ? change(now.perLitre.total, was.perLitre.total) : null,
+      change: powerComparable ? change(cost.total, measure.cost(was).total) : null,
       goodWhen: 'down',
     },
     {

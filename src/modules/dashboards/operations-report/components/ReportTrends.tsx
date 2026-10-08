@@ -14,7 +14,7 @@ import {
 
 import type { ReportPalette } from '../constants';
 import type { OperationsReport, ReportDaySummary } from '../types';
-import { axisTick, perLitre, rupees, shortDay, weekdayDay, whole } from '../utils';
+import { axisTick, measureOf, perLitre, rupees, shortDay, weekdayDay, whole } from '../utils';
 import { ReportPanel } from './ReportPanel';
 
 interface Measure {
@@ -187,13 +187,15 @@ export function ReportTrends({
   palette: ReportPalette;
   onSelectDay: (date: string) => void;
 }) {
+  // Litres and ₹ a litre for Oil; boxes and ₹ a box for Beverages.
+  const output = measureOf(report);
   const measures: Measure[] = [
     {
       key: 'production',
       title: 'Production',
-      unit: 'litres',
-      pick: (day) => day.litres,
-      exact: (value) => `${whole(value)} L`,
+      unit: output.plural.toLowerCase(),
+      pick: output.output,
+      exact: (value) => `${whole(value)} ${output.suffix}`,
       tick: axisTick,
       hue: palette.production,
       form: 'bar',
@@ -229,10 +231,10 @@ export function ReportTrends({
       form: 'bar',
     },
     {
-      key: 'per-litre',
-      title: 'Cost per litre',
-      unit: '₹ / L',
-      pick: (day) => day.perLitre.total,
+      key: 'per-unit',
+      title: `Cost per ${output.noun}`,
+      unit: output.unit === 'box' ? '₹ / box' : '₹ / L',
+      pick: (day) => output.cost(day).total,
       exact: perLitre,
       tick: (value) => value.toFixed(1),
       hue: palette.total,

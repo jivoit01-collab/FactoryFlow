@@ -21,11 +21,13 @@ import {
 } from '../components';
 import { REPORT_PALETTES } from '../constants';
 import { useOperationsReport, useReportPeriod } from '../hooks';
+import { MEASURES, unitFor } from '../utils';
 import { buildReportWorkbook, reportFileName } from '../utils/reportExport';
 
 /**
  * The Operations Report: production, wastage, labour and electricity for a day
- * or a month, and what a litre cost to make.
+ * or a month, and what a litre cost to make — a box, for Jivo Beverages, whose
+ * figures all read in boxes (see `utils/measure.ts`).
  *
  * READING ORDER. The five headline figures, each against the period before;
  * what a litre cost and what it was made of; the run of days around the
@@ -42,6 +44,9 @@ export default function OperationsReportPage() {
   const { currentCompany } = useAuth();
   const { resolvedTheme } = useTheme();
   const palette = REPORT_PALETTES[resolvedTheme === 'dark' ? 'dark' : 'light'];
+  // The header is drawn before the report is in, so it reads the company signed
+  // in; the figures below take theirs from the report itself.
+  const { noun } = MEASURES[unitFor(currentCompany?.company_code ?? '')];
 
   const period = useReportPeriod();
   const { data: report, isLoading, isFetching, error, refetch } = useOperationsReport(period);
@@ -56,7 +61,7 @@ export default function OperationsReportPage() {
     <div className="space-y-5">
       <PageHeader
         title="Operations Report"
-        description={`${currentCompany?.company_name ?? 'This company'} · production, wastage, labour, salary and electricity, and what each litre cost`}
+        description={`${currentCompany?.company_name ?? 'This company'} · production, wastage, labour, salary and electricity, and what each ${noun} cost`}
         icon={ClipboardList}
         accent="indigo"
       />
