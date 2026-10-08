@@ -94,6 +94,8 @@ export interface DayPlanBill {
   weightKg: number;
   /** Litres on the bill — the dispatch team's own unit. */
   litres: number;
+  /** Boxes on the bill — what a board counting boxes adds up. */
+  boxes: number;
   /** The vehicle linked to the plan, or null where none is. */
   vehicleId: number | null;
   /** The plan's scheduled dispatch date, `YYYY-MM-DD`. */
@@ -113,17 +115,22 @@ export interface DayPlan<T extends DayPlanBill = DayPlanBill> {
    * tonnes cannot.
    */
   litres: number;
+  /** The same bills in boxes. */
+  boxes: number;
   /** Bills dated for today with a truck linked, gone or not. */
   linkedTonnes: number;
+  linkedBoxes: number;
   linkedBills: number;
   /** Planned bills, today's or older, that nobody has put on a truck yet. */
   unlinkedTonnes: number;
+  unlinkedBoxes: number;
   unlinkedBills: number;
   /**
    * The plan less what has already left: trucks still to go out, and every
    * bill still waiting for one. The Pending dispatch tile.
    */
   pendingTonnes: number;
+  pendingBoxes: number;
   pendingBills: number;
   /** The bills themselves, linked first — what the drill-down lists. */
   rows: T[];
@@ -160,17 +167,23 @@ export function dayPlan<T extends DayPlanBill>(
   );
   const tonnesOf = (bills: readonly DayPlanBill[]) =>
     bills.reduce((total, bill) => total + (bill.weightKg || 0), 0) / 1000;
+  const boxesOf = (bills: readonly DayPlanBill[]) =>
+    bills.reduce((total, bill) => total + (bill.boxes || 0), 0);
   const pending = [...linked, ...unlinked].filter((bill) => !bill.dispatched);
 
   return {
     tonnes: tonnesOf(linked) + tonnesOf(unlinked),
     bills: linked.length + unlinked.length,
     litres: [...linked, ...unlinked].reduce((total, bill) => total + (bill.litres || 0), 0),
+    boxes: boxesOf(linked) + boxesOf(unlinked),
     linkedTonnes: tonnesOf(linked),
+    linkedBoxes: boxesOf(linked),
     linkedBills: linked.length,
     unlinkedTonnes: tonnesOf(unlinked),
+    unlinkedBoxes: boxesOf(unlinked),
     unlinkedBills: unlinked.length,
     pendingTonnes: tonnesOf(pending),
+    pendingBoxes: boxesOf(pending),
     pendingBills: pending.length,
     rows: [...linked, ...unlinked],
   };

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WarehouseOccupancyItem } from '../../production-control/types';
-import { isPieceUom, rollUpTonnage, rowKilograms } from './tonnage';
+import {
+  countBoxes,
+  isPieceUom,
+  rollUpBoxes,
+  rollUpTonnage,
+  rowBoxes,
+  rowKilograms,
+} from './tonnage';
 
 function makeRow(overrides: Partial<WarehouseOccupancyItem> = {}): WarehouseOccupancyItem {
   return {
@@ -112,5 +119,52 @@ describe('rollUpTonnage', () => {
 
     expect(result.tonnes).toBe(0);
     expect(result.coverage).toBe(0);
+  });
+});
+
+describe('rowBoxes', () => {
+  it('divides pieces by the box size', () => {
+    expect(rowBoxes(makeRow({ on_hand: 240, pieces_per_box: 24 }))).toBe(10);
+  });
+
+  it('counts nothing for a SKU sold loose, rather than a box a piece', () => {
+    expect(rowBoxes(makeRow({ on_hand: 50, pieces_per_box: 1 }))).toBeNull();
+    expect(rowBoxes(makeRow({ on_hand: 50, pieces_per_box: null }))).toBeNull();
+  });
+
+  it('counts nothing for stock held in a mass or a volume', () => {
+    expect(rowBoxes(makeRow({ on_hand: 900, pieces_per_box: 12, uom: 'LTR' }))).toBeNull();
+  });
+});
+
+describe('rollUpBoxes', () => {
+  it('adds the boxed rows and names the rest', () => {
+    const rollUp = rollUpBoxes([
+      makeRow({ on_hand: 240, pieces_per_box: 24 }),
+      makeRow({ on_hand: 120, pieces_per_box: 12 }),
+      makeRow({ on_hand: 50, pieces_per_box: 1 }),
+    ]);
+
+    expect(rollUp).toEqual({ boxes: 20, boxedItems: 2, unboxedItems: 1 });
+  });
+});
+
+describe('countBoxes', () => {
+  it("counts each item by its own stock row's box size", () => {
+    const stock = [
+      makeRow({ item_code: 'A', pieces_per_box: 24 }),
+      makeRow({ item_code: 'B', pieces_per_box: 1 }),
+    ];
+
+    expect(
+      countBoxes(
+        [
+          { item_code: 'A', quantity: 48 },
+          { item_code: 'B', quantity: 10 },
+          { item_code: 'C', quantity: 5 },
+        ],
+        stock,
+      ),
+    ).toEqual({ boxes: 2, counted: 1, uncounted: 2 });
   });
 });

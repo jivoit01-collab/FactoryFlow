@@ -791,10 +791,12 @@ export function useLogisticsControlBoard(
    */
   const dispatchTodayTile = useMemo(() => {
     const tonnes = (dispatchToday.data?.totals?.dispatched?.weight ?? 0) / 1000;
+    const boxes = dispatchToday.data?.totals?.dispatched?.boxes ?? 0;
     const toPlanBill = (bill: DispatchBill, companyCode: string) => ({
       key: `${companyCode}:${bill.doc_entry}`,
       weightKg: bill.total_weight ?? 0,
       litres: Number(bill.total_litres) || 0,
+      boxes: Number(bill.total_boxes) || 0,
       vehicleId: bill.plan?.vehicle_id ?? null,
       dispatchDate: bill.plan?.dispatch_date ?? null,
       // Gone when either the plan or its docking says so. Both were checked
@@ -837,11 +839,12 @@ export function useLogisticsControlBoard(
       .filter((companyCode) => !unread.includes(companyCode))
       .map((companyCode) => {
         const side = planFor(companyCode);
-        return { companyCode, tonnes: side.tonnes, litres: side.litres };
+        return { companyCode, tonnes: side.tonnes, litres: side.litres, boxes: side.boxes };
       });
 
     return {
       tonnes,
+      boxes,
       // Trucks as the backend counts them: per-company dockings, so a truck
       // carrying both companies' bills is counted twice. Correcting it needs
       // the arrival id, which this summary does not carry.
@@ -863,10 +866,12 @@ export function useLogisticsControlBoard(
         loading: dayPlanBills.isLoading || planBills.isLoading,
         error: dayPlanBills.error ?? null,
       },
-      vsYesterday: dayOnDay(
-        tonnes,
-        (dispatchYesterday.data?.totals?.dispatched?.weight ?? 0) / 1000,
-      ),
+      // Compared in the board's own unit: a box of 250 ml and a box of 1 L
+      // weigh differently, so a day can be up in boxes and down in tonnes.
+      vsYesterday:
+        scope.measure === 'boxes'
+          ? dayOnDay(boxes, dispatchYesterday.data?.totals?.dispatched?.boxes ?? 0)
+          : dayOnDay(tonnes, (dispatchYesterday.data?.totals?.dispatched?.weight ?? 0) / 1000),
     };
   }, [
     dispatchToday.data,
@@ -878,6 +883,7 @@ export function useLogisticsControlBoard(
     planBills.isLoading,
     today,
     scope.dispatchCompanies,
+    scope.measure,
   ]);
 
   /**
@@ -897,16 +903,45 @@ export function useLogisticsControlBoard(
     const { plan } = dispatchTodayTile;
     const tonnesOf = (bills: readonly DispatchBill[]) =>
       bills.reduce((total, bill) => total + (bill.total_weight ?? 0), 0) / 1000;
+    const boxesOf = (bills: readonly DispatchBill[]) =>
+      bills.reduce((total, bill) => total + (Number(bill.total_boxes) || 0), 0);
+
+    /**
+     * Beverages asks a narrower question, at the plant's request: bills given a
+     * plan date that still have no vehicle on them, whatever the date. A bill
+     * with a truck linked is the bay's to load, not the planner's to chase.
+     */
+    const awaitingVehicle =
+      scope.key === 'beverages'
+        ? (planBills.data ?? []).flatMap((group) =>
+            group.bills
+              .filter(
+                (bill) =>
+                  bill.plan?.dispatch_date != null &&
+                  bill.plan?.vehicle_id == null &&
+                  bill.plan?.booking_status !== 'DISPATCHED' &&
+                  bill.plan?.pipeline_status?.stage !== 'DISPATCHED',
+              )
+              .map((bill) => ({ ...bill, company_code: group.companyCode })),
+          )
+        : null;
+    const pendingRows = awaitingVehicle ?? plan.pendingRows;
 
     return {
       /** The bills still to go out, for the drill-down. */
-      rows: plan.pendingRows,
+      rows: pendingRows,
       byCompany: plan.sides.map(({ companyCode }) => {
-        const bills = plan.pendingRows.filter((bill) => bill.company_code === companyCode);
-        return { companyCode, invoices: bills.length, tonnes: tonnesOf(bills) };
+        const bills = pendingRows.filter((bill) => bill.company_code === companyCode);
+        return {
+          companyCode,
+          invoices: bills.length,
+          tonnes: tonnesOf(bills),
+          boxes: boxesOf(bills),
+        };
       }),
-      invoices: plan.pendingBills,
-      tonnes: plan.pendingTonnes,
+      invoices: awaitingVehicle ? awaitingVehicle.length : plan.pendingBills,
+      tonnes: awaitingVehicle ? tonnesOf(awaitingVehicle) : plan.pendingTonnes,
+      boxes: awaitingVehicle ? boxesOf(awaitingVehicle) : plan.pendingBoxes,
       // The pending feed slices AFTER ordering by dispatch date descending, so
       // a truncated page has dropped the oldest and most overdue bills —
       // exactly the ones this card exists to show.
@@ -921,7 +956,7 @@ export function useLogisticsControlBoard(
       error: plan.error ?? planBills.error ?? null,
       loading: plan.loading,
     };
-  }, [dispatchTodayTile, planBills.data, planBills.error]);
+  }, [dispatchTodayTile, planBills.data, planBills.error, scope.key]);
 
   /**
    * What it costs to get a litre out of the gate, month to date.
@@ -1002,6 +1037,7 @@ export function useLogisticsControlBoard(
   const monthToDate = useMemo(() => {
     const summary = dispatchMonth.data;
     const tonnes = (summary?.totals?.dispatched?.weight ?? 0) / 1000;
+    const boxes = summary?.totals?.dispatched?.boxes ?? 0;
     // The trend carries only days that had a dispatch, which is exactly the
     // divisor this board wants — zero-dispatch days are excluded, so the figure
     // reads as a normal working day's output.
@@ -1009,8 +1045,10 @@ export function useLogisticsControlBoard(
 
     return {
       tonnes,
+      boxes,
       activeDays,
       averagePerActiveDay: activeDays > 0 ? tonnes / activeDays : null,
+      averageBoxesPerActiveDay: activeDays > 0 ? boxes / activeDays : null,
       targetTonnes:
         LOGISTICS_CONTROL_MONTHLY_TARGET_TONNES > 0
           ? LOGISTICS_CONTROL_MONTHLY_TARGET_TONNES
@@ -1065,6 +1103,7 @@ export function useLogisticsControlBoard(
       /** Companies whose idle stock could not be read. */
       idleUnread: warehouseBand.idleUnread,
       stockTonnage: warehouseBand.combined.stockTonnage,
+      stockBoxes: warehouseBand.combined.stockBoxes,
       /** Every stock row behind the tonnage, tagged with its company, for the drill-down. */
       stockRows: warehouseBand.combined.stockRows,
       capacityTonnes: warehouseBand.combined.capacityTonnes,

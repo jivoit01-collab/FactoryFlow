@@ -67,6 +67,20 @@ describe('dispatchedCustomers', () => {
     expect(rows.map((row) => row.customer)).toEqual(['Heavy', 'Light']);
   });
 
+  it('orders customers by boxes on a board that counts boxes', () => {
+    // A box of 250 ml weighs a quarter of a box of 1 L, so the customer who
+    // took the most boxes need not be the one who took the most weight.
+    const rows = dispatchedCustomers(
+      [
+        bill({ id: 1, customer_name: 'Heavy', dispatched_weight: 9000, dispatched_boxes: 100 }),
+        bill({ id: 2, customer_name: 'Many', dispatched_weight: 3000, dispatched_boxes: 400 }),
+      ],
+      'boxes',
+    );
+
+    expect(rows.map((row) => row.customer)).toEqual(['Many', 'Heavy']);
+  });
+
   it('counts a truck once however many bills rode on it', () => {
     // Two bills on one vehicle are one truck at the gate, and a customer row
     // that said two would disagree with the yard.

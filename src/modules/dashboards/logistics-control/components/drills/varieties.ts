@@ -1,6 +1,7 @@
 import type { NonMovingItem } from '../../../non-moving/types';
 import type { WarehouseOccupancyItem } from '../../../production-control/types';
-import { weighItems } from '../../utils';
+import type { LogisticsMeasure } from '../../constants';
+import { countBoxes, rowBoxes, weighItems } from '../../utils';
 import { collect } from './format';
 
 /**
@@ -38,22 +39,24 @@ export interface VarietyTotal {
   variety: string;
   items: number;
   tonnes: number;
+  /** The same stock in boxes, by `rowBoxes` — the tile's own count. */
+  boxes: number;
   value: number;
   /** Items in the variety SAP holds no case weight for. */
   unweighed: number;
+  /** Items in the variety with no box size to count by. */
+  unboxed: number;
 }
 
 /**
- * Stock rolled up by variety, heaviest first.
+ * Stock rolled up by variety, largest first in the board's own unit.
  *
- * Items SAP cannot weigh are counted rather than dropped, so a variety's
- * tonnage discloses that it is a floor the same way the tile's does.
+ * Items SAP cannot weigh — or cannot box — are counted rather than dropped, so
+ * a variety's figure discloses that it is a floor the same way the tile's does.
  */
 export function varietyTotals(
-  rows: readonly (Parameters<typeof rowTonnes>[0] & {
-    sub_group: string;
-    stock_value: number;
-  })[],
+  rows: readonly WarehouseOccupancyItem[],
+  measure: LogisticsMeasure = 'tonnes',
 ): VarietyTotal[] {
   const byVariety = new Map<string, VarietyTotal>();
 
@@ -63,20 +66,27 @@ export function varietyTotals(
       variety,
       items: 0,
       tonnes: 0,
+      boxes: 0,
       value: 0,
       unweighed: 0,
+      unboxed: 0,
     };
 
     const tonnes = rowTonnes(row);
+    const boxes = rowBoxes(row);
     found.items += 1;
     found.value += row.stock_value ?? 0;
     if (tonnes === null) found.unweighed += 1;
     else found.tonnes += tonnes;
+    if (boxes === null) found.unboxed += 1;
+    else found.boxes += boxes;
 
     byVariety.set(variety, found);
   }
 
-  return [...byVariety.values()].sort((a, b) => b.tonnes - a.tonnes);
+  return [...byVariety.values()].sort((a, b) =>
+    measure === 'boxes' ? b.boxes - a.boxes : b.tonnes - a.tonnes,
+  );
 }
 
 /** One variety's idle stock. */
@@ -85,11 +95,15 @@ export interface IdleVariety {
   items: number;
   quantity: number;
   tonnes: number;
+  /** The same idle stock in boxes, against the occupancy feed's box sizes. */
+  boxes: number;
   value: number;
   /** Days the oldest item in the variety has been standing. */
   longestIdle: number;
   /** Items in the variety the occupancy feed cannot weigh. */
   unweighed: number;
+  /** Items in the variety the occupancy feed holds no box size for. */
+  uncounted: number;
 }
 
 /** The company a row was read from, where the band tagged it. */
@@ -107,22 +121,28 @@ function companyOf(row: object): string {
 function weighPerCompany(
   items: readonly NonMovingItem[],
   stockRows: readonly WarehouseOccupancyItem[],
-): { tonnes: number; unweighed: number } {
+): { tonnes: number; unweighed: number; boxes: number; uncounted: number } {
   let tonnes = 0;
   let unweighed = 0;
+  let boxes = 0;
+  let uncounted = 0;
   for (const company of new Set(items.map(companyOf))) {
-    const weighed = weighItems(
-      items.filter((row) => companyOf(row) === company),
-      stockRows.filter((row) => companyOf(row) === company),
-    );
+    const theirs = items.filter((row) => companyOf(row) === company);
+    const theirStock = stockRows.filter((row) => companyOf(row) === company);
+    const weighed = weighItems(theirs, theirStock);
+    // Boxed by the same per-company rule: a pack factor is item-master data
+    // too, and Oil's for a code need not be Mart's.
+    const boxed = countBoxes(theirs, theirStock);
     tonnes += weighed.tonnes;
     unweighed += weighed.unweighed;
+    boxes += boxed.boxes;
+    uncounted += boxed.uncounted;
   }
-  return { tonnes, unweighed };
+  return { tonnes, unweighed, boxes, uncounted };
 }
 
 /**
- * Idle stock rolled up by variety, heaviest first.
+ * Idle stock rolled up by variety, largest first in the board's own unit.
  *
  * Weighed through `weighItems` rather than by a local calculation, because the
  * non-moving feed carries no unit of measure at all — its quantities are
@@ -133,6 +153,7 @@ function weighPerCompany(
 export function idleVarieties(
   rows: readonly NonMovingItem[],
   stockRows: readonly WarehouseOccupancyItem[],
+  measure: LogisticsMeasure = 'tonnes',
 ): IdleVariety[] {
   return [...collect(rows, varietyOf).entries()]
     .map(([variety, group]) => {
@@ -142,13 +163,15 @@ export function idleVarieties(
         items: group.length,
         quantity: group.reduce((total, row) => total + (row.quantity ?? 0), 0),
         tonnes: weighed.tonnes,
+        boxes: weighed.boxes,
         value: group.reduce((total, row) => total + (row.value ?? 0), 0),
         longestIdle: group.reduce(
           (worst, row) => Math.max(worst, row.days_since_last_movement ?? 0),
           0,
         ),
         unweighed: weighed.unweighed,
+        uncounted: weighed.uncounted,
       };
     })
-    .sort((a, b) => b.tonnes - a.tonnes);
+    .sort((a, b) => (measure === 'boxes' ? b.boxes - a.boxes : b.tonnes - a.tonnes));
 }

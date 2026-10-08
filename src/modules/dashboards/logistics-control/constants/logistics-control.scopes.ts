@@ -120,7 +120,19 @@ export interface LogisticsControlScope {
   hiddenBands: readonly LogisticsHiddenBand[];
   /** SKUs whose own stock the Stock on hand tile lists under its tonnage. */
   featuredSkus: readonly FeaturedSku[];
+  /**
+   * What the board counts stock and dispatch in.
+   *
+   * Oil reads tonnes, which is how its trucks are loaded. Beverages counts
+   * boxes — its floor, its bills and its filling cost sheet all do. The whole
+   * board moves together: a tile in tonnes beside one in boxes is how two
+   * figures get compared that cannot be.
+   */
+  measure: LogisticsMeasure;
 }
+
+/** The unit a scope's quantity tiles read in. */
+export type LogisticsMeasure = 'tonnes' | 'boxes';
 
 /**
  * The original board: Oil and Mart.
@@ -151,6 +163,7 @@ export const LOGISTICS_CONTROL_OIL_SCOPE: LogisticsControlScope = {
   hidden: [],
   hiddenBands: [],
   featuredSkus: [],
+  measure: 'tonnes',
 };
 
 /**
@@ -245,6 +258,7 @@ export const LOGISTICS_CONTROL_BEVERAGES_SCOPE: LogisticsControlScope = {
     { label: '500 ml', name: 'Arshdeep', ml: 500 },
     { label: '250 ml', name: 'Arshdeep', ml: 250 },
   ],
+  measure: 'boxes',
 };
 
 /**

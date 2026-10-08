@@ -3,14 +3,15 @@ import { useMemo } from 'react';
 import {
   LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS,
   LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS,
+  type LogisticsMeasure,
 } from '../../constants';
-import { idleByWarehouse, type SideIdleRow } from '../../utils';
+import { countBoxes, idleByWarehouse, type SideIdleRow } from '../../utils';
 import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
 import { useExpandedRow } from '../useExpandedRow';
 import type { Board } from './board';
 import { collect, companyLabel, decimal, money, shortDate, whole } from './format';
-import { idleVarieties, varietyOf } from './varieties';
+import { idleVarieties, type IdleVariety, varietyOf } from './varieties';
 
 /**
  * The SKUs behind one idle variety, longest-standing first.
@@ -18,7 +19,8 @@ import { idleVarieties, varietyOf } from './varieties';
  * Quantity and value rather than tonnes per row: the non-moving feed carries
  * no unit of measure, and weighing a single row would mean a second weight
  * chain beside the one the variety above it was totalled with. The variety
- * states the tonnage; these state what is in it and how long it has stood.
+ * states the tonnage (or the boxes); these state what is in it and how long it
+ * has stood.
  */
 function IdleItems({
   variety,
@@ -91,6 +93,7 @@ export function NonMovingDrill({
   nonMoving,
   stockRows,
   loading,
+  measure = 'tonnes',
   onClose,
 }: {
   /** The band's warehouses, as its rail names them. */
@@ -99,17 +102,40 @@ export function NonMovingDrill({
   nonMoving: Board['warehouse']['nonMoving'];
   stockRows: Board['warehouse']['stockRows'];
   loading: boolean;
+  /** The board's unit. Boxes on Beverages; every split and share follows it. */
+  measure?: LogisticsMeasure;
   onClose: () => void;
 }) {
   const { openKey, toggle } = useExpandedRow();
+  const inBoxes = measure === 'boxes';
 
   const groups = useMemo(
-    () => idleVarieties(nonMoving.rows, stockRows),
-    [nonMoving.rows, stockRows],
+    () => idleVarieties(nonMoving.rows, stockRows, measure),
+    [nonMoving.rows, stockRows, measure],
   );
   const itemsByVariety = useMemo(() => collect(nonMoving.rows, varietyOf), [nonMoving.rows]);
   const named = sides.length > 1;
-  const byWarehouse = useMemo(() => idleByWarehouse(sides), [sides]);
+  /*
+   * Each floor's idle stock, counted in boxes beside its tonnes.
+   *
+   * Boxed here against the side's own stock rows, the way `idleByWarehouse`
+   * weighs them, so the strip adds to the tile's idle boxes. The warehouse is
+   * matched on its trimmed, upper-cased code, as the weighing matches it.
+   */
+  const byWarehouse = useMemo(() => {
+    const code = (raw: string | null | undefined) => (raw ?? '').trim().toUpperCase();
+    const rows = idleByWarehouse(sides).map((row) => {
+      const side = sides.find((candidate) => candidate.companyCode === row.companyCode);
+      const idle = (side?.nonMoving.rows ?? []).filter(
+        (idleRow) => code(idleRow.warehouse) === code(row.warehouse),
+      );
+      return { ...row, boxes: countBoxes(idle, side?.stockRows ?? []).boxes };
+    });
+    return inBoxes ? rows.sort((a, b) => b.boxes - a.boxes) : rows;
+  }, [sides, inBoxes]);
+  /** The headline the shares are taken of, in the board's unit. */
+  const total = inBoxes ? nonMoving.boxes : nonMoving.tonnes;
+  const figureOf = (row: { tonnes: number; boxes: number }) => (inBoxes ? row.boxes : row.tonnes);
 
   return (
     <OpsDrill
@@ -123,24 +149,33 @@ export function NonMovingDrill({
         items: byWarehouse.map((row) => ({
           key: `${row.companyCode}|${row.warehouse}`,
           label: named ? `${companyLabel(row.companyCode)} ${row.warehouse}` : row.warehouse,
-          value: `${decimal(row.tonnes)} T`,
+          value: inBoxes ? `${whole(row.boxes)} boxes` : `${decimal(row.tonnes)} T`,
           sub: `${whole(row.items)} ${row.items === 1 ? 'item' : 'items'}`,
         })),
       }}
       stats={[
-        { label: 'Tonnes', value: decimal(nonMoving.tonnes) },
+        inBoxes
+          ? { label: 'Boxes', value: whole(nonMoving.boxes) }
+          : { label: 'Tonnes', value: decimal(nonMoving.tonnes) },
         ...(named
           ? sides.map((side) => ({
               label: companyLabel(side.companyCode),
-              value: `${decimal(side.nonMoving.tonnes)} T`,
+              value: inBoxes
+                ? `${whole(side.nonMoving.boxes)} boxes`
+                : `${decimal(side.nonMoving.tonnes)} T`,
             }))
           : []),
         { label: 'Varieties', value: whole(groups.length) },
         { label: 'Items', value: whole(nonMoving.items) },
         {
           label: `${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days`,
-          value: `${decimal(nonMoving.ageingTonnes)} T`,
+          value: inBoxes
+            ? `${whole(nonMoving.ageingBoxes)} boxes`
+            : `${decimal(nonMoving.ageingTonnes)} T`,
         },
+        // Said once at the top on a boxes board: the per-variety column below
+        // says where, this says how much of the total is a floor.
+        ...(inBoxes ? [{ label: 'No box size', value: whole(nonMoving.uncounted) }] : []),
       ]}
       rows={groups}
       rowKey={(row) => row.variety}
@@ -159,13 +194,18 @@ export function NonMovingDrill({
         { label: 'Variety', cell: (row) => row.variety },
         { label: 'Items', cell: (row) => whole(row.items), numeric: true },
         { label: 'Quantity', cell: (row) => whole(row.quantity), numeric: true },
-        { label: 'Tonnes', cell: (row) => decimal(row.tonnes, 1), numeric: true },
+        inBoxes
+          ? { label: 'Boxes', cell: (row: IdleVariety) => whole(row.boxes), numeric: true }
+          : {
+              label: 'Tonnes',
+              cell: (row: IdleVariety) => decimal(row.tonnes, 1),
+              numeric: true,
+            },
         { label: 'Value', cell: (row) => money(row.value), numeric: true },
         {
           label: 'Share',
           numeric: true,
-          cell: (row) =>
-            nonMoving.tonnes > 0 ? `${decimal((row.tonnes / nonMoving.tonnes) * 100, 1)}%` : '—',
+          cell: (row) => (total > 0 ? `${decimal((figureOf(row) / total) * 100, 1)}%` : '—'),
         },
         {
           label: 'Longest idle',
@@ -175,10 +215,13 @@ export function NonMovingDrill({
           cell: (row) => `${whole(row.longestIdle)} days`,
         },
         {
-          label: 'Unweighed',
+          label: inBoxes ? 'Unboxed' : 'Unweighed',
           numeric: true,
           dim: true,
-          cell: (row) => (row.unweighed > 0 ? whole(row.unweighed) : '—'),
+          cell: (row) => {
+            const missing = inBoxes ? row.uncounted : row.unweighed;
+            return missing > 0 ? whole(missing) : '—';
+          },
         },
       ]}
     />

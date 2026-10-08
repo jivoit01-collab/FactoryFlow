@@ -1,4 +1,5 @@
 import type { BillRow } from '../../../dispatch-fulfilment/types';
+import type { LogisticsMeasure } from '../../constants';
 import { billWarehouse } from '../../utils';
 import { collect, sharedLabel } from './format';
 
@@ -20,7 +21,7 @@ export interface DispatchedCustomer {
 }
 
 /**
- * Dispatched bills rolled up by customer, heaviest first.
+ * Dispatched bills rolled up by customer, largest first in the board's unit.
  *
  * A PARTITION of the rows it is given: every bill lands under exactly one
  * customer, so these tonnes add back to the figure above them. The bills are
@@ -30,7 +31,10 @@ export interface DispatchedCustomer {
  * day's dispatches and a single day inside the month — and a second
  * implementation would let the two disagree about what a customer's tonnage is.
  */
-export function dispatchedCustomers(rows: readonly BillRow[]): DispatchedCustomer[] {
+export function dispatchedCustomers(
+  rows: readonly BillRow[],
+  measure: LogisticsMeasure = 'tonnes',
+): DispatchedCustomer[] {
   return [...collect(rows, billCustomer).entries()]
     .map(([customer, bills]) => ({
       customer,
@@ -48,5 +52,5 @@ export function dispatchedCustomers(rows: readonly BillRow[]): DispatchedCustome
         bills.map((bill) => bill.vehicle_no?.trim()).filter((vehicle) => Boolean(vehicle)),
       ).size,
     }))
-    .sort((a, b) => b.tonnes - a.tonnes);
+    .sort((a, b) => (measure === 'boxes' ? b.boxes - a.boxes : b.tonnes - a.tonnes));
 }

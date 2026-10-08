@@ -14,8 +14,24 @@ import type { TonnageRollUp } from '../types';
  * you count.
  */
 const MASS_OR_VOLUME_UOMS = new Set([
-  'KG', 'KGS', 'KGM', 'GM', 'GMS', 'GRM', 'MT', 'TON', 'TONNE',
-  'L', 'LT', 'LTR', 'LTRS', 'LITRE', 'LITRES', 'ML', 'CC', 'M3',
+  'KG',
+  'KGS',
+  'KGM',
+  'GM',
+  'GMS',
+  'GRM',
+  'MT',
+  'TON',
+  'TONNE',
+  'L',
+  'LT',
+  'LTR',
+  'LTRS',
+  'LITRE',
+  'LITRES',
+  'ML',
+  'CC',
+  'M3',
 ]);
 
 /**
@@ -151,4 +167,85 @@ export function weighItems(
   }
 
   return { tonnes: kg / 1000, weighed, unweighed };
+}
+
+/** A box total and how much of the warehouse it could not count. */
+export interface BoxRollUp {
+  boxes: number;
+  /** Rows included in `boxes`. */
+  boxedItems: number;
+  /**
+   * Rows with no pack factor above one — sold loose, or SAP holds none — plus
+   * rows stocked in a mass or volume. Left out rather than counted as a box a
+   * piece: a loose bottle on the total would read as a full case.
+   */
+  unboxedItems: number;
+}
+
+/**
+ * Pieces in one box of a stock row, or null where the row is not boxed.
+ *
+ * The same rule the pallet-space panel follows: a `SalFactor2` of 1, 0 or
+ * nothing means the SKU is not packed in boxes at all.
+ */
+function piecesPerBoxOf(row: WarehouseOccupancyItem): number | null {
+  if (!isPieceUom(row.uom)) return null;
+  const perBox = row.pieces_per_box;
+  return perBox !== null && perBox > 1 ? perBox : null;
+}
+
+/** Boxes held by one stock row, or null where it is not boxed. */
+export function rowBoxes(row: WarehouseOccupancyItem): number | null {
+  const perBox = piecesPerBoxOf(row);
+  return perBox === null ? null : row.on_hand / perBox;
+}
+
+/** Total a warehouse in boxes, carrying what it could not count. */
+export function rollUpBoxes(rows: readonly WarehouseOccupancyItem[]): BoxRollUp {
+  let boxes = 0;
+  let boxedItems = 0;
+  let unboxedItems = 0;
+
+  for (const row of rows) {
+    const rowCount = rowBoxes(row);
+    if (rowCount === null) {
+      unboxedItems += 1;
+      continue;
+    }
+    boxes += rowCount;
+    boxedItems += 1;
+  }
+
+  return { boxes, boxedItems, unboxedItems };
+}
+
+/**
+ * Count an arbitrary set of items in boxes against the warehouse's own pack
+ * factors — `weighItems`, for a board that counts boxes.
+ */
+export function countBoxes(
+  items: readonly { item_code: string; quantity: number }[],
+  stockRows: readonly WarehouseOccupancyItem[],
+): { boxes: number; counted: number; uncounted: number } {
+  const perBox = new Map<string, number>();
+  for (const row of stockRows) {
+    const factor = piecesPerBoxOf(row);
+    if (factor !== null) perBox.set(row.item_code.trim(), factor);
+  }
+
+  let boxes = 0;
+  let counted = 0;
+  let uncounted = 0;
+
+  for (const item of items) {
+    const factor = perBox.get(item.item_code.trim());
+    if (factor === undefined) {
+      uncounted += 1;
+      continue;
+    }
+    boxes += item.quantity / factor;
+    counted += 1;
+  }
+
+  return { boxes, counted, uncounted };
 }

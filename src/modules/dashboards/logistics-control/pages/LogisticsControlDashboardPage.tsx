@@ -46,6 +46,16 @@ function money(value: number | null): string {
   return `₹${Math.round(value)}`;
 }
 
+/**
+ * A day's boxes over a bar, where a column has room for four characters:
+ * "860", "4.2k", "12k".
+ */
+function compactBoxes(value: number): string {
+  if (value >= 10_000) return `${Math.round(value / 1_000)}k`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return whole(value);
+}
+
 /** One decimal — where the fraction still carries meaning. */
 function decimal(value: number, digits = 1): string {
   return value.toLocaleString('en-IN', {
@@ -151,6 +161,19 @@ export function LogisticsControlDashboardPage({
   const open = (key: DrillKey) => () => setDrill(key);
 
   const stock = board.warehouse.stockTonnage;
+  const stockBoxes = board.warehouse.stockBoxes;
+  /**
+   * Whether this board counts boxes rather than tonnes — the scope's `measure`.
+   * Every quantity tile reads in one unit; the ratios ("% full", "% of space")
+   * stay on tonnage because the rated capacity is typed in tonnes, and a
+   * percentage carries no unit to disagree with the figures beside it.
+   */
+  const inBoxes = scope.measure === 'boxes';
+  /** The word under a headline figure. */
+  const unitWord = inBoxes ? 'boxes' : 'tonnes';
+  /** A figure in the board's unit, short, for splits and meter labels. */
+  const short = (tonnes: number, boxes: number, digits = 1) =>
+    inBoxes ? `${whole(boxes)} boxes` : `${decimal(tonnes, digits)} T`;
   /**
    * The warehouse band's halves. Two print Oil | Mart under each combined
    * figure; one is a single-company board, whose tiles read as they always did.
@@ -190,12 +213,15 @@ export function LogisticsControlDashboardPage({
    * figure beside it, rather than drawing a segment wider than the bar it sits
    * in. Null where nothing is planned — the tile draws a note instead.
    */
+  const planned = inBoxes ? todayDispatch.plan.boxes : todayDispatch.plan.tonnes;
   const planPct =
-    todayDispatch.plan.configured && todayDispatch.plan.tonnes > 0
-      ? Math.min(100, (todayDispatch.tonnes / todayDispatch.plan.tonnes) * 100)
+    todayDispatch.plan.configured && planned > 0
+      ? Math.min(100, ((inBoxes ? todayDispatch.boxes : todayDispatch.tonnes) / planned) * 100)
       : null;
 
   const hasTonnage = stock.weighedItems > 0;
+  /** Whether the headline has anything to state, in the board's unit. */
+  const hasStock = inBoxes ? stockBoxes.boxedItems > 0 : hasTonnage;
   const targetPct =
     mtd.targetTonnes && mtd.targetTonnes > 0 ? (mtd.tonnes / mtd.targetTonnes) * 100 : null;
 
@@ -211,7 +237,8 @@ export function LogisticsControlDashboardPage({
 
   // Bars are a share of the best day shown, so the shape answers "is today
   // normal for this week" rather than pretending to a target.
-  const peakTonnes = bars.reduce((peak, day) => Math.max(peak, day.tonnes), 0);
+  const barOf = (day: (typeof bars)[number]) => (inBoxes ? day.boxes : day.tonnes);
+  const peak = bars.reduce((most, day) => Math.max(most, barOf(day)), 0);
 
   const capacityTonnes = board.warehouse.capacityTonnes;
   /**
@@ -243,13 +270,19 @@ export function LogisticsControlDashboardPage({
         fill: fills[index % fills.length],
         pct: (side.ratedTonnes / capacityTonnes) * 100 * scale,
         label: companyLabel(side.companyCode),
-        figure: side.configured ? `${whole(side.stockTonnage.tonnes)} T` : 'none ticked',
+        figure: side.configured
+          ? short(side.stockTonnage.tonnes, side.stockBoxes.boxes, 0)
+          : 'none ticked',
       })),
       {
         fill: 'mute' as const,
         pct: Math.max(0, 100 - fillPct),
         label: 'Free',
-        figure: `${whole(Math.max(0, capacityTonnes - board.warehouse.ratedTonnes))} T`,
+        // Capacity is rated in tonnes, so a box board states what is free as a
+        // share instead of a tonnage nobody there counts in.
+        figure: inBoxes
+          ? `${decimal(Math.max(0, 100 - fillPct), 0)}%`
+          : `${whole(Math.max(0, capacityTonnes - board.warehouse.ratedTonnes))} T`,
       },
     ];
   })();
@@ -375,7 +408,7 @@ export function LogisticsControlDashboardPage({
                   : { label: 'capacity not set', tone: 'nil' }
               }
               sub={[
-                capacityTonnes === null ? null : `${whole(capacityTonnes)} T capacity`,
+                capacityTonnes === null || inBoxes ? null : `${whole(capacityTonnes)} T capacity`,
                 // The oldest of several: how stale the least recently counted
                 // floor on the band might be.
                 lastAudit
@@ -384,17 +417,19 @@ export function LogisticsControlDashboardPage({
               ]
                 .filter(Boolean)
                 .join(' · ')}
-              value={hasTonnage ? whole(stock.tonnes) : undefined}
-              unit="tonnes"
-              loading={board.warehouse.loading && !hasTonnage}
+              value={hasStock ? whole(inBoxes ? stockBoxes.boxes : stock.tonnes) : undefined}
+              unit={unitWord}
+              loading={board.warehouse.loading && !hasStock}
               missing={
-                hasTonnage
+                hasStock
                   ? undefined
                   : warehouseCodes.length === 0
                     ? 'No warehouse is ticked for this board — tick them on its settings screen.'
                     : stockUnread
                       ? 'SAP unreachable — stock not read'
-                      : 'No weighable stock rows in these warehouses'
+                      : inBoxes
+                        ? 'No boxed stock rows in these warehouses'
+                        : 'No weighable stock rows in these warehouses'
               }
               viz={
                 <>
@@ -428,7 +463,9 @@ export function LogisticsControlDashboardPage({
                           <div key={side.companyCode}>
                             <span className="k">{companyLabel(side.companyCode)}</span>
                             <span className="v">
-                              {side.configured ? `${whole(side.stockTonnage.tonnes)} T` : '—'}
+                              {side.configured
+                                ? short(side.stockTonnage.tonnes, side.stockBoxes.boxes, 0)
+                                : '—'}
                             </span>
                           </div>
                         ))}
@@ -453,7 +490,7 @@ export function LogisticsControlDashboardPage({
                     // is read as an error.
                     null
                   }
-                  {featured.length > 0 && hasTonnage && (
+                  {featured.length > 0 && hasStock && (
                     <>
                       <div className="ops-duo" style={{ marginTop: 'calc(0.6 * var(--u))' }}>
                         {featured.map((sku) => (
@@ -470,7 +507,7 @@ export function LogisticsControlDashboardPage({
                         ))}
                       </div>
                       <p className="ops-note" style={{ marginTop: 'calc(0.3 * var(--u))' }}>
-                        {scope.featuredSkus[0].name}, cases on hand
+                        {scope.featuredSkus[0].name}, {inBoxes ? 'boxes' : 'cases'} on hand
                         {featured.some((sku) => sku.itemCodes.length === 0) &&
                           ' · — means no stock row matched'}
                       </p>
@@ -496,6 +533,9 @@ export function LogisticsControlDashboardPage({
               name="Non-moving stock"
               now={past}
               onOpen={open('non-moving')}
+              // Red on the Beverages wall, at the plant's request: idle stock is
+              // the tile it wants read first.
+              className={scope.key === 'beverages' ? 'ops-g-alert' : undefined}
               tag={
                 // Share of the warehouse this stock is sitting on. Against the
                 // rated capacity where one is set — that is the space it
@@ -512,11 +552,11 @@ export function LogisticsControlDashboardPage({
                 // With the split in the tile, the older band moves up here: the
                 // company is what the floor acts on, the age is what escalates.
                 split
-                  ? `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days · ${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days ${decimal(nonMoving.ageingTonnes)} T`
+                  ? `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days · ${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days ${short(nonMoving.ageingTonnes, nonMoving.ageingBoxes)}`
                   : `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}+ days`
               }
-              value={decimal(nonMoving.tonnes)}
-              unit="tonnes"
+              value={inBoxes ? whole(nonMoving.boxes) : decimal(nonMoving.tonnes)}
+              unit={unitWord}
               loading={board.warehouse.loading && nonMoving.items === 0}
               // An empty answer from a failed SAP read is not an idle-free floor.
               missing={idleUnread ? 'SAP unreachable — idle stock not read' : undefined}
@@ -529,7 +569,7 @@ export function LogisticsControlDashboardPage({
                           <span className="k">{companyLabel(side.companyCode)}</span>
                           <span className="v">
                             {side.configured && !side.idleError
-                              ? `${decimal(side.nonMoving.tonnes)} T`
+                              ? short(side.nonMoving.tonnes, side.nonMoving.boxes)
                               : '—'}
                           </span>
                         </div>
@@ -540,21 +580,27 @@ export function LogisticsControlDashboardPage({
                       segments={[
                         {
                           fill: 'light',
-                          pct:
-                            nonMoving.tonnes > 0
+                          pct: inBoxes
+                            ? nonMoving.boxes > 0
+                              ? (nonMoving.recentBoxes / nonMoving.boxes) * 100
+                              : 0
+                            : nonMoving.tonnes > 0
                               ? (nonMoving.recentTonnes / nonMoving.tonnes) * 100
                               : 0,
                           label: `${LOGISTICS_CONTROL_NON_MOVING_FROM_DAYS}–${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS} days`,
-                          figure: `${decimal(nonMoving.recentTonnes)} T`,
+                          figure: short(nonMoving.recentTonnes, nonMoving.recentBoxes),
                         },
                         {
                           fill: 'main',
-                          pct:
-                            nonMoving.tonnes > 0
+                          pct: inBoxes
+                            ? nonMoving.boxes > 0
+                              ? (nonMoving.ageingBoxes / nonMoving.boxes) * 100
+                              : 0
+                            : nonMoving.tonnes > 0
                               ? (nonMoving.ageingTonnes / nonMoving.tonnes) * 100
                               : 0,
                           label: `${LOGISTICS_CONTROL_NON_MOVING_AGEING_DAYS}+ days`,
-                          figure: `${decimal(nonMoving.ageingTonnes)} T`,
+                          figure: short(nonMoving.ageingTonnes, nonMoving.ageingBoxes),
                         },
                       ]}
                     />
@@ -565,10 +611,11 @@ export function LogisticsControlDashboardPage({
                       — its idle stock is missing.
                     </p>
                   ) : (
-                    nonMoving.unweighed > 0 && (
+                    (inBoxes ? nonMoving.uncounted : nonMoving.unweighed) > 0 && (
                       <p className="ops-note" style={{ marginTop: 'calc(0.5 * var(--u))' }}>
-                        {whole(nonMoving.unweighed)} of {whole(nonMoving.items)} items have no case
-                        weight in SAP, so this is a floor.
+                        {inBoxes
+                          ? `${whole(nonMoving.uncounted)} of ${whole(nonMoving.items)} items have no box size in SAP, so this is a floor.`
+                          : `${whole(nonMoving.unweighed)} of ${whole(nonMoving.items)} items have no case weight in SAP, so this is a floor.`}
                       </p>
                     )
                   )}
@@ -580,9 +627,10 @@ export function LogisticsControlDashboardPage({
               name="Pending dispatch"
               now={past}
               onOpen={open('pending')}
+              sub={scope.key === 'beverages' ? 'Plan date set, no vehicle' : undefined}
               tag={{ label: `${whole(pending.invoices)} invoices`, tone: 'neut' }}
-              value={decimal(pending.tonnes)}
-              unit="tonnes"
+              value={inBoxes ? whole(pending.boxes) : decimal(pending.tonnes)}
+              unit={unitWord}
               loading={pending.loading}
               // An empty answer from a failed SAP read is not an empty day.
               missing={pending.error ? 'SAP unreachable — bills not read' : undefined}
@@ -595,7 +643,7 @@ export function LogisticsControlDashboardPage({
                     {pending.byCompany.map((company) => (
                       <div key={company.companyCode}>
                         <span className="k">{companyLabel(company.companyCode)}</span>
-                        <span className="v">{decimal(company.tonnes)} T</span>
+                        <span className="v">{short(company.tonnes, company.boxes)}</span>
                       </div>
                     ))}
                   </div>
@@ -692,8 +740,8 @@ export function LogisticsControlDashboardPage({
                  OpsGroup, which is what keeps this tile's figure on the same
                  baseline as its neighbours' — dropping the row instead would
                  let the tonnage ride higher than the tiles beside it. */
-              value={decimal(todayDispatch.tonnes)}
-              unit="tonnes"
+              value={inBoxes ? whole(todayDispatch.boxes) : decimal(todayDispatch.tonnes)}
+              unit={unitWord}
               viz={
                 todayDispatch.plan.loading ? null : todayDispatch.plan.error ? (
                   <p className="ops-note">Could not read today&apos;s dispatch plan.</p>
@@ -715,7 +763,7 @@ export function LogisticsControlDashboardPage({
                           fill: 'mute',
                           pct: 100 - planPct,
                           label: 'Day plan',
-                          figure: `${decimal(todayDispatch.plan.tonnes, 0)} T`,
+                          figure: short(todayDispatch.plan.tonnes, todayDispatch.plan.boxes, 0),
                         },
                       ]}
                     />
@@ -729,23 +777,27 @@ export function LogisticsControlDashboardPage({
                         {todayDispatch.plan.sides
                           .map(
                             (side) =>
-                              `${companyLabel(side.companyCode)} ${decimal(side.tonnes, 0)} T`,
+                              `${companyLabel(side.companyCode)} ${short(side.tonnes, side.boxes, 0)}`,
                           )
                           .join(' · ')}
                       </p>
                     )}
-                    <p className="ops-note">
-                      {todayDispatch.plan.unread.length > 0
-                        ? `Plan missing ${todayDispatch.plan.unread.join(' and ')} — could not read it.`
-                        : todayDispatch.plan.sides.length > 1
-                          ? todayDispatch.plan.sides
-                              .map(
-                                (side) =>
-                                  `${companyLabel(side.companyCode)} ${whole(side.litres)} L`,
-                              )
-                              .join(' · ')
-                          : `Day plan ${whole(todayDispatch.plan.litres)} L`}
-                    </p>
+                    {/* Litres are the Oil dispatch team's second unit; a box
+                        board has stated its plan in boxes on the bar already. */}
+                    {(!inBoxes || todayDispatch.plan.unread.length > 0) && (
+                      <p className="ops-note">
+                        {todayDispatch.plan.unread.length > 0
+                          ? `Plan missing ${todayDispatch.plan.unread.join(' and ')} — could not read it.`
+                          : todayDispatch.plan.sides.length > 1
+                            ? todayDispatch.plan.sides
+                                .map(
+                                  (side) =>
+                                    `${companyLabel(side.companyCode)} ${whole(side.litres)} L`,
+                                )
+                                .join(' · ')
+                            : `Day plan ${whole(todayDispatch.plan.litres)} L`}
+                      </p>
+                    )}
                   </>
                 )
               }
@@ -765,20 +817,27 @@ export function LogisticsControlDashboardPage({
               )}${
                 mtd.averagePerActiveDay === null
                   ? ''
-                  : ` · avg ${decimal(mtd.averagePerActiveDay)} T day`
+                  : inBoxes
+                    ? ` · avg ${whole(mtd.averageBoxesPerActiveDay ?? 0)} boxes a day`
+                    : ` · avg ${decimal(mtd.averagePerActiveDay)} T day`
               }`}
-              value={whole(mtd.tonnes)}
-              unit="tonnes"
+              value={whole(inBoxes ? mtd.boxes : mtd.tonnes)}
+              unit={unitWord}
               viz={
                 bars.length > 0 ? (
                   <OpsBars
                     lastIsToday={!past}
                     days={bars.map((day) => ({
                       label: format(new Date(day.date), 'dd'),
-                      pct: peakTonnes > 0 ? (day.tonnes / peakTonnes) * 100 : 0,
+                      pct: peak > 0 ? (barOf(day) / peak) * 100 : 0,
                       // Nothing above a day that moved nothing — the empty
                       // column already says it.
-                      value: day.tonnes > 0 ? decimal(day.tonnes, 0) : undefined,
+                      value:
+                        barOf(day) > 0
+                          ? inBoxes
+                            ? compactBoxes(day.boxes)
+                            : decimal(day.tonnes, 0)
+                          : undefined,
                     }))}
                   />
                 ) : (
@@ -840,9 +899,13 @@ export function LogisticsControlDashboardPage({
                   note={{
                     fill: 'main',
                     label: 'Booked',
-                    figure: `${decimal(todayDispatch.plan.linkedTonnes)} T of ${decimal(
-                      todayDispatch.plan.tonnes,
-                    )} T`,
+                    figure: inBoxes
+                      ? `${whole(todayDispatch.plan.linkedBoxes)} of ${whole(
+                          todayDispatch.plan.boxes,
+                        )} boxes`
+                      : `${decimal(todayDispatch.plan.linkedTonnes)} T of ${decimal(
+                          todayDispatch.plan.tonnes,
+                        )} T`,
                   }}
                 />
               }

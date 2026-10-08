@@ -70,6 +70,10 @@ export function BoardDrill({
   scope = LOGISTICS_CONTROL_OIL_SCOPE,
   onClose,
 }: BoardDrillProps) {
+  // The board's unit, handed to every panel that states a quantity, so a panel
+  // opened from a tile in boxes reads in boxes too.
+  const { measure } = scope;
+
   switch (which) {
     case 'stock':
       return (
@@ -77,8 +81,10 @@ export function BoardDrill({
           caption={warehouseCaption(board.warehouse.codes)}
           sides={board.warehouse.sides}
           stockTonnage={board.warehouse.stockTonnage}
+          stockBoxes={board.warehouse.stockBoxes}
           stockRows={board.warehouse.stockRows}
           loading={board.warehouse.loading}
+          measure={measure}
           onClose={onClose}
         />
       );
@@ -91,6 +97,7 @@ export function BoardDrill({
           nonMoving={board.warehouse.nonMoving}
           stockRows={board.warehouse.stockRows}
           loading={board.warehouse.loading}
+          measure={measure}
           onClose={onClose}
         />
       );
@@ -100,6 +107,7 @@ export function BoardDrill({
         <PendingDispatchDrill
           which={which}
           pending={board.warehouse.pendingDispatch}
+          measure={measure}
           onClose={onClose}
         />
       );
@@ -112,9 +120,11 @@ export function BoardDrill({
           pending={{
             rows: board.dispatch.today.plan.rows,
             tonnes: board.dispatch.today.plan.tonnes,
+            boxes: board.dispatch.today.plan.boxes,
             invoices: board.dispatch.today.plan.bills,
             loading: board.dispatch.today.plan.loading,
           }}
+          measure={measure}
           onClose={onClose}
         />
       );
@@ -138,14 +148,21 @@ export function BoardDrill({
           to={board.today}
           title="Dispatched today"
           totalTonnes={board.dispatch.today.tonnes}
+          totalBoxes={board.dispatch.today.boxes}
           companies={scope.dispatchCompanies}
+          measure={measure}
           onClose={onClose}
         />
       );
 
     case 'dispatched-month':
       return (
-        <MonthDrill board={board} companies={scope.dispatchCompanies} onClose={onClose} />
+        <MonthDrill
+          board={board}
+          companies={scope.dispatchCompanies}
+          measure={measure}
+          onClose={onClose}
+        />
       );
 
     case 'fleet':

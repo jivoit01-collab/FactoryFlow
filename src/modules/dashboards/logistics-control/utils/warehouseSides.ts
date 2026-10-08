@@ -1,7 +1,7 @@
 import type { NonMovingItem } from '../../non-moving/types';
 import type { WarehouseOccupancyItem } from '../../production-control/types';
 import type { BoardWarehouse, TonnageRollUp } from '../types';
-import { rollUpTonnage, weighItems } from './tonnage';
+import { type BoxRollUp, countBoxes, rollUpBoxes, rollUpTonnage, weighItems } from './tonnage';
 
 /**
  * The warehouse band, one company at a time and then added.
@@ -31,12 +31,19 @@ export interface IdleFigures {
   ageingTonnes: number;
   /** Rows the stock read could not weigh, so the tonnage is a floor. */
   unweighed: number;
+  /** The same idle stock in boxes, for a board that counts boxes. */
+  boxes: number;
+  recentBoxes: number;
+  ageingBoxes: number;
+  /** Rows with no pack factor to count by, so the boxes are a floor. */
+  uncounted: number;
 }
 
 /** What one company's ticked warehouses hold, or several companies' added. */
 export interface WarehouseFigures {
   stockRows: SideStockRow[];
   stockTonnage: TonnageRollUp;
+  stockBoxes: BoxRollUp;
   /** The rated capacities added. Null where no ticked warehouse has one. */
   capacityTonnes: number | null;
   /**
@@ -145,12 +152,14 @@ export function rollUpWarehouseSide(input: {
   const recent = idleRows.filter((row) => row.days_since_last_movement <= input.ageingDays);
   const ageing = idleRows.filter((row) => row.days_since_last_movement > input.ageingDays);
   const idle = weighItems(idleRows, stockRows);
+  const idleBoxes = countBoxes(idleRows, stockRows);
 
   return {
     companyCode: input.companyCode,
     warehouses: [...input.warehouses],
     stockRows,
     stockTonnage: rollUpTonnage(stockRows),
+    stockBoxes: rollUpBoxes(stockRows),
     capacityTonnes,
     ratedTonnes,
     unrated: input.warehouses
@@ -166,6 +175,10 @@ export function rollUpWarehouseSide(input: {
       recentTonnes: weighItems(recent, stockRows).tonnes,
       ageingTonnes: weighItems(ageing, stockRows).tonnes,
       unweighed: idle.unweighed,
+      boxes: idleBoxes.boxes,
+      recentBoxes: countBoxes(recent, stockRows).boxes,
+      ageingBoxes: countBoxes(ageing, stockRows).boxes,
+      uncounted: idleBoxes.uncounted,
     },
   };
 }
@@ -197,6 +210,7 @@ export function combineWarehouseSides(sides: readonly WarehouseSideFigures[]): W
   return {
     stockRows,
     stockTonnage: rollUpTonnage(stockRows),
+    stockBoxes: rollUpBoxes(stockRows),
     capacityTonnes,
     ratedTonnes,
     unrated: sides.flatMap((side) => side.unrated.map((code) => label(side, code))),
@@ -210,6 +224,10 @@ export function combineWarehouseSides(sides: readonly WarehouseSideFigures[]): W
       recentTonnes: sum((side) => side.nonMoving.recentTonnes),
       ageingTonnes: sum((side) => side.nonMoving.ageingTonnes),
       unweighed: sum((side) => side.nonMoving.unweighed),
+      boxes: sum((side) => side.nonMoving.boxes),
+      recentBoxes: sum((side) => side.nonMoving.recentBoxes),
+      ageingBoxes: sum((side) => side.nonMoving.ageingBoxes),
+      uncounted: sum((side) => side.nonMoving.uncounted),
     },
   };
 }
@@ -221,6 +239,7 @@ export interface WarehouseShare {
   /** SAP's name for it, where the settings screen has seen it. */
   name: string;
   tonnes: number;
+  boxes: number;
   capacityTonnes: number | null;
   /** This floor alone against its own rating. */
   fillPct: number | null;
@@ -249,6 +268,7 @@ export function stockByWarehouse(sides: readonly WarehouseSideFigures[]): Wareho
           // the stock rows do.
           name: row.name || here[0]?.warehouse_name || '',
           tonnes,
+          boxes: rollUpBoxes(here).boxes,
           capacityTonnes: capacity,
           fillPct: percentFull(tonnes, capacity),
           lastAudit: row.last_audit_date,

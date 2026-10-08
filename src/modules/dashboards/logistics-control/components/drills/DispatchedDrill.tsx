@@ -2,19 +2,32 @@ import { useMemo } from 'react';
 
 import { useDispatchBills } from '../../../dispatch-fulfilment/api';
 import type { BillRow } from '../../../dispatch-fulfilment/types';
+import type { LogisticsMeasure } from '../../constants';
 import { billWarehouse } from '../../utils';
 import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
 import { useExpandedRow } from '../useExpandedRow';
-import { billCustomer, dispatchedCustomers } from './customers';
+import { billCustomer, type DispatchedCustomer, dispatchedCustomers } from './customers';
 import { collect, decimal, money, shortDate, whole } from './format';
 
 /** One customer's bills, opened underneath its own row. */
-export function CustomerBills({ customer, bills }: { customer: string; bills: BillRow[] }) {
-  const sorted = [...bills].sort(
-    (a, b) => (b.dispatched_weight ?? 0) - (a.dispatched_weight ?? 0),
+export function CustomerBills({
+  customer,
+  bills,
+  inBoxes = false,
+}: {
+  customer: string;
+  bills: BillRow[];
+  /** Whether the board counts boxes — the headline, sort and columns follow. */
+  inBoxes?: boolean;
+}) {
+  const sorted = [...bills].sort((a, b) =>
+    inBoxes
+      ? (b.dispatched_boxes ?? 0) - (a.dispatched_boxes ?? 0)
+      : (b.dispatched_weight ?? 0) - (a.dispatched_weight ?? 0),
   );
   const tonnes = bills.reduce((total, bill) => total + (bill.dispatched_weight ?? 0), 0) / 1000;
+  const boxes = bills.reduce((total, bill) => total + (bill.dispatched_boxes ?? 0), 0);
   const value = bills.reduce((total, bill) => total + (bill.dispatched_amount ?? 0), 0);
 
   return (
@@ -23,7 +36,16 @@ export function CustomerBills({ customer, bills }: { customer: string; bills: Bi
       stats={
         <>
           <b>{whole(bills.length)}</b> {bills.length === 1 ? 'bill' : 'bills'} ·{' '}
-          <b>{decimal(tonnes, 2)}</b> t · <b>{money(value)}</b>
+          {inBoxes ? (
+            <>
+              <b>{whole(boxes)}</b> boxes
+            </>
+          ) : (
+            <>
+              <b>{decimal(tonnes, 2)}</b> t
+            </>
+          )}{' '}
+          · <b>{money(value)}</b>
         </>
       }
       rows={sorted}
@@ -48,12 +70,18 @@ export function CustomerBills({ customer, bills }: { customer: string; bills: Bi
           dim: true,
           width: '16%',
         },
-        {
-          label: 'Tonnes',
-          cell: (bill) => decimal((bill.dispatched_weight ?? 0) / 1000, 2),
-          numeric: true,
-          width: '10%',
-        },
+        // Boxes is already a column, so a boxes board drops the tonnes rather
+        // than print the bill's quantity twice in two units.
+        ...(inBoxes
+          ? []
+          : [
+              {
+                label: 'Tonnes',
+                cell: (bill: BillRow) => decimal((bill.dispatched_weight ?? 0) / 1000, 2),
+                numeric: true,
+                width: '10%',
+              },
+            ]),
         {
           label: 'Boxes',
           cell: (bill) => whole(bill.dispatched_boxes ?? 0),
@@ -64,7 +92,7 @@ export function CustomerBills({ customer, bills }: { customer: string; bills: Bi
           label: 'Value',
           cell: (bill) => money(bill.dispatched_amount),
           numeric: true,
-          width: '12%',
+          width: inBoxes ? '22%' : '12%',
         },
         {
           // When the truck actually cleared the gate — the fact behind the
@@ -95,18 +123,25 @@ export function DispatchedDrill({
   to,
   title,
   totalTonnes,
+  totalBoxes = 0,
   companies,
+  measure = 'tonnes',
   onClose,
 }: {
   from: string;
   to: string;
   title: string;
   totalTonnes: number;
+  /** The tile's own box total, the headline on a boxes board. */
+  totalBoxes?: number;
   /** The board's companies — the panel must not answer wider than its tile. */
   companies: readonly string[];
+  /** The board's unit. Boxes on Beverages; every split follows it. */
+  measure?: LogisticsMeasure;
   onClose: () => void;
 }) {
   const { openKey, toggle } = useExpandedRow();
+  const inBoxes = measure === 'boxes';
 
   const bills = useDispatchBills({
     from,
@@ -125,7 +160,7 @@ export function DispatchedDrill({
   // The feed caps a page at 100 rows server-side, whatever this asks for.
   const truncated = total > rows.length;
 
-  const customers = useMemo(() => dispatchedCustomers(rows), [rows]);
+  const customers = useMemo(() => dispatchedCustomers(rows, measure), [rows, measure]);
   const billsByCustomer = useMemo(() => collect(rows, billCustomer), [rows]);
 
   /*
@@ -133,30 +168,31 @@ export function DispatchedDrill({
    *
    * A PARTITION: every bill lands in exactly one entry, and a bill that drew on
    * two warehouses gets its own compound name rather than being counted under
-   * each — the tonnes have to add back to the figure above them.
+   * each — the tonnes (or boxes) have to add back to the figure above them.
    *
    * Built only from the rows actually on the page. When the feed has truncated,
    * the strip says so rather than presenting a hundred bills' worth of
    * warehouses as if it were the window's.
    */
   const byWarehouse = useMemo(() => {
-    const totals = new Map<string, { bills: number; tonnes: number }>();
+    const totals = new Map<string, { bills: number; tonnes: number; boxes: number }>();
     for (const row of rows) {
       const warehouse = billWarehouse(row.warehouses);
-      const slot = totals.get(warehouse) ?? { bills: 0, tonnes: 0 };
+      const slot = totals.get(warehouse) ?? { bills: 0, tonnes: 0, boxes: 0 };
       slot.bills += 1;
       slot.tonnes += (row.dispatched_weight ?? 0) / 1000;
+      slot.boxes += row.dispatched_boxes ?? 0;
       totals.set(warehouse, slot);
     }
     return [...totals.entries()]
-      .sort((a, b) => b[1].tonnes - a[1].tonnes)
+      .sort((a, b) => (inBoxes ? b[1].boxes - a[1].boxes : b[1].tonnes - a[1].tonnes))
       .map(([warehouse, totalsFor]) => ({
         key: warehouse,
         label: warehouse,
-        value: `${decimal(totalsFor.tonnes, 2)} t`,
+        value: inBoxes ? `${whole(totalsFor.boxes)} boxes` : `${decimal(totalsFor.tonnes, 2)} t`,
         sub: `${whole(totalsFor.bills)} ${totalsFor.bills === 1 ? 'bill' : 'bills'}`,
       }));
-  }, [rows]);
+  }, [rows, inBoxes]);
 
   return (
     <OpsDrill
@@ -169,7 +205,9 @@ export function DispatchedDrill({
       domain="dispatch"
       onClose={onClose}
       stats={[
-        { label: 'Tonnes', value: decimal(totalTonnes) },
+        inBoxes
+          ? { label: 'Boxes', value: whole(totalBoxes) }
+          : { label: 'Tonnes', value: decimal(totalTonnes) },
         { label: 'Bills', value: whole(total) },
         { label: 'Customers', value: whole(customers.length) },
       ]}
@@ -194,6 +232,7 @@ export function DispatchedDrill({
         <CustomerBills
           customer={row.customer}
           bills={billsByCustomer.get(row.customer) ?? []}
+          inBoxes={inBoxes}
         />
       )}
       columns={[
@@ -203,7 +242,15 @@ export function DispatchedDrill({
         { label: 'Warehouse', cell: (row) => row.warehouse, dim: true },
         { label: 'Bills', cell: (row) => whole(row.bills), numeric: true },
         { label: 'Trucks', cell: (row) => whole(row.trucks), numeric: true },
-        { label: 'Tonnes', cell: (row) => decimal(row.tonnes, 2), numeric: true },
+        ...(inBoxes
+          ? []
+          : [
+              {
+                label: 'Tonnes',
+                cell: (row: DispatchedCustomer) => decimal(row.tonnes, 2),
+                numeric: true,
+              },
+            ]),
         { label: 'Boxes', cell: (row) => whole(row.boxes), numeric: true },
         { label: 'Value', cell: (row) => money(row.value), numeric: true },
       ]}

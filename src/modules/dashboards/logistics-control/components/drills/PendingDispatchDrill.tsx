@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import type { LogisticsMeasure } from '../../constants';
 import { billWarehouse } from '../../utils';
 import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
@@ -42,6 +43,7 @@ interface Consignment {
   warehouse: string;
   bills: number;
   tonnes: number;
+  boxes: number;
   booked: number;
 }
 
@@ -55,11 +57,14 @@ interface Consignment {
 function ConsignmentBills({
   bills,
   consignment,
+  inBoxes,
 }: {
   bills: Board['warehouse']['pendingDispatch']['rows'];
   consignment: Consignment;
+  inBoxes: boolean;
 }) {
   const tonnes = bills.reduce((total, bill) => total + (bill.total_weight ?? 0), 0) / 1000;
+  const boxes = bills.reduce((total, bill) => total + (Number(bill.total_boxes) || 0), 0);
   const value = bills.reduce((total, bill) => total + (bill.doc_total ?? 0), 0);
   const booked = bills.filter((bill) => bill.plan?.vehicle_id != null).length;
 
@@ -86,8 +91,16 @@ function ConsignmentBills({
           {/* Singular where there is one, matching the sentence on the left —
               "The bill waiting at BH-JW" above "1 bills" reads as a bug. */}
           <b>{whole(bills.length)}</b> {bills.length === 1 ? 'bill' : 'bills'} ·{' '}
-          <b>{decimal(tonnes, 2)}</b> t · <b>{whole(booked)}</b> of {whole(bills.length)} on a
-          truck · <b>{money(value)}</b>
+          {inBoxes ? (
+            <>
+              <b>{whole(boxes)}</b> boxes
+            </>
+          ) : (
+            <>
+              <b>{decimal(tonnes, 2)}</b> t
+            </>
+          )}{' '}
+          · <b>{whole(booked)}</b> of {whole(bills.length)} on a truck · <b>{money(value)}</b>
         </>
       }
       rows={bills}
@@ -103,20 +116,37 @@ function ConsignmentBills({
           dim: true,
           width: '9%',
         },
-        { label: 'Boxes', cell: (bill) => whole(bill.total_boxes ?? 0), numeric: true, width: '8%' },
+        {
+          label: 'Boxes',
+          cell: (bill) => whole(bill.total_boxes ?? 0),
+          numeric: true,
+          width: '8%',
+        },
         {
           label: 'Litres',
           cell: (bill) => whole(bill.total_litres ?? 0),
           numeric: true,
           width: '9%',
         },
+        // Boxes is already a column, so a boxes board drops the tonnes rather
+        // than print the bill's quantity twice in two units.
+        ...(inBoxes
+          ? []
+          : [
+              {
+                label: 'Tonnes',
+                cell: (bill: Board['warehouse']['pendingDispatch']['rows'][number]) =>
+                  decimal((bill.total_weight ?? 0) / 1000, 2),
+                numeric: true,
+                width: '9%',
+              },
+            ]),
         {
-          label: 'Tonnes',
-          cell: (bill) => decimal((bill.total_weight ?? 0) / 1000, 2),
+          label: 'Value',
+          cell: (bill) => money(bill.doc_total),
           numeric: true,
-          width: '9%',
+          width: inBoxes ? '20%' : '11%',
         },
-        { label: 'Value', cell: (bill) => money(bill.doc_total), numeric: true, width: '11%' },
         {
           // The truck, or plainly that there is none — this column is the
           // reason the reader opened the customer.
@@ -157,14 +187,21 @@ function ConsignmentBills({
 export function PendingDispatchDrill({
   which,
   pending,
+  measure = 'tonnes',
   onClose,
 }: {
   which: 'pending' | 'planned';
   /** The bills to list: the pending feed's, or (for `planned`) the day plan's. */
-  pending: Pick<Board['warehouse']['pendingDispatch'], 'rows' | 'tonnes' | 'invoices' | 'loading'>;
+  pending: Pick<
+    Board['warehouse']['pendingDispatch'],
+    'rows' | 'tonnes' | 'boxes' | 'invoices' | 'loading'
+  >;
+  /** The board's unit. Boxes on Beverages; every split follows it. */
+  measure?: LogisticsMeasure;
   onClose: () => void;
 }) {
   const { openKey, toggle } = useExpandedRow();
+  const inBoxes = measure === 'boxes';
 
   const bookedBills = pending.rows.filter((bill) => bill.plan?.vehicle_id != null);
 
@@ -193,6 +230,7 @@ export function PendingDispatchDrill({
           warehouse: billWarehouse(bill.warehouses),
           bills: 0,
           tonnes: 0,
+          boxes: 0,
           booked: 0,
         });
         order.push(key);
@@ -200,6 +238,7 @@ export function PendingDispatchDrill({
       const group = byKey.get(key)!;
       group.bills += 1;
       group.tonnes += (bill.total_weight ?? 0) / 1000;
+      group.boxes += Number(bill.total_boxes) || 0;
       // The vehicle link, not the status: the status is client-writable and
       // drifts, while the truck being attached is the fact underneath it.
       if (bill.plan?.vehicle_id != null) group.booked += 1;
@@ -217,26 +256,27 @@ export function PendingDispatchDrill({
    * each -- counting it twice would make the strip disagree with the figure
    * above it, which is the one thing a drill-down must never do.
    *
-   * Ordered heaviest first: on this panel the question is which store the
-   * waiting freight is sitting in.
+   * Ordered largest first in the board's unit: on this panel the question is
+   * which store the waiting freight is sitting in.
    */
   const byWarehouse = useMemo(() => {
-    const totals = new Map<string, { bills: number; tonnes: number }>();
+    const totals = new Map<string, { bills: number; tonnes: number; boxes: number }>();
     for (const row of consignments) {
-      const slot = totals.get(row.warehouse) ?? { bills: 0, tonnes: 0 };
+      const slot = totals.get(row.warehouse) ?? { bills: 0, tonnes: 0, boxes: 0 };
       slot.bills += row.bills;
       slot.tonnes += row.tonnes;
+      slot.boxes += row.boxes;
       totals.set(row.warehouse, slot);
     }
     return [...totals.entries()]
-      .sort((a, b) => b[1].tonnes - a[1].tonnes)
+      .sort((a, b) => (inBoxes ? b[1].boxes - a[1].boxes : b[1].tonnes - a[1].tonnes))
       .map(([warehouse, totalsFor]) => ({
         key: warehouse,
         label: warehouse,
-        value: `${decimal(totalsFor.tonnes, 2)} t`,
+        value: inBoxes ? `${whole(totalsFor.boxes)} boxes` : `${decimal(totalsFor.tonnes, 2)} t`,
         sub: `${whole(totalsFor.bills)} ${totalsFor.bills === 1 ? 'bill' : 'bills'}`,
       }));
-  }, [consignments]);
+  }, [consignments, inBoxes]);
 
   /*
    * The bills of whichever consignment is open, grouped once for all of them.
@@ -258,7 +298,9 @@ export function PendingDispatchDrill({
       domain={which === 'planned' ? 'dispatch' : 'warehouse'}
       onClose={onClose}
       stats={[
-        { label: 'Tonnes', value: decimal(pending.tonnes) },
+        inBoxes
+          ? { label: 'Boxes', value: whole(pending.boxes) }
+          : { label: 'Tonnes', value: decimal(pending.tonnes) },
         { label: 'Bills', value: whole(pending.invoices) },
         { label: 'On a truck', value: whole(bookedBills.length) },
         { label: 'Awaiting a truck', value: whole(pending.invoices - bookedBills.length) },
@@ -279,7 +321,11 @@ export function PendingDispatchDrill({
       onRowClick={(row) => toggle(row.key)}
       expandedKey={openKey}
       renderExpanded={(row) => (
-        <ConsignmentBills bills={billsByKey.get(row.key) ?? []} consignment={row} />
+        <ConsignmentBills
+          bills={billsByKey.get(row.key) ?? []}
+          consignment={row}
+          inBoxes={inBoxes}
+        />
       )}
       columns={[
         { label: 'Customer', cell: (row) => row.customer },
@@ -290,7 +336,13 @@ export function PendingDispatchDrill({
           dim: true,
         },
         { label: 'Bills', cell: (row) => whole(row.bills), numeric: true },
-        { label: 'Tonnes', cell: (row) => decimal(row.tonnes, 2), numeric: true },
+        inBoxes
+          ? { label: 'Boxes', cell: (row: Consignment) => whole(row.boxes), numeric: true }
+          : {
+              label: 'Tonnes',
+              cell: (row: Consignment) => decimal(row.tonnes, 2),
+              numeric: true,
+            },
         {
           label: 'On a truck',
           // Partly-booked consignments are the ones worth chasing, so the

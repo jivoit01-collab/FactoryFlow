@@ -129,6 +129,7 @@ describe('dayPlan', () => {
       key: 'JIVO_OIL:5001',
       weightKg: 10_000,
       litres: 10_800,
+      boxes: 900,
       vehicleId: null,
       dispatchDate: TODAY,
       dispatched: false,
@@ -155,11 +156,15 @@ describe('dayPlan', () => {
       tonnes: 55,
       bills: 4,
       litres: 58_900,
+      boxes: 3_600,
       linkedTonnes: 20,
+      linkedBoxes: 1_800,
       linkedBills: 2,
       unlinkedTonnes: 35,
+      unlinkedBoxes: 1_800,
       unlinkedBills: 2,
       pendingTonnes: 55,
+      pendingBoxes: 3_600,
       pendingBills: 4,
     });
     // The bills behind the figures, linked first, for the drill-down.
@@ -187,6 +192,9 @@ describe('dayPlan', () => {
     expect(plan.tonnes).toBe(35);
     expect(plan.pendingTonnes).toBe(10);
     expect(plan.pendingBills).toBe(2);
+    // The same in boxes, for the Beverages board.
+    expect(plan.boxes).toBe(2_700);
+    expect(plan.pendingBoxes).toBe(1_800);
   });
 
   it('counts in litres a bill SAP holds no weight for', () => {
@@ -221,11 +229,15 @@ describe('dayPlan', () => {
       tonnes: 0,
       bills: 0,
       litres: 0,
+      boxes: 0,
       linkedTonnes: 0,
+      linkedBoxes: 0,
       linkedBills: 0,
       unlinkedTonnes: 0,
+      unlinkedBoxes: 0,
       unlinkedBills: 0,
       pendingTonnes: 0,
+      pendingBoxes: 0,
       pendingBills: 0,
       rows: [],
     });

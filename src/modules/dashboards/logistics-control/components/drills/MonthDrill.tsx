@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 
 import { useDispatchBills } from '../../../dispatch-fulfilment/api';
+import type { LogisticsMeasure } from '../../constants';
 import { DrillSub } from '../DrillSub';
 import { OpsDrill } from '../OpsDrill';
 import { useExpandedRow } from '../useExpandedRow';
 import type { Board } from './board';
-import { dispatchedCustomers } from './customers';
+import { type DispatchedCustomer, dispatchedCustomers } from './customers';
 import { decimal, money, shortDate, weekday, whole } from './format';
 
 /**
@@ -20,10 +21,12 @@ import { decimal, money, shortDate, weekday, whole } from './format';
 function DayCustomers({
   date,
   companies,
+  inBoxes,
 }: {
   date: string;
   /** The board's companies — the day must not answer wider than its tile. */
   companies: readonly string[];
+  inBoxes: boolean;
 }) {
   const bills = useDispatchBills({
     from: date,
@@ -43,8 +46,12 @@ function DayCustomers({
   // the cap says so rather than presenting part of itself as the whole.
   const truncated = total > rows.length;
 
-  const customers = useMemo(() => dispatchedCustomers(rows), [rows]);
+  const customers = useMemo(
+    () => dispatchedCustomers(rows, inBoxes ? 'boxes' : 'tonnes'),
+    [rows, inBoxes],
+  );
   const tonnes = customers.reduce((total_, row) => total_ + row.tonnes, 0);
+  const boxes = customers.reduce((total_, row) => total_ + row.boxes, 0);
   const value = customers.reduce((total_, row) => total_ + row.value, 0);
 
   return (
@@ -56,9 +63,17 @@ function DayCustomers({
       }
       stats={
         <>
-          <b>{whole(customers.length)}</b>{' '}
-          {customers.length === 1 ? 'customer' : 'customers'} · <b>{decimal(tonnes, 2)}</b> t ·{' '}
-          <b>{whole(total)}</b> {total === 1 ? 'bill' : 'bills'} · <b>{money(value)}</b>
+          <b>{whole(customers.length)}</b> {customers.length === 1 ? 'customer' : 'customers'} ·{' '}
+          {inBoxes ? (
+            <>
+              <b>{whole(boxes)}</b> boxes
+            </>
+          ) : (
+            <>
+              <b>{decimal(tonnes, 2)}</b> t
+            </>
+          )}{' '}
+          · <b>{whole(total)}</b> {total === 1 ? 'bill' : 'bills'} · <b>{money(value)}</b>
         </>
       }
       rows={customers}
@@ -72,9 +87,24 @@ function DayCustomers({
         { label: 'Warehouse', cell: (row) => row.warehouse, dim: true, width: '14%' },
         { label: 'Bills', cell: (row) => whole(row.bills), numeric: true, width: '9%' },
         { label: 'Trucks', cell: (row) => whole(row.trucks), numeric: true, width: '9%' },
-        { label: 'Tonnes', cell: (row) => decimal(row.tonnes, 2), numeric: true, width: '11%' },
+        // Boxes is already a column; a boxes board drops the tonnes beside it.
+        ...(inBoxes
+          ? []
+          : [
+              {
+                label: 'Tonnes',
+                cell: (row: DispatchedCustomer) => decimal(row.tonnes, 2),
+                numeric: true,
+                width: '11%',
+              },
+            ]),
         { label: 'Boxes', cell: (row) => whole(row.boxes), numeric: true, width: '11%' },
-        { label: 'Value', cell: (row) => money(row.value), numeric: true, width: '16%' },
+        {
+          label: 'Value',
+          cell: (row) => money(row.value),
+          numeric: true,
+          width: inBoxes ? '27%' : '16%',
+        },
       ]}
     />
   );
@@ -93,21 +123,30 @@ function DayCustomers({
 export function MonthDrill({
   board,
   companies,
+  measure = 'tonnes',
   onClose,
 }: {
   board: Board;
   companies: readonly string[];
+  /** The board's unit. Boxes on Beverages; the days and shares follow it. */
+  measure?: LogisticsMeasure;
   onClose: () => void;
 }) {
   const { openKey, toggle } = useExpandedRow();
+  const inBoxes = measure === 'boxes';
 
   const mtd = board.dispatch.monthToDate;
   const days = board.dispatch.trend;
-  const best = days.reduce((peak, day) => (day.tonnes > peak.tonnes ? day : peak), {
+  /** A day's figure in the board's unit — the best day, the shares and the dashes. */
+  const figureOf = (day: { tonnes: number; boxes: number }) => (inBoxes ? day.boxes : day.tonnes);
+  const monthTotal = inBoxes ? mtd.boxes : mtd.tonnes;
+  const average = inBoxes ? mtd.averageBoxesPerActiveDay : mtd.averagePerActiveDay;
+  const best = days.reduce((peak, day) => (figureOf(day) > figureOf(peak) ? day : peak), {
     date: '',
     tonnes: 0,
+    boxes: 0,
   });
-  const activeDays = days.filter((day) => day.tonnes > 0).length;
+  const activeDays = days.filter((day) => figureOf(day) > 0).length;
 
   return (
     <OpsDrill
@@ -116,15 +155,17 @@ export function MonthDrill({
       domain="dispatch"
       onClose={onClose}
       stats={[
-        { label: 'Tonnes', value: decimal(mtd.tonnes) },
+        inBoxes
+          ? { label: 'Boxes', value: whole(mtd.boxes) }
+          : { label: 'Tonnes', value: decimal(mtd.tonnes) },
         {
           label: 'Average a day',
           // Over the days that dispatched, not the calendar — the tile's own
           // divisor, so the panel and the subtitle above it agree.
-          value: mtd.averagePerActiveDay == null ? '—' : decimal(mtd.averagePerActiveDay),
+          value: average == null ? '—' : inBoxes ? whole(average) : decimal(average),
         },
         { label: 'Days dispatching', value: `${whole(activeDays)} of ${whole(days.length)}` },
-        { label: 'Best day', value: best.tonnes > 0 ? shortDate(best.date) : '—' },
+        { label: 'Best day', value: figureOf(best) > 0 ? shortDate(best.date) : '—' },
       ]}
       // Newest first: the question asked of a month-to-date list is what has
       // happened lately, and the reader should not have to scroll to reach
@@ -136,9 +177,11 @@ export function MonthDrill({
       onRowClick={(row) => toggle(row.date)}
       // A day that moved nothing has nobody to show, so it does not offer to
       // open — the chevron would promise a list that cannot exist.
-      canOpenRow={(row) => row.tonnes > 0}
+      canOpenRow={(row) => figureOf(row) > 0}
       expandedKey={openKey}
-      renderExpanded={(row) => <DayCustomers date={row.date} companies={companies} />}
+      renderExpanded={(row) => (
+        <DayCustomers date={row.date} companies={companies} inBoxes={inBoxes} />
+      )}
       columns={[
         {
           label: 'Date',
@@ -151,12 +194,20 @@ export function MonthDrill({
         },
         { label: 'Day', cell: (row) => weekday(row.date), dim: true },
         {
-          label: 'Tonnes',
+          label: inBoxes ? 'Boxes' : 'Tonnes',
           numeric: true,
           // A day that moved nothing shows a dash, not 0.0 — a blank day on a
           // wall reads as a shutdown, which is what it usually is.
           cell: (row) =>
-            row.tonnes > 0 ? decimal(row.tonnes, 1) : <span className="dim">—</span>,
+            figureOf(row) > 0 ? (
+              inBoxes ? (
+                whole(row.boxes)
+              ) : (
+                decimal(row.tonnes, 1)
+              )
+            ) : (
+              <span className="dim">—</span>
+            ),
         },
         {
           label: 'Trucks',
@@ -179,8 +230,8 @@ export function MonthDrill({
           label: 'Share of month',
           numeric: true,
           cell: (row) =>
-            mtd.tonnes > 0 && row.tonnes > 0 ? (
-              `${decimal((row.tonnes / mtd.tonnes) * 100, 1)}%`
+            monthTotal > 0 && figureOf(row) > 0 ? (
+              `${decimal((figureOf(row) / monthTotal) * 100, 1)}%`
             ) : (
               <span className="dim">—</span>
             ),
