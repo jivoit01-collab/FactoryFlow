@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
 
 import type { ApiError } from '@/core/api/types';
 import {
@@ -16,12 +17,37 @@ import {
 } from '@/shared/components/ui';
 import { useScrollToError } from '@/shared/hooks';
 
-import { useTransporters } from '../api/transporter/transporter.queries';
+import type { SapTransporterVendor } from '../api/transporter/transporter.api';
+import {
+  useResolveTransporter,
+  useSapTransporterVendors,
+} from '../api/transporter/transporter.queries';
 import type { Vehicle } from '../api/vehicle/vehicle.api';
 import { useCreateVehicle, useUpdateVehicle, useVehicleById } from '../api/vehicle/vehicle.queries';
-import { type VehicleFormData, vehicleSchema } from '../schemas/vehicle.schema';
-import { type TransporterDetails,TransporterSelect } from './TransporterSelect';
+import { vehicleSchema } from '../schemas/vehicle.schema';
+import { SapTransporterSelect } from './SapTransporterSelect';
+import type { TransporterDetails } from './TransporterSelect';
 import { VehicleTypeSelect } from './VehicleTypeSelect';
+
+// The transporter is not a form field: it is picked from SAP or typed, and
+// turned into an app transporter only when the vehicle is saved.
+const vehicleFormSchema = vehicleSchema.omit({ transporter: true });
+type VehicleFormData = z.infer<typeof vehicleFormSchema>;
+
+/** The SAP vendor a seeded transporter (e.g. from the SAP bill) already is. */
+function findSeedVendor(
+  vendors: SapTransporterVendor[],
+  seed?: Partial<TransporterDetails>,
+): SapTransporterVendor | null {
+  const gstin = seed?.gstin?.trim().toUpperCase();
+  if (gstin) {
+    const byGstin = vendors.filter((v) => v.gstin === gstin);
+    const pick = byGstin.find((v) => v.is_transporter) ?? (byGstin.length === 1 ? byGstin[0] : null);
+    if (pick) return pick;
+  }
+  const name = seed?.name?.trim().toLowerCase();
+  return name ? (vendors.find((v) => v.card_name.toLowerCase() === name) ?? null) : null;
+}
 
 interface CreateVehicleDialogProps {
   open: boolean;
@@ -45,12 +71,22 @@ export function CreateVehicleDialog({
   initialTransporterDetails,
 }: CreateVehicleDialogProps) {
   const [apiErrors, setApiErrors] = useState<Record<string, string>>({});
-  const [selectedTransporterId, setSelectedTransporterId] = useState<number | null>(null);
   const createVehicle = useCreateVehicle();
   const updateVehicle = useUpdateVehicle();
-  // Only fetch transporters when dialog is open
-  const { data: transporters = [] } = useTransporters(open);
+  const resolveTransporter = useResolveTransporter();
   const [vehicleTypeValue, setVehicleTypeValue] = useState('');
+
+  // The transporter: the vehicle's current one (edit), a vendor picked from SAP,
+  // or a name typed by hand. Until the picker is touched, a seed from the SAP
+  // bill stands in for the pick.
+  const [currentTransporter, setCurrentTransporter] = useState<{ id: number; name: string } | null>(
+    null,
+  );
+  const [pickedVendor, setPickedVendor] = useState<SapTransporterVendor | null>(null);
+  const [pickTouched, setPickTouched] = useState(false);
+  const [manualTransporter, setManualTransporter] = useState(false);
+  const [manualTransporterName, setManualTransporterName] = useState('');
+  const { data: sapVendors } = useSapTransporterVendors(open && !manualTransporter);
 
   const isEditMode = !!initialData;
   const mutation = isEditMode ? updateVehicle : createVehicle;
@@ -69,11 +105,10 @@ export function CreateVehicleDialog({
     setError,
     setValue,
   } = useForm<VehicleFormData>({
-    resolver: zodResolver(vehicleSchema),
+    resolver: zodResolver(vehicleFormSchema),
     defaultValues: {
       vehicle_number: '',
       vehicle_type: 0,
-      transporter: 0,
       capacity_ton: '',
       length_m: '',
       width_m: '',
@@ -81,8 +116,12 @@ export function CreateVehicleDialog({
     },
   });
 
-  const [transporterName, setTransporterName] = useState('');
   const initialTransporterName = initialTransporterDetails?.name?.trim() ?? '';
+  const seedVendor = useMemo(
+    () => findSeedVendor(sapVendors?.results ?? [], initialTransporterDetails),
+    [sapVendors, initialTransporterDetails],
+  );
+  const sapChoice = pickTouched ? pickedVendor : (pickedVendor ?? seedVendor);
 
   // Combine form errors and API errors for scroll-to-error
   const combinedErrors = useMemo(() => ({ ...errors, ...apiErrors }), [errors, apiErrors]);
@@ -99,17 +138,19 @@ export function CreateVehicleDialog({
       reset({
         vehicle_number: initialVehicleNumber?.toUpperCase().replace(/\s/g, '') || '',
         vehicle_type: 0,
-        transporter: 0,
         capacity_ton: '',
         length_m: '',
         width_m: '',
         height_m: '',
       });
-      setSelectedTransporterId(null);
-      setTransporterName(initialTransporterName);
+      setCurrentTransporter(null);
       setVehicleTypeValue('');
     }
-  }, [open, reset, isEditMode, initialVehicleNumber, initialTransporterName]);
+    setPickedVendor(null);
+    setPickTouched(false);
+    setManualTransporter(false);
+    setManualTransporterName('');
+  }, [open, reset, isEditMode, initialVehicleNumber]);
 
   // Populate form when vehicle data is fetched (edit mode)
   useEffect(() => {
@@ -118,7 +159,6 @@ export function CreateVehicleDialog({
     reset({
       vehicle_number: vehicleData.vehicle_number,
       vehicle_type: vehicleData.vehicle_type?.id ?? 0,
-      transporter: vehicleData.transporter?.id ?? 0,
       capacity_ton: vehicleData.capacity_ton ?? '',
       length_m: vehicleData.length_m ?? '',
       width_m: vehicleData.width_m ?? '',
@@ -126,45 +166,47 @@ export function CreateVehicleDialog({
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Dialog edit form mirrors fetched vehicle details.
     setVehicleTypeValue(vehicleData.vehicle_type?.id ? String(vehicleData.vehicle_type.id) : '');
-    setTransporterName(vehicleData.transporter?.name ?? '');
-    setSelectedTransporterId(vehicleData.transporter?.id ?? null);
+    setCurrentTransporter(
+      vehicleData.transporter
+        ? { id: vehicleData.transporter.id, name: vehicleData.transporter.name }
+        : null,
+    );
   }, [open, isEditMode, vehicleData, reset]);
 
-  // Update transporter ID when transporter name changes
-  useEffect(() => {
-    if (transporterName && transporters.length > 0) {
-      const transporter = transporters.find((t) => t.name === transporterName);
-      if (transporter) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Syncing state with form value is a valid pattern
-        setSelectedTransporterId(transporter.id);
-        setValue('transporter', transporter.id);
-      } else {
-        setSelectedTransporterId(null);
-        setValue('transporter', 0);
-      }
-    } else {
-      setSelectedTransporterId(null);
-      setValue('transporter', 0);
+  /** The app transporter to save on the vehicle, made from the SAP pick or the typed name. */
+  const transporterIdToSave = async (): Promise<number | null> => {
+    if (manualTransporter) {
+      const name = manualTransporterName.trim();
+      if (!name) return null;
+      return (await resolveTransporter.mutateAsync({ name })).id;
     }
-  }, [transporterName, transporters, setValue]);
+    if (sapChoice) {
+      return (await resolveTransporter.mutateAsync({ card_code: sapChoice.card_code })).id;
+    }
+    return pickTouched ? null : (currentTransporter?.id ?? null);
+  };
 
   const onSubmit = async (data: VehicleFormData) => {
-    if (!selectedTransporterId) {
-      setApiErrors({ transporter: 'Please select a transporter' });
-      return;
-    }
-
     setApiErrors({});
     try {
+      const transporterId = await transporterIdToSave();
+      if (!transporterId) {
+        setApiErrors({
+          transporter: manualTransporter
+            ? 'Type the transporter name'
+            : 'Pick the transporter from SAP, or type it if SAP does not have it',
+        });
+        return;
+      }
       const result = isEditMode
         ? await updateVehicle.mutateAsync({
             id: initialData.id,
             ...data,
-            transporter: selectedTransporterId,
+            transporter: transporterId,
           })
         : await createVehicle.mutateAsync({
             ...data,
-            transporter: selectedTransporterId,
+            transporter: transporterId,
           });
       reset();
       onOpenChange(false);
@@ -178,17 +220,14 @@ export function CreateVehicleDialog({
         const fieldErrors: Record<string, string> = {};
         Object.entries(apiError.errors).forEach(([field, messages]) => {
           if (Array.isArray(messages) && messages.length > 0) {
-            // Map API field names to form field names
-            const formField =
-              field === 'vehicle_number'
-                ? 'vehicle_number'
-                : field === 'vehicle_type'
-                  ? 'vehicle_type'
-                  : field === 'capacity_ton'
-                    ? 'capacity_ton'
-                    : field;
-            fieldErrors[formField] = messages[0];
-            setError(formField as keyof VehicleFormData, {
+            // The transporter resolve answers about card_code / name; both are
+            // the transporter field here, which is not a form field.
+            if (field === 'card_code' || field === 'name' || field === 'transporter') {
+              fieldErrors.transporter = messages[0];
+              return;
+            }
+            fieldErrors[field] = messages[0];
+            setError(field as keyof VehicleFormData, {
               type: 'server',
               message: messages[0],
             });
@@ -264,23 +303,31 @@ export function CreateVehicleDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <TransporterSelect
-              value={transporterName}
-              onChange={(value) => setTransporterName(value)}
-              placeholder="Select transporter"
-              label="Transporter"
-              required
-              initialCreateValues={initialTransporterDetails}
-              onTransporterSelect={(transporter) => {
-                setSelectedTransporterId(transporter?.id ?? null);
-                setValue('transporter', transporter?.id ?? 0);
-              }}
-            />
-            {apiErrors.transporter && (
-              <p className="text-sm text-destructive">{apiErrors.transporter}</p>
-            )}
-          </div>
+          <SapTransporterSelect
+            enabled={open}
+            manual={manualTransporter}
+            onManualChange={(manual) => {
+              if (manual && !manualTransporterName) {
+                setManualTransporterName(currentTransporter?.name ?? initialTransporterName);
+              }
+              setManualTransporter(manual);
+              setApiErrors((prev) => {
+                const next = { ...prev };
+                delete next.transporter;
+                return next;
+              });
+            }}
+            manualName={manualTransporterName}
+            onManualNameChange={setManualTransporterName}
+            selectedCode={sapChoice?.card_code}
+            displayText={currentTransporter?.name ?? initialTransporterName}
+            onVendorSelect={(vendor) => {
+              setPickedVendor(vendor);
+              setPickTouched(true);
+            }}
+            disabled={mutation.isPending || resolveTransporter.isPending}
+            error={apiErrors.transporter}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="capacity_ton">
@@ -338,8 +385,8 @@ export function CreateVehicleDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending
+            <Button type="submit" disabled={mutation.isPending || resolveTransporter.isPending}>
+              {mutation.isPending || resolveTransporter.isPending
                 ? isEditMode
                   ? 'Updating...'
                   : 'Creating...'

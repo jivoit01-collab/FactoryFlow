@@ -65,6 +65,14 @@ describe('transporterApi', () => {
 
   it('exposes exactly the expected methods', () => {
     const methodNames = Object.keys(transporterApi).sort();
-    expect(methodNames).toEqual(['create', 'getById', 'getList', 'getNames']);
+    expect(methodNames).toEqual([
+      'create',
+      'getById',
+      'getList',
+      'getNames',
+      'getSapVendors',
+      'resolve',
+      'update',
+    ]);
   });
 });

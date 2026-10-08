@@ -51,6 +51,8 @@ export const API_ENDPOINTS = {
     TRANSPORTERS: '/vehicle-management/transporters/',
     TRANSPORTER_NAMES: '/vehicle-management/transporters/names/',
     TRANSPORTER_BY_ID: (id: number) => `/vehicle-management/transporters/${id}/`,
+    TRANSPORTER_SAP_VENDORS: '/vehicle-management/transporters/sap/',
+    TRANSPORTER_RESOLVE: '/vehicle-management/transporters/resolve/',
     VEHICLE_TYPES: '/vehicle-management/vehicle-types/',
     VEHICLES: '/vehicle-management/vehicles/',
     VEHICLE_NAMES: '/vehicle-management/vehicles/names/',

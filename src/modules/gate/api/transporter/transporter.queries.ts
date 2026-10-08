@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { useAuth } from '@/core/auth';
+
 import {
   type CreateTransporterRequest,
+  type ResolveTransporterRequest,
   transporterApi,
   type UpdateTransporterRequest,
 } from './transporter.api';
@@ -39,6 +42,34 @@ export function useTransporters(enabled: boolean = true) {
     queryFn: () => transporterApi.getList(),
     staleTime: 10 * 60 * 1000, // 10 minutes - transporters don't change often
     enabled,
+  });
+}
+
+/**
+ * The current company's SAP vendors to pick a transporter from. Keyed on the
+ * company: each company's SAP has its own vendor codes.
+ */
+export function useSapTransporterVendors(enabled: boolean = true) {
+  const { currentCompany } = useAuth();
+  return useQuery({
+    queryKey: ['transporterSapVendors', currentCompany?.company_code],
+    queryFn: () => transporterApi.getSapVendors(),
+    staleTime: 10 * 60 * 1000,
+    enabled,
+  });
+}
+
+/** Turn a picked SAP vendor or a typed name into the app transporter. */
+export function useResolveTransporter() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: ResolveTransporterRequest) => transporterApi.resolve(data),
+    onSuccess: (transporter) => {
+      queryClient.invalidateQueries({ queryKey: ['transporters'] });
+      queryClient.invalidateQueries({ queryKey: ['transporterNames'] });
+      queryClient.setQueryData(['transporter', transporter.id], transporter);
+    },
   });
 }
 

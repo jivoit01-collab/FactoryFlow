@@ -14,8 +14,31 @@ export interface Transporter {
   contact_person: string;
   mobile_no: string;
   gstin: string;
+  /** Which SAP vendor it is, per company; empty for one typed by hand. */
+  sap_links?: { company_code: string; card_code: string; card_name: string }[];
   created_at: string;
 }
+
+/** A vendor in the current company's SAP, offered as a vehicle's transporter. */
+export interface SapTransporterVendor {
+  card_code: string;
+  card_name: string;
+  /** SAP vendor group, e.g. TRANSPORTER, PURCHASE, SERVICE. Blank from the copy. */
+  group: string;
+  /** In SAP's TRANSPORTER group (or, from the copy, already linked to one). */
+  is_transporter: boolean;
+  gstin: string;
+  frozen: boolean;
+}
+
+export interface SapTransporterVendorList {
+  results: SapTransporterVendor[];
+  /** Set when HANA was down and the nightly copy answered. */
+  sap_copy_as_of: string | null;
+}
+
+/** A transporter picked from SAP, or typed by hand when SAP does not have it. */
+export type ResolveTransporterRequest = { card_code: string } | { name: string };
 
 export interface CreateTransporterRequest {
   name: string;
@@ -55,6 +78,23 @@ export const transporterApi = {
     return response.data;
   },
   
+  /** The current company's active SAP vendors, transporters first. */
+  async getSapVendors(): Promise<SapTransporterVendorList> {
+    const response = await apiClient.get<SapTransporterVendorList>(
+      API_ENDPOINTS.VEHICLE.TRANSPORTER_SAP_VENDORS,
+    );
+    return response.data;
+  },
+
+  /** The app transporter for a picked SAP vendor or a typed name, made if new. */
+  async resolve(data: ResolveTransporterRequest): Promise<Transporter> {
+    const response = await apiClient.post<Transporter>(
+      API_ENDPOINTS.VEHICLE.TRANSPORTER_RESOLVE,
+      data,
+    );
+    return response.data;
+  },
+
   async update(data: UpdateTransporterRequest): Promise<Transporter> {
     const formData = new URLSearchParams();
     formData.append('name', data.name);

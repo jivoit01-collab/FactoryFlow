@@ -14,12 +14,18 @@ vi.mock('@tanstack/react-query', () => ({
   queryOptions: vi.fn((opts: any) => opts),
 }));
 
+vi.mock('@/core/auth', () => ({
+  useAuth: vi.fn(() => ({ currentCompany: { company_code: 'JIVO_OIL' } })),
+}));
+
 vi.mock('../../../api/transporter/transporter.api', () => ({
   transporterApi: {
     getNames: vi.fn(),
     getById: vi.fn(),
     getList: vi.fn(),
     create: vi.fn(),
+    getSapVendors: vi.fn(),
+    resolve: vi.fn(),
   },
 }));
 
@@ -28,6 +34,8 @@ import {
   useTransporterById,
   useTransporters,
   useCreateTransporter,
+  useResolveTransporter,
+  useSapTransporterVendors,
 } from '../../../api/transporter/transporter.queries';
 
 // ═══════════════════════════════════════════════════════════════
@@ -49,5 +57,13 @@ describe('transporter queries', () => {
 
   it('exports useCreateTransporter as a function', () => {
     expect(typeof useCreateTransporter).toBe('function');
+  });
+
+  it('exports useSapTransporterVendors as a function', () => {
+    expect(typeof useSapTransporterVendors).toBe('function');
+  });
+
+  it('exports useResolveTransporter as a function', () => {
+    expect(typeof useResolveTransporter).toBe('function');
   });
 });
