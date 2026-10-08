@@ -344,45 +344,51 @@ export function LogisticsControlDashboardPage({
           /* Stock on hand and Dispatched this month were dropped from here:
              both are headline tiles on the bands below, and a wall that prints
              the same tonnage twice spends its scarcest row repeating itself. */
-          totals={[
-            {
-              caption: 'Employees on roll',
-              // The three sections this board is about, added — the same head
-              // counts the bands below print, so the wall adds up. It used to
-              // be the whole directory's roll, every employee of both
-              // companies, which headed three cards showing fifteen people
-              // with two hundred and forty-seven and left nobody able to
-              // reconcile the two. On roll, not on shift: these are permanent
-              // staff, never added to the labour figure beside them.
-              value: whole(board.workforce.onBoard.headcount ?? 0),
-              missing: board.workforce.onBoard.headcount === null,
-              sub:
-                // A section nobody has configured is named, because the total
-                // above is short by exactly it.
-                board.workforce.onBoard.unset.length > 0
-                  ? `${board.workforce.onBoard.unset.join(' and ')} not set`
-                  : // The board's own company count, never a hardcoded two: a
-                    // single-company board captioned "2 companies" states a
-                    // scope it does not have.
-                    (() => {
-                      const companies =
-                        board.dispatch.companies.length || scope.dispatchCompanies.length;
-                      return companies === 1 ? '1 company' : `${companies} companies`;
-                    })(),
-            },
-            {
-              caption: 'Workforce cost today',
-              // Labour priced off the gate's head count, plus the configured
-              // section salaries. Null — not zero — when neither half is
-              // priced: an unpriced workforce must not read as a free one.
-              value: money(board.workforce.totalCostPerDay),
-              missing: board.workforce.totalCostPerDay === null,
-              sub:
-                board.workforce.total.labour === null
-                  ? 'head count unavailable'
-                  : `${whole(board.workforce.total.labour)} labour on shift`,
-            },
-          ]}
+          // Off the Beverages wall at the plant's request: its roll and workforce
+          // cost are not what that board is read for.
+          totals={
+            scope.key === 'beverages'
+              ? []
+              : [
+                  {
+                    caption: 'Employees on roll',
+                    // The three sections this board is about, added — the same head
+                    // counts the bands below print, so the wall adds up. It used to
+                    // be the whole directory's roll, every employee of both
+                    // companies, which headed three cards showing fifteen people
+                    // with two hundred and forty-seven and left nobody able to
+                    // reconcile the two. On roll, not on shift: these are permanent
+                    // staff, never added to the labour figure beside them.
+                    value: whole(board.workforce.onBoard.headcount ?? 0),
+                    missing: board.workforce.onBoard.headcount === null,
+                    sub:
+                      // A section nobody has configured is named, because the total
+                      // above is short by exactly it.
+                      board.workforce.onBoard.unset.length > 0
+                        ? `${board.workforce.onBoard.unset.join(' and ')} not set`
+                        : // The board's own company count, never a hardcoded two: a
+                          // single-company board captioned "2 companies" states a
+                          // scope it does not have.
+                          (() => {
+                            const companies =
+                              board.dispatch.companies.length || scope.dispatchCompanies.length;
+                            return companies === 1 ? '1 company' : `${companies} companies`;
+                          })(),
+                  },
+                  {
+                    caption: 'Workforce cost today',
+                    // Labour priced off the gate's head count, plus the configured
+                    // section salaries. Null — not zero — when neither half is
+                    // priced: an unpriced workforce must not read as a free one.
+                    value: money(board.workforce.totalCostPerDay),
+                    missing: board.workforce.totalCostPerDay === null,
+                    sub:
+                      board.workforce.total.labour === null
+                        ? 'head count unavailable'
+                        : `${whole(board.workforce.total.labour)} labour on shift`,
+                  },
+                ]
+          }
         />
 
         <main
