@@ -57,18 +57,16 @@ interface UploadPanelConfig {
   photoOnly?: boolean;
 }
 
+// Freight is not here: it is entered once for the truck at vehicle linking, and
+// the Service GRPO pays the transporter from it.
 interface TransportDocumentForm {
   eway_bill: string;
-  freight: string;
-  total_freight: string;
 }
 
 type TransportDocumentErrors = Partial<Record<keyof TransportDocumentForm | 'attachments', string>>;
 
 const EMPTY_TRANSPORT_DOCUMENT_FORM: TransportDocumentForm = {
   eway_bill: '',
-  freight: '',
-  total_freight: '',
 };
 
 const UPLOAD_PANELS: UploadPanelConfig[] = [
@@ -145,14 +143,6 @@ export default function SalesDispatchAttachmentsPage() {
   // via the arrival endpoint, instead of a separate photo per docking.
   const isMultiCompanyArrival = isMultiDockingTruck(entry);
   const arrivalDockings = useArrivalDockings(entry?.arrival, { enabled: isMultiCompanyArrival });
-  // The dockings a truck-level document (bilty / photo) applies to: every company's
-  // docking on a multi-company truck, else just this one.
-  const truckDockingIds =
-    isMultiCompanyArrival && arrivalDockings.dockings.length
-      ? arrivalDockings.dockings.map((docking) => docking.id)
-      : entry
-        ? [entry.id]
-        : [];
   const previewGatepass = usePreviewSalesDispatchGatepass();
 
   const isReadOnly = entry
@@ -213,11 +203,7 @@ export default function SalesDispatchAttachmentsPage() {
       return;
     }
 
-    setTransportForm({
-      eway_bill: entry.eway_bill || '',
-      freight: entry.freight ?? '',
-      total_freight: entry.total_freight ?? '',
-    });
+    setTransportForm({ eway_bill: entry.eway_bill || '' });
   }, [entry]);
 
   const updateTransportField = <K extends keyof TransportDocumentForm>(
@@ -269,24 +255,12 @@ export default function SalesDispatchAttachmentsPage() {
 
     setError(null);
     try {
-      // Freight is truck-level, so write it to every company's docking; the e-way bill is
-      // per invoice, so only the acting docking gets the entered value. The bilty (LR) is
-      // now per customer and lives on its own attachment, not here.
-      const truckLevel = {
-        freight: transportForm.freight || null,
-        total_freight: transportForm.total_freight || null,
-      };
-      await Promise.all(
-        truckDockingIds.map((id) =>
-          updateSalesDispatch.mutateAsync({
-            id,
-            data:
-              id === entry.id
-                ? { ...truckLevel, eway_bill: transportForm.eway_bill.trim() }
-                : truckLevel,
-          }),
-        ),
-      );
+      // The e-way bill is per invoice, so only the acting docking gets it. The bilty (LR)
+      // is per customer and lives on its own attachment, not here.
+      await updateSalesDispatch.mutateAsync({
+        id: entry.id,
+        data: { eway_bill: transportForm.eway_bill.trim() },
+      });
       toast.success('Transport document details saved');
       await refetchEntry();
       if (isMultiCompanyArrival) await arrivalDockings.refetch();
@@ -458,11 +432,7 @@ export default function SalesDispatchAttachmentsPage() {
 
     try {
       // Transport docs already saved and unchanged -> skip the redundant PATCH + toast.
-      const seededTransport = {
-        eway_bill: entry.eway_bill || '',
-        freight: entry.freight ?? '',
-        total_freight: entry.total_freight ?? '',
-      };
+      const seededTransport = { eway_bill: entry.eway_bill || '' };
       const transportChanged = JSON.stringify(transportForm) !== JSON.stringify(seededTransport);
       if (transportChanged) {
         const saved = await saveTransportDocuments();
@@ -537,31 +507,11 @@ export default function SalesDispatchAttachmentsPage() {
                 <p className="text-xs text-destructive">{transportErrors.eway_bill}</p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="sales-dispatch-freight">Freight</Label>
-              <Input
-                id="sales-dispatch-freight"
-                type="number"
-                min={0}
-                step="0.01"
-                value={transportForm.freight}
-                disabled={isReadOnly || !canEditDispatch || updateSalesDispatch.isPending}
-                onChange={(event) => updateTransportField('freight', event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sales-dispatch-total-freight">Total Freight</Label>
-              <Input
-                id="sales-dispatch-total-freight"
-                type="number"
-                min={0}
-                step="0.01"
-                value={transportForm.total_freight}
-                disabled={isReadOnly || !canEditDispatch || updateSalesDispatch.isPending}
-                onChange={(event) => updateTransportField('total_freight', event.target.value)}
-              />
-            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Freight is entered once for the truck at vehicle linking; the Service GRPO pays
+            the transporter from it.
+          </p>
           <div className="flex justify-end">
             <Button
               type="button"
