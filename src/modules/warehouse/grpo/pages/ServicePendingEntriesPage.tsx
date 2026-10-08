@@ -102,8 +102,8 @@ export default function ServicePendingEntriesPage({
   const { data, isLoading, refetch, error } = usePendingServiceGRPOEntries({
     page,
     page_size: pageSize,
-    year,
-    month,
+    // Month 0 is "All months".
+    ...(month === 0 ? { all_months: true } : { year, month }),
     search: debouncedSearch || undefined,
     stage: stage || undefined,
   });
@@ -191,6 +191,7 @@ export default function ServicePendingEntriesPage({
                 )}
               </div>
               <GRPOMonthFilter
+                allowAllMonths
                 year={year}
                 month={month}
                 onChange={(y, m) => {

@@ -23,8 +23,11 @@ const MONTHS = [
 
 interface GRPOMonthFilterProps {
   year: number;
-  month: number; // 1-12
+  /** 1-12, or 0 for every month when `allowAllMonths` is on. */
+  month: number;
   onChange: (year: number, month: number) => void;
+  /** Offer "All months" (month 0), which also sets the year aside. */
+  allowAllMonths?: boolean;
 }
 
 /**
@@ -32,13 +35,22 @@ interface GRPOMonthFilterProps {
  * sent together to the server (a lone one is ignored). Defaults are managed by
  * the parent (typically the current year/month).
  */
-export function GRPOMonthFilter({ year, month, onChange }: GRPOMonthFilterProps) {
+export function GRPOMonthFilter({
+  year,
+  month,
+  onChange,
+  allowAllMonths = false,
+}: GRPOMonthFilterProps) {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   return (
     <div className="flex items-center gap-2">
-      <Select value={String(year)} onValueChange={(v) => onChange(Number(v), month)}>
+      <Select
+        value={String(year)}
+        onValueChange={(v) => onChange(Number(v), month)}
+        disabled={allowAllMonths && month === 0}
+      >
         <SelectTrigger className="h-9 w-[110px]" aria-label="Filter by year">
           <SelectValue />
         </SelectTrigger>
@@ -55,6 +67,7 @@ export function GRPOMonthFilter({ year, month, onChange }: GRPOMonthFilterProps)
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
+          {allowAllMonths && <SelectItem value="0">All months</SelectItem>}
           {MONTHS.map((label, index) => (
             <SelectItem key={label} value={String(index + 1)}>
               {label}

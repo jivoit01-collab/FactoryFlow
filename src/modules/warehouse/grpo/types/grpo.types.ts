@@ -37,6 +37,8 @@ export interface GRPOListParams {
   page_size?: number;
   year?: number;
   month?: number;
+  /** Every month at once, instead of `year` + `month` (Service GRPO queue). */
+  all_months?: boolean;
   search?: string;
   status?: string;
   phase?: 'GATE' | 'QC' | 'DONE';
