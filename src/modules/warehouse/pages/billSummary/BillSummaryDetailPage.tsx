@@ -23,6 +23,12 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Label,
   Textarea,
@@ -111,6 +117,7 @@ export default function BillSummaryDetailPage() {
      looking at the failure, so both can drive it. */
   const canRetrySap = canPost || canApprove;
   const canPick = hasPermission(DISPATCH_PERMISSIONS.PICK_BILL_SUMMARY);
+  const cancelling = cancel.isPending || adopt.isPending;
   /* Live: the warehouse has dated it and SAP has been told. Anything still to
      be decided sits under `is_editable` instead. */
   const isLive =
@@ -610,67 +617,90 @@ export default function BillSummaryDetailPage() {
               </Button>
             )}
           {canCancel && (
-            <Button variant="destructive" onClick={() => setShowCancel((v) => !v)}>
+            <Button variant="destructive" onClick={() => setShowCancel(true)}>
               <XCircle className="mr-2 h-4 w-4" /> Cancel sheet
             </Button>
           )}
         </div>
       )}
 
-      {showCancel && (
-        <Card className="border-destructive/50">
-          <CardContent className="space-y-3 p-4">
-            {/* A cancellation cannot be taken back: the sheet stays cancelled
-                and the floor has to generate a fresh one. Said plainly, next to
-                the button, rather than discovered afterwards. */}
-            <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              <p className="flex items-center gap-2 font-semibold">
-                <AlertTriangle className="h-4 w-4" />
-                Cancelling {summary.entry_no} cannot be undone
-              </p>
-              <p className="text-xs">
-                The sheet stays cancelled — a new one has to be generated for this bill
-                if the goods still go out.
-                {fromSap && (
-                  <>
-                    {' '}
-                    This dispatch was typed into SAP rather than issued here, so it is
-                    taken onto the app&apos;s books as a cancelled sheet.
-                  </>
-                )}
-                {summary.sap_status === 'POSTED' && (
-                  <>
-                    {' '}
-                    The dispatch date and quantities will also be cleared from SAP invoice{' '}
-                    {summary.sap_invoice_doc_num}; the bilty number is left as it is.
-                  </>
-                )}
-              </p>
+      {/* Asked in a dialog, not a form opened further down the page: the button
+          sits below the lines, so a form under it landed off-screen and the
+          button looked as if it had done nothing. A cancellation cannot be taken
+          back — the sheet stays cancelled and the floor has to generate a fresh
+          one — so that is said plainly, next to the button, rather than
+          discovered afterwards. Held open while it runs, so the outcome is seen. */}
+      <Dialog
+        open={showCancel}
+        onOpenChange={(open) => {
+          if (!cancelling) setShowCancel(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (cancelling || !cancelReason.trim()) return;
+              void run(cancelSheet, 'Sheet cancelled', 'Could not cancel the sheet.');
+            }}
+          >
+            <DialogHeader className="text-left">
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                Cancel {summary.entry_no}?
+              </DialogTitle>
+              <DialogDescription>This cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+              The sheet stays cancelled — a new one has to be generated for this bill if
+              the goods still go out.
+              {fromSap && (
+                <>
+                  {' '}
+                  This dispatch was typed into SAP rather than issued here, so it is taken
+                  onto the app&apos;s books as a cancelled sheet.
+                </>
+              )}
+              {summary.sap_status === 'POSTED' && (
+                <>
+                  {' '}
+                  The dispatch date and quantities will also be cleared from SAP invoice{' '}
+                  {summary.sap_invoice_doc_num}; the bilty number is left as it is.
+                </>
+              )}
             </div>
-            <Label htmlFor="bs-cancel">Why is this sheet being cancelled?</Label>
-            <Input
-              id="bs-cancel"
-              value={cancelReason}
-              onChange={(event) => setCancelReason(event.target.value)}
-              placeholder="Wrong vehicle, bill amended…"
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setShowCancel(false)}>
+            <div className="space-y-2">
+              <Label htmlFor="bs-cancel">Why is this sheet being cancelled?</Label>
+              <Input
+                id="bs-cancel"
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                placeholder="Wrong vehicle, bill amended…"
+                disabled={cancelling}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={cancelling}
+                onClick={() => setShowCancel(false)}
+              >
                 Keep it
               </Button>
               <Button
+                type="submit"
                 variant="destructive"
-                disabled={cancel.isPending || adopt.isPending || !cancelReason.trim()}
-                onClick={() =>
-                  run(cancelSheet, 'Sheet cancelled', 'Could not cancel the sheet.')
-                }
+                disabled={cancelling || !cancelReason.trim()}
               >
+                {cancelling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Cancel the sheet
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Off-screen, rendered only so the print handler has something to take.
           Bounded and clipped: an unbounded host lets a wide child spill back
