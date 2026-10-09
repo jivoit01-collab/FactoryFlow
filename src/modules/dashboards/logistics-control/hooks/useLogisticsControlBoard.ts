@@ -906,32 +906,15 @@ export function useLogisticsControlBoard(
     const boxesOf = (bills: readonly DispatchBill[]) =>
       bills.reduce((total, bill) => total + (Number(bill.total_boxes) || 0), 0);
 
-    /**
-     * Beverages asks a different question, at the plant's request: every open
-     * bill with no vehicle on it, with no date filter at all — dated for any
-     * day, or not given a plan date yet. A bill with a truck linked is the
-     * bay's to load, not the planner's to chase.
-     */
-    const awaitingVehicle =
-      scope.key === 'beverages'
-        ? (planBills.data ?? []).flatMap((group) =>
-            group.bills
-              .filter(
-                (bill) =>
-                  bill.plan?.vehicle_id == null &&
-                  bill.plan?.booking_status !== 'DISPATCHED' &&
-                  bill.plan?.pipeline_status?.stage !== 'DISPATCHED',
-              )
-              .map((bill) => ({ ...bill, company_code: group.companyCode })),
-          )
-        : null;
-    const pendingRows = awaitingVehicle ?? plan.pendingRows;
-
+    // Both plants answer the same question here. Beverages once counted every
+    // bill without a vehicle, dated or not, instead — which left its trucks at
+    // the dock off the tile and its future-dated bills on it, so Pending no
+    // longer read as Day plan minus Dispatched today.
     return {
       /** The bills still to go out, for the drill-down. */
-      rows: pendingRows,
+      rows: plan.pendingRows,
       byCompany: plan.sides.map(({ companyCode }) => {
-        const bills = pendingRows.filter((bill) => bill.company_code === companyCode);
+        const bills = plan.pendingRows.filter((bill) => bill.company_code === companyCode);
         return {
           companyCode,
           invoices: bills.length,
@@ -939,9 +922,9 @@ export function useLogisticsControlBoard(
           boxes: boxesOf(bills),
         };
       }),
-      invoices: awaitingVehicle ? awaitingVehicle.length : plan.pendingBills,
-      tonnes: awaitingVehicle ? tonnesOf(awaitingVehicle) : plan.pendingTonnes,
-      boxes: awaitingVehicle ? boxesOf(awaitingVehicle) : plan.pendingBoxes,
+      invoices: plan.pendingBills,
+      tonnes: plan.pendingTonnes,
+      boxes: plan.pendingBoxes,
       // The pending feed slices AFTER ordering by dispatch date descending, so
       // a truncated page has dropped the oldest and most overdue bills —
       // exactly the ones this card exists to show.
@@ -956,7 +939,7 @@ export function useLogisticsControlBoard(
       error: plan.error ?? planBills.error ?? null,
       loading: plan.loading,
     };
-  }, [dispatchTodayTile, planBills.data, planBills.error, scope.key]);
+  }, [dispatchTodayTile, planBills.data, planBills.error]);
 
   /**
    * What it costs to get a litre out of the gate, month to date.
