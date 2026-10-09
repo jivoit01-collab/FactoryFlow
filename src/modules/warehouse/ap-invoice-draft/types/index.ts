@@ -24,6 +24,27 @@ export interface OpenGRPO {
   entry_no: string;
 }
 
+/** Where a GRPO's A/P invoice stands in SAP, for the GRPO pages. */
+export type GRPOAPInvoiceState = 'POSTED' | 'PARTIAL' | 'DRAFT' | 'CLOSED' | 'NONE';
+
+export interface GRPOAPStatus {
+  status: GRPOAPInvoiceState;
+  /** A/P invoices SAP made from the GRPO (not cancelled). */
+  invoices: { doc_entry: number; doc_num: string; doc_date: string | null }[];
+  /** Open A/P drafts SAP holds for it. */
+  sap_draft_entries: number[];
+  /** This app's entry for it, if any. */
+  entry: {
+    id: number;
+    entry_no: string;
+    sap_status: SapDraftStatus;
+    sap_draft_entry: number | null;
+  } | null;
+}
+
+/** Keyed by the GRPO's SAP DocEntry; a GRPO SAP does not have is left out. */
+export type GRPOAPStatusMap = Record<string, GRPOAPStatus>;
+
 export interface APInvoiceDraftCheck {
   key: string;
   position: number;

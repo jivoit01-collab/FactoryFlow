@@ -13,6 +13,9 @@ export const AP_INVOICE_DRAFT_QUERY_KEYS = {
     [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'list', params ?? {}] as const,
   detail: (id: number) => [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'detail', id] as const,
   grpos: (search: string) => [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpos', search] as const,
+  grpo: (docEntry: number) => [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo', docEntry] as const,
+  grpoStatus: (docEntries: number[]) =>
+    [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo-status', docEntries] as const,
 };
 
 export function useAPInvoiceDrafts(params?: { search?: string; all_companies?: boolean }) {
@@ -43,6 +46,30 @@ export function useOpenGRPOs(search: string, enabled: boolean) {
   });
 }
 
+/** One GRPO, if SAP still has it open — for the form opened from a GRPO's page.
+ *  `null` once loaded means it is not open (invoiced or closed). */
+export function useOpenGRPO(docEntry: number | null, enabled: boolean) {
+  return useQuery({
+    queryKey: AP_INVOICE_DRAFT_QUERY_KEYS.grpo(docEntry ?? 0),
+    queryFn: async () =>
+      (await apInvoiceDraftApi.openGrpos(undefined, docEntry as number))[0] ?? null,
+    enabled: enabled && !!docEntry,
+    staleTime: 0,
+  });
+}
+
+/** Where these GRPOs' A/P invoices stand (a page of posting history at a time). */
+export function useGRPOAPStatus(docEntries: number[]) {
+  const sorted = [...new Set(docEntries)].sort((a, b) => a - b);
+  return useQuery({
+    queryKey: AP_INVOICE_DRAFT_QUERY_KEYS.grpoStatus(sorted),
+    queryFn: () => apInvoiceDraftApi.grpoStatus(sorted),
+    enabled: sorted.length > 0,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
 function useEntryMutation<TArgs>(mutationFn: (args: TArgs) => Promise<APInvoiceDraftDetail>) {
   const qc = useQueryClient();
   return useMutation({
@@ -64,6 +91,8 @@ export function useCreateAPInvoiceDraft() {
       qc.setQueryData(AP_INVOICE_DRAFT_QUERY_KEYS.detail(data.id), data);
       qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'list'] });
       qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpos'] });
+      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo'] });
+      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo-status'] });
     },
   });
 }

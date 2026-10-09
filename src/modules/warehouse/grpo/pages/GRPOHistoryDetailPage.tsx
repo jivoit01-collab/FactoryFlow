@@ -1,9 +1,14 @@
-import { AlertCircle, ArrowLeft, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, FileCheck2, FileUp, RefreshCw, ShieldX } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
-import { GRPO_PERMISSIONS } from '@/config/permissions';
+import { AP_INVOICE_DRAFT_ACCESS, AP_INVOICE_DRAFT_PERMISSIONS, GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
-import { useHasPermission } from '@/core/auth';
+import { useHasPermission, usePermission } from '@/core/auth';
+import { useGRPOAPStatus } from '@/modules/warehouse/ap-invoice-draft/api';
+import { APInvoiceStatusBadge } from '@/modules/warehouse/ap-invoice-draft/components/APInvoiceStatusBadge';
+import { NewAPInvoiceDraftDialog } from '@/modules/warehouse/ap-invoice-draft/components/NewAPInvoiceDraftDialog';
 import { RecordTimestamps } from '@/shared/components';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 
@@ -43,6 +48,25 @@ export default function GRPOHistoryDetailPage() {
   const canManageAttachments = useHasPermission(GRPO_PERMISSIONS.MANAGE_ATTACHMENTS);
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
+
+  // The A/P invoice for this GRPO: where it stands in SAP, and the form that
+  // starts one, opened on this GRPO with only the bill left to upload.
+  const canCreateAPDraft = useHasPermission(AP_INVOICE_DRAFT_PERMISSIONS.CREATE);
+  const { hasAnyPermission } = usePermission();
+  const canOpenAPDraft = hasAnyPermission([...AP_INVOICE_DRAFT_ACCESS]);
+  const [apDialogOpen, setAPDialogOpen] = useState(false);
+  const grpoDocEntry = posting?.status === 'POSTED' ? posting.sap_doc_entry : null;
+  const { data: apStatusMap, isLoading: apLoading } = useGRPOAPStatus(
+    grpoDocEntry ? [grpoDocEntry] : [],
+  );
+  const apStatus = grpoDocEntry ? apStatusMap?.[String(grpoDocEntry)] : undefined;
+  const apEntry = apStatus?.entry ?? null;
+  // Offered unless SAP already has the invoice, or this app has the entry.
+  const canStartAPDraft =
+    canCreateAPDraft &&
+    !!grpoDocEntry &&
+    !apEntry &&
+    (!apStatus || apStatus.status === 'NONE' || apStatus.status === 'DRAFT');
 
   const apiError = error as ApiError | null;
   const isPermissionError = apiError?.status === 403;
@@ -142,6 +166,28 @@ export default function GRPOHistoryDetailPage() {
                   ))}
                   {/* SAP's own Goods Receipt Note, for a posting SAP accepted. */}
                   <GRPOPrintButton posting={posting} size="sm" className="h-7 px-2 text-xs" />
+                  {canStartAPDraft && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setAPDialogOpen(true)}
+                    >
+                      <FileUp className="mr-1 h-3.5 w-3.5" />
+                      Create A/P invoice draft
+                    </Button>
+                  )}
+                  {apEntry && canOpenAPDraft && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => navigate(`/warehouse/ap-invoice-drafts/${apEntry.id}`)}
+                    >
+                      <FileCheck2 className="mr-1 h-3.5 w-3.5" />
+                      Open {apEntry.entry_no}
+                    </Button>
+                  )}
                   {statusConfig && (
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}
@@ -184,6 +230,20 @@ export default function GRPOHistoryDetailPage() {
                   <span className="text-muted-foreground">Posted At</span>
                   <p className="font-medium">{formatDateTime(posting.posted_at)}</p>
                 </div>
+                {grpoDocEntry && (
+                  <div>
+                    <span className="text-muted-foreground">A/P Invoice</span>
+                    <div className="mt-0.5">
+                      {apStatus ? (
+                        <APInvoiceStatusBadge status={apStatus} />
+                      ) : (
+                        <p className="font-medium text-muted-foreground">
+                          {apLoading ? 'Checking SAP…' : '-'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Error message for failed postings */}
@@ -244,6 +304,24 @@ export default function GRPOHistoryDetailPage() {
               postingId={posting.id}
               attachments={posting.attachments || []}
               canManage={canManageAttachments}
+            />
+          )}
+
+          {grpoDocEntry && (
+            <NewAPInvoiceDraftDialog
+              open={apDialogOpen}
+              onOpenChange={setAPDialogOpen}
+              grpoDocEntry={grpoDocEntry}
+              // Stay on the GRPO: its A/P status and button refresh in place.
+              onCreated={(entry) =>
+                entry.sap_status === 'CREATED'
+                  ? toast.success(
+                      `${entry.entry_no} made — A/P invoice draft ${entry.sap_draft_entry} is in SAP.`,
+                    )
+                  : toast.warning(
+                      `${entry.entry_no} saved, but SAP did not take the draft. Open it to try again.`,
+                    )
+              }
             />
           )}
 

@@ -6,6 +6,7 @@ import type {
   APInvoiceDraftDetail,
   APInvoiceDraftListItem,
   CreateAPInvoiceDraftPayload,
+  GRPOAPStatusMap,
   OpenGRPO,
   ReviewCheckPayload,
 } from '../types';
@@ -31,10 +32,20 @@ export const apInvoiceDraftApi = {
     return response.data;
   },
 
-  async openGrpos(search?: string): Promise<OpenGRPO[]> {
+  async openGrpos(search?: string, docEntry?: number): Promise<OpenGRPO[]> {
     const response = await apiClient.get<OpenGRPO[]>(ENDPOINTS.GRPOS, {
-      params: search ? { search } : undefined,
+      params: docEntry ? { doc_entry: docEntry } : search ? { search } : undefined,
       // The picker says "SAP is not answering" itself.
+      suppressErrorToast: true,
+    });
+    return response.data;
+  },
+
+  /** Where these GRPOs' A/P invoices stand. Quiet on failure: the GRPO pages
+   *  just leave the status out while SAP is not answering. */
+  async grpoStatus(docEntries: number[]): Promise<GRPOAPStatusMap> {
+    const response = await apiClient.get<GRPOAPStatusMap>(ENDPOINTS.GRPO_STATUS, {
+      params: { doc_entries: docEntries.join(',') },
       suppressErrorToast: true,
     });
     return response.data;

@@ -31,6 +31,22 @@ describe('A/P invoice draft API', () => {
     });
   });
 
+  it('asks for one GRPO by its DocEntry', async () => {
+    await apInvoiceDraftApi.openGrpos(undefined, 27634);
+    expect(get).toHaveBeenLastCalledWith('/ap-invoice-drafts/grpos/', {
+      params: { doc_entry: 27634 },
+      suppressErrorToast: true,
+    });
+  });
+
+  it('asks where a page of GRPOs stands, quietly', async () => {
+    await apInvoiceDraftApi.grpoStatus([27481, 27634]);
+    expect(get).toHaveBeenLastCalledWith('/ap-invoice-drafts/grpo-status/', {
+      params: { doc_entries: '27481,27634' },
+      suppressErrorToast: true,
+    });
+  });
+
   it('sends the GRPO and the bill as multipart, and shows its own refusal', async () => {
     const bill = new File(['%PDF'], 'SSY-1979.pdf', { type: 'application/pdf' });
     await apInvoiceDraftApi.create({ grpo_doc_entry: 27481, invoice_file: bill });

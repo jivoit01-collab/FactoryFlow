@@ -753,6 +753,7 @@ export const API_ENDPOINTS = {
     LIST: '/ap-invoice-drafts/',
     CREATE: '/ap-invoice-drafts/',
     GRPOS: '/ap-invoice-drafts/grpos/',
+    GRPO_STATUS: '/ap-invoice-drafts/grpo-status/',
     BY_ID: (id: number) => `/ap-invoice-drafts/${id}/`,
     READ_INVOICE: (id: number) => `/ap-invoice-drafts/${id}/read-invoice/`,
     SEND_TO_SAP: (id: number) => `/ap-invoice-drafts/${id}/send-to-sap/`,

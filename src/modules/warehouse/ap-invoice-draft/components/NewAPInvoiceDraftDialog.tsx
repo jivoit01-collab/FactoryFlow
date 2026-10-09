@@ -15,8 +15,8 @@ import {
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
-import { useCreateAPInvoiceDraft } from '../api';
-import type { OpenGRPO } from '../types';
+import { useCreateAPInvoiceDraft, useOpenGRPO } from '../api';
+import type { APInvoiceDraftDetail, OpenGRPO } from '../types';
 import { GRPOSelect } from './GRPOSelect';
 
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp';
@@ -27,23 +27,34 @@ const MAX_BYTES = 15 * 1024 * 1024;
  *
  * Submitting saves the entry, makes the A/P invoice draft in SAP, reads the bill
  * and runs the checklist, in one go.
+ *
+ * Opened from a GRPO's own page, `grpoDocEntry` fixes the GRPO: it is looked
+ * up in SAP and shown instead of the picker, and only the bill is asked for.
+ * With `onCreated` the form hands the new entry back and stays out of the way;
+ * without it, it goes to the entry's page.
  */
 export function NewAPInvoiceDraftDialog({
   open,
   onOpenChange,
+  grpoDocEntry = null,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  grpoDocEntry?: number | null;
+  onCreated?: (entry: APInvoiceDraftDetail) => void;
 }) {
   const navigate = useNavigate();
   const create = useCreateAPInvoiceDraft();
-  const [grpo, setGrpo] = useState<OpenGRPO | null>(null);
+  const [picked, setPicked] = useState<OpenGRPO | null>(null);
+  const fixed = useOpenGRPO(grpoDocEntry, open);
+  const grpo = grpoDocEntry ? (fixed.data ?? null) : picked;
   const [file, setFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const close = (next: boolean) => {
     if (!next) {
-      setGrpo(null);
+      setPicked(null);
       setFile(null);
       setFormError(null);
       create.reset();
@@ -75,7 +86,8 @@ export function NewAPInvoiceDraftDialog({
       {
         onSuccess: (entry) => {
           close(false);
-          navigate(`/warehouse/ap-invoice-drafts/${entry.id}`);
+          if (onCreated) onCreated(entry);
+          else navigate(`/warehouse/ap-invoice-drafts/${entry.id}`);
         },
       },
     );
@@ -93,18 +105,25 @@ export function NewAPInvoiceDraftDialog({
             New A/P invoice draft
           </DialogTitle>
           <DialogDescription>
-            Pick the GRPO and upload the vendor's bill. Creating makes the A/P invoice draft in SAP,
-            reads the bill and runs the checklist — about ten seconds.
+            {grpoDocEntry
+              ? "Upload the vendor's bill for this GRPO."
+              : "Pick the GRPO and upload the vendor's bill."}{' '}
+            Creating makes the A/P invoice draft in SAP, reads the bill and runs the checklist —
+            about ten seconds.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={submit} className="space-y-4">
-          {/* Not inside DialogBody: its scroll box would clip the picker's list. */}
-          <GRPOSelect
-            value={grpo ? String(grpo.doc_entry) : undefined}
-            onChange={setGrpo}
-            disabled={create.isPending}
-          />
+          {grpoDocEntry ? (
+            <FixedGRPO grpo={grpo} isLoading={fixed.isLoading} isError={fixed.isError} />
+          ) : (
+            // Not inside DialogBody: its scroll box would clip the picker's list.
+            <GRPOSelect
+              value={picked ? String(picked.doc_entry) : undefined}
+              onChange={setPicked}
+              disabled={create.isPending}
+            />
+          )}
           {grpo && (
             <p className="text-xs text-muted-foreground">
               {grpo.vendor_name} · bill no. on the GRPO: {grpo.reference || '—'} · into{' '}
@@ -145,12 +164,56 @@ export function NewAPInvoiceDraftDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={create.isPending}>
+            <Button type="submit" disabled={create.isPending || (!!grpoDocEntry && !grpo)}>
               {create.isPending ? 'Making the draft and reading the bill…' : 'Create draft'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The GRPO the form was opened on, as SAP has it now. */
+function FixedGRPO({
+  grpo,
+  isLoading,
+  isError,
+}: {
+  grpo: OpenGRPO | null;
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">Looking the GRPO up in SAP…</p>;
+  }
+  if (isError) {
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        SAP is not answering. Try again in a moment.
+      </p>
+    );
+  }
+  if (!grpo) {
+    return (
+      <p role="alert" className="text-sm text-destructive">
+        SAP no longer has this GRPO open — it is already invoiced or closed.
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium">GRPO</p>
+      <p className="rounded-md border bg-muted/30 px-3 py-2 text-sm">
+        {grpo.doc_num}
+        {grpo.entry_no ? (
+          <span className="block text-xs text-destructive">Already entered as {grpo.entry_no}</span>
+        ) : grpo.sap_draft_entries.length > 0 ? (
+          <span className="block text-xs text-amber-700 dark:text-amber-400">
+            SAP already has draft {grpo.sap_draft_entries.join(', ')} — it will be linked
+          </span>
+        ) : null}
+      </p>
+    </div>
   );
 }

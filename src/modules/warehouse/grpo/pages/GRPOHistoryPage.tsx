@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { ApiError } from '@/core/api/types';
+import { useGRPOAPStatus } from '@/modules/warehouse/ap-invoice-draft/api';
+import { APInvoiceStatusBadge } from '@/modules/warehouse/ap-invoice-draft/components/APInvoiceStatusBadge';
 import { PaginationControls } from '@/shared/components/PaginationControls';
 import { Button, Input } from '@/shared/components/ui';
 import { useDebounce } from '@/shared/hooks';
@@ -98,6 +100,13 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
 
   const historyEntries = data?.results ?? [];
   const total = data?.count ?? 0;
+
+  // Where each posted GRPO's A/P invoice stands in SAP: one request per page.
+  const { data: apStatus } = useGRPOAPStatus(
+    historyEntries
+      .filter((entry) => entry.status === GRPO_STATUS.POSTED && entry.sap_doc_entry)
+      .map((entry) => entry.sap_doc_entry as number),
+  );
 
   const handleFilterChange = (filter: StatusFilterKey) => {
     if (embedded) {
@@ -263,6 +272,11 @@ export default function GRPOHistoryPage({ embedded = false }: { embedded?: boole
                         {entry.sap_doc_num && (
                           <span className="text-xs text-muted-foreground hidden md:inline">
                             SAP #{entry.sap_doc_num}
+                          </span>
+                        )}
+                        {entry.status === GRPO_STATUS.POSTED && entry.sap_doc_entry && (
+                          <span className="hidden sm:inline-flex">
+                            <APInvoiceStatusBadge status={apStatus?.[String(entry.sap_doc_entry)]} />
                           </span>
                         )}
                       </div>
