@@ -168,7 +168,7 @@ export default function DispatchPlansDashboardPage() {
   // on the server, so this asks for the same window again without page params and
   // exports what comes back. Kept to the fields dispatch actually needs: dispatch
   // date, invoice date, party, ship-to, state, invoice no., invoice amount, litres,
-  // weight.
+  // boxes, weight.
   const handleExportExcel = useCallback(async () => {
     setIsExporting(true);
     let allBills: DispatchBill[];
@@ -177,6 +177,7 @@ export default function DispatchPlansDashboardPage() {
         ...filters,
         page: undefined,
         page_size: undefined,
+        with_load_boxes: true,
       });
       allBills = response.data;
     } catch {
@@ -202,6 +203,11 @@ export default function DispatchPlansDashboardPage() {
       // in Excel.
       'Invoice Amount': bill.doc_total ?? 0,
       Litres: bill.total_litres ?? 0,
+      // Every box the bill goes out in, counted by the docking scan's rule (lines of
+      // one item split together, packaging left out) with a part box and each tin
+      // counted too — so a bill of less than a full carton is not 0. Blank only when
+      // SAP could not give the bill's lines.
+      Boxes: bill.load_boxes ?? '',
       'Weight (kg)': bill.total_weight ?? 0,
     }));
 

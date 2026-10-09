@@ -50,6 +50,9 @@ export interface DispatchPlanFilters {
   all_companies?: boolean;
   /** 1 = only bills selected on the Bill Selection page (the Plan page uses this). */
   selected_only?: boolean;
+  /** Also count every box each bill goes out in (`load_boxes`). One more SAP read,
+   *  so only the Plan page's Excel export asks for it. */
+  with_load_boxes?: boolean;
 }
 
 /** Payload for the Bill Selection Submit — reconciles only the shown bills. */
@@ -174,6 +177,10 @@ export interface DispatchBill {
   total_quantity: number;
   total_litres: number;
   total_boxes: number;
+  /** Every box the bill goes out in: full boxes, a part box for a remainder, one per
+   *  tin for items SAP does not box. Only sent when `with_load_boxes` asked for it;
+   *  null when SAP could not give the bill's lines. */
+  load_boxes?: number | null;
   total_weight: number;
   total_line_amount: number;
   total_gross_amount: number;

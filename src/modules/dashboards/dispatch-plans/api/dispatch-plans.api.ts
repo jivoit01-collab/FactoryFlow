@@ -192,5 +192,6 @@ function buildParams(filters: DispatchPlanFilters): Record<string, string> {
   }
   if (filters.all_companies) params.all_companies = '1';
   if (filters.selected_only) params.selected_only = 'true';
+  if (filters.with_load_boxes) params.with_load_boxes = 'true';
   return params;
 }
