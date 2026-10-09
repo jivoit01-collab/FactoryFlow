@@ -748,6 +748,14 @@ export const API_ENDPOINTS = {
     INVOICE: '/short-dispatch/invoice/',
     WAREHOUSES: '/short-dispatch/warehouses/',
   },
+  // A/P invoice drafts: a vendor's bill into SAP against its GRPO
+  AP_INVOICE_DRAFT: {
+    LIST: '/ap-invoice-drafts/',
+    CREATE: '/ap-invoice-drafts/',
+    GRPOS: '/ap-invoice-drafts/grpos/',
+    BY_ID: (id: number) => `/ap-invoice-drafts/${id}/`,
+    SEND_TO_SAP: (id: number) => `/ap-invoice-drafts/${id}/send-to-sap/`,
+  },
   // Dispatch Plans Dashboard
   DISPATCH_PLANS: {
     BILLS: '/dispatch-plans/bills/',

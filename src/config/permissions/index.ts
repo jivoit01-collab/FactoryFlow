@@ -221,6 +221,14 @@ export {
   type ARInvoicePermission,
 } from './ar-invoice.permissions';
 
+// A/P Invoice Draft Module (vendor bills into SAP against their GRPO; nav under Warehouse)
+export {
+  AP_INVOICE_DRAFT_ACCESS,
+  AP_INVOICE_DRAFT_MODULE_PREFIX,
+  AP_INVOICE_DRAFT_PERMISSIONS,
+  type APInvoiceDraftPermission,
+} from './ap-invoice-draft.permissions';
+
 // Short Dispatch Module (SAP Return Note for short-picked bills; nav under Warehouse)
 export {
   SHORT_DISPATCH_ACCESS,

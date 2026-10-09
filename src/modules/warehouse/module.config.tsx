@@ -2,6 +2,7 @@ import { Warehouse } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 import {
+  AP_INVOICE_DRAFT_ACCESS,
   AR_INVOICE_PERMISSIONS,
   DISPATCH_PERMISSIONS,
   GATE_PERMISSIONS,
@@ -13,6 +14,7 @@ import {
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
 
+import { apInvoiceDraftNavChildren, apInvoiceDraftRoutes } from './ap-invoice-draft/module.config';
 import { arInvoiceNavChildren, arInvoiceRoutes } from './ar-invoice/module.config';
 import {
   creditNoteApprovalNavChildren,
@@ -291,6 +293,7 @@ export const warehouseModuleConfig: ModuleConfig = {
     ...creditNoteApprovalRoutes,
     // A/R invoice submodule route (/warehouse/ar-invoices)
     ...arInvoiceRoutes,
+    ...apInvoiceDraftRoutes,
     // Short Dispatch submodule routes (/warehouse/short-dispatch/*)
     ...shortDispatchRoutes,
   ],
@@ -318,6 +321,7 @@ export const warehouseModuleConfig: ModuleConfig = {
         WAREHOUSE_PERMISSIONS.VIEW_AR_CREDIT_NOTE_APPROVAL,
         WAREHOUSE_PERMISSIONS.VIEW_AP_CREDIT_NOTE_APPROVAL,
         AR_INVOICE_PERMISSIONS.VIEW,
+        ...AP_INVOICE_DRAFT_ACCESS,
         ...SHORT_DISPATCH_ACCESS,
         // A floor picker may hold only the bill-summary permissions; without
         // these the Warehouse menu would not appear for them at all.
@@ -394,6 +398,9 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...creditNoteApprovalNavChildren,
         // A/R invoice submodule — nested under the Warehouse group
         ...arInvoiceNavChildren,
+        // A/P invoice drafts — the vendor's bill into SAP against its GRPO;
+        // beside the A/R side.
+        ...apInvoiceDraftNavChildren,
       ],
     },
   ],

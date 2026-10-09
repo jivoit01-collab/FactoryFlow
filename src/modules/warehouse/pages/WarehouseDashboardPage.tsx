@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileCheck,
+  FileCheck2,
   FileMinus,
   FileText,
   LayoutGrid,
@@ -51,6 +52,7 @@ const TILE_ICONS: Record<string, LucideIcon> = {
   '/warehouse/invoice-approval': FileCheck,
   '/warehouse/credit-note-approval': FileMinus,
   '/warehouse/ar-invoices': Receipt,
+  '/warehouse/ap-invoice-drafts': FileCheck2,
 };
 
 const WAREHOUSE_CHILDREN =
