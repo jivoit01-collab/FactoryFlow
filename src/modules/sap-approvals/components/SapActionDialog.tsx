@@ -7,6 +7,8 @@
  * to withdraw), and checks again before SAP is called. What this dialog adds:
  *
  * - remarks, required to reject (SAP records them against the authorizer);
+ * - a category, required to reject: kept by the app for the rejection history,
+ *   never sent to SAP;
  * - an optional SAP password. With one stored on the server it may be left
  *   blank; without one it must be typed. It lives only in this form's state —
  *   the form unmounts when the dialog closes and the field is cleared after
@@ -33,12 +35,15 @@ import {
   DialogTitle,
   Input,
   Label,
+  NativeSelect,
+  SelectOption,
   Textarea,
 } from '@/shared/components/ui';
 import { getErrorMessage } from '@/shared/utils';
 
 import { useSapApprovalActions } from '../api/sap-approvals.queries';
-import type { PostedDocument, SapApprovalRequest } from '../types';
+import type { PostedDocument, SapApprovalRequest, SapRejectionCategory } from '../types';
+import { REJECTION_CATEGORIES } from '../utils/categories';
 import { dateTime, money, shortDate, STATUS_LABELS } from '../utils/format';
 
 export type SapActionMode = 'approve' | 'reject' | 'withdraw';
@@ -103,6 +108,7 @@ function ActionForm({
 }) {
   const actions = useSapApprovalActions();
   const [remarks, setRemarks] = useState('');
+  const [category, setCategory] = useState<SapRejectionCategory | ''>('');
   const [password, setPassword] = useState('');
   const [confirmDuplicate, setConfirmDuplicate] = useState(false);
   const [duplicates, setDuplicates] = useState<PostedDocument[]>(
@@ -125,6 +131,10 @@ function ActionForm({
     setError('');
     if (mode === 'reject' && !remarks.trim()) {
       setError('Say why this is being rejected — SAP records it against your user.');
+      return;
+    }
+    if (mode === 'reject' && !category) {
+      setError('Pick a category — the rejection history counts mistakes by it.');
       return;
     }
     if (passwordRequired && !password) {
@@ -156,6 +166,10 @@ function ActionForm({
             label: 'Already posted',
             value: `${postedLabel(duplicates)} — approving posts it again`,
           },
+        mode === 'reject' && {
+          label: 'Category',
+          value: REJECTION_CATEGORIES.find((c) => c.value === category)?.label ?? '',
+        },
         mode === 'reject' && { label: 'Reason', value: remarks.trim() },
         {
           label: 'Signed as',
@@ -175,6 +189,7 @@ function ActionForm({
           : await actions.decide(request.wdd_code, {
               approve: mode === 'approve',
               remarks,
+              ...(mode === 'reject' && { category }),
               sapPassword: password || undefined,
               confirmDuplicate: mode === 'approve' && confirmDuplicate,
             });
@@ -246,6 +261,25 @@ function ActionForm({
               />
               It really is a separate document — approve anyway
             </label>
+          </div>
+        )}
+
+        {mode === 'reject' && (
+          <div className="space-y-1.5">
+            <Label htmlFor="sap-action-category">Category (required)</Label>
+            <NativeSelect
+              id="sap-action-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as SapRejectionCategory | '')}
+              className="h-9 w-full"
+            >
+              <SelectOption value="">Pick what kind of entry this is</SelectOption>
+              {REJECTION_CATEGORIES.map((c) => (
+                <SelectOption key={c.value} value={c.value}>
+                  {c.label}
+                </SelectOption>
+              ))}
+            </NativeSelect>
           </div>
         )}
 

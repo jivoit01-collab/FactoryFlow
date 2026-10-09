@@ -120,6 +120,7 @@ export {
   SAP_APPROVALS_ACCESS,
   SAP_APPROVALS_MODULE_PREFIX,
   SAP_APPROVALS_PERMISSIONS,
+  SAP_REJECTION_HISTORY_ACCESS,
   type SapApprovalsPermission,
 } from './sap-approvals.permissions';
 // BOM Changes (BOM change requests, their approval levels and the SAP BOM viewer, from SAP Portal)

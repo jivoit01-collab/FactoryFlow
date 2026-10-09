@@ -32,6 +32,13 @@ export function dateTime(value?: string | null): string {
       });
 }
 
+/** "2026-10-08T13:25:00" → "08-10-2026", the register's own date format. */
+export function registerDate(value?: string | null): string {
+  if (!value) return '—';
+  const [y, m, d] = value.slice(0, 10).split('-');
+  return y && m && d ? `${d}-${m}-${y}` : '—';
+}
+
 export const STATUS_LABELS: Record<SapApprovalStatus, string> = {
   PENDING: 'Pending',
   APPROVED: 'Approved',

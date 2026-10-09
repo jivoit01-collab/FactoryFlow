@@ -1552,6 +1552,8 @@ export const API_ENDPOINTS = {
     ATTACHMENT_DOWNLOAD: (wddCode: number, absEntry: number, line: number) =>
       `/sap-approvals/requests/${wddCode}/attachments/${absEntry}/${line}/download/`,
     PENDING_COUNT: '/sap-approvals/pending-count/',
+    // Every rejection in the company over a window, and who raised each.
+    REJECTIONS: '/sap-approvals/rejections/',
   },
 
   // SAP Portal's document browser: SAP documents by type, one document with

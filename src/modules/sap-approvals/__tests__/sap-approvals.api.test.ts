@@ -96,6 +96,23 @@ describe('the decision payload', () => {
     expect(buildWithdrawPayload('secret')).toEqual({ sap_password: 'secret' });
   });
 
+  it('sends a category with a rejection and never with an approval', () => {
+    expect(
+      buildDecisionPayload({ approve: false, remarks: 'GL', category: 'FUEL' }),
+    ).toEqual({ approve: false, remarks: 'GL', category: 'FUEL' });
+    expect(
+      buildDecisionPayload({ approve: true, remarks: '', category: 'FUEL' }),
+    ).not.toHaveProperty('category');
+  });
+
+  it('reads the rejection history with only the filters that are set', async () => {
+    get.mockResolvedValue({ data: { results: [] } });
+    await sapApprovalsApi.rejections({ date_from: '2026-10-01', date_to: '', originator: ' ' });
+    expect(get).toHaveBeenCalledWith('/sap-approvals/rejections/', {
+      params: { date_from: '2026-10-01' },
+    });
+  });
+
   it('confirms a duplicate only when asked to', () => {
     expect(buildDecisionPayload({ approve: true, remarks: '' })).not.toHaveProperty(
       'confirm_duplicate',

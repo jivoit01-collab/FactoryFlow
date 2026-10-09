@@ -11,15 +11,16 @@
  * sidebar a prefix short-circuits `permissions`. The badge is imported by
  * direct path, never through a barrel.
  */
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, ClipboardX } from 'lucide-react';
 
-import { SAP_APPROVALS_ACCESS } from '@/config/permissions';
+import { SAP_APPROVALS_ACCESS, SAP_REJECTION_HISTORY_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
 import { PendingCountBadge } from './components/PendingCountBadge';
 
 const SapApprovalsPage = lazy(() => import('./pages/SapApprovalsPage'));
+const RejectionHistoryPage = lazy(() => import('./pages/RejectionHistoryPage'));
 
 export const sapApprovalsModuleConfig: ModuleConfig = {
   name: 'sap-approvals',
@@ -30,6 +31,13 @@ export const sapApprovalsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: SAP_APPROVALS_ACCESS,
       breadcrumb: { label: 'SAP Approvals' },
+    },
+    {
+      path: '/sap-approvals/rejections',
+      element: <RejectionHistoryPage />,
+      layout: 'main',
+      permissions: SAP_REJECTION_HISTORY_ACCESS,
+      breadcrumb: { label: 'Rejection History' },
     },
   ],
 };
@@ -42,5 +50,11 @@ export const SAP_APPROVALS_NAV_ITEMS: ModuleNavItem[] = [
     icon: ClipboardCheck,
     permissions: SAP_APPROVALS_ACCESS,
     badge: PendingCountBadge,
+  },
+  {
+    path: '/sap-approvals/rejections',
+    title: 'Rejection History',
+    icon: ClipboardX,
+    permissions: SAP_REJECTION_HISTORY_ACCESS,
   },
 ];

@@ -112,6 +112,21 @@ describe('SapActionDialog', () => {
     expect(decide).not.toHaveBeenCalled();
   });
 
+  it('needs a category to reject, shown in the confirmation', async () => {
+    const { onDone } = renderDialog(REQUEST, 'reject');
+    fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'GL' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reject in SAP' }));
+    expect(await screen.findByText(/Pick a category/)).toBeInTheDocument();
+    expect(decide).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/Category/), { target: { value: 'ELECTRICITY' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reject in SAP' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(decide.mock.calls[0][1]).toMatchObject({ approve: false, category: 'ELECTRICITY' });
+    const confirmation = vi.mocked(confirmSapPost).mock.calls.at(-1)![0];
+    expect(confirmation.details).toContainEqual({ label: 'Category', value: 'Electricity' });
+  });
+
   it('turns a 409 duplicate into an explicit tick, then approves with it', async () => {
     decide.mockRejectedValueOnce({
       status: 409,
@@ -180,12 +195,14 @@ describe('changing a decision already taken', () => {
   it('sends the other decision through the same call and confirms the change first', async () => {
     const { onDone } = renderDialog(APPROVED, 'reject');
     fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: 'wrong party' } });
+    fireEvent.change(screen.getByLabelText(/Category/), { target: { value: 'TRANSPORT' } });
     fireEvent.click(screen.getByRole('button', { name: 'Change to rejected in SAP' }));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
 
     expect(decide).toHaveBeenCalledWith(75424, {
       approve: false,
       remarks: 'wrong party',
+      category: 'TRANSPORT',
       sapPassword: undefined,
       confirmDuplicate: false,
     });

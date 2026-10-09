@@ -154,10 +154,26 @@ export interface SapApprovalListResponse {
   object_types: { code: string; label: string }[];
 }
 
+/** What kind of entry was rejected — `RejectionCategory` in sap_approvals/constants.py. */
+export type SapRejectionCategory =
+  | 'CASH_VOUCHER'
+  | 'ELECTRICITY'
+  | 'FUEL'
+  | 'IMPREST'
+  | 'RENT'
+  | 'REPAIRS'
+  | 'SERVICE'
+  | 'SUBSCRIPTION'
+  | 'TRANSPORT'
+  | 'UTILITY'
+  | 'OTHER';
+
 /** What the decision dialog collects. The password is never kept beyond it. */
 export interface SapDecisionInput {
   approve: boolean;
   remarks: string;
+  /** Required to reject; never sent on an approval. */
+  category?: SapRejectionCategory | '';
   sapPassword?: string;
   confirmDuplicate?: boolean;
 }
@@ -173,4 +189,61 @@ export interface SapActionResult {
 
 export interface SapPendingCount {
   total: number;
+}
+
+export interface SapRejectionFilters {
+  date_from?: string;
+  date_to?: string;
+  /** A SAP user code (USER39); blank for everybody. */
+  originator?: string;
+}
+
+/** One rejected request — `GET rejections/`. */
+export interface SapRejection {
+  wdd_code: number;
+  object_type: string;
+  object_type_label: string;
+  draft_entry: number | null;
+  rejected_at: string | null;
+  rejected_by: string | null;
+  rejected_by_name: string | null;
+  /** As SAP holds it, with the app's signature. */
+  remarks: string | null;
+  /** As it was typed: the app's " — <name> (Factory app)" taken off. */
+  reason: string;
+  /** Who raised the entry — whose mistake it counts as. */
+  originator_code: string | null;
+  originator_name: string | null;
+  doc_num: number | null;
+  doc_date: string | null;
+  card_code: string | null;
+  party_name: string | null;
+  /** Decimal string. */
+  total_amount: string | null;
+  gl_account: string | null;
+  gl_account_name: string | null;
+  /** Blank unless it was picked in this app when rejecting. */
+  category: SapRejectionCategory | '';
+  /** The picked category, else the GL account's name, else the document type. */
+  category_label: string;
+  category_source: 'app' | 'gl' | 'document';
+}
+
+export interface SapRejectionsByOriginator {
+  originator_code: string | null;
+  originator_name: string | null;
+  count: number;
+  /** Decimal string. */
+  amount: string;
+}
+
+export interface SapRejectionHistory {
+  date_from: string;
+  date_to: string;
+  results: SapRejection[];
+  count: number;
+  truncated: boolean;
+  /** Most rejections first. */
+  by_originator: SapRejectionsByOriginator[];
+  categories: { value: SapRejectionCategory; label: string }[];
 }

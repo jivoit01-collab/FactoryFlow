@@ -16,6 +16,7 @@ import {
   SAP_APPROVALS_ACCESS,
   SAP_DOCUMENTS_ACCESS,
   SAP_FINANCE_ACCESS,
+  SAP_REJECTION_HISTORY_ACCESS,
 } from '@/config/permissions';
 import type { ModuleConfig } from '@/core/types';
 import { BOM_CHANGES_NAV_ITEMS } from '@/modules/bom-changes/module.config';
@@ -29,6 +30,7 @@ export const SAP_PORTAL_ACCESS: readonly string[] = [
   ...new Set([
     ...SAP_DOCUMENTS_ACCESS,
     ...SAP_APPROVALS_ACCESS,
+    ...SAP_REJECTION_HISTORY_ACCESS,
     ...SAP_FINANCE_ACCESS,
     ...BOM_CHANGES_ACCESS,
     ...PARTNER_ONBOARDING_ACCESS,

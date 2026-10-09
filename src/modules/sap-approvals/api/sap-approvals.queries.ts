@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { attachmentErrorMessage } from '@/modules/sap-documents/api';
 import { openOrSave } from '@/modules/sap-documents/utils/attachments';
 
-import type { SapApprovalFilters, SapDecisionInput } from '../types';
+import type { SapApprovalFilters, SapDecisionInput, SapRejectionFilters } from '../types';
 import { sapApprovalsApi } from './sap-approvals.api';
 
 /** Every query key this module owns; `all` covers the lists, the detail and the badge. */
@@ -18,6 +18,8 @@ export const SAP_APPROVALS_QUERY_KEYS = {
   attachmentLines: (wddCode: number, absEntry: number) =>
     [...SAP_APPROVALS_QUERY_KEYS.all, 'attachment-lines', wddCode, absEntry] as const,
   pendingCount: () => [...SAP_APPROVALS_QUERY_KEYS.all, 'pending-count'] as const,
+  rejections: (filters: SapRejectionFilters) =>
+    [...SAP_APPROVALS_QUERY_KEYS.all, 'rejections', filters] as const,
 };
 
 export const SAP_APPROVALS_PATH = '/sap-approvals';
@@ -51,6 +53,15 @@ export function useSapApprovalRequest(wddCode: number | null) {
     enabled: wddCode !== null,
     // A decision screen: read fresh each time it opens.
     staleTime: 0,
+  });
+}
+
+/** Every rejection in the window, company-wide. A decision here refreshes it too (`all`). */
+export function useSapRejectionHistory(filters: SapRejectionFilters) {
+  return useQuery({
+    queryKey: SAP_APPROVALS_QUERY_KEYS.rejections(filters),
+    queryFn: () => sapApprovalsApi.rejections(filters),
+    staleTime: 60 * 1000,
   });
 }
 

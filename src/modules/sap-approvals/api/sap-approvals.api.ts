@@ -9,12 +9,16 @@ import type {
   SapApprovalListResponse,
   SapDecisionInput,
   SapPendingCount,
+  SapRejectionFilters,
+  SapRejectionHistory,
 } from '../types';
 
 const E = API_ENDPOINTS.SAP_APPROVALS;
 
 /** Query string without the filters left blank, so the server applies its defaults. */
-export function listParams(filters: SapApprovalFilters): Record<string, string | number> {
+export function listParams(
+  filters: SapApprovalFilters | SapRejectionFilters,
+): Record<string, string | number> {
   const params: Record<string, string | number> = {};
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === null) continue;
@@ -34,6 +38,7 @@ export function buildDecisionPayload(input: SapDecisionInput): Record<string, un
     approve: input.approve,
     remarks: input.remarks.trim(),
   };
+  if (!input.approve && input.category) payload.category = input.category;
   if (input.confirmDuplicate) payload.confirm_duplicate = true;
   if (input.sapPassword) payload.sap_password = input.sapPassword;
   return payload;
@@ -108,6 +113,13 @@ export const sapApprovalsApi = {
       suppressErrorToast: true,
     });
     return res.data;
+  },
+
+  async rejections(filters: SapRejectionFilters): Promise<SapRejectionHistory> {
+    const { data } = await apiClient.get<SapRejectionHistory>(E.REJECTIONS, {
+      params: listParams(filters),
+    });
+    return data;
   },
 
   async pendingCount(): Promise<SapPendingCount> {

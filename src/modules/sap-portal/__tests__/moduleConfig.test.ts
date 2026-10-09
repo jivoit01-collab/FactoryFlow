@@ -49,6 +49,7 @@ describe('SAP Portal menu', () => {
     expect(entry().children?.map((child) => [child.title, child.path])).toEqual([
       ['Documents', '/sap-documents'],
       ['Approvals', '/sap-approvals'],
+      ['Rejection History', '/sap-approvals/rejections'],
       ['Journal Entries', '/sap-finance/journal-entries'],
       ['General Ledger', '/sap-finance/general-ledger'],
       ['Chart of Accounts', '/sap-finance/chart-of-accounts'],
