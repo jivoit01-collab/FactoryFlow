@@ -223,7 +223,7 @@ export default function AdvancesPage() {
             </p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{holders.length}</p>
             <p className="text-xs text-muted-foreground">
-              {holders.filter((row) => Number(row.balance) !== 0).length} still holding cash
+              {holders.filter((row) => Number(row.balance) > 0).length} still holding cash
             </p>
           </CardContent>
         </Card>
