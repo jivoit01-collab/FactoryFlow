@@ -1,4 +1,10 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import { dispatchPlansApi } from '@/modules/dashboards/dispatch-plans/api';
 import type { DispatchBill } from '@/modules/dashboards/dispatch-plans/types';
@@ -88,21 +94,51 @@ export function useLookupDispatchBillAcrossCompanies(
   const enabled = term.length >= MIN_BILL_LOOKUP_DIGITS && /^\d+$/.test(term);
 
   const results = useQueries({
-    queries: companyCodes.map((code) => ({
-      queryKey: [...DISPATCH_LINKING_QUERY_KEYS.all, 'bill-by-number', code, term],
-      queryFn: () => dispatchPlansApi.getBillByNumber(term, code),
-      enabled,
-      staleTime: 30 * 1000,
-    })),
+    queries: companyCodes.map((code) => ({ ...billByNumberQuery(term, code), enabled })),
   });
 
   const bills: DispatchBill[] = [];
   companyCodes.forEach((code, index) => {
     const bill = results[index]?.data;
-    // Tag the row the way the cross-company feed does, so downstream writes know
-    // which company to address.
-    if (bill) bills.push({ ...bill, company_code: bill.company_code ?? code });
+    if (bill) bills.push(taggedWith(bill, code));
   });
 
   return { bills, isFetching: results.some((result) => result.isFetching) };
+}
+
+/**
+ * The same lookup for a list of numbers pasted at once, sharing the hook's
+ * cache. `failed` is set when a company did not answer, so a number found
+ * nowhere is not reported as "no such bill" when one company was never asked.
+ */
+export async function fetchDispatchBillAcrossCompanies(
+  queryClient: QueryClient,
+  invoiceNumber: string,
+  companyCodes: string[],
+): Promise<{ bills: DispatchBill[]; failed: boolean }> {
+  const term = invoiceNumber.trim();
+  const settled = await Promise.allSettled(
+    companyCodes.map((code) => queryClient.fetchQuery(billByNumberQuery(term, code))),
+  );
+  const bills: DispatchBill[] = [];
+  settled.forEach((result, index) => {
+    if (result.status === 'fulfilled' && result.value) {
+      bills.push(taggedWith(result.value, companyCodes[index]));
+    }
+  });
+  return { bills, failed: settled.some((result) => result.status === 'rejected') };
+}
+
+function billByNumberQuery(term: string, code: string) {
+  return {
+    queryKey: [...DISPATCH_LINKING_QUERY_KEYS.all, 'bill-by-number', code, term],
+    queryFn: () => dispatchPlansApi.getBillByNumber(term, code),
+    staleTime: 30 * 1000,
+  };
+}
+
+/** Tag the row the way the cross-company feed does, so downstream writes know
+ *  which company to address. */
+function taggedWith(bill: DispatchBill, code: string): DispatchBill {
+  return { ...bill, company_code: bill.company_code ?? code };
 }

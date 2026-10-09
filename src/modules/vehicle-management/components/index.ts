@@ -14,4 +14,5 @@ export {
   type LinkDialogVehicle,
   LinkVehicleBillsDialog,
   type LinkVehicleBillsSelection,
+  type PastedBillAnswers,
 } from './LinkVehicleBillsDialog';

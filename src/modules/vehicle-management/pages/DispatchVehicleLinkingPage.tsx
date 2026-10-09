@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { addDays, format, subDays } from 'date-fns';
 import {
   AlertTriangle,
@@ -72,6 +73,7 @@ import { getErrorMessage } from '@/shared/utils/error';
 
 import {
   dispatchLinkingApi,
+  fetchDispatchBillAcrossCompanies,
   useLinkDispatchVehicle,
   useLookupDispatchBillAcrossCompanies,
   useUnlinkDispatchVehicle,
@@ -84,6 +86,7 @@ import {
   type LateDispatchApprovalTarget,
   LinkVehicleBillsDialog,
   type LinkVehicleBillsSelection,
+  type PastedBillAnswers,
   type TruckBiltySuggestion,
 } from '../components';
 import type { CustomerBiltyPayload, DispatchVehicleLinkPayload } from '../types';
@@ -137,6 +140,18 @@ function isBillLinkable(bill: DispatchBill) {
     !bill.plan.is_vehicle_link_locked &&
     (bill.plan.booking_status === 'PENDING' || bill.plan.booking_status === 'BOOKED')
   );
+}
+
+/** Why a bill fails `isBillLinkable`, as the paste note under the bill fields says it. */
+function whyNotLinkable(bill: DispatchBill) {
+  const { plan } = bill;
+  if (plan.booking_status === 'DISPATCHED') return 'already dispatched';
+  if (plan.booking_status === 'CANCELLED') return 'cancelled';
+  if (plan.vehicle_id) {
+    return plan.vehicle_no ? `already on ${plan.vehicle_no}` : 'already on a vehicle';
+  }
+  if (plan.is_vehicle_link_locked) return 'locked against linking';
+  return 'cannot be linked';
 }
 
 /** A bill counts as booked onto a truck once planning has linked a master vehicle. */
@@ -678,6 +693,34 @@ export default function DispatchVehicleLinkingPage() {
     );
     return extra.length > 0 ? [...extra, ...linkableBills] : linkableBills;
   }, [linkableBills, linkLookup.bills]);
+
+  /* Bill numbers pasted into the picker that its list does not hold: either in
+     the feed but not linkable, which the feed can explain without SAP, or
+     outside the feed window, which takes the by-number lookup. */
+  const queryClient = useQueryClient();
+  const lookupPastedBills = async (numbers: string[]): Promise<PastedBillAnswers> => {
+    const answers: PastedBillAnswers = new Map();
+    await Promise.all(
+      numbers.map(async (number) => {
+        let found = feedBills.filter((bill) => String(bill.doc_num).trim() === number);
+        if (found.length === 0) {
+          const looked = await fetchDispatchBillAcrossCompanies(queryClient, number, companyCodes);
+          if (looked.failed && looked.bills.length === 0) {
+            answers.set(number, 'could not be looked up in SAP, try pasting it again');
+            return;
+          }
+          found = looked.bills;
+        }
+        const linkable = found.filter(isBillLinkable);
+        if (linkable.length === 1) answers.set(number, linkable[0]);
+        else if (linkable.length > 1) {
+          answers.set(number, 'is a bill of more than one company, pick it from the list');
+        } else if (found.length > 0) answers.set(number, whyNotLinkable(found[0]));
+        else answers.set(number, 'no such bill in your companies');
+      }),
+    );
+    return answers;
+  };
 
   /* Every way onto a truck already inside goes through the bilty first, as
      linking does: a bill added without one used to reach the warehouse as a
@@ -1840,6 +1883,7 @@ export default function DispatchVehicleLinkingPage() {
         isLoading={billsQuery.isLoading || linkLookup.isFetching}
         isError={billsQuery.isError}
         onSearchChange={setPickerSearch}
+        onLookupBills={lookupPastedBills}
         onOpenChange={(open) => {
           if (!open) {
             setPickerFor(null);
