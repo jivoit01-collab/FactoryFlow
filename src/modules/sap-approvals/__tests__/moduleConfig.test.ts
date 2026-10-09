@@ -7,11 +7,7 @@ vi.mock('../components/PendingCountBadge', () => ({
   PendingCountBadge: () => null,
 }));
 
-import {
-  SAP_APPROVALS_ACCESS,
-  SAP_APPROVALS_PERMISSIONS,
-  SAP_REJECTION_HISTORY_ACCESS,
-} from '@/config/permissions';
+import { SAP_APPROVALS_ACCESS, SAP_APPROVALS_PERMISSIONS } from '@/config/permissions';
 
 import { SAP_APPROVALS_NAV_ITEMS, sapApprovalsModuleConfig } from '../module.config';
 
@@ -31,11 +27,10 @@ describe('sap-approvals module config', () => {
         SAP_APPROVALS_PERMISSIONS.WITHDRAW_OWN,
       ].sort(),
     );
-    const [inbox, history] = sapApprovalsModuleConfig.routes;
-    expect(inbox.permissions).toEqual(SAP_APPROVALS_ACCESS);
-    // Everybody's rejections: its own right, not implied by the inbox.
-    expect(history.permissions).toEqual([SAP_APPROVALS_PERMISSIONS.REJECTION_HISTORY]);
-    expect(SAP_REJECTION_HISTORY_ACCESS).not.toContain(SAP_APPROVALS_PERMISSIONS.VIEW_INBOX);
+    // The rejection history too: every inbox user sees what comes back and why.
+    for (const route of sapApprovalsModuleConfig.routes) {
+      expect(route.permissions).toEqual(SAP_APPROVALS_ACCESS);
+    }
   });
 
   it('sits under SAP Portal on the same rights, never by prefix, with the badge', () => {
@@ -46,7 +41,7 @@ describe('sap-approvals module config', () => {
     expect(item.permissions).toEqual(SAP_APPROVALS_ACCESS);
     expect(item.badge).toBeDefined();
     expect(history.title).toBe('Rejection History');
-    expect(history.permissions).toEqual(SAP_REJECTION_HISTORY_ACCESS);
+    expect(history.permissions).toEqual(SAP_APPROVALS_ACCESS);
   });
 
   it('names only sap_approvals rights, as the backend declares them', () => {
@@ -54,7 +49,6 @@ describe('sap-approvals module config', () => {
       'sap_approvals.can_view_sap_approval_inbox',
       'sap_approvals.can_decide_sap_approvals',
       'sap_approvals.can_withdraw_own_sap_approvals',
-      'sap_approvals.can_view_sap_rejection_history',
     ]);
   });
 });

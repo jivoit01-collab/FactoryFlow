@@ -20,8 +20,6 @@ export const SAP_APPROVALS_PERMISSIONS = {
   DECIDE: 'sap_approvals.can_decide_sap_approvals',
   /** Withdraw a pending request the caller raised. Implies VIEW_INBOX. */
   WITHDRAW_OWN: 'sap_approvals.can_withdraw_own_sap_approvals',
-  /** Every rejection in the company, by who raised it — for whoever reviews the desk. */
-  REJECTION_HISTORY: 'sap_approvals.can_view_sap_rejection_history',
 } as const;
 
 export const SAP_APPROVALS_MODULE_PREFIX = 'sap_approvals';
@@ -31,11 +29,6 @@ export const SAP_APPROVALS_ACCESS: readonly string[] = [
   SAP_APPROVALS_PERMISSIONS.VIEW_INBOX,
   SAP_APPROVALS_PERMISSIONS.DECIDE,
   SAP_APPROVALS_PERMISSIONS.WITHDRAW_OWN,
-];
-
-/** The rejection history: its own right, not implied by the inbox. */
-export const SAP_REJECTION_HISTORY_ACCESS: readonly string[] = [
-  SAP_APPROVALS_PERMISSIONS.REJECTION_HISTORY,
 ];
 
 export type SapApprovalsPermission =

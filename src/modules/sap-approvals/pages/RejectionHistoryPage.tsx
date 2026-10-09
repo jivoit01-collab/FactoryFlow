@@ -1,18 +1,25 @@
 /**
- * Rejection History — every SAP approval request rejected in the company, in
- * the accounts desk's own register format (Date, Category, Party Name, Amount,
- * User, Reason), and who raised the most of them.
+ * Rejection History — every SAP approval entry rejected even once, in the
+ * accounts desk's own register format (Date, Category, Party Name, Amount,
+ * User, Reason), where each stands now, and who raised the most of them.
  *
  * Read live from SAP, so a rejection taken in the SAP client counts as well as
- * one taken from the inbox. "User" is the originator — the person who raised
- * the entry — because the register is about whose entries come back. The
- * category is the one picked when it was rejected here; a rejection taken
- * anywhere else shows its GL account's name instead, in italics.
+ * one taken from the inbox, and one changed to approved afterwards still
+ * counts. "User" is the originator — the person who raised the entry —
+ * because the register is about whose entries come back. The category is the
+ * one picked when it was rejected here; otherwise the GL account's name, in
+ * italics.
  *
- * The whole window is fetched once and narrowed in the browser, so the
- * per-user ranking always covers everybody even while one user is picked.
+ * "Now" follows the entry after the rejection: nobody fixes a rejected draft
+ * in place, they key it again, so the server finds the re-keyed document (same
+ * party and vendor reference, or the same amount soon after) and says whether
+ * it is pending, approved, posted or rejected again.
+ *
+ * One company, or every company the reader belongs to. The whole window is
+ * fetched once and narrowed in the browser, so the per-user ranking always
+ * covers everybody even while one user or stage is picked.
  */
-import { Download, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { buildCsv, triggerCsvDownload } from '@/modules/marketplace/utils/csv';
@@ -32,7 +39,7 @@ import {
 import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/ui';
 
 import { useSapRejectionHistory } from '../api/sap-approvals.queries';
-import type { SapRejection } from '../types';
+import type { SapRejection, SapRejectionStage } from '../types';
 import { money, person, registerDate } from '../utils/format';
 
 interface Range {
@@ -40,59 +47,138 @@ interface Range {
   date_to: string;
 }
 
+const STAGE: Record<SapRejectionStage, { label: string; className: string }> = {
+  STILL_REJECTED: {
+    label: 'Still rejected',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
+  },
+  REJECTED_AGAIN: {
+    label: 'Re-entered, rejected again',
+    className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400',
+  },
+  PENDING: {
+    label: 'Corrected, pending',
+    className: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400',
+  },
+  APPROVED: {
+    label: 'Corrected, approved',
+    className: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  },
+  POSTED: {
+    label: 'Corrected, posted',
+    className: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400',
+  },
+  CLOSED: {
+    label: 'Closed, not re-entered',
+    className: 'bg-muted text-muted-foreground',
+  },
+};
+
+/** The stage filter: the open ones, the corrected ones, or one stage. */
+const STAGE_FILTERS: { key: string; label: string; stages: SapRejectionStage[] }[] = [
+  { key: '', label: 'Every stage', stages: [] },
+  { key: 'open', label: 'Still open', stages: ['STILL_REJECTED', 'REJECTED_AGAIN'] },
+  { key: 'corrected', label: 'Corrected', stages: ['PENDING', 'APPROVED', 'POSTED'] },
+  { key: 'PENDING', label: 'Corrected, pending', stages: ['PENDING'] },
+  { key: 'POSTED', label: 'Corrected, posted', stages: ['POSTED', 'APPROVED'] },
+  { key: 'CLOSED', label: 'Closed, not re-entered', stages: ['CLOSED'] },
+];
+
+function nowLabel(row: SapRejection): string {
+  if (!row.now) return '—';
+  const base = STAGE[row.now.stage].label;
+  return row.now.doc_num && row.now.via !== 'same_request' ? `${base} (#${row.now.doc_num})` : base;
+}
+
+function NowChip({ row }: { row: SapRejection }) {
+  if (!row.now) return <span className="text-muted-foreground">—</span>;
+  const stage = STAGE[row.now.stage];
+  const via =
+    row.now.via === 'reference'
+      ? `Re-entered as #${row.now.doc_num}, same vendor reference`
+      : row.now.via === 'amount'
+        ? `Re-entered as #${row.now.doc_num}, same party and amount`
+        : row.now.via === 'same_request'
+          ? 'The same request, taken forward'
+          : undefined;
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <span
+        className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${stage.className}`}
+        title={via}
+      >
+        {stage.label}
+      </span>
+      {row.now.doc_num && row.now.via !== 'same_request' && (
+        <span className="font-mono text-xs text-muted-foreground">
+          {row.now.posted ? 'doc' : 'draft'} #{row.now.doc_num}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function RejectionHistoryPage() {
   // Blank: the server's default, this month to date.
   const [range, setRange] = useState<Range>({ date_from: '', date_to: '' });
+  const [allCompanies, setAllCompanies] = useState(false);
   const [originator, setOriginator] = useState('');
   const [category, setCategory] = useState('');
+  const [stage, setStage] = useState('');
 
-  const query = useSapRejectionHistory(range);
+  const query = useSapRejectionHistory({ ...range, all_companies: allCompanies });
   const data = query.data;
   const all = useMemo(() => data?.results ?? [], [data]);
+  const showCompany = allCompanies && (data?.companies.length ?? 0) > 1;
 
   const categories = useMemo(
     () => [...new Set(all.map((row) => row.category_label))].sort(),
     [all],
   );
-  const rows = useMemo(
-    () =>
-      all.filter(
-        (row) =>
-          (!originator || (row.originator_code ?? '') === originator) &&
-          (!category || row.category_label === category),
-      ),
-    [all, originator, category],
-  );
+  const rows = useMemo(() => {
+    const stages = STAGE_FILTERS.find((f) => f.key === stage)?.stages ?? [];
+    return all.filter(
+      (row) =>
+        (!originator || (row.originator_code ?? '') === originator) &&
+        (!category || row.category_label === category) &&
+        (stages.length === 0 || (row.now !== null && stages.includes(row.now.stage))),
+    );
+  }, [all, originator, category, stage]);
   const most = data?.by_originator[0]?.count ?? 0;
 
   const download = () => {
     const csv = buildCsv(
       [
         'Date',
+        ...(showCompany ? ['Company'] : []),
         'Category',
         'Party Name',
         'Amount',
         'User',
         'User Name',
         'Reason',
+        'Now',
         'Rejected By',
         'Request',
         'Document',
       ],
-      rows.map((row: SapRejection) => [
+      rows.map((row) => [
         registerDate(row.rejected_at),
+        ...(showCompany ? [row.company_name] : []),
         row.category_label,
         row.party_name,
         row.total_amount,
         row.originator_code,
         row.originator_name,
         row.reason,
+        nowLabel(row),
         row.rejected_by,
         row.wdd_code,
         row.object_type_label,
       ]),
     );
-    triggerCsvDownload(csv, `sap-rejections_${data?.date_from}_${data?.date_to}.csv`);
+    const scope = allCompanies ? 'all-companies' : (data?.companies[0]?.code ?? 'company');
+    triggerCsvDownload(csv, `sap-rejections_${scope}_${data?.date_from}_${data?.date_to}.csv`);
   };
 
   return (
@@ -113,13 +199,51 @@ export default function RejectionHistoryPage() {
         </Button>
       </PageHeader>
 
+      <div className="flex flex-wrap gap-2">
+        {[
+          { all: false, label: 'This company' },
+          { all: true, label: 'All companies' },
+        ].map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            onClick={() => setAllCompanies(option.all)}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+              allCompanies === option.all
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+        {data && (
+          <span className="self-center text-sm text-muted-foreground">
+            {data.companies.map((c) => c.name).join(', ')}
+          </span>
+        )}
+      </div>
+
+      {data && data.unavailable.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            SAP could not be read for {data.unavailable.map((c) => c.name).join(', ')}, so their
+            rejections are missing below. Refresh in a moment.
+          </span>
+        </div>
+      )}
+
       <FilterBar
         isFetching={query.isFetching}
-        activeCount={[range.date_from, range.date_to, originator, category].filter(Boolean).length}
+        activeCount={
+          [range.date_from, range.date_to, originator, category, stage].filter(Boolean).length
+        }
         onReset={() => {
           setRange({ date_from: '', date_to: '' });
           setOriginator('');
           setCategory('');
+          setStage('');
         }}
       >
         <FilterField label="Rejected from" htmlFor="rejections-from">
@@ -170,6 +294,20 @@ export default function RejectionHistoryPage() {
             ))}
           </NativeSelect>
         </FilterField>
+        <FilterField label="Now" htmlFor="rejections-stage">
+          <NativeSelect
+            id="rejections-stage"
+            value={stage}
+            onChange={(e) => setStage(e.target.value)}
+            className="h-9 w-52"
+          >
+            {STAGE_FILTERS.map((option) => (
+              <SelectOption key={option.key} value={option.key}>
+                {option.label}
+              </SelectOption>
+            ))}
+          </NativeSelect>
+        </FilterField>
       </FilterBar>
 
       <TableCard
@@ -180,16 +318,17 @@ export default function RejectionHistoryPage() {
             <tr>
               <Th>User</Th>
               <Th align="right">Rejections</Th>
+              <Th align="right">Still rejected</Th>
               <Th className="w-1/3"> </Th>
               <Th align="right">Amount</Th>
             </tr>
           </thead>
           <tbody>
             {query.isLoading ? (
-              <TableLoading colSpan={4} />
+              <TableLoading colSpan={5} />
             ) : !data || data.by_originator.length === 0 ? (
               <TableEmpty
-                colSpan={4}
+                colSpan={5}
                 message={
                   query.isError
                     ? 'SAP could not be read. Try again in a moment.'
@@ -211,6 +350,15 @@ export default function RejectionHistoryPage() {
                       {person(group.originator_code, group.originator_name)}
                     </Td>
                     <Td numeric>{group.count}</Td>
+                    <Td numeric>
+                      {group.still_rejected > 0 ? (
+                        <span className="font-medium text-red-700 dark:text-red-400">
+                          {group.still_rejected}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </Td>
                     <Td>
                       <div className="h-2 rounded-full bg-muted">
                         <div
@@ -230,7 +378,7 @@ export default function RejectionHistoryPage() {
 
       {data?.truncated && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
-          Only the latest {data.count} rejections are shown. Narrow the dates to see the rest.
+          Only the latest rejections are shown. Narrow the dates to see the rest.
         </p>
       )}
 
@@ -239,20 +387,22 @@ export default function RejectionHistoryPage() {
           <thead className={THEAD_CLASSES}>
             <tr>
               <Th>Date</Th>
+              {showCompany && <Th>Company</Th>}
               <Th>Category</Th>
               <Th>Party Name</Th>
               <Th align="right">Amount</Th>
               <Th>User</Th>
               <Th>Reason</Th>
+              <Th>Now</Th>
               <Th>Rejected by</Th>
             </tr>
           </thead>
           <tbody>
             {query.isLoading ? (
-              <TableLoading colSpan={7} />
+              <TableLoading colSpan={showCompany ? 9 : 8} />
             ) : rows.length === 0 ? (
               <TableEmpty
-                colSpan={7}
+                colSpan={showCompany ? 9 : 8}
                 message={
                   query.isError
                     ? 'SAP could not be read. Try again in a moment.'
@@ -261,10 +411,14 @@ export default function RejectionHistoryPage() {
               />
             ) : (
               rows.map((row) => (
-                <tr key={row.wdd_code} className={`${ROW_CLASSES} align-top`}>
+                <tr
+                  key={`${row.company_code}-${row.wdd_code}`}
+                  className={`${ROW_CLASSES} align-top`}
+                >
                   <Td className="whitespace-nowrap tabular-nums">
                     {registerDate(row.rejected_at)}
                   </Td>
+                  {showCompany && <Td className="whitespace-nowrap">{row.company_name}</Td>}
                   <Td>
                     <span
                       className={
@@ -295,6 +449,9 @@ export default function RejectionHistoryPage() {
                   </Td>
                   <Td className="max-w-[18rem]">
                     {row.reason || <span className="text-muted-foreground">—</span>}
+                  </Td>
+                  <Td>
+                    <NowChip row={row} />
                   </Td>
                   <Td className="whitespace-nowrap text-muted-foreground">
                     {person(row.rejected_by, row.rejected_by_name)}

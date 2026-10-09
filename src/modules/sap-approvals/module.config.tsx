@@ -13,7 +13,7 @@
  */
 import { ClipboardCheck, ClipboardX } from 'lucide-react';
 
-import { SAP_APPROVALS_ACCESS, SAP_REJECTION_HISTORY_ACCESS } from '@/config/permissions';
+import { SAP_APPROVALS_ACCESS } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig, ModuleNavItem } from '@/core/types';
 
@@ -36,7 +36,7 @@ export const sapApprovalsModuleConfig: ModuleConfig = {
       path: '/sap-approvals/rejections',
       element: <RejectionHistoryPage />,
       layout: 'main',
-      permissions: SAP_REJECTION_HISTORY_ACCESS,
+      permissions: SAP_APPROVALS_ACCESS,
       breadcrumb: { label: 'Rejection History' },
     },
   ],
@@ -55,6 +55,6 @@ export const SAP_APPROVALS_NAV_ITEMS: ModuleNavItem[] = [
     path: '/sap-approvals/rejections',
     title: 'Rejection History',
     icon: ClipboardX,
-    permissions: SAP_REJECTION_HISTORY_ACCESS,
+    permissions: SAP_APPROVALS_ACCESS,
   },
 ];

@@ -196,6 +196,26 @@ export interface SapRejectionFilters {
   date_to?: string;
   /** A SAP user code (USER39); blank for everybody. */
   originator?: string;
+  /** Every SAP company the caller belongs to, not just the one selected. */
+  all_companies?: boolean;
+}
+
+/** Where a rejected entry stands now. */
+export type SapRejectionStage =
+  | 'STILL_REJECTED'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'POSTED'
+  | 'REJECTED_AGAIN'
+  | 'CLOSED';
+
+export interface SapRejectionNow {
+  stage: SapRejectionStage;
+  /** How it was found: its own request, or the re-keyed document's reference or amount. */
+  via: 'same_request' | 'reference' | 'amount' | null;
+  /** The re-keyed draft's or posted document's number. */
+  doc_num: number | null;
+  posted: boolean;
 }
 
 /** One rejected request — `GET rejections/`. */
@@ -204,6 +224,7 @@ export interface SapRejection {
   object_type: string;
   object_type_label: string;
   draft_entry: number | null;
+  raised_on: string | null;
   rejected_at: string | null;
   rejected_by: string | null;
   rejected_by_name: string | null;
@@ -218,6 +239,8 @@ export interface SapRejection {
   doc_date: string | null;
   card_code: string | null;
   party_name: string | null;
+  /** The vendor's reference (NumAtCard). */
+  reference: string | null;
   /** Decimal string. */
   total_amount: string | null;
   gl_account: string | null;
@@ -227,12 +250,18 @@ export interface SapRejection {
   /** The picked category, else the GL account's name, else the document type. */
   category_label: string;
   category_source: 'app' | 'gl' | 'document';
+  /** Null only when SAP could not be asked. */
+  now: SapRejectionNow | null;
+  company_code: string;
+  company_name: string;
 }
 
 export interface SapRejectionsByOriginator {
   originator_code: string | null;
   originator_name: string | null;
   count: number;
+  /** Of those, how many nobody has corrected yet. */
+  still_rejected: number;
   /** Decimal string. */
   amount: string;
 }
@@ -240,6 +269,9 @@ export interface SapRejectionsByOriginator {
 export interface SapRejectionHistory {
   date_from: string;
   date_to: string;
+  companies: { code: string; name: string }[];
+  /** Companies SAP could not answer for: their rejections are missing. */
+  unavailable: { code: string; name: string }[];
   results: SapRejection[];
   count: number;
   truncated: boolean;

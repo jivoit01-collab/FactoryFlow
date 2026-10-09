@@ -23,6 +23,10 @@ export function listParams(
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === null) continue;
     if (typeof value === 'string' && value.trim() === '') continue;
+    if (typeof value === 'boolean') {
+      if (value) params[key] = 'true';
+      continue;
+    }
     params[key] = typeof value === 'string' ? value.trim() : value;
   }
   return params;

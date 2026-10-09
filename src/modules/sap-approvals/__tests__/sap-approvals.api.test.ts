@@ -111,6 +111,12 @@ describe('the decision payload', () => {
     expect(get).toHaveBeenCalledWith('/sap-approvals/rejections/', {
       params: { date_from: '2026-10-01' },
     });
+    await sapApprovalsApi.rejections({ all_companies: true });
+    expect(get).toHaveBeenLastCalledWith('/sap-approvals/rejections/', {
+      params: { all_companies: 'true' },
+    });
+    await sapApprovalsApi.rejections({ all_companies: false });
+    expect(get).toHaveBeenLastCalledWith('/sap-approvals/rejections/', { params: {} });
   });
 
   it('confirms a duplicate only when asked to', () => {
