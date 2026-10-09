@@ -205,7 +205,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   <NavLink
                     to={item.path}
                     className={cn(
-                      'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors',
                       isActive
                         ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
                         : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -242,9 +242,9 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                         key={child.path}
                         to={child.path}
                         className={cn(
-                          'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                          'flex items-center rounded-md px-3 py-2 text-[15px] font-medium transition-colors',
                           childIsActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                            ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                             : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                         )}
                       >
@@ -265,7 +265,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               to={item.path}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors',
                   isActive
                     ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                     : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',

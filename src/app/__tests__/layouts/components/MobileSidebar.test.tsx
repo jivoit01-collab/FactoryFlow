@@ -99,10 +99,12 @@ describe('MobileSidebar', () => {
     expect(content).toContain('<Sheet open={isOpen} onOpenChange={onClose}>');
   });
 
-  it('renders SheetContent with side="left" and w-64 class', () => {
+  it('renders SheetContent with side="left" and the drawer width', () => {
     const content = readSource();
     expect(content).toContain('side="left"');
-    expect(content).toContain('w-64');
+    // Matches SIDEBAR_CONFIG.expandedWidth, so the drawer and the rail it
+    // stands in for are the same width.
+    expect(content).toContain('w-[300px]');
   });
 
   it('renders logo in SheetHeader', () => {

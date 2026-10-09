@@ -53,8 +53,8 @@ describe('SIDEBAR_CONFIG', () => {
     expect(SIDEBAR_CONFIG.collapsedWidth).toBe(64);
   });
 
-  it('expandedWidth is 280', () => {
-    expect(SIDEBAR_CONFIG.expandedWidth).toBe(280);
+  it('expandedWidth is 300', () => {
+    expect(SIDEBAR_CONFIG.expandedWidth).toBe(300);
   });
 
   it('mobileBreakpoint is 768', () => {

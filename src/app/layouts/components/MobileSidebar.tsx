@@ -118,7 +118,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="left"
-        className="w-64 p-0 flex flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground [color-scheme:dark]"
+        className="w-[300px] p-0 flex flex-col overflow-hidden border-sidebar-border bg-sidebar text-sidebar-foreground [color-scheme:dark]"
       >
         <SheetHeader className="border-b border-sidebar-border p-4">
           <SheetTitle className="flex items-center gap-2">
@@ -152,7 +152,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                       to={item.path}
                       onClick={onClose}
                       className={cn(
-                        'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        'flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors',
                         isActive
                           ? 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground'
                           : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -190,9 +190,9 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                           to={child.path}
                           onClick={onClose}
                           className={cn(
-                            'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
+                            'flex items-center rounded-md px-3 py-2 text-[15px] font-medium transition-colors',
                             childIsActive
-                              ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+                              ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                               : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                           )}
                         >
@@ -213,7 +213,7 @@ function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-base font-semibold transition-colors',
                     isActive
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                       : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
