@@ -43,6 +43,7 @@ import {
 import { OPERATIONS_REPORT_VIEW_PERMISSIONS } from './operations-report/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from './plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from './production-control/constants';
+import { PRODUCTION_DISPATCH_VIEW_PERMISSIONS } from './production-dispatch/constants';
 import { TOMORROW_RUN_VIEW_PERMISSIONS } from './tomorrow-run/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from './warehouse-control/constants';
 
@@ -103,6 +104,9 @@ const AdminControlDashboardPage = lazy(
   () => import('./admin-control/pages/AdminControlDashboardPage'),
 );
 const AmountsDashboardPage = lazy(() => import('./amounts/pages/AmountsDashboardPage'));
+const ProductionDispatchPage = lazy(
+  () => import('./production-dispatch/pages/ProductionDispatchPage'),
+);
 const AmountsOwnersPage = lazy(() => import('./amounts/pages/AmountsOwnersPage'));
 const HrBoardDashboardPage = lazy(() => import('./hr-board/pages/HrBoardDashboardPage'));
 const AccountsDashboardPage = lazy(
@@ -163,6 +167,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         ...OPERATIONS_REPORT_VIEW_PERMISSIONS,
         // The Amounts board has a right of its own that nothing above covers.
         ...AMOUNTS_BOARD_VIEW_PERMISSIONS,
+        // So does Production & Dispatch.
+        ...PRODUCTION_DISPATCH_VIEW_PERMISSIONS,
       ],
     },
     {
@@ -394,6 +400,18 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
       breadcrumb: { label: 'Operations Report' },
+    },
+    {
+      // Oil's finished goods made against dispatched, per SKU and day, in
+      // boxes, litres, tons and pallets, with FAST / SLOW movement -- the
+      // "Production & Dispatch- PALLET" workbook made live for any range.
+      // Read from SAP by factory_app's `production_dispatch`, behind a right
+      // of its own.
+      path: '/dashboards/production-dispatch',
+      element: <ProductionDispatchPage />,
+      layout: 'main',
+      permissions: PRODUCTION_DISPATCH_VIEW_PERMISSIONS,
+      breadcrumb: { label: 'Production & Dispatch' },
     },
     {
       // One board folding four screens: non-moving stock, pallet space, today's
@@ -739,6 +757,8 @@ export const dashboardsModuleConfig: ModuleConfig = {
         // board, so a login granted only that would find the whole Dashboards
         // menu hidden without this spread.
         ...OPERATIONS_REPORT_VIEW_PERMISSIONS,
+        // And Production & Dispatch, whose right is on no other page.
+        ...PRODUCTION_DISPATCH_VIEW_PERMISSIONS,
         // The builder. Somebody granted only the build right holds nothing
         // else under any module, so without this the whole Dashboards menu is
         // hidden from the very people it was granted to. Note this does NOT
@@ -804,6 +824,13 @@ export const dashboardsModuleConfig: ModuleConfig = {
           path: '/dashboards/operations-report',
           title: 'Operations Report',
           permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
+        },
+        {
+          // Beside the Operations Report: the same plant's output, against
+          // what was sold, in pallets.
+          path: '/dashboards/production-dispatch',
+          title: 'Production & Dispatch',
+          permissions: PRODUCTION_DISPATCH_VIEW_PERMISSIONS,
         },
         {
           path: '/dashboards/hr-board',

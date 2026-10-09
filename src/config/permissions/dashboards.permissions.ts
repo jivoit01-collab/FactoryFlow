@@ -70,6 +70,12 @@ export const DASHBOARDS_PERMISSIONS = {
   VIEW_AMOUNTS_BOARD: 'amounts_board.can_view_amounts_board',
   /** Choosing whom each plant's RM / PM / FG tile names. */
   MANAGE_STOCK_OWNERS: 'amounts_board.can_manage_stock_owners',
+  /**
+   * Production & Dispatch: Oil's production against its dispatch per SKU and
+   * day, in pallets. A right of its own, created by the backend's
+   * production_dispatch migration -- it shows SKU-level sales volumes.
+   */
+  VIEW_PRODUCTION_DISPATCH: 'production_dispatch.can_view_production_dispatch',
 } as const;
 
 export type DashboardsPermission =

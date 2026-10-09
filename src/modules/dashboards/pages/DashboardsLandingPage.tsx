@@ -64,6 +64,7 @@ import {
 import { OPERATIONS_REPORT_VIEW_PERMISSIONS } from '../operations-report/constants';
 import { PLANT_BOARD_VIEW_PERMISSIONS } from '../plant-board/constants';
 import { PRODUCTION_CONTROL_VIEW_PERMISSIONS } from '../production-control/constants';
+import { PRODUCTION_DISPATCH_VIEW_PERMISSIONS } from '../production-dispatch/constants';
 import { WAREHOUSE_CONTROL_VIEW_PERMISSIONS } from '../warehouse-control/constants';
 
 interface DashboardsModuleCard {
@@ -135,6 +136,14 @@ const dashboardsModules: DashboardsModuleCard[] = [
     route: '/dashboards/operations-report',
     accent: 'indigo',
     permissions: OPERATIONS_REPORT_VIEW_PERMISSIONS,
+  },
+  {
+    // Oil's output against what was sold, per SKU and day, in pallets.
+    title: 'Production & Dispatch',
+    icon: <Boxes className="h-5 w-5" />,
+    route: '/dashboards/production-dispatch',
+    accent: 'indigo',
+    permissions: PRODUCTION_DISPATCH_VIEW_PERMISSIONS,
   },
   {
     title: 'HR Control',
