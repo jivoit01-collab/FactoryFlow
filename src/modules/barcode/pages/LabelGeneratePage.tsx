@@ -76,8 +76,8 @@ export default function LabelGeneratePage() {
   const [itemSearch, setItemSearch] = useState('');
   const [scannedPalletSearch, setScannedPalletSearch] = useState('');
   const [selectedPallet, setSelectedPallet] = useState<Pallet | null>(null);
-  // The pallet the labels below were printed on; the picker itself is cleared
-  // once a print goes through, ready for the next empty pallet.
+  // The pallet the labels below were printed on. It stays selected in the
+  // picker after the print, locked, until the next empty pallet is picked.
   const [printedPallet, setPrintedPallet] = useState<Pallet | null>(null);
   const [selectedItem, setSelectedItem] = useState<OitmItemRow | null>(null);
   const [generatedBoxes, setGeneratedBoxes] = useState<Box[]>([]);
@@ -221,8 +221,8 @@ export default function LabelGeneratePage() {
   };
 
   // A pallet with labels already linked can never be printed onto again. The
-  // list only offers empty pallets, but until it refetches the one just
-  // printed can still be picked from it with a stale box_count of 0.
+  // one just printed stays selected with a stale box_count of 0, and until the
+  // list refetches it can be picked from it that way too.
   const palletAlreadyPrinted =
     !!selectedPallet &&
     (selectedPallet.box_count > 0 || selectedPallet.id === printedPallet?.id);
@@ -273,7 +273,6 @@ export default function LabelGeneratePage() {
       setGeneratedBoxes(boxes);
       setLabelDataList(labels);
       setPrintedPallet(selectedPallet);
-      setSelectedPallet(null);
       toast.success('Printing 2 pallet labels first, then item labels linked to the pallet.');
       setTimeout(() => handlePrint(), 50);
     } catch (err: unknown) {
@@ -288,10 +287,7 @@ export default function LabelGeneratePage() {
     void runGenerateAndPrint();
   };
 
-  const startFreshPallet = () => {
-    setSelectedPallet(null);
-    setGeneratedBoxes([]);
-  };
+  const startFreshPallet = () => setSelectedPallet(null);
 
   return (
     <div className="space-y-6">
@@ -656,11 +652,9 @@ export default function LabelGeneratePage() {
                 : 'Generate Linked Labels & Print'}
             </Button>
             {palletAlreadyPrinted && (
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertTriangle className="h-4 w-4" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span>
-                  {selectedPallet?.pallet_id} is already printed. Start a fresh pallet to print
-                  more.
+                  {selectedPallet?.pallet_id} printed. Pick the next empty pallet to print more.
                 </span>
                 <Button variant="outline" size="sm" onClick={startFreshPallet}>
                   Start a fresh pallet
