@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 import type { ExpenseClaim } from '@/modules/accounts/api';
 import { useExpenseClaims } from '@/modules/accounts/api';
+import { ExpenseAttachmentLinks } from '@/modules/accounts/components/ExpenseAttachmentLinks';
 import { ExpenseFormDialog } from '@/modules/accounts/components/ExpenseFormDialog';
 import { ExpenseGLCell } from '@/modules/accounts/components/ExpenseGLCell';
 import { expenseMoney } from '@/modules/accounts/components/expenseStatus';
@@ -83,6 +84,7 @@ export default function ExpenseEntryPage() {
                     </td>
                     <td className="max-w-[320px] px-3 py-2">
                       {row.comment}
+                      <ExpenseAttachmentLinks attachments={row.attachments ?? []} />
                       {row.status === 'REJECTED' && row.decision_note && (
                         <p className="mt-1 text-xs text-rose-700 dark:text-rose-400">
                           {row.decision_note}

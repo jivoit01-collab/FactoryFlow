@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/core/auth/hooks/useAuth';
 import type { ExpenseClaim, ExpenseClaimStatus } from '@/modules/accounts/api';
 import { useDecideExpense, useExpenseClaims } from '@/modules/accounts/api';
+import { ExpenseAttachmentLinks } from '@/modules/accounts/components/ExpenseAttachmentLinks';
 import { ExpenseGLCell } from '@/modules/accounts/components/ExpenseGLCell';
 import { EXPENSE_STATUS_LABEL, expenseMoney } from '@/modules/accounts/components/expenseStatus';
 import { ExpenseStatusBadge } from '@/modules/accounts/components/ExpenseStatusBadge';
@@ -135,6 +136,7 @@ export default function ExpenseApprovalPage() {
                     </td>
                     <td className="max-w-[320px] px-3 py-2">
                       {row.comment}
+                      <ExpenseAttachmentLinks attachments={row.attachments ?? []} />
                       {row.status === 'REJECTED' && row.decision_note && (
                         <p className="mt-1 text-xs text-rose-700 dark:text-rose-400">
                           {row.decision_note}

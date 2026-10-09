@@ -2149,6 +2149,8 @@ export const API_ENDPOINTS = {
     CLAIMS: '/expense-claims/claims/',
     DETAIL: (claimId: number) => `/expense-claims/claims/${claimId}/`,
     DECIDE: (claimId: number) => `/expense-claims/claims/${claimId}/decide/`,
+    ATTACHMENTS: (claimId: number) => `/expense-claims/claims/${claimId}/attachments/`,
+    ATTACHMENT_DETAIL: (attachmentId: number) => `/expense-claims/attachments/${attachmentId}/`,
     COMPANIES: '/expense-claims/companies/',
     BUDGETS: '/expense-claims/budgets/',
     GL_ACCOUNTS: '/expense-claims/gl-accounts/',

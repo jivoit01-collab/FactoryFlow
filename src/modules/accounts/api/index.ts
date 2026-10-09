@@ -75,6 +75,8 @@ export {
   useUpdateCashEntry,
 } from './cashBook.queries';
 export {
+  type ExpenseAttachment,
+  type ExpenseAttachResult,
   type ExpenseBudget,
   type ExpenseClaim,
   type ExpenseClaimList,
@@ -87,10 +89,12 @@ export {
 } from './expenseClaims.api';
 export {
   EXPENSE_CLAIM_QUERY_KEYS,
+  useAttachToExpense,
   useDecideExpense,
   useExpenseBudgets,
   useExpenseClaims,
   useExpenseCompanies,
+  useRemoveExpenseAttachment,
   useSapGLAccounts,
   useSubmitExpense,
   useUpdateExpense,

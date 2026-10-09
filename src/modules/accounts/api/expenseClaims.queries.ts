@@ -80,6 +80,18 @@ export function useUpdateExpense() {
   );
 }
 
+export function useAttachToExpense() {
+  return useExpenseClaimMutation((vars: { id: number; files: File[] }) =>
+    expenseClaimsApi.attach(vars.id, vars.files),
+  );
+}
+
+export function useRemoveExpenseAttachment() {
+  return useExpenseClaimMutation((attachmentId: number) =>
+    expenseClaimsApi.removeAttachment(attachmentId),
+  );
+}
+
 export function useDecideExpense() {
   return useExpenseClaimMutation((vars: { id: number; approve: boolean; note?: string }) =>
     expenseClaimsApi.decide(vars.id, vars.approve, vars.note ?? ''),

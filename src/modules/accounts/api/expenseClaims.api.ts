@@ -3,6 +3,20 @@ import { apiClient } from '@/core/api';
 
 export type ExpenseClaimStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
+/** A bill, receipt or photograph behind an expense. */
+export interface ExpenseAttachment {
+  id: number;
+  original_filename: string;
+  size_bytes: number;
+  url: string | null;
+  uploaded_at: string;
+}
+
+export interface ExpenseAttachResult {
+  attached: ExpenseAttachment[];
+  refused: { filename: string; reason: unknown }[];
+}
+
 export interface ExpenseClaim {
   id: number;
   /** The page's "Branch": the company. */
@@ -18,6 +32,7 @@ export interface ExpenseClaim {
   gl_description: string;
   comment: string;
   amount: string;
+  attachments: ExpenseAttachment[];
   status: ExpenseClaimStatus;
   status_label: string;
   submitted_by: number | null;
@@ -95,6 +110,28 @@ export const expenseClaimsApi = {
       payload,
     );
     return data;
+  },
+
+  /** Bills on an expense, several at once. Each is checked on its own. */
+  async attach(claimId: number, files: File[]): Promise<ExpenseAttachResult> {
+    const form = new FormData();
+    for (const file of files) form.append('files', file);
+    const { data } = await apiClient.post<ExpenseAttachResult>(
+      API_ENDPOINTS.EXPENSE_CLAIMS.ATTACHMENTS(claimId),
+      form,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        // The form says what went wrong and that the expense itself is saved.
+        suppressErrorToast: true,
+      },
+    );
+    return data;
+  },
+
+  async removeAttachment(attachmentId: number): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.EXPENSE_CLAIMS.ATTACHMENT_DETAIL(attachmentId), {
+      suppressErrorToast: true,
+    });
   },
 
   async decide(claimId: number, approve: boolean, note = ''): Promise<ExpenseClaim> {
