@@ -35,6 +35,8 @@ const FACT_COLUMNS: Record<string, string> = {
   invoice_rate: 'Bill %',
   grpo_price: 'GRPO rate',
   po_price: 'PO rate',
+  grpo_qty: 'GRPO qty',
+  invoice_qty: 'Bill qty',
   received: 'Received',
   po_open: 'Open on PO',
   allowed: 'Allowed (+10%)',
@@ -229,7 +231,7 @@ function CheckRow({
   );
 }
 
-/** The nine checks on a bill, in order, each with what it was judged on. */
+/** The ten checks on a bill, in order, each with what it was judged on. */
 export function AuditChecklist({
   entryId,
   checks,

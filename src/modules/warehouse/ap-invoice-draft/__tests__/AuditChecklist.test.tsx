@@ -92,6 +92,33 @@ describe('AuditChecklist', () => {
     expect(screen.getByText('3.3217')).toBeInTheDocument();
   });
 
+  it('sets the GRPO qty beside the bill qty', () => {
+    const qty = check({
+      key: 'invoice_qty',
+      label: 'Invoice qty matches GRPO qty',
+      status: 'FAIL',
+      effective_status: 'FAIL',
+      detail: 'Quantity differs. line 2 (PM0000825) at 37.88: GRPO 2300, bill 2334.',
+      facts: {
+        lines: [
+          {
+            line: '2',
+            item_code: 'PM0000825',
+            grpo_price: '37.88',
+            grpo_qty: '2300',
+            invoice_qty: '2334',
+          },
+        ],
+      },
+    });
+    render(<AuditChecklist entryId={7} checks={[qty]} canReview={false} />);
+    fireEvent.click(screen.getByRole('button', { name: /show details/i }));
+    const headings = screen.getAllByRole('columnheader').map((th) => th.textContent);
+    expect(headings).toEqual(['Line', 'Item', 'GRPO rate', 'GRPO qty', 'Bill qty']);
+    expect(screen.getByText('2300')).toBeInTheDocument();
+    expect(screen.getByText('2334')).toBeInTheDocument();
+  });
+
   it('offers no decision to someone who cannot review', () => {
     render(<AuditChecklist entryId={7} checks={CHECKS} canReview={false} />);
     expect(screen.queryByRole('button', { name: 'Not OK' })).not.toBeInTheDocument();
