@@ -221,7 +221,7 @@ export {
   type ARInvoicePermission,
 } from './ar-invoice.permissions';
 
-// A/P Invoice Draft Module (vendor bills into SAP against their GRPO; nav under Warehouse)
+// A/P Invoice Draft Module (vendor bills into SAP against their GRPO, audited; nav under Warehouse)
 export {
   AP_INVOICE_DRAFT_ACCESS,
   AP_INVOICE_DRAFT_MODULE_PREFIX,

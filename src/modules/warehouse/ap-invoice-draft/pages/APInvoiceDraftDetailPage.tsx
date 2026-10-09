@@ -1,16 +1,26 @@
-import { ExternalLink, FileCheck2, FileText, Send } from 'lucide-react';
+import {
+  ExternalLink,
+  FileCheck2,
+  FileText,
+  Loader2,
+  RefreshCw,
+  ScanText,
+  Send,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { AP_INVOICE_DRAFT_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
-import { PageHeader } from '@/shared/components/page';
+import { PageHeader, PageSection, StatusPill } from '@/shared/components/page';
 import { Button, Card, CardContent } from '@/shared/components/ui';
 import { formatDateTimeShort, formatDay, getErrorMessage, resolveFileUrl } from '@/shared/utils';
 
-import { useAPInvoiceDraft, useSendToSap } from '../api';
+import { useAPInvoiceDraft, useReadInvoice, useRecheck, useSendToSap } from '../api';
+import { AuditChecklist } from '../components/AuditChecklist';
 import { SapDraftPill } from '../components/SapDraftPill';
+import type { APInvoiceDraftDetail, InvoiceData } from '../types';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -38,15 +48,100 @@ function rupees(value: string | number | null | undefined) {
     : `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
-/** One bill: its GRPO and the A/P invoice draft SAP holds for it. */
+function rateCheckText(marks: InvoiceData['rate_check']) {
+  if (!marks?.found) return 'Stamp not found on the scan';
+  if (marks.signed === false) return 'Blank';
+  if (marks.signed === true) return marks.text ? `Signed — “${marks.text}”` : 'Signed';
+  return 'Faint marks';
+}
+
+function BillPanel({ entry }: { entry: APInvoiceDraftDetail }) {
+  const bill = entry.invoice_data ?? {};
+  const fileUrl = resolveFileUrl(entry.invoice_file_url);
+  const rows = bill.rows ?? [];
+  return (
+    <Panel title="The bill">
+      {fileUrl && (
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex min-w-0 items-center gap-1 text-sm hover:underline"
+        >
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          <span className="truncate">{entry.invoice_filename || 'Open the bill'}</span>
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
+      {entry.invoice_read_status === 'READING' && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Reading the bill…
+        </p>
+      )}
+      {entry.invoice_read_status === 'PENDING' && (
+        <p className="text-sm text-muted-foreground">Not read yet.</p>
+      )}
+      {entry.invoice_read_status === 'FAILED' && (
+        <p role="alert" className="text-sm text-destructive">
+          {entry.invoice_read_error || 'The bill could not be read.'}
+        </p>
+      )}
+      {entry.invoice_read_status === 'READ' && (
+        <>
+          <dl className="grid grid-cols-2 gap-3">
+            <Field label="PO no(s). on the bill">{(bill.po_numbers ?? []).join(', ')}</Field>
+            <Field label="Gate stamp date">{bill.gate_stamp_date}</Field>
+            <Field label="Rate Check line">{rateCheckText(bill.rate_check)}</Field>
+            <Field label="Pages read">{bill.pages ? String(bill.pages) : ''}</Field>
+          </dl>
+          {rows.length > 0 && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                Text read off the bill ({rows.length} lines)
+              </summary>
+              <div className="mt-2 max-h-72 overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-xs leading-5">
+                {rows.map((row, index) => (
+                  <div key={index} className="whitespace-pre-wrap break-words">
+                    {row.text}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Read by {entry.invoice_read_model || 'OCR'}
+            {entry.invoice_read_at ? `, ${formatDateTimeShort(entry.invoice_read_at)}` : ''}.
+            Machine reading of a scan: check anything that looks wrong against the bill.
+          </p>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/** One bill: its GRPO, its SAP draft, what was read off it, and its checklist. */
 export default function APInvoiceDraftDetailPage() {
   const { entryId } = useParams<{ entryId: string }>();
   const id = Number(entryId) || null;
   const { hasPermission } = usePermission();
   const canCreate = hasPermission(AP_INVOICE_DRAFT_PERMISSIONS.CREATE);
+  const canReview = hasPermission(AP_INVOICE_DRAFT_PERMISSIONS.REVIEW);
 
   const { data: entry, isLoading, isError } = useAPInvoiceDraft(id);
+  const readInvoice = useReadInvoice();
   const sendToSap = useSendToSap();
+  const recheck = useRecheck();
+
+  const run = (
+    action: typeof readInvoice | typeof sendToSap | typeof recheck,
+    done: (result: APInvoiceDraftDetail) => string,
+  ) => {
+    if (!entry) return;
+    action.mutate(entry.id, {
+      onSuccess: (result) => toast.success(done(result)),
+      onError: (error) => toast.error(getErrorMessage(error, 'That did not work. Try again.')),
+    });
+  };
 
   if (isLoading) {
     return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
@@ -55,17 +150,8 @@ export default function APInvoiceDraftDetailPage() {
     return <p className="p-6 text-sm text-destructive">This entry could not be loaded.</p>;
   }
 
-  const fileUrl = resolveFileUrl(entry.invoice_file_url);
-  const retry = () =>
-    sendToSap.mutate(entry.id, {
-      onSuccess: (result) =>
-        toast.success(
-          result.sap_status === 'CREATED'
-            ? `Draft ${result.sap_draft_entry} is in SAP`
-            : 'SAP did not take it',
-        ),
-      onError: (error) => toast.error(getErrorMessage(error, 'That did not work. Try again.')),
-    });
+  const reading = entry.invoice_read_status === 'READING' || readInvoice.isPending;
+  const counts = entry.check_counts;
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -76,7 +162,30 @@ export default function APInvoiceDraftDetailPage() {
         accent="teal"
         backTo="/warehouse/ap-invoice-drafts"
         backLabel="A/P Invoice Drafts"
-      />
+      >
+        <Button
+          variant="outline"
+          onClick={() => run(recheck, () => 'Checks run again')}
+          disabled={recheck.isPending || reading}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Re-run checks
+        </Button>
+        {canCreate && (
+          <Button
+            variant="outline"
+            onClick={() =>
+              run(readInvoice, (result) =>
+                result.invoice_read_status === 'READ' ? 'Bill read' : 'The bill could not be read',
+              )
+            }
+            disabled={reading}
+          >
+            <ScanText className="mr-2 h-4 w-4" />
+            {reading ? 'Reading…' : 'Read the bill again'}
+          </Button>
+        )}
+      </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="GRPO">
@@ -88,6 +197,7 @@ export default function APInvoiceDraftDetailPage() {
             </Field>
             <Field label="Bill no. on the GRPO">{entry.grpo_reference}</Field>
             <Field label="Total">{rupees(entry.grpo_total)}</Field>
+            <Field label="Gate entry">{entry.gate_entry_no}</Field>
           </dl>
         </Panel>
 
@@ -106,7 +216,17 @@ export default function APInvoiceDraftDetailPage() {
                 {entry.sap_error}
               </p>
               {canCreate && (
-                <Button size="sm" onClick={retry} disabled={sendToSap.isPending}>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    run(sendToSap, (result) =>
+                      result.sap_status === 'CREATED'
+                        ? `Draft ${result.sap_draft_entry} is in SAP`
+                        : 'SAP did not take it',
+                    )
+                  }
+                  disabled={sendToSap.isPending}
+                >
                   <Send className="mr-2 h-4 w-4" />
                   {sendToSap.isPending ? 'Sending…' : 'Create in SAP'}
                 </Button>
@@ -121,23 +241,29 @@ export default function APInvoiceDraftDetailPage() {
           )}
         </Panel>
 
-        <Panel title="The bill">
-          {fileUrl ? (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-w-0 items-center gap-1 text-sm hover:underline"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate">{entry.invoice_filename || 'Open the bill'}</span>
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : (
-            <p className="text-sm text-muted-foreground">No file.</p>
-          )}
-        </Panel>
+        <BillPanel entry={entry} />
       </div>
+
+      <PageSection
+        title="Audit checklist"
+        description={
+          entry.checks_run_at ? `Checked ${formatDateTimeShort(entry.checks_run_at)}` : undefined
+        }
+        actions={
+          <div className="flex flex-wrap gap-1">
+            <StatusPill tone="done">{counts.PASS} OK</StatusPill>
+            <StatusPill tone="blocked">{counts.FAIL} not OK</StatusPill>
+            <StatusPill tone="warn">{counts.REVIEW} to look at</StatusPill>
+            {counts.UNKNOWN > 0 && (
+              <StatusPill tone="neutral">{counts.UNKNOWN} not checked</StatusPill>
+            )}
+          </div>
+        }
+      >
+        <Card>
+          <AuditChecklist entryId={entry.id} checks={entry.checks} canReview={canReview} />
+        </Card>
+      </PageSection>
     </div>
   );
 }

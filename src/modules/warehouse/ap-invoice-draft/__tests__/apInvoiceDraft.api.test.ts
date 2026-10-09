@@ -43,11 +43,22 @@ describe('A/P invoice draft API', () => {
     expect(config.timeout).toBeGreaterThanOrEqual(60_000);
   });
 
-  it('tries the SAP draft again with an empty body, and gives it time', async () => {
-    await apInvoiceDraftApi.sendToSap(7);
+  it('gives reading the bill longer than the default 30 s', async () => {
+    await apInvoiceDraftApi.readInvoice(7);
     const [url, body, config] = post.mock.calls[0];
-    expect(url).toBe('/ap-invoice-drafts/7/send-to-sap/');
+    expect(url).toBe('/ap-invoice-drafts/7/read-invoice/');
     expect(body).toBeNull();
-    expect(config.timeout).toBeGreaterThanOrEqual(60_000);
+    expect(config.timeout).toBeGreaterThan(30_000);
+  });
+
+  it('posts a decision on one check by its key', async () => {
+    await apInvoiceDraftApi.reviewCheck(7, 'rate_check_signature', {
+      decision: 'OK',
+      remark: 'seen',
+    });
+    expect(post).toHaveBeenCalledWith('/ap-invoice-drafts/7/checks/rate_check_signature/review/', {
+      decision: 'OK',
+      remark: 'seen',
+    });
   });
 });

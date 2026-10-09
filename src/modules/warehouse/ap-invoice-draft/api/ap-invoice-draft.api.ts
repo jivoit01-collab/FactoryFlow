@@ -2,16 +2,20 @@ import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
 import type {
+  APInvoiceDraftCheck,
   APInvoiceDraftDetail,
   APInvoiceDraftListItem,
   CreateAPInvoiceDraftPayload,
   OpenGRPO,
+  ReviewCheckPayload,
 } from '../types';
 
 const ENDPOINTS = API_ENDPOINTS.AP_INVOICE_DRAFT;
 
 /** Making an entry makes the SAP draft in the same request. */
 const SAP_DRAFT_TIMEOUT_MS = 90_000;
+/** OCR reads a page in about five seconds; a long PDF takes longer. */
+const READ_INVOICE_TIMEOUT_MS = 120_000;
 
 export const apInvoiceDraftApi = {
   async list(params?: {
@@ -48,10 +52,36 @@ export const apInvoiceDraftApi = {
     return response.data;
   },
 
+  async readInvoice(id: number): Promise<APInvoiceDraftDetail> {
+    const response = await apiClient.post<APInvoiceDraftDetail>(ENDPOINTS.READ_INVOICE(id), null, {
+      timeout: READ_INVOICE_TIMEOUT_MS,
+    });
+    return response.data;
+  },
+
   async sendToSap(id: number): Promise<APInvoiceDraftDetail> {
     const response = await apiClient.post<APInvoiceDraftDetail>(ENDPOINTS.SEND_TO_SAP(id), null, {
       timeout: SAP_DRAFT_TIMEOUT_MS,
     });
+    return response.data;
+  },
+
+  async recheck(id: number): Promise<APInvoiceDraftDetail> {
+    const response = await apiClient.post<APInvoiceDraftDetail>(ENDPOINTS.RECHECK(id), null, {
+      timeout: SAP_DRAFT_TIMEOUT_MS,
+    });
+    return response.data;
+  },
+
+  async reviewCheck(
+    id: number,
+    key: string,
+    payload: ReviewCheckPayload,
+  ): Promise<APInvoiceDraftCheck> {
+    const response = await apiClient.post<APInvoiceDraftCheck>(
+      ENDPOINTS.REVIEW_CHECK(id, key),
+      payload,
+    );
     return response.data;
   },
 };

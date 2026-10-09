@@ -398,8 +398,8 @@ export const warehouseModuleConfig: ModuleConfig = {
         ...creditNoteApprovalNavChildren,
         // A/R invoice submodule — nested under the Warehouse group
         ...arInvoiceNavChildren,
-        // A/P invoice drafts — the vendor's bill into SAP against its GRPO;
-        // beside the A/R side.
+        // A/P invoice drafts — the vendor's bill into SAP against its GRPO,
+        // audited; beside the A/R side.
         ...apInvoiceDraftNavChildren,
       ],
     },

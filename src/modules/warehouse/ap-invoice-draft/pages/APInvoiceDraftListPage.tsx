@@ -9,6 +9,7 @@ import {
   FilterField,
   PageHeader,
   ROW_CLASSES,
+  StatusPill,
   TABLE_CLASSES,
   TableCard,
   TableEmpty,
@@ -31,6 +32,30 @@ function rupees(value: string | null) {
     : `₹${Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
+function CheckSummary({ entry }: { entry: APInvoiceDraftListItem }) {
+  const { PASS, FAIL, REVIEW, UNKNOWN } = entry.check_counts;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {FAIL > 0 && (
+        <StatusPill tone="blocked" dot>
+          {FAIL} not OK
+        </StatusPill>
+      )}
+      {REVIEW > 0 && (
+        <StatusPill tone="warn" dot>
+          {REVIEW} to look at
+        </StatusPill>
+      )}
+      {UNKNOWN > 0 && <StatusPill tone="neutral">{UNKNOWN} not checked</StatusPill>}
+      {FAIL + REVIEW + UNKNOWN === 0 && (
+        <StatusPill tone="done" dot>
+          All {PASS} OK
+        </StatusPill>
+      )}
+    </div>
+  );
+}
+
 /** Vendor bills put into SAP as A/P invoice drafts against their GRPOs. */
 export default function APInvoiceDraftListPage() {
   const navigate = useNavigate();
@@ -50,7 +75,7 @@ export default function APInvoiceDraftListPage() {
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader
         title="A/P Invoice Drafts"
-        description="Vendor bills put into SAP as A/P invoice drafts against their GRPO."
+        description="Vendor bills put into SAP against their GRPO, with the audit checklist for each."
         icon={FileCheck2}
         accent="teal"
         backTo="/warehouse"
@@ -85,12 +110,13 @@ export default function APInvoiceDraftListPage() {
               <Th>Bill no.</Th>
               <Th align="right">GRPO total</Th>
               <Th>SAP draft</Th>
+              <Th>Checks</Th>
             </tr>
           </thead>
           <tbody>
             {!entries.length ? (
               <TableEmpty
-                colSpan={6}
+                colSpan={7}
                 message={isFetching ? 'Loading…' : 'No A/P invoice drafts yet'}
                 icon={FileCheck2}
               />
@@ -123,6 +149,9 @@ export default function APInvoiceDraftListPage() {
                   <Td numeric>{rupees(entry.grpo_total)}</Td>
                   <Td>
                     <SapDraftPill entry={entry} />
+                  </Td>
+                  <Td>
+                    <CheckSummary entry={entry} />
                   </Td>
                 </tr>
               ))

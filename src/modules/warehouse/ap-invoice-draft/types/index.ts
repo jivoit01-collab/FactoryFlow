@@ -1,6 +1,10 @@
-/** A/P invoice drafts — a vendor's bill put into SAP against its GRPO. */
+/** A/P invoice drafts — a vendor's bill put into SAP against its GRPO, audited. */
 
 export type SapDraftStatus = 'PENDING' | 'CREATED' | 'FAILED';
+export type InvoiceReadStatus = 'PENDING' | 'READING' | 'READ' | 'FAILED';
+/** The app's finding: OK, Not OK, a person has to look, or nothing to judge yet. */
+export type CheckStatus = 'PASS' | 'FAIL' | 'REVIEW' | 'UNKNOWN';
+export type ReviewDecision = '' | 'OK' | 'NOT_OK';
 
 /** A GRPO a bill can be entered against (open, material). */
 export interface OpenGRPO {
@@ -20,6 +24,23 @@ export interface OpenGRPO {
   entry_no: string;
 }
 
+export interface APInvoiceDraftCheck {
+  key: string;
+  position: number;
+  label: string;
+  status: CheckStatus;
+  detail: string;
+  facts: Record<string, unknown>;
+  review_decision: ReviewDecision;
+  review_remark: string;
+  reviewed_by_name: string;
+  reviewed_at: string | null;
+  /** A person's decision when there is one, else the app's finding. */
+  effective_status: CheckStatus;
+}
+
+export type CheckCounts = Record<CheckStatus, number>;
+
 export interface APInvoiceDraftListItem {
   id: number;
   entry_no: string;
@@ -34,20 +55,48 @@ export interface APInvoiceDraftListItem {
   sap_status: SapDraftStatus;
   sap_draft_entry: number | null;
   sap_draft_adopted: boolean;
+  invoice_read_status: InvoiceReadStatus;
+  check_counts: CheckCounts;
   created_by_name: string;
   created_at: string;
+}
+
+/** What OCR read off the bill (on the server). Every field may be missing. */
+export interface InvoiceData {
+  pages?: number;
+  /** The printed text, one entry per line of the page. */
+  rows?: { page: number; y: number; text: string }[];
+  /** JIVO PO numbers printed anywhere on the bill. */
+  po_numbers?: string[];
+  /** The date handwritten in the gate's receiving stamp, as written. */
+  gate_stamp_date?: string;
+  /** The Rate Check line: ink left once the stamp's own rule is erased. */
+  rate_check?: { found: boolean; ink?: number | null; signed?: boolean | null; text?: string };
 }
 
 export interface APInvoiceDraftDetail extends APInvoiceDraftListItem {
   invoice_file_url: string;
   invoice_filename: string;
+  invoice_data: InvoiceData;
+  invoice_read_error: string;
+  invoice_read_model: string;
+  invoice_read_at: string | null;
   sap_error: string;
   sap_attachment_entry: number | null;
   sap_attachment_error: string;
   sap_created_at: string | null;
+  grpo_posting: number | null;
+  gate_entry_no: string;
+  checks: APInvoiceDraftCheck[];
+  checks_run_at: string | null;
 }
 
 export interface CreateAPInvoiceDraftPayload {
   grpo_doc_entry: number;
   invoice_file: File;
+}
+
+export interface ReviewCheckPayload {
+  decision: ReviewDecision;
+  remark?: string;
 }

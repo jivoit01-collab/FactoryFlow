@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { APInvoiceDraftDetail, CreateAPInvoiceDraftPayload } from '../types';
+import type {
+  APInvoiceDraftDetail,
+  CreateAPInvoiceDraftPayload,
+  ReviewCheckPayload,
+} from '../types';
 import { apInvoiceDraftApi } from './ap-invoice-draft.api';
 
 export const AP_INVOICE_DRAFT_QUERY_KEYS = {
@@ -18,11 +22,14 @@ export function useAPInvoiceDrafts(params?: { search?: string; all_companies?: b
   });
 }
 
+/** While the bill is being read (here or in another tab) the entry is polled. */
 export function useAPInvoiceDraft(id: number | null) {
   return useQuery({
     queryKey: AP_INVOICE_DRAFT_QUERY_KEYS.detail(id ?? 0),
     queryFn: () => apInvoiceDraftApi.get(id as number),
     enabled: !!id,
+    refetchInterval: (query) =>
+      query.state.data?.invoice_read_status === 'READING' ? 5_000 : false,
   });
 }
 
@@ -61,6 +68,26 @@ export function useCreateAPInvoiceDraft() {
   });
 }
 
+export function useReadInvoice() {
+  return useEntryMutation((id: number) => apInvoiceDraftApi.readInvoice(id));
+}
+
 export function useSendToSap() {
   return useEntryMutation((id: number) => apInvoiceDraftApi.sendToSap(id));
+}
+
+export function useRecheck() {
+  return useEntryMutation((id: number) => apInvoiceDraftApi.recheck(id));
+}
+
+export function useReviewCheck(id: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ key, ...payload }: ReviewCheckPayload & { key: string }) =>
+      apInvoiceDraftApi.reviewCheck(id, key, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: AP_INVOICE_DRAFT_QUERY_KEYS.detail(id) });
+      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'list'] });
+    },
+  });
 }

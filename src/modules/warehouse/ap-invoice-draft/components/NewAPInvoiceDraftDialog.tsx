@@ -25,7 +25,8 @@ const MAX_BYTES = 15 * 1024 * 1024;
 /**
  * Add new entry: the GRPO the bill is for, and the bill itself.
  *
- * Submitting saves the entry and makes the A/P invoice draft in SAP in one go.
+ * Submitting saves the entry, makes the A/P invoice draft in SAP, reads the bill
+ * and runs the checklist, in one go.
  */
 export function NewAPInvoiceDraftDialog({
   open,
@@ -92,8 +93,8 @@ export function NewAPInvoiceDraftDialog({
             New A/P invoice draft
           </DialogTitle>
           <DialogDescription>
-            Pick the GRPO and upload the vendor's bill. Creating makes the A/P invoice draft in SAP
-            straight away.
+            Pick the GRPO and upload the vendor's bill. Creating makes the A/P invoice draft in SAP,
+            reads the bill and runs the checklist — about ten seconds.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,7 +146,7 @@ export function NewAPInvoiceDraftDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? 'Making the SAP draft…' : 'Create draft'}
+              {create.isPending ? 'Making the draft and reading the bill…' : 'Create draft'}
             </Button>
           </DialogFooter>
         </form>
