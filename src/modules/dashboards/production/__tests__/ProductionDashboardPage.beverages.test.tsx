@@ -18,6 +18,10 @@ vi.mock('../../filling-cost/components/FillingCostSheetPanel', () => ({
   },
 }));
 
+vi.mock('../../filling-cost/components/FillingCostSkuPanel', () => ({
+  FillingCostSkuPanel: ({ date }: { date: string }) => <div>cost by SKU for {date}</div>,
+}));
+
 // The wall's own reads: Beverages must never start them.
 const wallRead = vi.hoisted(() => vi.fn());
 vi.mock('../hooks', () => ({

@@ -52,6 +52,33 @@ export interface FillingCostBoardDayDetail extends FillingCostBoardDay {
   shifts: FillingCostBoardShift[];
 }
 
+/** One day a SKU ran: its share of that day's sheet, split by boxes. */
+export interface FillingCostSkuDay {
+  /** YYYY-MM-DD */
+  date: string;
+  /** Percent of the day's boxes the SKU filled */
+  share: string;
+  cases: string;
+  total: string;
+  per_case: string | null;
+  per_bottle: string | null;
+}
+
+/** A SKU's month: what it cost on the days it ran. */
+export interface FillingCostSkuMonth {
+  product: string;
+  /** '1000 ML'; the product when the bottle is unknown */
+  sku: string;
+  pieces_per_case: number | null;
+  litres_per_piece: string | null;
+  days_run: number;
+  cases: string;
+  total: string;
+  per_case: string | null;
+  per_bottle: string | null;
+  days: FillingCostSkuDay[];
+}
+
 export interface FillingCostBoard {
   /** YYYY-MM */
   month: string;
@@ -61,6 +88,10 @@ export interface FillingCostBoard {
   previous: { month: string; per_case: string | null; days_entered: number };
   heads: FillingCostHeadRow[];
   days: FillingCostBoardDay[];
+  /** Most boxes first; absent from a server older than the SKU split */
+  skus?: FillingCostSkuMonth[];
+  /** Saved days whose runs filled nothing, so no SKU took their cost */
+  unassigned?: { days: string[]; cases: string; total: string } | null;
   /** The selected day in full; null when nobody entered it */
   day: FillingCostBoardDayDetail | null;
   /** YYYY-MM-DD — yesterday unless another day was asked for */

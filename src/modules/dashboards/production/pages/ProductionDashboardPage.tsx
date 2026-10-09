@@ -8,6 +8,7 @@ import { cn } from '@/shared/utils';
 
 import { useFullscreen } from '../../dispatch/hooks';
 import { FillingCostSheetPanel } from '../../filling-cost/components/FillingCostSheetPanel';
+import { FillingCostSkuPanel } from '../../filling-cost/components/FillingCostSkuPanel';
 import { FILLING_COST_BOARD_VIEW_PERMISSIONS } from '../../filling-cost/constants';
 import {
   CostBreakdownPanel,
@@ -68,9 +69,9 @@ function dayBefore(date: Date) {
 }
 
 /**
- * Beverages' board: one day's filling cost sheet and its pie. It opens on
- * yesterday, as the Filling Cost page does — a day not saved yet still reads,
- * worked out from its runs.
+ * Beverages' board: one day's filling cost sheet and its pie, then the
+ * month's cost SKU by SKU. It opens on yesterday, as the Filling Cost page
+ * does — a day not saved yet still reads, worked out from its runs.
  */
 function BeveragesFillingCostBoard() {
   const { hasAnyPermission } = usePermission();
@@ -84,7 +85,12 @@ function BeveragesFillingCostBoard() {
       </p>
     );
   }
-  return <FillingCostSheetPanel date={date} onDateChange={setDate} />;
+  return (
+    <>
+      <FillingCostSheetPanel date={date} onDateChange={setDate} />
+      <FillingCostSkuPanel date={date} />
+    </>
+  );
 }
 
 function ProductionWall() {
