@@ -1,4 +1,4 @@
-import { Copy } from 'lucide-react';
+import { Copy, Image as ImageIcon } from 'lucide-react';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ import {
   columnLetter,
   type ColumnSpec,
   copyBlock,
+  type CopyForm,
   type SortState,
   useLocalColumns,
   useSheetSelection,
@@ -117,21 +118,31 @@ export function SheetTable<Row>({
     reset: filteredColumns.join(),
   });
 
-  const copySelection = useCallback(() => {
-    const grid = selection.selectionGrid();
-    if (!grid) return false;
-    const picked = grid.columns.map((key) => byKey.get(key));
-    void copyBlock({
-      rows: grid.cells,
-      headers: picked.map((column) => column?.label ?? ''),
-      alignRight: picked.map((column) => column?.align === 'right'),
-    }).then((done) =>
-      done
-        ? toast.success(`Copied ${selection.address}`)
-        : toast.error('That block could not be copied.'),
-    );
-    return true;
-  }, [selection, byKey]);
+  const copySelection = useCallback(
+    (form: CopyForm = 'cells') => {
+      const grid = selection.selectionGrid();
+      if (!grid) return false;
+      const picked = grid.columns.map((key) => byKey.get(key));
+      void copyBlock(
+        {
+          rows: grid.cells,
+          headers: picked.map((column) => column?.label ?? ''),
+          alignRight: picked.map((column) => column?.align === 'right'),
+        },
+        form,
+      ).then((done) =>
+        done
+          ? toast.success(`Copied ${selection.address}${form === 'picture' ? ' as a picture' : ''}`)
+          : toast.error(
+              form === 'picture'
+                ? 'This browser would not copy a picture.'
+                : 'That block could not be copied.',
+            ),
+      );
+      return true;
+    },
+    [selection, byKey],
+  );
 
   const { gridProps } = useSpreadsheetKeys({ copySelection });
 
@@ -305,8 +316,17 @@ export function SheetTable<Row>({
               {selection.figures.average !== null && (
                 <span>Average {formatNumber(selection.figures.average, 2)}</span>
               )}
-              <Button variant="ghost" size="sm" className="h-6" onClick={copySelection}>
+              <Button variant="ghost" size="sm" className="h-6" onClick={() => copySelection()}>
                 <Copy className="mr-1 h-3 w-3" /> Copy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6"
+                onClick={() => copySelection('picture')}
+                title="A picture of the block, headings on top, for pasting into a chat"
+              >
+                <ImageIcon className="mr-1 h-3 w-3" /> Copy as picture
               </Button>
               <Button variant="ghost" size="sm" className="h-6" onClick={selection.clear}>
                 Clear selection

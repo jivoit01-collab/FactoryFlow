@@ -1,20 +1,30 @@
+import { copyToClipboard } from '@/shared/utils/clipboard';
+
 /**
- * Putting a block of cells on the clipboard the way a spreadsheet does.
+ * Putting a block of cells on the clipboard: as cells, or as a picture.
  *
- * Excel does not copy "the text". It puts the same block on the clipboard in
- * several forms at once and lets whatever you paste into take the one it
- * understands: a spreadsheet takes the HTML table and gets cells, a chat
- * window takes the picture and shows a table, a plain text box takes the
- * tab-separated text. That is why pasting Excel into WhatsApp gives a neat
- * image while pasting tab-separated text gives a wall of words.
+ * Excel puts the same block on the clipboard in several forms at once and
+ * lets whatever you paste into take the one it wants. This used to do the
+ * same -- text, an HTML table and a picture in one write -- on the theory
+ * that a spreadsheet takes the table and a chat window the picture. But the
+ * program you paste into chooses, not us, and a spreadsheet offered a picture
+ * beside a table may well take the picture: LibreOffice Calc did, and the
+ * sales planning sheet landed as a screenshot where its rows should have
+ * gone. The only way to be sure what arrives is to offer one kind of thing.
  *
- * So this writes all three.
+ * So there are two copies, and the user says which:
+ *
+ * - `'cells'` (Ctrl+C, the Copy button) writes the HTML table and the
+ *   tab-separated text -- a spreadsheet gets cells, a text box the text.
+ * - `'picture'` (the Copy as picture button) writes the picture alone, for a
+ *   chat window, where a table pasted as text is a wall of words.
  *
  * WHAT GOES IN WHICH
- * The text and the HTML are exactly the cells that were picked — paste them
- * under existing rows in a spreadsheet and nothing extra arrives. The picture
- * gets a heading band on top, because a picture is for a person to read in a
- * chat and a column of bare numbers with no heading says nothing. That is a
+ * The cells are exactly the cells that were picked -- paste them under
+ * existing rows in a spreadsheet and nothing extra arrives -- with the
+ * figures written plainly (see `plainFigure`). The picture is for a person to
+ * read: it keeps the grouping, and gets a heading band on top, because a
+ * column of bare numbers in a chat with no heading says nothing. That is a
  * deliberate difference, not an oversight.
  */
 
@@ -23,13 +33,43 @@ export interface CopyBlock {
   rows: string[][];
   /** Column headings, left to right — drawn on the picture only. */
   headers: string[];
-  /** Which columns are figures, so they line up right in the picture. */
+  /**
+   * Which columns are figures: they line up right in the picture, and go to a
+   * spreadsheet without their grouping.
+   */
   alignRight: boolean[];
+}
+
+export type CopyForm = 'cells' | 'picture';
+
+/** "7,75,000" or "1,234.50" -- the whole cell a grouped number, and nothing else. */
+const GROUPED_FIGURE = /^-?\d{1,3}(?:,\d{2,3})*,\d{3}(?:\.\d+)?$/;
+
+/**
+ * A figure as a spreadsheet will read it: "7,75,000" goes as "775000".
+ *
+ * The grouping is for the eye. A spreadsheet takes a comma as a separator only
+ * where its own locale would put one, so lakh grouping pasted into a sheet
+ * set to thousands -- Calc in English (USA) -- arrives as text, and a column of
+ * it will not add up. Only a cell that is wholly a grouped number is touched:
+ * a blank, a dash or a word in a figure column goes as it reads.
+ */
+export function plainFigure(cell: string): string {
+  return GROUPED_FIGURE.test(cell) ? cell.replace(/,/g, '') : cell;
+}
+
+/** The cells a spreadsheet gets: as picked, the figures without their grouping. */
+function sheetCells(block: CopyBlock): string[][] {
+  return block.rows.map((row) =>
+    row.map((cell, index) => (block.alignRight[index] ? plainFigure(cell) : cell)),
+  );
 }
 
 /** Tab-separated, the plainest form, and what a text box will take. */
 export function blockToTsv(block: CopyBlock): string {
-  return block.rows.map((row) => row.join('\t')).join('\n');
+  return sheetCells(block)
+    .map((row) => row.join('\t'))
+    .join('\n');
 }
 
 const escapeHtml = (value: string) =>
@@ -41,7 +81,7 @@ const escapeHtml = (value: string) =>
 
 /** A real table, which is what makes a spreadsheet paste it as cells. */
 export function blockToHtml(block: CopyBlock): string {
-  const body = block.rows
+  const body = sheetCells(block)
     .map(
       (row) =>
         `<tr>${row
@@ -166,39 +206,52 @@ export async function blockToPng(block: CopyBlock): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/png'));
 }
 
+function clipboardItemCtor() {
+  return (globalThis as unknown as { ClipboardItem?: typeof ClipboardItem }).ClipboardItem;
+}
+
 /**
- * Copy a block in every form at once.
+ * Copy a block as cells (the default) or as a picture -- one or the other,
+ * never both; see the top of this file for why.
  *
- * Falls back to the plain text alone if the browser will not take a
- * multi-format write — an old one, or one refusing the clipboard permission.
- * Copying something is always better than copying nothing.
+ * Cells fall back to the plain text alone if the browser will not take a
+ * multi-format write -- an old one, one refusing the permission, or the app
+ * opened over plain HTTP on the LAN. A spreadsheet still splits that text on
+ * its tabs, so the copy still lands as cells.
+ *
+ * A picture has no fallback: text in its place would be a Copy the user did
+ * not ask for. It comes back false instead, and the caller says so.
  */
-export async function copyBlock(block: CopyBlock): Promise<boolean> {
-  const tsv = blockToTsv(block);
+export async function copyBlock(block: CopyBlock, form: CopyForm = 'cells'): Promise<boolean> {
+  // `navigator.clipboard` itself is missing over plain HTTP; writing to it then
+  // throws, and lands in the same catch as a refusal.
+  const Item = clipboardItemCtor();
 
-  const ClipboardItemCtor = (
-    globalThis as unknown as { ClipboardItem?: typeof ClipboardItem }
-  ).ClipboardItem;
-
-  if (navigator.clipboard?.write && ClipboardItemCtor) {
+  if (form === 'picture') {
+    if (!Item) return false;
     try {
       const png = await blockToPng(block);
-      const parts: Record<string, Blob> = {
-        'text/plain': new Blob([tsv], { type: 'text/plain' }),
-        'text/html': new Blob([blockToHtml(block)], { type: 'text/html' }),
-      };
-      if (png) parts['image/png'] = png;
-      await navigator.clipboard.write([new ClipboardItemCtor(parts)]);
+      if (!png) return false;
+      await navigator.clipboard.write([new Item({ 'image/png': png })]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const tsv = blockToTsv(block);
+  if (Item) {
+    try {
+      await navigator.clipboard.write([
+        new Item({
+          'text/plain': new Blob([tsv], { type: 'text/plain' }),
+          'text/html': new Blob([blockToHtml(block)], { type: 'text/html' }),
+        }),
+      ]);
       return true;
     } catch {
       // Fall through to the plain write below.
     }
   }
-
-  try {
-    await navigator.clipboard?.writeText(tsv);
-    return true;
-  } catch {
-    return false;
-  }
+  return copyToClipboard(tsv);
 }

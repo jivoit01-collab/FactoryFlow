@@ -15,6 +15,8 @@ export {
   blockToTsv,
   type CopyBlock,
   copyBlock,
+  type CopyForm,
+  plainFigure,
 } from './clipboard';
 export { ColumnFilter, type ColumnValue } from './ColumnFilter';
 export { SortHeader } from './SortHeader';

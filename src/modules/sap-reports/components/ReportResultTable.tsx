@@ -1,4 +1,4 @@
-import { Copy, Download, Search } from 'lucide-react';
+import { Copy, Download, Image as ImageIcon, Search } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -7,6 +7,7 @@ import {
   columnLetter,
   type ColumnSpec,
   copyBlock,
+  type CopyForm,
   useLocalColumns,
   useSheetSelection,
   useSpreadsheetKeys,
@@ -176,25 +177,35 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit, title
   });
 
   /**
-   * Copy the picked block the way Excel copies one: on the clipboard in every
-   * form at once, so a spreadsheet pastes cells, a chat window pastes a
-   * readable picture of the table, and a plain text box pastes the text.
+   * Copy the picked block as cells for a spreadsheet (Ctrl+C, Copy) or as a
+   * picture for a chat (Copy as picture) -- one or the other, never both,
+   * because a spreadsheet offered both may paste the picture.
    */
-  const copyPicked = useCallback(() => {
-    const grid = sheet.selectionGrid();
-    if (!grid) return false;
-    const picked = grid.columns.map((key) => columns[columnIndex.get(key) ?? -1]);
-    void copyBlock({
-      rows: grid.cells,
-      headers: picked.map((column) => column?.label ?? ''),
-      alignRight: picked.map((column) => column?.type === 'number'),
-    }).then((done) =>
-      done
-        ? toast.success(`Copied ${sheet.address}`)
-        : toast.error('That block could not be copied.'),
-    );
-    return true;
-  }, [sheet, columns, columnIndex]);
+  const copyPicked = useCallback(
+    (form: CopyForm = 'cells') => {
+      const grid = sheet.selectionGrid();
+      if (!grid) return false;
+      const picked = grid.columns.map((key) => columns[columnIndex.get(key) ?? -1]);
+      void copyBlock(
+        {
+          rows: grid.cells,
+          headers: picked.map((column) => column?.label ?? ''),
+          alignRight: picked.map((column) => column?.type === 'number'),
+        },
+        form,
+      ).then((done) =>
+        done
+          ? toast.success(`Copied ${sheet.address}${form === 'picture' ? ' as a picture' : ''}`)
+          : toast.error(
+              form === 'picture'
+                ? 'This browser would not copy a picture.'
+                : 'That block could not be copied.',
+            ),
+      );
+      return true;
+    },
+    [sheet, columns, columnIndex],
+  );
 
   // Nothing picked falls back to the cell under the cursor.
   const { gridProps } = useSpreadsheetKeys({ copySelection: copyPicked });
@@ -588,8 +599,17 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit, title
               {sheet.figures.average !== null && (
                 <span>Average {figure(sheet.figures.average)}</span>
               )}
-              <Button variant="ghost" size="sm" className="h-6" onClick={copyPicked}>
+              <Button variant="ghost" size="sm" className="h-6" onClick={() => copyPicked()}>
                 <Copy className="mr-1 h-3 w-3" /> Copy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6"
+                onClick={() => copyPicked('picture')}
+                title="A picture of the block, headings on top, for pasting into a chat"
+              >
+                <ImageIcon className="mr-1 h-3 w-3" /> Copy as picture
               </Button>
               <Button variant="ghost" size="sm" className="h-6" onClick={sheet.clear}>
                 Clear selection
@@ -597,9 +617,9 @@ export function ReportResultTable({ columns, rows, wasTruncated, rowLimit, title
             </>
           ) : (
             <span>
-              Drag across cells to pick a block — or a row number, a column letter or the corner
-              for the whole of one. Shift extends it; Ctrl+C copies it as cells for Excel and as a
-              picture for chat; the arrow keys walk the sheet.
+              Drag across cells to pick a block — or a row number, a column letter or the corner for
+              the whole of one. Shift extends it; Ctrl+C copies it as cells for Excel, and Copy as
+              picture copies it for chat; the arrow keys walk the sheet.
             </span>
           )}
         </div>

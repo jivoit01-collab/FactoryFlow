@@ -1,4 +1,4 @@
-import { Copy } from 'lucide-react';
+import { Copy, Image as ImageIcon } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
@@ -11,6 +11,7 @@ import {
   ColumnFilter,
   columnLetter,
   copyBlock,
+  type CopyForm,
   useSheetSelection,
   useSpreadsheetKeys,
 } from '@/shared/components/sheetGrid';
@@ -77,25 +78,35 @@ export function CashSheetTable({
   });
 
   /**
-   * Copy the picked block the way Excel copies one: on the clipboard in every
-   * form at once, so a spreadsheet pastes cells, a chat window pastes a
-   * readable picture, and a plain text box pastes the text.
+   * Copy the picked block as cells for a spreadsheet (Ctrl+C, Copy) or as a
+   * picture for a chat (Copy as picture) -- one or the other, never both,
+   * because a spreadsheet offered both may paste the picture.
    */
-  const copySelection = useCallback(() => {
-    const grid = selection.selectionGrid();
-    if (!grid) return false;
-    const picked = grid.columns.map((key) => byKey.get(key));
-    void copyBlock({
-      rows: grid.cells,
-      headers: picked.map((column) => column?.label ?? ''),
-      alignRight: picked.map((column) => column?.align === 'right'),
-    }).then((done) =>
-      done
-        ? toast.success(`Copied ${selection.address}`)
-        : toast.error('That block could not be copied.'),
-    );
-    return true;
-  }, [selection, byKey]);
+  const copySelection = useCallback(
+    (form: CopyForm = 'cells') => {
+      const grid = selection.selectionGrid();
+      if (!grid) return false;
+      const picked = grid.columns.map((key) => byKey.get(key));
+      void copyBlock(
+        {
+          rows: grid.cells,
+          headers: picked.map((column) => column?.label ?? ''),
+          alignRight: picked.map((column) => column?.align === 'right'),
+        },
+        form,
+      ).then((done) =>
+        done
+          ? toast.success(`Copied ${selection.address}${form === 'picture' ? ' as a picture' : ''}`)
+          : toast.error(
+              form === 'picture'
+                ? 'This browser would not copy a picture.'
+                : 'That block could not be copied.',
+            ),
+      );
+      return true;
+    },
+    [selection, byKey],
+  );
 
   // Nothing picked falls back to the cell under the cursor.
   const { gridProps } = useSpreadsheetKeys({ copySelection });
@@ -217,8 +228,17 @@ export function CashSheetTable({
             {selection.figures.average !== null && (
               <span>Average {formatNumber(selection.figures.average)}</span>
             )}
-            <Button variant="ghost" size="sm" className="h-6" onClick={copySelection}>
+            <Button variant="ghost" size="sm" className="h-6" onClick={() => copySelection()}>
               <Copy className="mr-1 h-3 w-3" /> Copy
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6"
+              onClick={() => copySelection('picture')}
+              title="A picture of the block, headings on top, for pasting into a chat"
+            >
+              <ImageIcon className="mr-1 h-3 w-3" /> Copy as picture
             </Button>
             <Button variant="ghost" size="sm" className="h-6" onClick={selection.clear}>
               Clear selection
@@ -227,8 +247,8 @@ export function CashSheetTable({
         ) : (
           <span>
             Drag across cells to pick a block — or a row number, a column letter or the corner for
-            the whole of one. Shift extends it; Ctrl+C copies it as cells for Excel and as a picture
-            for chat; the arrow keys walk the sheet.
+            the whole of one. Shift extends it; Ctrl+C copies it as cells for Excel, and Copy as
+            picture copies it for chat; the arrow keys walk the sheet.
           </span>
         )}
         <span className="ml-auto">
