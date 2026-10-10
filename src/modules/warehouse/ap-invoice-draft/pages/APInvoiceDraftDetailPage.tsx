@@ -210,6 +210,16 @@ export default function APInvoiceDraftDetailPage() {
                 : `A/P invoice draft ${entry.sap_draft_entry} is in SAP${entry.sap_created_at ? ` since ${formatDateTimeShort(entry.sap_created_at)}` : ''}. Accounts adds it from SAP's drafts.`}
             </p>
           )}
+          {entry.sap_status === 'CREATED' && entry.tds_note && (
+            <div className="text-sm">
+              <p className="font-medium">
+                {entry.tds_code
+                  ? `TDS ${rupees(entry.tds_amount ?? 0)} held back (code ${entry.tds_code} on ${rupees(entry.tds_taxable)})`
+                  : 'No TDS on this draft'}
+              </p>
+              <p className="text-muted-foreground">{entry.tds_note}</p>
+            </div>
+          )}
           {entry.sap_status === 'FAILED' && (
             <>
               <p role="alert" className="whitespace-pre-wrap text-sm text-destructive">

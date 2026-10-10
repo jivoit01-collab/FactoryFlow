@@ -106,6 +106,11 @@ export interface APInvoiceDraftDetail extends APInvoiceDraftListItem {
   sap_attachment_entry: number | null;
   sap_attachment_error: string;
   sap_created_at: string | null;
+  /** The TDS the app put on its draft: code blank when none, and why. */
+  tds_code: string;
+  tds_taxable: string | null;
+  tds_amount: string | null;
+  tds_note: string;
   grpo_posting: number | null;
   gate_entry_no: string;
   checks: APInvoiceDraftCheck[];
