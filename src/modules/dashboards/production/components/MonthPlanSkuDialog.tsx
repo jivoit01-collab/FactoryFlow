@@ -1,5 +1,5 @@
-import { CalendarRange, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { CalendarRange, ChevronRight, Search } from 'lucide-react';
+import { Fragment, useMemo, useState } from 'react';
 
 import { usePlantBoard } from '@/modules/dashboards/plant-board/api';
 import { decimal, whole } from '@/modules/dashboards/plant-board/components/drills/format';
@@ -70,6 +70,63 @@ function Tonnes({
   );
 }
 
+/** Every warehouse a SKU stands in, opened under its row. */
+function SkuWarehouses({ row }: { row: PlanSku }) {
+  if (row.stock_read === false) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Stock by warehouse could not be read from SAP just now.
+      </p>
+    );
+  }
+  const places = row.warehouses ?? [];
+  if (places.length === 0) {
+    return <p className="text-sm text-muted-foreground">No stock of this SKU in any warehouse.</p>;
+  }
+  return (
+    <div className="ml-5 max-w-3xl overflow-hidden rounded-lg border bg-card">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-3 py-1.5 text-left font-semibold">Warehouse</th>
+            <th className="px-3 py-1.5 text-left font-semibold">Name</th>
+            <th className="px-3 py-1.5 text-right font-semibold">Pieces</th>
+            <th className="px-3 py-1.5 text-right font-semibold">Tonnes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {places.map((place) => (
+            <tr key={place.code} className="border-t">
+              <td className="whitespace-nowrap px-3 py-1.5 font-medium">
+                {place.code}
+                {place.code === 'BH-PF' && (
+                  <span className="ml-2 rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-violet-700 dark:text-violet-300">
+                    floor
+                  </span>
+                )}
+              </td>
+              <td className="px-3 py-1.5 text-muted-foreground">{place.name || '—'}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{whole(place.qty)}</td>
+              <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
+                {row.weighed ? `${decimal(place.tons, 2)} t` : '—'}
+              </td>
+            </tr>
+          ))}
+          <tr className="border-t bg-muted/30 font-semibold">
+            <td className="px-3 py-1.5" colSpan={2}>
+              Total · {whole(places.length)} warehouse{places.length === 1 ? '' : 's'}
+            </td>
+            <td className="px-3 py-1.5 text-right tabular-nums">{whole(row.stock_qty)}</td>
+            <td className="px-3 py-1.5 text-right tabular-nums">
+              {row.weighed && row.stock_tons != null ? `${decimal(row.stock_tons, 2)} t` : '—'}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function cases(value: number | null): string | null {
   return value ? `${whole(value)} cs` : null;
 }
@@ -81,8 +138,8 @@ function cases(value: number | null): string | null {
  * Read off the same plant-board response the strip reads, so the totals here
  * are the strip's own figures. Made is the floor's receipt — the journal the
  * strip's headline is summed from — so the rows add up to it; SKUs the floor
- * made off-plan are listed too, planned at zero. BH-PF stock is what stands on
- * the production floor now, not at the month's end.
+ * made off-plan are listed too, planned at zero. Stock is every warehouse as
+ * it stands now, not at the month's end; a row opens to show where.
  */
 export function MonthPlanSkuDialog({
   open,
@@ -94,6 +151,7 @@ export function MonthPlanSkuDialog({
   const { data, isLoading, isError } = usePlantBoard();
   const [query, setQuery] = useState('');
   const [show, setShow] = useState<Show>('all');
+  const [openSku, setOpenSku] = useState<string | null>(null);
 
   const production = data?.production ?? null;
   const plan = data?.plan ?? null;
@@ -112,7 +170,8 @@ export function MonthPlanSkuDialog({
 
   const all = rows ?? [];
   const left = production ? Math.max(0, production.planned_tons - production.produced_tons) : null;
-  const atFloor = all.reduce((sum, row) => sum + row.stock_tons, 0);
+  const inStock = all.reduce((sum, row) => sum + (row.stock_tons ?? 0), 0);
+  const atFloor = all.reduce((sum, row) => sum + (row.pf_tons ?? 0), 0);
   const columns = 7;
 
   return (
@@ -125,7 +184,7 @@ export function MonthPlanSkuDialog({
           </DialogTitle>
           <DialogDescription>
             {plan?.name ? `${plan.name} · ` : ''}Planned against made off SAP's movement journal ·
-            BH-PF stock as it stands now
+            stock across every warehouse as it stands now · click a SKU for where it is
           </DialogDescription>
         </DialogHeader>
 
@@ -150,9 +209,9 @@ export function MonthPlanSkuDialog({
               />
               <StatTile label="Planned − made" value={`${decimal(left)} t`} accent="amber" />
               <StatTile
-                label="At BH-PF"
-                value={`${decimal(atFloor)} t`}
-                sub="of this month's SKUs"
+                label="In stock"
+                value={`${decimal(inStock)} t`}
+                sub={`all warehouses · ${decimal(atFloor)} t at BH-PF`}
                 accent="sky"
               />
               <StatTile
@@ -207,7 +266,7 @@ export function MonthPlanSkuDialog({
                   <Th align="right">Made</Th>
                   <Th align="right">Planned − made</Th>
                   <Th align="right">% done</Th>
-                  <Th align="right">At BH-PF</Th>
+                  <Th align="right">In stock</Th>
                 </tr>
               </thead>
               <tbody>
@@ -228,61 +287,96 @@ export function MonthPlanSkuDialog({
                   <TableEmpty colSpan={columns} message="No SKUs match" />
                 ) : (
                   visible.map((row) => (
-                    <tr key={row.item_code} className={ROW_CLASSES}>
-                      <Td className="whitespace-nowrap text-muted-foreground">{row.item_code}</Td>
-                      <Td>
-                        <span className="flex flex-col leading-tight">
-                          <span className="font-medium">{row.item_name || '—'}</span>
-                          {!row.on_plan && (
-                            <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                              not on plan
-                            </span>
+                    <Fragment key={row.item_code}>
+                      <tr
+                        className={cn(
+                          ROW_CLASSES,
+                          'cursor-pointer',
+                          openSku === row.item_code && 'bg-violet-500/[0.06]',
+                        )}
+                        onClick={() =>
+                          setOpenSku((current) =>
+                            current === row.item_code ? null : row.item_code,
+                          )
+                        }
+                        aria-expanded={openSku === row.item_code}
+                      >
+                        <Td className="whitespace-nowrap text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <ChevronRight
+                              className={cn(
+                                'h-3.5 w-3.5 shrink-0 transition-transform',
+                                openSku === row.item_code && 'rotate-90 text-violet-500',
+                              )}
+                            />
+                            {row.item_code}
+                          </span>
+                        </Td>
+                        <Td>
+                          <span className="flex flex-col leading-tight">
+                            <span className="font-medium">{row.item_name || '—'}</span>
+                            {!row.on_plan && (
+                              <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                                not on plan
+                              </span>
+                            )}
+                          </span>
+                        </Td>
+                        <Td numeric>
+                          <Tonnes
+                            tons={row.planned_tons}
+                            weighed={row.weighed}
+                            sub={cases(row.planned_cases) ?? `${whole(row.planned_qty)} pcs`}
+                          />
+                        </Td>
+                        <Td numeric>
+                          <Tonnes
+                            tons={row.produced_tons}
+                            weighed={row.weighed}
+                            sub={cases(row.produced_cases) ?? `${whole(row.produced_qty)} pcs`}
+                          />
+                        </Td>
+                        <Td numeric>
+                          <Tonnes
+                            tons={row.balance_tons}
+                            weighed={row.weighed}
+                            sub={
+                              row.balance_qty < 0
+                                ? `${whole(-row.balance_qty)} pcs over`
+                                : `${whole(row.balance_qty)} pcs`
+                            }
+                            className={
+                              row.balance_qty < 0
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : row.balance_qty > 0
+                                  ? 'text-amber-600 dark:text-amber-400'
+                                  : undefined
+                            }
+                          />
+                        </Td>
+                        <Td numeric className="font-semibold">
+                          {row.attainment_pct == null ? '—' : `${decimal(row.attainment_pct, 0)}%`}
+                        </Td>
+                        <Td numeric>
+                          {row.stock_tons == null ? (
+                            '—'
+                          ) : (
+                            <Tonnes
+                              tons={row.stock_tons}
+                              weighed={row.weighed}
+                              sub={row.stock_qty ? `${whole(row.stock_qty)} pcs` : null}
+                            />
                           )}
-                        </span>
-                      </Td>
-                      <Td numeric>
-                        <Tonnes
-                          tons={row.planned_tons}
-                          weighed={row.weighed}
-                          sub={cases(row.planned_cases) ?? `${whole(row.planned_qty)} pcs`}
-                        />
-                      </Td>
-                      <Td numeric>
-                        <Tonnes
-                          tons={row.produced_tons}
-                          weighed={row.weighed}
-                          sub={cases(row.produced_cases) ?? `${whole(row.produced_qty)} pcs`}
-                        />
-                      </Td>
-                      <Td numeric>
-                        <Tonnes
-                          tons={row.balance_tons}
-                          weighed={row.weighed}
-                          sub={
-                            row.balance_qty < 0
-                              ? `${whole(-row.balance_qty)} pcs over`
-                              : `${whole(row.balance_qty)} pcs`
-                          }
-                          className={
-                            row.balance_qty < 0
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : row.balance_qty > 0
-                                ? 'text-amber-600 dark:text-amber-400'
-                                : undefined
-                          }
-                        />
-                      </Td>
-                      <Td numeric className="font-semibold">
-                        {row.attainment_pct == null ? '—' : `${decimal(row.attainment_pct, 0)}%`}
-                      </Td>
-                      <Td numeric>
-                        <Tonnes
-                          tons={row.stock_tons}
-                          weighed={row.weighed}
-                          sub={row.stock_qty > 0 ? `${whole(row.stock_qty)} pcs` : null}
-                        />
-                      </Td>
-                    </tr>
+                        </Td>
+                      </tr>
+                      {openSku === row.item_code && (
+                        <tr className="border-b bg-violet-500/[0.03]">
+                          <td colSpan={columns} className="px-4 py-3">
+                            <SkuWarehouses row={row} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))
                 )}
               </tbody>

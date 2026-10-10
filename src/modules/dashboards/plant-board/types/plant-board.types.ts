@@ -514,6 +514,14 @@ export interface UnplannedItem {
  * One SKU of the month's plan: planned, made, what is left, and BH-PF stock.
  * Made is the floor's own receipt, so the rows sum to the band's headline.
  */
+/** One warehouse holding a plan SKU. */
+export interface PlanSkuWarehouse {
+  code: string;
+  name: string;
+  qty: number;
+  tons: number;
+}
+
 export interface PlanSku {
   item_code: string;
   item_name: string;
@@ -530,9 +538,16 @@ export interface PlanSku {
   balance_qty: number;
   balance_tons: number;
   attainment_pct: number | null;
-  /** On hand at BH-PF now. */
-  stock_qty: number;
-  stock_tons: number;
+  /** False when the per-warehouse stock read failed: stock figures are null. */
+  stock_read?: boolean;
+  /** On hand now across every warehouse. */
+  stock_qty: number | null;
+  stock_tons: number | null;
+  /** Of which at BH-PF, the production floor. */
+  pf_qty?: number | null;
+  pf_tons?: number | null;
+  /** Where it stands, most pieces first. */
+  warehouses?: PlanSkuWarehouse[];
   /** False where SAP holds no litre volume: in the pieces, in no ton. */
   weighed: boolean;
 }
