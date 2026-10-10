@@ -27,6 +27,7 @@ import { organizationModuleConfig } from '@/modules/organization/module.config';
 import { partnerOnboardingModuleConfig } from '@/modules/partner-onboarding/module.config';
 import { planningPurchaseModuleConfig } from '@/modules/planning-purchase/module.config';
 import { productionModuleConfig } from '@/modules/production/module.config';
+import { productionOrdersModuleConfig } from '@/modules/production-orders/module.config';
 import { qcModuleConfig } from '@/modules/qc/module.config';
 import { returnsModuleConfig } from '@/modules/returns/module.config';
 import { sapApprovalsModuleConfig } from '@/modules/sap-approvals/module.config';
@@ -61,6 +62,10 @@ export const moduleRegistry: ModuleConfig[] = [
   // is who holds it. One page, gated on artwork.* alone.
   artworkModuleConfig,
   productionModuleConfig,
+  // Right after Production, whose sidebar group holds its menu entry: what was
+  // made, posted to SAP as a production order step by step, each step under
+  // the SAP login of the person who takes it. Its pages are its own.
+  productionOrdersModuleConfig,
   // Sits next to Production: it reads the plan SAP holds and turns its bill of
   // materials into purchase orders.
   planningPurchaseModuleConfig,

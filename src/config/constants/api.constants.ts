@@ -1587,6 +1587,23 @@ export const API_ENDPOINTS = {
     CANCEL: (id: number) => `/bom-changes/requests/${id}/cancel/`,
   },
 
+  // Production entries posted to SAP as production orders, each step as the person.
+  PRODUCTION_ORDERS: {
+    ME: '/production-orders/me/',
+    PRODUCTS: '/production-orders/products/',
+    VARIETIES: '/production-orders/varieties/',
+    PLAN_PREVIEW: '/production-orders/plan-preview/',
+    ENTRIES: '/production-orders/entries/',
+    ENTRY: (id: number) => `/production-orders/entries/${id}/`,
+    /** One SAP step of an entry: plan, release, issue, receipt, close. */
+    ENTRY_STEP: (id: number, step: string) => `/production-orders/entries/${id}/${step.toLowerCase()}/`,
+    RECEIPT_PREVIEW: (id: number) => `/production-orders/entries/${id}/receipt/preview/`,
+    /** Take a released order (nothing issued) back to planned. */
+    ENTRY_UNRELEASE: (id: number) => `/production-orders/entries/${id}/unrelease/`,
+    /** SAP's own production orders, read-only, each marked with the entry that made it. */
+    SAP_ORDERS: '/production-orders/sap-orders/',
+  },
+
   // Customer and vendor registration (from SAP Portal): the public forms need
   // no login; the queue is per company, like every other list.
   PARTNER_ONBOARDING: {

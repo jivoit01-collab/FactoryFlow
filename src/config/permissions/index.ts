@@ -130,6 +130,15 @@ export {
   BOM_CHANGES_PERMISSIONS,
   type BomChangesPermission,
 } from './bom-changes.permissions';
+// Production Orders (production entries posted to SAP as production orders, step by step)
+export {
+  PRODUCTION_ORDERS_ACCESS,
+  PRODUCTION_ORDERS_COMPANIES,
+  PRODUCTION_ORDERS_CREATE_ACCESS,
+  PRODUCTION_ORDERS_MODULE_PREFIX,
+  PRODUCTION_ORDERS_PERMISSIONS,
+  type ProductionOrdersPermission,
+} from './production-orders.permissions';
 // Partner Onboarding (customer and vendor registration, from SAP Portal)
 export {
   CUSTOMER_REGISTRATIONS_ACCESS,

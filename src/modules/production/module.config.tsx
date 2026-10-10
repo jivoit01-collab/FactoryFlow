@@ -7,6 +7,9 @@ import {
   EXECUTION_MODULE_PREFIX,
   EXECUTION_PERMISSIONS,
   PRODUCTION_MODULE_PREFIX,
+  PRODUCTION_ORDERS_ACCESS,
+  PRODUCTION_ORDERS_COMPANIES,
+  PRODUCTION_ORDERS_MODULE_PREFIX,
   PRODUCTION_PERMISSIONS,
   SAP_ORDER_ACCESS,
 } from '@/config/permissions';
@@ -37,15 +40,19 @@ const MachineChecklistPage = lazy(() => import('./execution/pages/MachineCheckli
 const BreakdownLogPage = lazy(() => import('./execution/pages/BreakdownLogPage'));
 const WasteManagementPage = lazy(() => import('./execution/pages/WasteManagementPage'));
 const ReportsPage = lazy(() => import('./execution/pages/ReportsPage'));
-const DailyProductionReportPage = lazy(
-  () => import('./execution/pages/DailyProductionReportPage'),
-);
+const DailyProductionReportPage = lazy(() => import('./execution/pages/DailyProductionReportPage'));
 const ResourceTrackingPage = lazy(() => import('./execution/pages/ResourceTrackingPage'));
 const ElectricityUsagePage = lazy(() => import('./execution/pages/ElectricityUsagePage'));
-const ResourceConsumptionReportPage = lazy(() => import('./execution/pages/ResourceConsumptionReportPage'));
+const ResourceConsumptionReportPage = lazy(
+  () => import('./execution/pages/ResourceConsumptionReportPage'),
+);
 const MonthlySummaryReportPage = lazy(() => import('./execution/pages/MonthlySummaryReportPage'));
-const PlanVsProductionReportPage = lazy(() => import('./execution/pages/PlanVsProductionReportPage'));
-const ProcurementVsPlannedReportPage = lazy(() => import('./execution/pages/ProcurementVsPlannedReportPage'));
+const PlanVsProductionReportPage = lazy(
+  () => import('./execution/pages/PlanVsProductionReportPage'),
+);
+const ProcurementVsPlannedReportPage = lazy(
+  () => import('./execution/pages/ProcurementVsPlannedReportPage'),
+);
 const OEETrendReportPage = lazy(() => import('./execution/pages/OEETrendReportPage'));
 const DowntimeParetoReportPage = lazy(() => import('./execution/pages/DowntimeParetoReportPage'));
 const CostAnalysisReportPage = lazy(() => import('./execution/pages/CostAnalysisReportPage'));
@@ -379,7 +386,12 @@ export const productionModuleConfig: ModuleConfig = {
       title: 'Production',
       icon: Factory,
       showInSidebar: true,
-      modulePrefix: [PRODUCTION_MODULE_PREFIX, EXECUTION_MODULE_PREFIX, BLOWING_MODULE_PREFIX],
+      modulePrefix: [
+        PRODUCTION_MODULE_PREFIX,
+        EXECUTION_MODULE_PREFIX,
+        BLOWING_MODULE_PREFIX,
+        PRODUCTION_ORDERS_MODULE_PREFIX,
+      ],
       permissions: PRODUCTION_DASHBOARD_PERMISSIONS,
       hasSubmenu: true,
       children: [
@@ -392,6 +404,15 @@ export const productionModuleConfig: ModuleConfig = {
           path: '/production/sap-orders',
           title: 'SAP Orders',
           permissions: SAP_ORDER_ACCESS,
+        },
+        {
+          // Production entries posted to SAP step by step. The pages are the
+          // production-orders module's own (/production-orders); only the menu
+          // entry sits here, so production people find it with the rest.
+          path: '/production-orders',
+          title: 'Production Orders',
+          permissions: PRODUCTION_ORDERS_ACCESS,
+          companies: PRODUCTION_ORDERS_COMPANIES,
         },
         {
           path: '/production/blowing',
