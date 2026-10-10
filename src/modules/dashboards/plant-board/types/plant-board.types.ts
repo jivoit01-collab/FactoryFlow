@@ -510,6 +510,33 @@ export interface UnplannedItem {
   last_day: string | null;
 }
 
+/**
+ * One SKU of the month's plan: planned, made, what is left, and BH-PF stock.
+ * Made is the floor's own receipt, so the rows sum to the band's headline.
+ */
+export interface PlanSku {
+  item_code: string;
+  item_name: string;
+  /** False for a SKU the floor made that the plan never listed. */
+  on_plan: boolean;
+  planned_qty: number;
+  planned_cases: number;
+  planned_tons: number;
+  produced_qty: number;
+  /** Null where the plan carries no case factor for the SKU. */
+  produced_cases: number | null;
+  produced_tons: number;
+  /** Planned less made; negative is made over plan. */
+  balance_qty: number;
+  balance_tons: number;
+  attainment_pct: number | null;
+  /** On hand at BH-PF now. */
+  stock_qty: number;
+  stock_tons: number;
+  /** False where SAP holds no litre volume: in the pieces, in no ton. */
+  weighed: boolean;
+}
+
 export interface PlantBoardProduction {
   /**
    * PIECES on both sides — the unit SAP already holds them in, so the
@@ -542,6 +569,8 @@ export interface PlantBoardProduction {
    * before the list existed answers without it.
    */
   unplanned_items?: UnplannedItem[];
+  /** The plan SKU by SKU. Absent on a server older than the drill. */
+  by_sku?: PlanSku[];
   unplanned_item_count?: number;
   /** Pieces across `unplanned_items`. */
   unplanned_qty?: number;
