@@ -195,6 +195,7 @@ export function ReturnableForm({
   const createMutation = useCreateReturnableGatePass();
   const updateMutation = useUpdateReturnableGatePass();
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
+  const [removedIds, setRemovedIds] = useState<number[]>([]);
   const [photoError, setPhotoError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const isPending = createMutation.isPending || updateMutation.isPending || isUploading;
@@ -233,15 +234,26 @@ export function ReturnableForm({
   };
 
   // The gate cannot tell one motor from another by its name, so a pass needs a
-  // photo of the material. One already on the pass counts as much as a new one.
+  // photo of the material. One already on the pass counts as much as a new one,
+  // unless it is being taken off.
   const savedFiles = gatePass?.attachments ?? [];
-  const savedPhotoCount = savedFiles.filter((attachment) => isPhotoFile(attachment.file)).length;
-  const hasPhoto = savedPhotoCount > 0 || attachments.some((item) => isPhotoFile(item.file.name));
+  const hasPhoto =
+    savedFiles.some(
+      (attachment) => !removedIds.includes(attachment.id) && isPhotoFile(attachment.file),
+    ) || attachments.some((item) => isPhotoFile(item.file.name));
+
+  const toggleRemoved = (attachmentId: number) => {
+    setRemovedIds((ids) =>
+      ids.includes(attachmentId) ? ids.filter((id) => id !== attachmentId) : [...ids, attachmentId],
+    );
+    setPhotoError('');
+  };
 
   // Re-seed once the pass being edited actually arrives from the server.
   useEffect(() => {
     reset(toFormValues(gatePass));
     setAttachments([]);
+    setRemovedIds([]);
     setPhotoError('');
   }, [gatePass, reset]);
 
@@ -262,6 +274,7 @@ export function ReturnableForm({
       issued_by_name: values.is_returnable ? '' : values.issued_by_name,
       requested_by_name: values.is_returnable ? values.requested_by_name : '',
       contact_no: values.is_returnable ? values.contact_no : '',
+      ...(removedIds.length ? { remove_attachments: removedIds } : {}),
       items_input: values.items_input.map(({ from_store: fromStore, ...line }) => {
         // store_stock only drives the form's own "in store" hint.
         const item = { ...line };
@@ -796,22 +809,15 @@ export function ReturnableForm({
         hint="A photo of the material is required. Add the delivery challan or vendor quotation here too."
         action={<Paperclip className="h-4 w-4 text-muted-foreground" />}
       >
-        {savedFiles.length > 0 ? (
-          <p className="mb-3 text-xs text-muted-foreground">
-            Already on {gatePass!.pass_no}: {savedPhotoCount} photo
-            {savedPhotoCount === 1 ? '' : 's'}
-            {savedFiles.length > savedPhotoCount
-              ? ` and ${savedFiles.length - savedPhotoCount} other file${savedFiles.length - savedPhotoCount === 1 ? '' : 's'}`
-              : ''}
-            . Anything added here is uploaded alongside.
-          </p>
-        ) : null}
         <ReturnableAttachmentsField
           value={attachments}
           onChange={(next) => {
             setAttachments(next);
             setPhotoError('');
           }}
+          saved={savedFiles}
+          removedIds={removedIds}
+          onToggleRemoved={toggleRemoved}
           disabled={isPending}
         />
         {photoError ? <p className="mt-2 text-sm text-destructive">{photoError}</p> : null}

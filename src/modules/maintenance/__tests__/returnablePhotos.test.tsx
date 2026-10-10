@@ -187,9 +187,52 @@ describe('gate pass form', () => {
       />,
     );
 
-    expect(screen.getByText(/already on RGP\/2026-27\/000071: 1 photo\./i)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'motor.jpg' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
     await waitFor(() => expect(updatePass).toHaveBeenCalledTimes(1));
+    expect(updatePass.mock.calls[0][0].payload).not.toHaveProperty('remove_attachments');
+  });
+
+  it('takes a file already on the pass off it with the save', async () => {
+    const second = {
+      ...outPass().attachments[0],
+      id: 2,
+      file: 'http://api.test/media/returnable-items/attachments/IMG20261010173850.jpg',
+    };
+    const gatePass = outPass({
+      status: 'PENDING_APPROVAL',
+      attachments: [...outPass().attachments, second],
+    });
+    updatePass.mockResolvedValue(gatePass);
+    render(<ReturnableForm gatePass={gatePass} onSaved={vi.fn()} onCancel={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove IMG20261010173850.jpg' }));
+    expect(screen.getByText('Will be removed when you save')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => expect(updatePass).toHaveBeenCalledTimes(1));
+    expect(updatePass.mock.calls[0][0].payload.remove_attachments).toEqual([2]);
+  });
+
+  it('will not take off the last photo unless another replaces it', async () => {
+    updatePass.mockResolvedValue(outPass({ status: 'DRAFT' }));
+    render(
+      <ReturnableForm
+        gatePass={outPass({ status: 'DRAFT' })}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove motor.jpg' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(await screen.findByText(/attach at least one photo/i)).toBeInTheDocument();
+    expect(updatePass).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep motor.jpg' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updatePass).toHaveBeenCalledTimes(1));
+    expect(updatePass.mock.calls[0][0].payload).not.toHaveProperty('remove_attachments');
   });
 });
 

@@ -1,14 +1,26 @@
-import { Trash2, Upload } from 'lucide-react';
+import { Paperclip, Trash2, Undo2, Upload } from 'lucide-react';
 import { useRef } from 'react';
 
 import { Button, Input, Label, NativeSelect, SelectOption } from '@/shared/components/ui';
+import { cn } from '@/shared/utils';
 
 import { ATTACHMENT_DOC_TYPE_OPTIONS, isPhotoFile } from '../../constants/returnable.constants';
-import type { AttachmentDocType, StagedAttachment } from '../../types';
+import type {
+  AttachmentDocType,
+  ReturnableGatePassAttachment,
+  StagedAttachment,
+} from '../../types';
 
 interface ReturnableAttachmentsFieldProps {
   value: StagedAttachment[];
   onChange: (next: StagedAttachment[]) => void;
+  /**
+   * Files already on the pass being edited. Taking one off only marks it: the
+   * removal goes with the save, so Cancel leaves every file where it was.
+   */
+  saved?: ReturnableGatePassAttachment[];
+  removedIds?: number[];
+  onToggleRemoved?: (attachmentId: number) => void;
   disabled?: boolean;
 }
 
@@ -26,6 +38,9 @@ function formatSize(bytes: number) {
 export function ReturnableAttachmentsField({
   value,
   onChange,
+  saved = [],
+  removedIds = [],
+  onToggleRemoved,
   disabled = false,
 }: ReturnableAttachmentsFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,11 +85,82 @@ export function ReturnableAttachmentsField({
         />
       </div>
 
-      {value.length === 0 ? (
+      {saved.length > 0 ? (
+        <ul className="space-y-2">
+          {saved.map((attachment) => {
+            const name = attachment.caption || attachment.file.split('/').pop();
+            const removed = removedIds.includes(attachment.id);
+            return (
+              <li
+                key={attachment.id}
+                className="flex items-center gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3 shadow-sm dark:border-border dark:bg-muted/20"
+              >
+                {/* A camera's file name says nothing; the picture says which one to drop. */}
+                {isPhotoFile(attachment.file) ? (
+                  <img
+                    src={attachment.file}
+                    alt={name}
+                    className={cn(
+                      'h-12 w-12 shrink-0 rounded-md object-cover',
+                      removed && 'opacity-40 grayscale',
+                    )}
+                  />
+                ) : (
+                  <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={attachment.file}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      'block truncate text-sm font-medium underline-offset-2 hover:underline',
+                      removed && 'text-muted-foreground line-through',
+                    )}
+                  >
+                    {name}
+                  </a>
+                  <p className="text-xs text-muted-foreground">
+                    {removed
+                      ? 'Will be removed when you save'
+                      : `${attachment.doc_type_display} · already on the pass`}
+                  </p>
+                </div>
+                {removed ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => onToggleRemoved?.(attachment.id)}
+                    aria-label={`Keep ${name}`}
+                  >
+                    <Undo2 className="mr-1 h-4 w-4" />
+                    Undo
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => onToggleRemoved?.(attachment.id)}
+                    aria-label={`Remove ${name}`}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      {value.length === 0 && saved.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50/40 p-4 text-center text-sm text-muted-foreground dark:border-border dark:bg-muted/10">
           No files attached yet.
         </p>
-      ) : (
+      ) : value.length === 0 ? null : (
         <ul className="space-y-2">
           {value.map((item, index) => (
             <li

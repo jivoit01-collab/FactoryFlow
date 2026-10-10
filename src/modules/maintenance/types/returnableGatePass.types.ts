@@ -355,6 +355,8 @@ export interface ReturnableGatePassPayload {
   asset?: number | null;
   work_order?: number | null;
   items_input: ReturnableItemInput[];
+  /** Edit only — ids of files already on the pass to take off with this save. */
+  remove_attachments?: number[];
 }
 
 export type ReturnableGatePassUpdatePayload = Partial<ReturnableGatePassPayload>;
