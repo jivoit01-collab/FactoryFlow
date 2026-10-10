@@ -124,7 +124,7 @@ export function PlanStockSettings({ onDone }: { onDone: () => void }) {
         </p>
       )}
 
-      <div className="flex justify-end gap-2">
+      <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 border-t bg-popover px-1 py-3">
         <Button variant="outline" onClick={onDone} disabled={save.isPending}>
           Cancel
         </Button>
