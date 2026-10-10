@@ -54,6 +54,7 @@ const ProductionDashboardPage = lazy(() => import('./production/pages/Production
 const LinePerformanceDashboardPage = lazy(
   () => import('./production/pages/LinePerformanceDashboardPage'),
 );
+const MonthPlanSkuPage = lazy(() => import('./production/pages/MonthPlanSkuPage'));
 const BlowingDashboardPage = lazy(() => import('./blowing/pages/BlowingDashboardPage'));
 const ElectricityDashboardPage = lazy(
   () => import('./electricity/pages/ElectricityDashboardPage'),
@@ -536,6 +537,15 @@ export const dashboardsModuleConfig: ModuleConfig = {
       layout: 'main',
       permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
       breadcrumb: { label: 'Line Performance' },
+    },
+    {
+      // The month-plan strip on Line Performance, opened SKU by SKU. Same
+      // permission as the board it is opened from.
+      path: '/dashboards/production-lines/plan',
+      element: <MonthPlanSkuPage />,
+      layout: 'main',
+      permissions: [DASHBOARDS_PERMISSIONS.VIEW_PRODUCTION_MOVEMENT],
+      breadcrumb: { label: "This month's plan" },
     },
     {
       path: '/dashboards/blowing',
