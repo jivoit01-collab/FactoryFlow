@@ -5,7 +5,7 @@ import { useAuth } from '@/core/auth';
 import { PLANT_BOARD_REFRESH_MS } from '../constants';
 import type { WorkforceSetting } from '../types';
 import type { WorkforceDraft, WorkforceEdit } from './plant-board.api';
-import { plantBoardApi, plantBoardSpaceApi } from './plant-board.api';
+import { plantBoardApi, plantBoardPlanStockApi, plantBoardSpaceApi } from './plant-board.api';
 
 export const PLANT_BOARD_QUERY_KEYS = {
   all: ['plant-board'] as const,
@@ -15,6 +15,7 @@ export const PLANT_BOARD_QUERY_KEYS = {
   workforce: (companyId?: number | string) =>
     ['plant-board', 'workforce', companyId] as const,
   space: (companyId?: number | string) => ['plant-board', 'space', companyId] as const,
+  planStock: (companyId?: number | string) => ['plant-board', 'plan-stock', companyId] as const,
 };
 
 /**
@@ -164,6 +165,34 @@ export function useSavePlantBoardSpace() {
     mutationFn: (sqftPerPallet: number | null) => plantBoardSpaceApi.save(sqftPerPallet),
     onSuccess: (data) => {
       client.setQueryData(PLANT_BOARD_QUERY_KEYS.space(currentCompany?.company_id), data);
+      void client.invalidateQueries({
+        queryKey: PLANT_BOARD_QUERY_KEYS.board(currentCompany?.company_id),
+      });
+    },
+  });
+}
+
+/** Which warehouses the month-plan SKU drill counts. Read when settings open. */
+export function usePlanStockWarehouses(enabled = true) {
+  const { currentCompany } = useAuth();
+
+  return useQuery({
+    queryKey: PLANT_BOARD_QUERY_KEYS.planStock(currentCompany?.company_id),
+    queryFn: () => plantBoardPlanStockApi.get(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Save the choice, and refetch the board so the drill's stock follows it. */
+export function useSavePlanStockWarehouses() {
+  const { currentCompany } = useAuth();
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: (warehouses: string[] | null) => plantBoardPlanStockApi.save(warehouses),
+    onSuccess: (data) => {
+      client.setQueryData(PLANT_BOARD_QUERY_KEYS.planStock(currentCompany?.company_id), data);
       void client.invalidateQueries({
         queryKey: PLANT_BOARD_QUERY_KEYS.board(currentCompany?.company_id),
       });

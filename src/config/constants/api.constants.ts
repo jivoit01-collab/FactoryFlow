@@ -513,6 +513,8 @@ export const API_ENDPOINTS = {
     WORKFORCE: '/dashboards/plant-board/workforce/',
     /** Square feet per 1,000 pieces: the only way to turn stock into floor used. */
     SPACE: '/dashboards/plant-board/space/',
+    /** Which warehouses the month-plan SKU drill counts as stock. */
+    PLAN_STOCK_WAREHOUSES: '/dashboards/plant-board/plan-stock-warehouses/',
   },
   // Admin Control Board -- output, storage, cost and the action centre on one
   // executive screen. ONE endpoint for the same reason the plant board has one:

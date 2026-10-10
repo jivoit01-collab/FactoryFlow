@@ -1,7 +1,12 @@
 import { API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
 
-import type { PlantBoardResponse, SpaceSetting, WorkforceSetting } from '../types';
+import type {
+  PlanStockSetting,
+  PlantBoardResponse,
+  SpaceSetting,
+  WorkforceSetting,
+} from '../types';
 
 export const plantBoardApi = {
   /**
@@ -106,6 +111,24 @@ export const plantBoardSpaceApi = {
     const response = await apiClient.put<{ data: SpaceSetting }>(
       API_ENDPOINTS.PLANT_BOARD.SPACE,
       { sqft_per_pallet: sqftPerPallet },
+    );
+    return response.data.data;
+  },
+};
+
+export const plantBoardPlanStockApi = {
+  async get(): Promise<PlanStockSetting> {
+    const response = await apiClient.get<{ data: PlanStockSetting }>(
+      API_ENDPOINTS.PLANT_BOARD.PLAN_STOCK_WAREHOUSES,
+    );
+    return response.data.data;
+  },
+
+  /** An empty list or null goes back to every warehouse. */
+  async save(warehouses: string[] | null): Promise<PlanStockSetting> {
+    const response = await apiClient.put<{ data: PlanStockSetting }>(
+      API_ENDPOINTS.PLANT_BOARD.PLAN_STOCK_WAREHOUSES,
+      { warehouses },
     );
     return response.data.data;
   },

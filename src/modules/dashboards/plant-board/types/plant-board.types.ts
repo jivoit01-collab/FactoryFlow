@@ -514,6 +514,22 @@ export interface UnplannedItem {
  * One SKU of the month's plan: planned, made, what is left, and BH-PF stock.
  * Made is the floor's own receipt, so the rows sum to the band's headline.
  */
+/** A warehouse offered on the month-plan stock setting. */
+export interface PlanStockWarehouse {
+  code: string;
+  name: string;
+  /** Finished-goods SKUs it holds now. */
+  items: number;
+  pieces: number;
+  tons: number;
+}
+
+export interface PlanStockSetting {
+  /** The ticked warehouse codes; null is every warehouse. */
+  selected: string[] | null;
+  warehouses: PlanStockWarehouse[];
+}
+
 /** One warehouse holding a plan SKU. */
 export interface PlanSkuWarehouse {
   code: string;
