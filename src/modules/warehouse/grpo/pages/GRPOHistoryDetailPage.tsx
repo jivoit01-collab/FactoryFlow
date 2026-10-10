@@ -314,13 +314,9 @@ export default function GRPOHistoryDetailPage() {
               grpoDocEntry={grpoDocEntry}
               // Stay on the GRPO: its A/P status and button refresh in place.
               onCreated={(entry) =>
-                entry.sap_status === 'CREATED'
-                  ? toast.success(
-                      `${entry.entry_no} made — A/P invoice draft ${entry.sap_draft_entry} is in SAP.`,
-                    )
-                  : toast.warning(
-                      `${entry.entry_no} saved, but SAP did not take the draft. Open it to try again.`,
-                    )
+                toast.success(
+                  `${entry.entry_no} saved and checked. Open it to go through the checklist and create the A/P draft in SAP.`,
+                )
               }
             />
           )}

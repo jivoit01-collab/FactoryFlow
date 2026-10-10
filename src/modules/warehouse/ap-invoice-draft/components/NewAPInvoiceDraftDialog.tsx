@@ -25,8 +25,8 @@ const MAX_BYTES = 15 * 1024 * 1024;
 /**
  * Add new entry: the GRPO the bill is for, and the bill itself.
  *
- * Submitting saves the entry, makes the A/P invoice draft in SAP, reads the bill
- * and runs the checklist, in one go.
+ * Submitting saves the entry, reads the bill and runs the checklist, in one go.
+ * The A/P invoice draft goes to SAP later, from the entry, after the checklist.
  *
  * Opened from a GRPO's own page, `grpoDocEntry` fixes the GRPO: it is looked
  * up in SAP and shown instead of the picker, and only the bill is asked for.
@@ -108,8 +108,8 @@ export function NewAPInvoiceDraftDialog({
             {grpoDocEntry
               ? "Upload the vendor's bill for this GRPO."
               : "Pick the GRPO and upload the vendor's bill."}{' '}
-            Creating makes the A/P invoice draft in SAP, reads the bill and runs the checklist —
-            about ten seconds.
+            Creating reads the bill and runs the checklist — about ten seconds. The A/P invoice
+            draft goes to SAP from the entry, after the checklist.
           </DialogDescription>
         </DialogHeader>
 

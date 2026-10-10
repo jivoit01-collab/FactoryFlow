@@ -119,7 +119,8 @@ function BillPanel({ entry }: { entry: APInvoiceDraftDetail }) {
   );
 }
 
-/** One bill: its GRPO, its SAP draft, what was read off it, and its checklist. */
+/** One bill: its GRPO, its SAP draft, what was read off it, and its checklist,
+ *  with "Create in SAP" at the end, once the checklist is gone through. */
 export default function APInvoiceDraftDetailPage() {
   const { entryId } = useParams<{ entryId: string }>();
   const id = Number(entryId) || null;
@@ -220,28 +221,15 @@ export default function APInvoiceDraftDetailPage() {
               <p className="text-muted-foreground">{entry.tds_note}</p>
             </div>
           )}
+          {entry.sap_status === 'PENDING' && (
+            <p className="text-sm text-muted-foreground">
+              Goes to SAP from the end of this page, after the audit checklist.
+            </p>
+          )}
           {entry.sap_status === 'FAILED' && (
-            <>
-              <p role="alert" className="whitespace-pre-wrap text-sm text-destructive">
-                {entry.sap_error}
-              </p>
-              {canCreate && (
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    run(sendToSap, (result) =>
-                      result.sap_status === 'CREATED'
-                        ? `Draft ${result.sap_draft_entry} is in SAP`
-                        : 'SAP did not take it',
-                    )
-                  }
-                  disabled={sendToSap.isPending}
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  {sendToSap.isPending ? 'Sending…' : 'Create in SAP'}
-                </Button>
-              )}
-            </>
+            <p role="alert" className="whitespace-pre-wrap text-sm text-destructive">
+              {entry.sap_error}
+            </p>
           )}
           {entry.sap_attachment_error && !entry.sap_attachment_entry && (
             <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -274,6 +262,33 @@ export default function APInvoiceDraftDetailPage() {
           <AuditChecklist entryId={entry.id} checks={entry.checks} canReview={canReview} />
         </Card>
       </PageSection>
+
+      {/* The checklist is the pre-audit: the draft goes to SAP only after it. */}
+      {canCreate && entry.sap_status !== 'CREATED' && (
+        <Card>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {entry.sap_status === 'FAILED'
+                ? 'SAP did not take the draft (its reason is under SAP draft, above). Try again once that is sorted.'
+                : "Once the checklist is gone through, create the A/P invoice draft in SAP. Accounts adds it from SAP's drafts."}
+            </p>
+            <Button
+              className="shrink-0"
+              onClick={() =>
+                run(sendToSap, (result) =>
+                  result.sap_status === 'CREATED'
+                    ? `Draft ${result.sap_draft_entry} is in SAP`
+                    : 'SAP did not take it',
+                )
+              }
+              disabled={sendToSap.isPending}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {sendToSap.isPending ? 'Sending…' : 'Create in SAP'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

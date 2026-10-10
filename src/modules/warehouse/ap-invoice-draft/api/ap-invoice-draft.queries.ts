@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type {
   APInvoiceDraftDetail,
@@ -70,6 +70,16 @@ export function useGRPOAPStatus(docEntries: number[]) {
   });
 }
 
+/** An entry made, or put into SAP: besides its own page, the GRPO picker and
+ *  the GRPO pages' A/P status change with it. */
+function refreshGRPOViews(qc: QueryClient, data: APInvoiceDraftDetail) {
+  qc.setQueryData(AP_INVOICE_DRAFT_QUERY_KEYS.detail(data.id), data);
+  qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'list'] });
+  qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpos'] });
+  qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo'] });
+  qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo-status'] });
+}
+
 function useEntryMutation<TArgs>(mutationFn: (args: TArgs) => Promise<APInvoiceDraftDetail>) {
   const qc = useQueryClient();
   return useMutation({
@@ -81,18 +91,14 @@ function useEntryMutation<TArgs>(mutationFn: (args: TArgs) => Promise<APInvoiceD
   });
 }
 
-/** Saves the entry and makes its SAP draft. A 201 can still carry
- *  `sap_status: 'FAILED'` — the entry is kept and offers the retry. */
+/** Saves the entry, reads the bill and runs the checklist. The SAP draft is
+ *  not made here: the entry comes back `PENDING` for `useSendToSap`. */
 export function useCreateAPInvoiceDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreateAPInvoiceDraftPayload) => apInvoiceDraftApi.create(payload),
     onSuccess: (data) => {
-      qc.setQueryData(AP_INVOICE_DRAFT_QUERY_KEYS.detail(data.id), data);
-      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'list'] });
-      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpos'] });
-      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo'] });
-      qc.invalidateQueries({ queryKey: [...AP_INVOICE_DRAFT_QUERY_KEYS.all, 'grpo-status'] });
+      refreshGRPOViews(qc, data);
     },
   });
 }
@@ -101,8 +107,15 @@ export function useReadInvoice() {
   return useEntryMutation((id: number) => apInvoiceDraftApi.readInvoice(id));
 }
 
+/** "Create in SAP", after the checklist. */
 export function useSendToSap() {
-  return useEntryMutation((id: number) => apInvoiceDraftApi.sendToSap(id));
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apInvoiceDraftApi.sendToSap(id),
+    onSuccess: (data) => {
+      refreshGRPOViews(qc, data);
+    },
+  });
 }
 
 export function useRecheck() {
