@@ -63,6 +63,8 @@ vi.mock('@/modules/gate/api/dispatch-tracking/dispatch-tracking.queries', () => 
   useTruckDispatchBills: () => ({ data: [], isLoading: false }),
   useAddTruckDispatchUpdate: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUploadReturnNote: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUploadProof: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSendDeliveryToSap: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const pageOf = (results: DispatchTrackingTruck[], extra: Partial<TrackingPage> = {}) => ({

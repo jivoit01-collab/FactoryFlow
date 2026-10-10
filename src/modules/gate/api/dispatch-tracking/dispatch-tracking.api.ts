@@ -123,6 +123,33 @@ export interface TruckDispatchPartialLineInput {
   items: TruckDispatchPartialItemInput[];
 }
 
+/** Where one bill's delivery stands with SAP. */
+export type TruckDispatchSapReceiptStatus =
+  | 'NEEDS_PROOF'
+  | 'WAITING'
+  | 'POSTED'
+  | 'ALREADY_RECEIVED'
+  | 'BY_HAND'
+  | 'REFUSED'
+  | 'SUPERSEDED';
+
+/** One bill of a delivery, as written (or waiting to be written) to its SAP
+ *  invoice: received date, received qty per line, and the proof attached. */
+export interface TruckDispatchSapReceipt {
+  id: number;
+  document: number;
+  sap_doc_num: string;
+  customer_name: string;
+  company: string;
+  status: TruckDispatchSapReceiptStatus;
+  status_display: string;
+  /** The date SAP is given as received (YYYY-MM-DD). */
+  received_date: string;
+  /** Why it is waiting, refused or left for SAP by hand; or what was written. */
+  message: string;
+  posted_at: string | null;
+}
+
 /** One status event in a truck's post-dispatch timeline. */
 export interface TruckDispatchUpdate {
   id: number;
@@ -138,6 +165,8 @@ export interface TruckDispatchUpdate {
   /** Signed return note for the stock that came back on a partial delivery. */
   return_note: string | null;
   partial_lines: TruckDispatchPartialLine[];
+  /** A delivery, bill by bill, as SAP has it. Empty for every other status. */
+  sap_receipts: TruckDispatchSapReceipt[];
   created_by_name: string;
   created_at: string;
 }
@@ -268,6 +297,31 @@ export const dispatchTrackingApi = {
       API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_RETURN_NOTE(arrivalId, updateId),
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  /** Attach (or replace) the proof on an update. On a delivery, this is what
+   *  SAP was waiting for: the bills go to SAP with it. */
+  async uploadProof(
+    arrivalId: number,
+    updateId: number,
+    file: File | Blob,
+  ): Promise<TruckDispatchUpdate> {
+    const formData = new FormData();
+    formData.append('proof', file);
+    const response = await apiClient.post<TruckDispatchUpdate>(
+      API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_PROOF(arrivalId, updateId),
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+    return response.data;
+  },
+
+  /** Send a delivery's bills to SAP again: those waiting, and those SAP refused. */
+  async sendToSap(arrivalId: number, updateId: number): Promise<TruckDispatchUpdate> {
+    const response = await apiClient.post<TruckDispatchUpdate>(
+      API_ENDPOINTS.GATE_CORE.DISPATCH_TRACKING_SAP_SEND(arrivalId, updateId),
     );
     return response.data;
   },

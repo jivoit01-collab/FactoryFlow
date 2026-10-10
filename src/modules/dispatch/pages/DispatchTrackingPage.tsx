@@ -18,6 +18,8 @@ import { toast } from 'sonner';
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import { DeliverySapReceipts } from '@/modules/dispatch/components/tracking/DeliverySapReceipts';
+import { sapReceiptSummary } from '@/modules/dispatch/components/tracking/sapReceiptSummary';
 import { downloadTrackingSheet } from '@/modules/dispatch/components/tracking/trackingExport';
 import {
   type CreateTruckDispatchUpdateRequest,
@@ -674,8 +676,10 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
           : {}),
         ...(isPartial ? { partial_lines, return_note: returnNote } : {}),
       };
-      await addUpdate.mutateAsync({ arrivalId, data: payload });
-      toast.success('Status update added');
+      const result = await addUpdate.mutateAsync({ arrivalId, data: payload });
+      toast.success('Status update added', {
+        description: sapReceiptSummary(result.sap_receipts ?? []) || undefined,
+      });
       resetForm();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to add the status update'));
@@ -909,7 +913,9 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`proof-${arrivalId}`} className="text-xs">
-              Proof (photo / document, optional)
+              {showDeliveredDate
+                ? 'Proof of delivery (SAP marks the bills received only with it; can be attached later)'
+                : 'Proof (photo / document, optional)'}
             </Label>
             <Input
               id={`proof-${arrivalId}`}
@@ -1021,6 +1027,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                     ))}
                   </div>
                 ) : null}
+                <DeliverySapReceipts arrivalId={arrivalId} update={update} canUpdate={canUpdate} />
                 <div className="flex flex-wrap items-center gap-3">
                   {update.proof ? (
                     <a

@@ -85,6 +85,41 @@ export function useUploadReturnNote() {
   });
 }
 
+/** Attach the proof to an update; on a delivery, the bills then go to SAP. */
+export function useUploadProof() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      arrivalId,
+      updateId,
+      file,
+    }: {
+      arrivalId: number;
+      updateId: number;
+      file: File | Blob;
+    }) => dispatchTrackingApi.uploadProof(arrivalId, updateId, file),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DISPATCH_TRACKING_QUERY_KEYS.updates(variables.arrivalId),
+      });
+    },
+  });
+}
+
+/** Send a delivery's waiting and refused bills to SAP again. */
+export function useSendDeliveryToSap() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ arrivalId, updateId }: { arrivalId: number; updateId: number }) =>
+      dispatchTrackingApi.sendToSap(arrivalId, updateId),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: DISPATCH_TRACKING_QUERY_KEYS.updates(variables.arrivalId),
+      });
+    },
+  });
+}
+
 export function useAddTruckDispatchUpdate() {
   const queryClient = useQueryClient();
   return useMutation({
