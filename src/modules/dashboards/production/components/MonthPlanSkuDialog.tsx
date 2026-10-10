@@ -45,35 +45,61 @@ function matches(row: PlanSku, show: Show): boolean {
   return true;
 }
 
+type Unit = 'tons' | 'litres' | 'cases' | 'pcs';
+
+const UNITS: { key: Unit; label: string }[] = [
+  { key: 'tons', label: 'Tonnes' },
+  { key: 'litres', label: 'Litres' },
+  { key: 'cases', label: 'Cases' },
+  { key: 'pcs', label: 'Pcs' },
+];
+
+const UNIT_STORAGE_KEY = 'month-plan-sku-unit';
+
+function storedUnit(): Unit {
+  try {
+    const value = window.localStorage.getItem(UNIT_STORAGE_KEY);
+    if (UNITS.some((unit) => unit.key === value)) return value as Unit;
+  } catch {
+    // Storage blocked: the default is fine.
+  }
+  return 'tons';
+}
+
 /**
- * A tonne figure with its cases or pieces underneath.
+ * One figure of a row in the chosen unit, from its pieces and its tonnes.
  *
- * A SKU SAP holds no litre volume for has no tonnage, which is not zero, so
- * it reads "—" and the pieces carry it.
+ * Litres are the tonnes on the board's own 1000 L = 1 t rule, the rule the
+ * tonnes were made with. Null where the unit does not exist for the SKU: no
+ * litre volume in SAP for tonnes and litres, no case factor on the plan for
+ * cases. Null is "—", never a zero.
  */
-function Tonnes({
-  tons,
-  sub,
-  weighed,
-  className,
-}: {
-  tons: number;
-  sub: string | null;
-  weighed: boolean;
-  className?: string;
-}) {
-  return (
-    <span className="flex flex-col items-end leading-tight">
-      <span className={cn('font-semibold', className)}>
-        {weighed ? `${decimal(tons, 2)} t` : '—'}
-      </span>
-      {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
-    </span>
-  );
+function amount(row: PlanSku, qty: number, tons: number, unit: Unit): number | null {
+  if (unit === 'pcs') return qty;
+  if (unit === 'cases') return row.pieces_per_case ? qty / row.pieces_per_case : null;
+  if (!row.weighed) return null;
+  return unit === 'litres' ? tons * 1000 : tons;
+}
+
+function show(value: number | null | undefined, unit: Unit): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  if (unit === 'tons') return `${decimal(value, 2)} t`;
+  if (unit === 'litres') return `${whole(value)} L`;
+  if (unit === 'cases') return `${whole(value)} cs`;
+  return `${whole(value)} pcs`;
+}
+
+/** A unit-scale sum across rows, skipping the rows the unit does not exist for. */
+function total(
+  rows: readonly PlanSku[],
+  unit: Unit,
+  pick: (row: PlanSku) => [number, number],
+): number {
+  return rows.reduce((sum, row) => sum + (amount(row, ...pick(row), unit) ?? 0), 0);
 }
 
 /** Every warehouse a SKU stands in, opened under its row. */
-function SkuWarehouses({ row }: { row: PlanSku }) {
+function SkuWarehouses({ row, unit }: { row: PlanSku; unit: Unit }) {
   if (row.stock_read === false) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -92,8 +118,9 @@ function SkuWarehouses({ row }: { row: PlanSku }) {
           <tr>
             <th className="px-3 py-1.5 text-left font-semibold">Warehouse</th>
             <th className="px-3 py-1.5 text-left font-semibold">Name</th>
-            <th className="px-3 py-1.5 text-right font-semibold">Pieces</th>
-            <th className="px-3 py-1.5 text-right font-semibold">Tonnes</th>
+            <th className="px-3 py-1.5 text-right font-semibold">
+              {UNITS.find((u) => u.key === unit)?.label}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -108,9 +135,8 @@ function SkuWarehouses({ row }: { row: PlanSku }) {
                 )}
               </td>
               <td className="px-3 py-1.5 text-muted-foreground">{place.name || '—'}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{whole(place.qty)}</td>
               <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
-                {row.weighed ? `${decimal(place.tons, 2)} t` : '—'}
+                {show(amount(row, place.qty, place.tons, unit), unit)}
               </td>
             </tr>
           ))}
@@ -118,19 +144,14 @@ function SkuWarehouses({ row }: { row: PlanSku }) {
             <td className="px-3 py-1.5" colSpan={2}>
               Total · {whole(places.length)} warehouse{places.length === 1 ? '' : 's'}
             </td>
-            <td className="px-3 py-1.5 text-right tabular-nums">{whole(row.stock_qty)}</td>
             <td className="px-3 py-1.5 text-right tabular-nums">
-              {row.weighed && row.stock_tons != null ? `${decimal(row.stock_tons, 2)} t` : '—'}
+              {show(amount(row, row.stock_qty ?? 0, row.stock_tons ?? 0, unit), unit)}
             </td>
           </tr>
         </tbody>
       </table>
     </div>
   );
-}
-
-function cases(value: number | null): string | null {
-  return value ? `${whole(value)} cs` : null;
 }
 
 /**
@@ -152,9 +173,18 @@ export function MonthPlanSkuDialog({
 }) {
   const { data, isLoading, isError } = usePlantBoard();
   const [query, setQuery] = useState('');
-  const [show, setShow] = useState<Show>('all');
+  const [filter, setFilter] = useState<Show>('all');
   const [openSku, setOpenSku] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
+  const [unit, setUnitState] = useState<Unit>(storedUnit);
+  const setUnit = (next: Unit) => {
+    setUnitState(next);
+    try {
+      window.localStorage.setItem(UNIT_STORAGE_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
+  };
   // Only for the label of what "In stock" counts.
   const counted = usePlanStockWarehouses(open).data?.selected ?? null;
   const countedLabel =
@@ -163,24 +193,30 @@ export function MonthPlanSkuDialog({
       : `${counted.length} selected warehouse${counted.length === 1 ? '' : 's'}`;
 
   const production = data?.production ?? null;
-  const plan = data?.plan ?? null;
+  const plan = data?.meta.plan ?? null;
   const rows = production?.by_sku;
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (rows ?? []).filter(
       (row) =>
-        matches(row, show) &&
+        matches(row, filter) &&
         (!needle ||
           row.item_code.toLowerCase().includes(needle) ||
           row.item_name.toLowerCase().includes(needle)),
     );
-  }, [rows, query, show]);
+  }, [rows, query, filter]);
 
   const all = rows ?? [];
-  const left = production ? Math.max(0, production.planned_tons - production.produced_tons) : null;
-  const inStock = all.reduce((sum, row) => sum + (row.stock_tons ?? 0), 0);
-  const atFloor = all.reduce((sum, row) => sum + (row.pf_tons ?? 0), 0);
+  const planned = total(all, unit, (row) => [row.planned_qty, row.planned_tons]);
+  const made = total(all, unit, (row) => [row.produced_qty, row.produced_tons]);
+  const madeOffPlan = total(
+    all.filter((row) => !row.on_plan),
+    unit,
+    (row) => [row.produced_qty, row.produced_tons],
+  );
+  const inStock = total(all, unit, (row) => [row.stock_qty ?? 0, row.stock_tons ?? 0]);
+  const atFloor = total(all, unit, (row) => [row.pf_qty ?? 0, row.pf_tons ?? 0]);
   const columns = 7;
 
   return (
@@ -198,14 +234,34 @@ export function MonthPlanSkuDialog({
             </DialogDescription>
           </div>
           {!settings && (
-            <button
-              type="button"
-              onClick={() => setSettings(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex rounded-lg border p-0.5" role="group" aria-label="Unit">
+                {UNITS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setUnit(option.key)}
+                    aria-pressed={unit === option.key}
+                    className={cn(
+                      'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                      unit === option.key
+                        ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettings(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </button>
+            </div>
           )}
         </DialogHeader>
 
@@ -218,31 +274,35 @@ export function MonthPlanSkuDialog({
                 <StatTileRow>
                   <StatTile
                     label="Planned"
-                    value={`${decimal(production.planned_tons)} t`}
+                    value={show(planned, unit)}
                     sub={`${whole(all.filter((row) => row.on_plan).length)} SKUs on plan`}
                     accent="violet"
                   />
                   <StatTile
                     label="Made"
-                    value={`${decimal(production.produced_tons)} t`}
+                    value={show(made, unit)}
                     sub={
-                      production.attainment_tons_pct == null
-                        ? undefined
-                        : `${production.attainment_tons_pct.toFixed(0)}% of the plan`
+                      planned > 0
+                        ? `${((made / planned) * 100).toFixed(0)}% of the plan`
+                        : undefined
                     }
                     accent="emerald"
                   />
-                  <StatTile label="Planned − made" value={`${decimal(left)} t`} accent="amber" />
+                  <StatTile
+                    label="Planned − made"
+                    value={show(Math.max(0, planned - made), unit)}
+                    accent="amber"
+                  />
                   <StatTile
                     label="In stock"
-                    value={`${decimal(inStock)} t`}
-                    sub={`${countedLabel} · ${decimal(atFloor)} t at BH-PF`}
+                    value={show(inStock, unit)}
+                    sub={`${countedLabel} · ${show(atFloor, unit)} at BH-PF`}
                     accent="sky"
                   />
                   <StatTile
                     label="Not on plan"
                     value={whole(all.filter((row) => !row.on_plan).length)}
-                    sub={`${decimal(production.produced_unplanned_tons)} t made`}
+                    sub={`${show(madeOffPlan, unit)} made`}
                     accent="slate"
                   />
                 </StatTileRow>
@@ -250,7 +310,17 @@ export function MonthPlanSkuDialog({
 
               <TableCard
                 bodyClassName="overflow-visible"
-                summary={rows ? `${whole(visible.length)} of ${whole(all.length)} SKUs` : undefined}
+                summary={
+                  rows
+                    ? `${whole(visible.length)} of ${whole(all.length)} SKUs${
+                        unit === 'cases' ? ' · "—" where the plan has no case factor' : ''
+                      }${
+                        unit === 'tons' || unit === 'litres'
+                          ? ' · "—" where SAP has no litre volume'
+                          : ''
+                      }`
+                    : undefined
+                }
                 actions={
                   <>
                     <div className="flex rounded-lg border p-0.5">
@@ -258,10 +328,10 @@ export function MonthPlanSkuDialog({
                         <button
                           key={option.key}
                           type="button"
-                          onClick={() => setShow(option.key)}
+                          onClick={() => setFilter(option.key)}
                           className={cn(
                             'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
-                            show === option.key
+                            filter === option.key
                               ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
                               : 'text-muted-foreground hover:text-foreground',
                           )}
@@ -347,59 +417,45 @@ export function MonthPlanSkuDialog({
                                 )}
                               </span>
                             </Td>
-                            <Td numeric>
-                              <Tonnes
-                                tons={row.planned_tons}
-                                weighed={row.weighed}
-                                sub={cases(row.planned_cases) ?? `${whole(row.planned_qty)} pcs`}
-                              />
+                            <Td numeric className="font-semibold">
+                              {show(amount(row, row.planned_qty, row.planned_tons, unit), unit)}
                             </Td>
-                            <Td numeric>
-                              <Tonnes
-                                tons={row.produced_tons}
-                                weighed={row.weighed}
-                                sub={cases(row.produced_cases) ?? `${whole(row.produced_qty)} pcs`}
-                              />
+                            <Td numeric className="font-semibold">
+                              {show(amount(row, row.produced_qty, row.produced_tons, unit), unit)}
                             </Td>
-                            <Td numeric>
-                              <Tonnes
-                                tons={row.balance_tons}
-                                weighed={row.weighed}
-                                sub={
-                                  row.balance_qty < 0
-                                    ? `${whole(-row.balance_qty)} pcs over`
-                                    : `${whole(row.balance_qty)} pcs`
-                                }
-                                className={
-                                  row.balance_qty < 0
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : row.balance_qty > 0
-                                      ? 'text-amber-600 dark:text-amber-400'
-                                      : undefined
-                                }
-                              />
+                            <Td
+                              numeric
+                              className={cn(
+                                'font-semibold',
+                                row.balance_qty < 0
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : row.balance_qty > 0
+                                    ? 'text-amber-600 dark:text-amber-400'
+                                    : undefined,
+                              )}
+                            >
+                              {(() => {
+                                const value = amount(row, row.balance_qty, row.balance_tons, unit);
+                                return value != null && value < 0
+                                  ? `${show(-value, unit)} over`
+                                  : show(value, unit);
+                              })()}
                             </Td>
                             <Td numeric className="font-semibold">
                               {row.attainment_pct == null
                                 ? '—'
                                 : `${decimal(row.attainment_pct, 0)}%`}
                             </Td>
-                            <Td numeric>
-                              {row.stock_tons == null ? (
-                                '—'
-                              ) : (
-                                <Tonnes
-                                  tons={row.stock_tons}
-                                  weighed={row.weighed}
-                                  sub={row.stock_qty ? `${whole(row.stock_qty)} pcs` : null}
-                                />
-                              )}
+                            <Td numeric className="font-semibold">
+                              {row.stock_qty == null || row.stock_tons == null
+                                ? '—'
+                                : show(amount(row, row.stock_qty, row.stock_tons, unit), unit)}
                             </Td>
                           </tr>
                           {openSku === row.item_code && (
                             <tr className="border-b bg-violet-500/[0.03]">
                               <td colSpan={columns} className="px-4 py-3">
-                                <SkuWarehouses row={row} />
+                                <SkuWarehouses row={row} unit={unit} />
                               </td>
                             </tr>
                           )}

@@ -549,6 +549,8 @@ export interface PlanSku {
   produced_qty: number;
   /** Null where the plan carries no case factor for the SKU. */
   produced_cases: number | null;
+  /** The plan's pieces per case; null off the plan. */
+  pieces_per_case?: number | null;
   produced_tons: number;
   /** Planned less made; negative is made over plan. */
   balance_qty: number;

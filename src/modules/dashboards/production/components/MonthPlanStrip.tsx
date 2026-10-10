@@ -34,7 +34,7 @@ export function MonthPlanStrip({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
 
   const production = data?.production ?? null;
-  const plan = data?.plan ?? null;
+  const plan = data?.meta.plan ?? null;
 
   if (isLoading) {
     return (
