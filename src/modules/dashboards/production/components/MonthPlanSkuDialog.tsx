@@ -86,7 +86,7 @@ function SkuWarehouses({ row }: { row: PlanSku }) {
     return <p className="text-sm text-muted-foreground">No stock of this SKU in any warehouse.</p>;
   }
   return (
-    <div className="ml-5 max-w-3xl overflow-hidden rounded-lg border bg-card">
+    <div className="ml-5 overflow-hidden rounded-lg border bg-card">
       <table className="w-full text-sm">
         <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
           <tr>
