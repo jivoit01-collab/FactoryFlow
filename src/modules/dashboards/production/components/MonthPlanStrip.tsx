@@ -1,10 +1,11 @@
 import { CalendarRange, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 import { usePlantBoard } from '@/modules/dashboards/plant-board/api';
 import { cn } from '@/shared/utils';
 
 import { compact, count } from '../../dispatch/utils/format';
+import { MonthPlanSkuDialog } from './MonthPlanSkuDialog';
 
 /** Litres, short-scaled: "8.4 L ltr". "L" after a bare number is lakh. */
 function litres(value: number): string {
@@ -30,7 +31,7 @@ function litres(value: number): string {
  */
 export function MonthPlanStrip({ className }: { className?: string }) {
   const { data, isLoading, isError } = usePlantBoard();
-  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const production = data?.production ?? null;
   const plan = data?.plan ?? null;
@@ -75,83 +76,86 @@ export function MonthPlanStrip({ className }: { className?: string }) {
   const onTrack = attainment != null && pace != null && attainment >= pace;
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate('/dashboards/production-lines/plan')}
-      title="See the plan SKU by SKU"
-      className={cn(
-        'block shrink-0 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-5 py-3 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 dark:border-violet-400/20 dark:bg-violet-400/[0.08] dark:hover:bg-violet-400/[0.12]',
-        className,
-      )}
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          <CalendarRange className="h-3.5 w-3.5 text-violet-500" />
-          This month's plan
-          {plan?.name && (
-            <span className="font-medium normal-case tracking-normal text-muted-foreground">
-              {plan.name}
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="See the plan SKU by SKU"
+        className={cn(
+          'block shrink-0 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-5 py-3 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 dark:border-violet-400/20 dark:bg-violet-400/[0.08] dark:hover:bg-violet-400/[0.12]',
+          className,
+        )}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <h2 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <CalendarRange className="h-3.5 w-3.5 text-violet-500" />
+            This month's plan
+            {plan?.name && (
+              <span className="font-medium normal-case tracking-normal text-muted-foreground">
+                {plan.name}
+              </span>
+            )}
+          </h2>
+          <p className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+            {elapsed != null && total
+              ? `day ${count(elapsed)} of ${count(total)}`
+              : 'plan dates not set'}
+            <span className="ml-3 flex items-center text-violet-600 dark:text-violet-400">
+              SKU-wise
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          </p>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
+          <span className="text-2xl font-bold tabular-nums text-foreground">
+            {litres(madeLitres)}
+            <span className="ml-2 text-sm font-semibold text-muted-foreground">made</span>
+          </span>
+          <span className="text-2xl font-bold tabular-nums text-muted-foreground">
+            {litres(plannedLitres)}
+            <span className="ml-2 text-sm font-semibold text-muted-foreground">planned</span>
+          </span>
+          <span
+            className={cn(
+              'text-2xl font-bold tabular-nums',
+              attainment == null
+                ? 'text-foreground'
+                : onTrack
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-amber-600 dark:text-amber-400',
+            )}
+          >
+            {attainment == null ? '—' : `${attainment.toFixed(0)}%`}
+            <span className="ml-2 text-sm font-semibold text-muted-foreground">
+              of the plan{pace != null && ` · ${pace.toFixed(0)}% of the month gone`}
+            </span>
+          </span>
+          {leftLitres > 0 && (
+            <span className="text-sm font-semibold text-muted-foreground">
+              {litres(leftLitres)} left
             </span>
           )}
-        </h2>
-        <p className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
-          {elapsed != null && total
-            ? `day ${count(elapsed)} of ${count(total)}`
-            : 'plan dates not set'}
-          <span className="ml-3 flex items-center text-violet-600 dark:text-violet-400">
-            SKU-wise
-            <ChevronRight className="h-4 w-4" />
-          </span>
-        </p>
-      </div>
+        </div>
 
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-8 gap-y-2">
-        <span className="text-2xl font-bold tabular-nums text-foreground">
-          {litres(madeLitres)}
-          <span className="ml-2 text-sm font-semibold text-muted-foreground">made</span>
-        </span>
-        <span className="text-2xl font-bold tabular-nums text-muted-foreground">
-          {litres(plannedLitres)}
-          <span className="ml-2 text-sm font-semibold text-muted-foreground">planned</span>
-        </span>
-        <span
-          className={cn(
-            'text-2xl font-bold tabular-nums',
-            attainment == null
-              ? 'text-foreground'
-              : onTrack
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-amber-600 dark:text-amber-400',
-          )}
-        >
-          {attainment == null ? '—' : `${attainment.toFixed(0)}%`}
-          <span className="ml-2 text-sm font-semibold text-muted-foreground">
-            of the plan{pace != null && ` · ${pace.toFixed(0)}% of the month gone`}
-          </span>
-        </span>
-        {leftLitres > 0 && (
-          <span className="text-sm font-semibold text-muted-foreground">
-            {litres(leftLitres)} left
-          </span>
+        <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+          <div
+            className={cn('rounded-full', onTrack ? 'bg-emerald-500' : 'bg-amber-500')}
+            style={{
+              width: `${Math.min(100, plannedLitres > 0 ? (madeLitres / plannedLitres) * 100 : 0)}%`,
+            }}
+          />
+        </div>
+
+        {production.unweighed_lines > 0 && (
+          <p className="mt-1.5 text-xs font-medium text-muted-foreground">
+            {count(production.unweighed_lines)} planned SKU
+            {production.unweighed_lines === 1 ? ' has' : 's have'} no litre volume in the SAP item
+            master and {production.unweighed_lines === 1 ? 'is' : 'are'} not in these figures.
+          </p>
         )}
-      </div>
-
-      <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
-        <div
-          className={cn('rounded-full', onTrack ? 'bg-emerald-500' : 'bg-amber-500')}
-          style={{
-            width: `${Math.min(100, plannedLitres > 0 ? (madeLitres / plannedLitres) * 100 : 0)}%`,
-          }}
-        />
-      </div>
-
-      {production.unweighed_lines > 0 && (
-        <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-          {count(production.unweighed_lines)} planned SKU
-          {production.unweighed_lines === 1 ? ' has' : 's have'} no litre volume in the SAP item
-          master and {production.unweighed_lines === 1 ? 'is' : 'are'} not in these figures.
-        </p>
-      )}
-    </button>
+      </button>
+      <MonthPlanSkuDialog open={open} onOpenChange={setOpen} />
+    </>
   );
 }
