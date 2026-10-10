@@ -1,7 +1,7 @@
 /**
  * Construction projects — the campus's own building work.
  *
- * Nine permissions and no more: the Django app sets `default_permissions = ()`
+ * Eleven permissions and no more: the Django app sets `default_permissions = ()`
  * on every model, so there is deliberately no `view_project` beside
  * `can_view_project` to grant by mistake.
  */
@@ -22,6 +22,10 @@ export const CONSTRUCTION_PERMISSIONS = {
    *  usually a different person — the PM, not the director. */
   APPROVE_EXPENSE: 'construction_projects.can_approve_expense',
   CLOSE_PROJECT: 'construction_projects.can_close_project',
+  /** The civil works sheet: projects, their works, area and dates. Separate
+   *  from the budget side, so it has rights of its own. */
+  VIEW_CIVIL_WORKS: 'construction_projects.can_view_civil_works',
+  EDIT_CIVIL_WORKS: 'construction_projects.can_edit_civil_works',
 } as const;
 
 export type ConstructionPermission =

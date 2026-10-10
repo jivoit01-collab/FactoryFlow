@@ -1,4 +1,4 @@
-import { ClipboardCheck, ClipboardList, HardHat } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, HardHat, LandPlot } from 'lucide-react';
 
 import {
   CONSTRUCTION_ACCESS,
@@ -11,6 +11,7 @@ import type { ModuleConfig, ModuleRoute } from '@/core/types';
 const ProjectsListPage = lazy(() => import('./pages/ProjectsListPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const ConstructionApprovalsPage = lazy(() => import('./pages/ConstructionApprovalsPage'));
+const CivilWorksPage = lazy(() => import('./pages/CivilWorksPage'));
 
 const constructionRoutes: ModuleRoute[] = [
   {
@@ -19,6 +20,13 @@ const constructionRoutes: ModuleRoute[] = [
     layout: 'main',
     permissions: [...CONSTRUCTION_ACCESS],
     breadcrumb: { label: 'Projects' },
+  },
+  {
+    path: '/construction/civil-works',
+    element: <CivilWorksPage />,
+    layout: 'main',
+    permissions: [CONSTRUCTION_PERMISSIONS.VIEW_CIVIL_WORKS],
+    breadcrumb: { label: 'Civil Works' },
   },
   {
     path: '/construction/approvals',
@@ -55,6 +63,12 @@ export const constructionModuleConfig: ModuleConfig = {
           title: 'Projects',
           icon: ClipboardList,
           permissions: [...CONSTRUCTION_ACCESS],
+        },
+        {
+          path: '/construction/civil-works',
+          title: 'Civil Works',
+          icon: LandPlot,
+          permissions: [CONSTRUCTION_PERMISSIONS.VIEW_CIVIL_WORKS],
         },
         {
           path: '/construction/approvals',

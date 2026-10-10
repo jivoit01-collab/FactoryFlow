@@ -1,8 +1,10 @@
 export { AttachmentsPanel } from './AttachmentsPanel';
+export { CivilWorkFormDialog } from './CivilWorkFormDialog';
 export { ConfirmDialog } from './ConfirmDialog';
 export {
   BatchStatusBadge,
   BudgetBar,
+  CivilStatusBadge,
   ProjectStatusBadge,
   RevisionStatusBadge,
   Stat,

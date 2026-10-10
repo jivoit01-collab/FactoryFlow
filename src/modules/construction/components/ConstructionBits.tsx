@@ -8,8 +8,13 @@ import { AlertTriangle, CalendarClock, IndianRupee } from 'lucide-react';
 
 import { cn } from '@/shared/utils';
 
-import type { ExpenseBatchStatus, ProjectStatus, RevisionStatus } from '../types';
-import { formatMoney, formatShortDate } from '../utils';
+import type {
+  CivilWorkStatus,
+  ExpenseBatchStatus,
+  ProjectStatus,
+  RevisionStatus,
+} from '../types';
+import { CIVIL_STATUS_LABELS, formatMoney, formatShortDate } from '../utils';
 
 const PROJECT_STATUS_STYLES: Record<ProjectStatus, string> = {
   DRAFT: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -40,6 +45,26 @@ export function ProjectStatusBadge({
       )}
     >
       {label ?? status.replace(/_/g, ' ').toLowerCase()}
+    </span>
+  );
+}
+
+const CIVIL_STATUS_STYLES: Record<CivilWorkStatus, string> = {
+  NOT_STARTED: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  IN_PROGRESS: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300',
+  ON_HOLD: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  COMPLETE: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
+};
+
+export function CivilStatusBadge({ status }: { status: CivilWorkStatus }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap',
+        CIVIL_STATUS_STYLES[status],
+      )}
+    >
+      {CIVIL_STATUS_LABELS[status]}
     </span>
   );
 }

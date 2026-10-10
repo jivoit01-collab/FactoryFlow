@@ -444,3 +444,61 @@ export interface ConstructionError {
   code: string;
   context: Record<string, string | number>;
 }
+
+// ---------------------------------------------------------------------------
+// The civil works sheet
+// ---------------------------------------------------------------------------
+
+export type CivilWorkStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'ON_HOLD' | 'COMPLETE';
+
+export type AreaUnit = 'SQFT' | 'RFT' | 'CUFT' | 'NOS';
+
+/** One row of the sheet: a project, or a work under one. */
+export interface CivilWork {
+  id: number;
+  /** The project this work is under; null on a project row. */
+  parent: number | null;
+  position: number;
+  name: string;
+  /** Decimal string. */
+  area: string | null;
+  area_unit: AreaUnit;
+  area_unit_display: string;
+  status: CivilWorkStatus;
+  status_display: string;
+  /** Where it stands, in the site's words: "7th layer", "WBM complete". */
+  stage: string;
+  start_date: string | null;
+  end_date: string | null;
+  /** End minus start once both dates are set; typed before then. */
+  days: number | null;
+  /** Area ÷ days, as a decimal string. */
+  per_day: string | null;
+  contractor: string;
+  remarks: string;
+  /** Past its finish date and not complete. */
+  is_late: boolean;
+  /** Past its start date and not begun. */
+  is_late_start: boolean;
+  updated_at: string;
+}
+
+export interface CivilProject extends CivilWork {
+  works: CivilWork[];
+}
+
+export interface CivilWorkPayload {
+  /** Read on create only. */
+  parent?: number | null;
+  name: string;
+  area?: string | null;
+  area_unit?: AreaUnit;
+  status?: CivilWorkStatus;
+  stage?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  days?: number | null;
+  contractor?: string;
+  remarks?: string;
+}
+

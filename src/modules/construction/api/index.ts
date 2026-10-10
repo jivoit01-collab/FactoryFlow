@@ -6,6 +6,8 @@ export {
   useAddPhoto,
   useApprovalQueue,
   useAttachments,
+  useCivilWorkMutation,
+  useCivilWorks,
   useCreateProject,
   useDailyLogs,
   useDay,

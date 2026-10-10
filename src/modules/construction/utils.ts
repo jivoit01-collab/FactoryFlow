@@ -9,7 +9,13 @@
  * Money arrives from the API as a string and stays one until it is formatted
  * here. Nothing in this module parses an amount into a float to display it.
  */
-import type { DimensionUnit, ExpenseCategory, StopReason } from './types';
+import type {
+  AreaUnit,
+  CivilWorkStatus,
+  DimensionUnit,
+  ExpenseCategory,
+  StopReason,
+} from './types';
 
 /**
  * The sides as they were measured: "30 × 20 × 12 ft".
@@ -124,3 +130,69 @@ export const CATEGORY_TINTS: Record<ExpenseCategory, string> = {
   STATUTORY: 'bg-rose-500',
   OTHER: 'bg-slate-400',
 };
+
+// ---------------------------------------------------------------------------
+// The civil works sheet
+// ---------------------------------------------------------------------------
+
+export const CIVIL_STATUS_LABELS: Record<CivilWorkStatus, string> = {
+  NOT_STARTED: 'Not started',
+  IN_PROGRESS: 'In progress',
+  ON_HOLD: 'On hold',
+  COMPLETE: 'Complete',
+};
+
+export const AREA_UNIT_LABELS: Record<AreaUnit, string> = {
+  SQFT: 'sq ft',
+  RFT: 'rft',
+  CUFT: 'cu ft',
+  NOS: 'nos',
+};
+
+/** The sheet's lettering for the works under a project: A … Z, then AA, AB. */
+export function sheetLetter(index: number): string {
+  let n = index;
+  let letters = '';
+  do {
+    letters = String.fromCharCode(65 + (n % 26)) + letters;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return letters;
+}
+
+/** "40,500" — an area or a count, Indian grouping, no trailing zeros. */
+export function formatArea(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '—';
+  return amount.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+/**
+ * "16 Oct", or "16 Oct 2027" when it is not this year — so a finish typed a
+ * year out by mistake stands out rather than reading like next week.
+ */
+export function formatSheetDate(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
+
+/**
+ * End minus start, the way the sheet counts its days; a same-day job is one.
+ * Mirrors `_planned_days` in the Django app, which stays the authority — this
+ * only previews it while the form is being typed.
+ */
+export function daysBetween(start: string | null | undefined, end: string | null | undefined) {
+  if (!start || !end) return null;
+  const diff = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000);
+  if (!Number.isFinite(diff) || diff < 0) return null;
+  return Math.max(diff, 1);
+}
+

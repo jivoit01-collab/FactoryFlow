@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AttachmentKind,
   BatchDecisionPayload,
+  CivilWorkPayload,
   CompletePayload,
   DailyLogPayload,
   DecisionPayload,
@@ -41,6 +42,7 @@ export const CONSTRUCTION_KEYS = {
   estimate: (id: number) => ['construction', 'project', id, 'estimate'] as const,
   batches: (id: number) => ['construction', 'project', id, 'batches'] as const,
   approvals: () => ['construction', 'approvals'] as const,
+  civilWorks: () => ['construction', 'civil-works'] as const,
 };
 
 /**
@@ -360,3 +362,47 @@ export function useApprovalQueue(enabled = true) {
     enabled,
   });
 }
+
+// ---------------------------------------------------------------------------
+// The civil works sheet
+// ---------------------------------------------------------------------------
+
+/** The whole sheet in one call: projects, each with its works under it. */
+export function useCivilWorks(enabled = true) {
+  return useQuery({
+    queryKey: CONSTRUCTION_KEYS.civilWorks(),
+    queryFn: () => constructionApi.listCivilWorks(),
+    enabled,
+  });
+}
+
+/**
+ * Every change to the sheet shares one hook. Any one of them can renumber or
+ * regroup rows, so each simply reloads the sheet rather than patching it.
+ */
+export function useCivilWorkMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      args:
+        | { action: 'create'; payload: CivilWorkPayload }
+        | { action: 'update'; id: number; payload: Partial<CivilWorkPayload> }
+        | { action: 'remove'; id: number }
+        | { action: 'move'; id: number; direction: 'up' | 'down' },
+    ): Promise<unknown> => {
+      switch (args.action) {
+        case 'create':
+          return constructionApi.createCivilWork(args.payload);
+        case 'update':
+          return constructionApi.updateCivilWork(args.id, args.payload);
+        case 'remove':
+          return constructionApi.removeCivilWork(args.id);
+        case 'move':
+          return constructionApi.moveCivilWork(args.id, args.direction);
+      }
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: CONSTRUCTION_KEYS.civilWorks() }),
+  });
+}
+

@@ -5,6 +5,9 @@ import type {
   ApprovalQueue,
   AttachmentKind,
   BatchDecisionPayload,
+  CivilProject,
+  CivilWork,
+  CivilWorkPayload,
   CompletePayload,
   DailyLog,
   DailyLogPayload,
@@ -323,5 +326,27 @@ export const constructionApi = {
 
   async getApprovalQueue(): Promise<ApprovalQueue> {
     return (await apiClient.get<ApprovalQueue>(EP.APPROVALS)).data;
+  },
+
+  // --- the civil works sheet -------------------------------------------------
+
+  async listCivilWorks(): Promise<CivilProject[]> {
+    return (await apiClient.get<CivilProject[]>(EP.CIVIL_WORKS)).data;
+  },
+
+  async createCivilWork(payload: CivilWorkPayload): Promise<CivilWork> {
+    return (await apiClient.post<CivilWork>(EP.CIVIL_WORKS, payload)).data;
+  },
+
+  async updateCivilWork(id: number, payload: Partial<CivilWorkPayload>): Promise<CivilWork> {
+    return (await apiClient.patch<CivilWork>(EP.CIVIL_WORK_DETAIL(id), payload)).data;
+  },
+
+  async removeCivilWork(id: number): Promise<void> {
+    await apiClient.delete(EP.CIVIL_WORK_DETAIL(id));
+  },
+
+  async moveCivilWork(id: number, direction: 'up' | 'down'): Promise<CivilWork> {
+    return (await apiClient.post<CivilWork>(EP.CIVIL_WORK_MOVE(id), { direction })).data;
   },
 };

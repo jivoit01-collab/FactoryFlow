@@ -2082,6 +2082,11 @@ export const API_ENDPOINTS = {
     REVISION_WITHDRAW: (revisionId: number) =>
       `/construction/revisions/${revisionId}/withdraw/`,
     APPROVALS: '/construction/approvals/',
+    // The civil works sheet: projects with their works under them, each planned
+    // by area between a start and a finish date.
+    CIVIL_WORKS: '/construction/civil-works/',
+    CIVIL_WORK_DETAIL: (id: number) => `/construction/civil-works/${id}/`,
+    CIVIL_WORK_MOVE: (id: number) => `/construction/civil-works/${id}/move/`,
   },
   ISSUES: {
     META: '/issues/meta/',
