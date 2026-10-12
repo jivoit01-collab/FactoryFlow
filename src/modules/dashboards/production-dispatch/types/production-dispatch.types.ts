@@ -47,6 +47,15 @@ export interface ReportDay {
   group_dispatch: number;
 }
 
+/** One period's production plan (SAP OFCT/FCT1), the newest where it was revised. */
+export interface ReportPlan {
+  name: string;
+  from: string;
+  to: string;
+  /** Planned quantity by item code, in SAP's own units. */
+  items: Record<string, number>;
+}
+
 export interface ProductionDispatchReport {
   company: { code: string; name: string };
   from: string;
@@ -55,6 +64,11 @@ export interface ProductionDispatchReport {
   movement_window: { from: string; to: string };
   items: ReportItem[];
   days: ReportDay[];
+  /**
+   * The plans the range touches. Null when SAP's plan could not be read;
+   * absent from a server that does not send it yet.
+   */
+  plans?: ReportPlan[] | null;
   meta: { read_at: string };
 }
 

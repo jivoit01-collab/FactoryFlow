@@ -142,6 +142,8 @@ export function monthsInRange(
 
 export interface ItemRow extends Totals {
   item: ReportItem;
+  /** The production plan for the row's period; null where no plan was read. */
+  plan: Measure | null;
 }
 
 export interface DayItemRow extends ItemRow {
@@ -160,22 +162,46 @@ export function dayItemRows(report: ProductionDispatchReport): DayItemRow[] {
     const item = items.get(day.item_code);
     if (!item) continue;
     const totals = totalsOf(day, item, report.settings);
-    if (moved(totals)) rows.push({ date: day.date, item, ...totals });
+    if (!moved(totals)) continue;
+    // The whole month's plan on each day: the plan that covers the day.
+    const plan = report.plans?.find((one) => one.from <= day.date && day.date <= one.to);
+    rows.push({
+      date: day.date,
+      item,
+      ...totals,
+      plan: plan ? measure(plan.items[item.item_code] ?? 0, item, report.settings) : null,
+    });
   }
   return rows.sort(
     (a, b) => a.date.localeCompare(b.date) || a.item.item_code.localeCompare(b.item.item_code),
   );
 }
 
-/** Items: each SKU's days added up over the range, in item-code order. */
-export function itemRows(days: DayItemRow[]): ItemRow[] {
+/**
+ * Items: each SKU's days added up over the range, in item-code order, with
+ * its plan for every period the range touches. A SKU the plan lists that
+ * never moved is a row too -- planned and not sold is what the plan column
+ * is read for.
+ */
+export function itemRows(days: DayItemRow[], report?: ProductionDispatchReport): ItemRow[] {
   const byCode = new Map<string, ItemRow>();
   for (const day of days) {
     const sofar = byCode.get(day.item.item_code);
     byCode.set(day.item.item_code, {
       item: day.item,
       ...addTotals(sofar ?? emptyTotals(), day),
+      plan: null,
     });
+  }
+  if (report?.plans?.length) {
+    const plans = report.plans;
+    for (const item of report.items) {
+      const qty = plans.reduce((sum, plan) => sum + (plan.items[item.item_code] ?? 0), 0);
+      const row = byCode.get(item.item_code);
+      const plan = measure(qty, item, report.settings);
+      if (row) row.plan = plan;
+      else if (qty > 0) byCode.set(item.item_code, { item, ...emptyTotals(), plan });
+    }
   }
   return [...byCode.values()].sort((a, b) => a.item.item_code.localeCompare(b.item.item_code));
 }

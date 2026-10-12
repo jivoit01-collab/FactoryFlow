@@ -59,6 +59,34 @@ function report(items: ReportItem[], days: ReportDay[]): ProductionDispatchRepor
   };
 }
 
+describe('the production plan', () => {
+  const planned = {
+    ...report(
+      [item('FG1'), item('FG2'), item('FG3')],
+      [day('2026-09-01', 'FG1', { dispatch: 80 }), day('2026-09-02', 'FG1', { dispatch: 80 })],
+    ),
+    plans: [{ name: 'Sep', from: '2026-09-01', to: '2026-09-30', items: { FG1: 1600, FG2: 800 } }],
+  };
+
+  it("puts the month's plan on each day the SKU moved", () => {
+    const rows = dayItemRows(planned);
+    expect(rows.map((row) => row.plan?.qty)).toEqual([1600, 1600]);
+  });
+
+  it('lists a planned SKU that never moved, planned and nothing sold', () => {
+    const rows = itemRows(dayItemRows(planned), planned);
+    expect(rows.map((row) => [row.item.item_code, row.plan?.pallet, row.dispatch.qty])).toEqual([
+      ['FG1', 2, 160],
+      ['FG2', 1, 0],
+    ]);
+  });
+
+  it('reads no plan as no plan, not a zero one', () => {
+    const rows = itemRows(dayItemRows({ ...planned, plans: null }), { ...planned, plans: null });
+    expect(rows[0].plan).toBeNull();
+  });
+});
+
 describe('measure', () => {
   it('converts the way the workbook does', () => {
     const tin = item('FG1', { pieces_per_box: 4, litres_per_unit: 5 });

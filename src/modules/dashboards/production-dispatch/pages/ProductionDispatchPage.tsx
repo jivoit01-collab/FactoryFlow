@@ -71,7 +71,7 @@ export default function ProductionDispatchPage() {
   };
 
   const days = useMemo(() => (report ? dayItemRows(report) : []), [report]);
-  const items = useMemo(() => itemRows(days), [days]);
+  const items = useMemo(() => itemRows(days, report), [days, report]);
   const totals = useMemo(() => sumTotals(items), [items]);
 
   const openItemDay = useCallback(

@@ -16,7 +16,7 @@ import type { SheetColumn } from './SheetTable';
  * sheets read alike: Summary is Items with a date in front.
  */
 
-/** Item No. (opens its documents) through Pcs per Box. */
+/** VARIETY, SUBGROUP, Item Description, Item No. (opens its documents) and SKU. */
 export function skuColumns<Row extends ItemRow>(onOpen: (row: Row) => void): SheetColumn<Row>[] {
   const text = (key: string, label: string, pick: (row: Row) => string | null, wide = false) => ({
     key,
@@ -25,6 +25,9 @@ export function skuColumns<Row extends ItemRow>(onOpen: (row: Row) => void): She
     wide,
   });
   return [
+    text('variety', 'VARIETY', (row) => row.item.variety),
+    text('subgroup', 'SUBGROUP', (row) => row.item.subgroup),
+    text('item_name', 'Item Description', (row) => row.item.item_name, true),
     {
       key: 'item_code',
       label: 'Item No.',
@@ -41,18 +44,7 @@ export function skuColumns<Row extends ItemRow>(onOpen: (row: Row) => void): She
         </button>
       ),
     },
-    text('item_name', 'Item Description', (row) => row.item.item_name, true),
-    text('variety', 'VARIETY', (row) => row.item.variety),
-    text('subgroup', 'SUBGROUP', (row) => row.item.subgroup),
     text('sku', 'SKU', (row) => row.item.sku),
-    text('packing_type', 'Packing Type', (row) => row.item.packing_type),
-    {
-      key: 'pieces_per_box',
-      label: 'Pcs per Box',
-      value: (row) => fmtWhole(row.item.pieces_per_box),
-      sort: (row) => row.item.pieces_per_box,
-      align: 'right',
-    },
   ];
 }
 
@@ -76,7 +68,8 @@ const FORMAT: Record<MeasureKey, [(value: number) => string, number]> = {
 };
 
 /**
- * Production, dispatch and NET in the chosen unit, then Dispatch / Production %.
+ * The month's plan, production, dispatch and NET in the chosen unit, then
+ * Dispatch / Production %.
  *
  * One unit at a time: the workbook showed each flow five times over, which
  * made the sheet too wide to read. The Excel export still carries them all.
@@ -85,7 +78,29 @@ export function flowColumns<Row extends ItemRow>(unit: MeasureKey): SheetColumn<
   const [format, decimals] = FORMAT[unit];
   const label = MEASURES.find((measure) => measure.key === unit)?.label ?? unit;
   const net = (row: Row) => row.production[unit] - row.dispatch[unit];
+  const plan = (row: Row) => row.plan?.[unit] ?? null;
   return [
+    {
+      key: `plan_${unit}`,
+      label: `Plan ${label}`,
+      value: (row) => {
+        const value = plan(row);
+        return value == null ? '—' : format(value);
+      },
+      number: (row) => plan(row) ?? 0,
+      align: 'right',
+      decimals,
+      // A day row carries its whole month's plan, so the foot counts each
+      // SKU once per month rather than once per day it moved.
+      footer: (rows) => {
+        const seen = new Map<string, number>();
+        for (const row of rows) {
+          const month = 'date' in row ? String(row.date).slice(0, 7) : '';
+          seen.set(`${row.item.item_code}|${month}`, plan(row) ?? 0);
+        }
+        return format([...seen.values()].reduce((sum, value) => sum + value, 0));
+      },
+    },
     {
       key: `production_${unit}`,
       label: `Prod ${label}`,
