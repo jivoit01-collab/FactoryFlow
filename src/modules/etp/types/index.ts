@@ -342,6 +342,25 @@ export interface BackwashEntry {
   remarks: string;
 }
 
+/** One step of a day filed from the all-steps form. */
+export interface BackwashSheetStep {
+  equipment: number;
+  start_time: string;
+  stop_time: string | null;
+  chemical: number | null;
+  chemical_quantity: string | null;
+  remarks: string;
+}
+
+/** A day's back washing: plant, date and signatures once, then each step. */
+export interface BackwashSheetPayload {
+  plant: number;
+  date: string;
+  operator: number | null;
+  chemist: number | null;
+  steps: BackwashSheetStep[];
+}
+
 export interface CalibrationReading {
   id?: number;
   actual_value: string;

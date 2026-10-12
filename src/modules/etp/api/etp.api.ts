@@ -4,6 +4,7 @@ import { apiClient } from '@/core/api';
 import type {
   BackwashEntry,
   BackwashEquipment,
+  BackwashSheetPayload,
   CalibrationInstrument,
   CalibrationRecord,
   ChangeLogFilters,
@@ -227,6 +228,8 @@ export const etpApi = {
     list<BackwashEntry>(EP.BACKWASH_ENTRIES, filters),
   createBackwashEntry: async (payload: Partial<BackwashEntry>) =>
     (await apiClient.post<BackwashEntry>(EP.BACKWASH_ENTRIES, payload)).data,
+  createBackwashSheet: async (payload: BackwashSheetPayload) =>
+    (await apiClient.post<BackwashEntry[]>(EP.BACKWASH_ENTRIES_BULK, payload)).data,
   updateBackwashEntry: async (id: number, payload: Partial<BackwashEntry>) =>
     (await apiClient.patch<BackwashEntry>(EP.BACKWASH_ENTRY_DETAIL(id), payload)).data,
   deleteBackwashEntry: async (id: number) => {

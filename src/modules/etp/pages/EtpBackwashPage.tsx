@@ -3,8 +3,9 @@
  *
  * A day is four short rows (sand filter backwash, sand rinse, carbon backwash,
  * carbon rinse), each a start and a stop time. The steps themselves are master
- * data per plant, and "Log today's steps" lays out one row per configured step
- * with its usual duration so the operator only adjusts the clock.
+ * data per plant, and "Log Steps" lays out one row per configured step of the
+ * picked plant so the whole day is filed from one form (`BackwashSheetDialog`).
+ * Editing a filed row stays one row at a time.
  */
 
 import { Pencil, Plus, Printer, ShowerHead, Trash2 } from 'lucide-react';
@@ -33,7 +34,6 @@ import {
 } from '@/shared/components/ui';
 
 import {
-  useCreateEtpBackwashEntry,
   useDeleteEtpBackwashEntry,
   useEtpBackwashEntries,
   useEtpBackwashEquipment,
@@ -42,6 +42,7 @@ import {
   useEtpStaff,
   useUpdateEtpBackwashEntry,
 } from '../api';
+import { BackwashSheetDialog } from '../components/BackwashSheetDialog';
 import {
   FilterTotal,
   PlantSelect,
@@ -53,7 +54,7 @@ import { EtpEntryHistory } from '../components/EtpEntryHistory';
 import { useEtpRegisterPrint } from '../components/useEtpRegisterPrint';
 import type { BackwashEntry } from '../types';
 import { useEtpPrintDocument } from '../usePrintDocument';
-import { firstOfMonthISO, fmt, todayISO } from '../utils';
+import { addMinutes, firstOfMonthISO, fmt, todayISO } from '../utils';
 
 const EMPTY_FORM = {
   plant: '',
@@ -67,15 +68,6 @@ const EMPTY_FORM = {
   chemist: '',
   remarks: '',
 };
-
-/** "08:20" + 10 minutes → "08:30", for the stop-time prefill. */
-function addMinutes(time: string, minutes: number): string {
-  if (!time) return '';
-  const [hours, mins] = time.split(':').map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(mins)) return '';
-  const total = (hours * 60 + mins + minutes) % (24 * 60);
-  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-}
 
 export default function EtpBackwashPage() {
   const { hasPermission } = usePermission();
@@ -97,13 +89,13 @@ export default function EtpBackwashPage() {
     company: company || undefined,
   });
 
-  const createEntry = useCreateEtpBackwashEntry();
   const updateEntry = useUpdateEtpBackwashEntry();
   const deleteEntry = useDeleteEtpBackwashEntry();
   const { print, printPortal } = useEtpRegisterPrint();
   // The register's document number comes from the database, not the bundle.
   const printDocument = useEtpPrintDocument();
 
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<BackwashEntry | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -120,12 +112,6 @@ export default function EtpBackwashPage() {
 
   const setField = (key: keyof typeof EMPTY_FORM, value: string) =>
     setForm((previous) => ({ ...previous, [key]: value }));
-
-  const openAdd = () => {
-    setEditing(null);
-    setForm({ ...EMPTY_FORM, date: todayISO(), plant: plantFilter });
-    setDialogOpen(true);
-  };
 
   const openEdit = (entry: BackwashEntry) => {
     setEditing(entry);
@@ -171,6 +157,7 @@ export default function EtpBackwashPage() {
   };
 
   const submit = async () => {
+    if (!editing) return;
     if (!form.plant || !form.equipment || !form.date || !form.start_time) {
       toast.error('Plant, step, date and start time are needed');
       return;
@@ -188,13 +175,8 @@ export default function EtpBackwashPage() {
       remarks: form.remarks,
     };
     try {
-      if (editing) {
-        await updateEntry.mutateAsync({ id: editing.id, payload });
-        toast.success('Step updated');
-      } else {
-        await createEntry.mutateAsync(payload);
-        toast.success('Step logged');
-      }
+      await updateEntry.mutateAsync({ id: editing.id, payload });
+      toast.success('Step updated');
       setDialogOpen(false);
     } catch {
       /* interceptor surfaces the backend's message */
@@ -274,8 +256,8 @@ export default function EtpBackwashPage() {
             <Printer className="mr-1 h-4 w-4" /> Print
           </Button>
           {canManage && (
-            <Button onClick={openAdd} disabled={equipment.length === 0}>
-              <Plus className="mr-1 h-4 w-4" /> Log Step
+            <Button onClick={() => setSheetOpen(true)} disabled={equipment.length === 0}>
+              <Plus className="mr-1 h-4 w-4" /> Log Steps
             </Button>
           )}
         </div>
@@ -363,11 +345,21 @@ export default function EtpBackwashPage() {
         </CardContent>
       </Card>
 
+      <BackwashSheetDialog
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        initialPlant={plantFilter}
+        plants={plants}
+        equipment={equipment}
+        chemicals={chemicals}
+        staff={staff}
+      />
+
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         {/* Title and buttons stay put; only the fields scroll. */}
         <DialogContent className="max-h-[90vh] max-w-2xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit back-wash step' : 'Log a back-wash step'}</DialogTitle>
+            <DialogTitle>Edit back-wash step</DialogTitle>
           </DialogHeader>
 
           <DialogBody className="space-y-4">
@@ -487,9 +479,9 @@ export default function EtpBackwashPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={submit} disabled={createEntry.isPending || updateEntry.isPending}>
+            <Button onClick={submit} disabled={updateEntry.isPending}>
               <ShowerHead className="mr-1 h-4 w-4" />
-              {editing ? 'Save changes' : 'Log step'}
+              Save changes
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1898,6 +1898,7 @@ export const API_ENDPOINTS = {
 
     BACKWASH_ENTRIES: '/etp/backwash-entries/',
     BACKWASH_ENTRY_DETAIL: (entryId: number) => `/etp/backwash-entries/${entryId}/`,
+    BACKWASH_ENTRIES_BULK: '/etp/backwash-entries/bulk/',
 
     CALIBRATION_RECORDS: '/etp/calibration-records/',
     CALIBRATION_RECORD_DETAIL: (recordId: number) => `/etp/calibration-records/${recordId}/`,

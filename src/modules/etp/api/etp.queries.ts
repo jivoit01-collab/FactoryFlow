@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BackwashEntry,
   BackwashEquipment,
+  BackwashSheetPayload,
   CalibrationInstrument,
   CalibrationRecord,
   ChangeLogFilters,
@@ -514,10 +515,22 @@ export function useDeleteEtpSludgeEntry() {
 
 // ---- Register 5: daily back washing --------------------------------------
 
-export function useEtpBackwashEntries(filters?: RegisterFilters & { equipment?: number }) {
+export function useEtpBackwashEntries(
+  filters?: RegisterFilters & { equipment?: number },
+  enabled = true,
+) {
   return useQuery({
     queryKey: ETP_KEYS.backwash(filters),
     queryFn: () => etpApi.getBackwashEntries(filters),
+    enabled,
+  });
+}
+
+export function useCreateEtpBackwashSheet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: BackwashSheetPayload) => etpApi.createBackwashSheet(payload),
+    onSuccess: () => invalidate(queryClient, 'backwash'),
   });
 }
 
