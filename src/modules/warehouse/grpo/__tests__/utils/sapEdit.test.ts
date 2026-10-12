@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildEdit, initialState } from '../../utils/sapEdit';
+import { buildEdit, initialState, LAST_FILE_PROBLEM } from '../../utils/sapEdit';
 import { serviceGRPO } from '../fixtures.sapEdit';
 
 describe('what the GRPO edit form sends', () => {
@@ -59,5 +59,24 @@ describe('what the GRPO edit form sends', () => {
     const state = initialState(doc);
     state.amounts[1] = '9999';
     expect(buildEdit(doc, state).request.lines).toEqual([]);
+  });
+
+  it('removes files, but never the last one unless a new one replaces it', () => {
+    const doc = serviceGRPO({
+      attachments: [
+        { line: 1, filename: 'bill.pdf', date: null },
+        { line: 2, filename: 'wrong.pdf', date: null },
+      ],
+    });
+    const state = initialState(doc);
+    state.removed = ['wrong.pdf'];
+    const one = buildEdit(doc, state);
+    expect(one.request.remove_attachments).toEqual([{ filename: 'wrong.pdf' }]);
+    expect(one.problems).toEqual([]);
+
+    state.removed = ['bill.pdf', 'wrong.pdf'];
+    expect(buildEdit(doc, state).problems).toEqual([LAST_FILE_PROBLEM]);
+    expect(buildEdit(doc, state, ['bill-corrected.pdf']).problems).toEqual([]);
+    expect(buildEdit(doc, state, ['BILL.pdf']).problems[0]).toMatch(/Rename it/);
   });
 });

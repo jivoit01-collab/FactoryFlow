@@ -133,6 +133,52 @@ describe('editing a GRPO in SAP', () => {
   });
 });
 
+describe('attachments', () => {
+  const withFiles = (overrides = {}) =>
+    serviceGRPO({
+      attachments: [
+        { line: 1, filename: 'bill.pdf', date: '2026-10-10' },
+        { line: 2, filename: 'wrong.pdf', date: '2026-10-10' },
+      ],
+      ...overrides,
+    });
+
+  it('removes a file on save, and can be undone before', async () => {
+    sapGRPO.mockReturnValue({ data: withFiles(), isLoading: false, error: null, dataUpdatedAt: 1 });
+    mutateAsync.mockResolvedValue({ outcome: 'POSTED', message: 'GRPO 2026106504 updated in SAP.' });
+    renderAt('/dispatch/bilty-grpo/sap-edit/501');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove wrong.pdf' }));
+    expect(screen.getByText('To remove')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep wrong.pdf' }));
+    expect(screen.queryByText('To remove')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove wrong.pdf' }));
+    fireEvent.click(screen.getByRole('button', { name: /Save to SAP/ }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalled());
+    expect(mutateAsync.mock.calls[0][0].data.remove_attachments).toEqual([{ filename: 'wrong.pdf' }]);
+  });
+
+  it('will not save a GRPO left with no attachment', () => {
+    sapGRPO.mockReturnValue({ data: withFiles(), isLoading: false, error: null, dataUpdatedAt: 1 });
+    renderAt('/dispatch/bilty-grpo/sap-edit/501');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove bill.pdf' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove wrong.pdf' }));
+    expect(screen.getByText(/must keep at least one attachment/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save to SAP/ })).toBeDisabled();
+  });
+
+  it('offers no removal when the files are shared with another document', () => {
+    sapGRPO.mockReturnValue({
+      data: withFiles({ attachments_shared_message: 'This GRPO’s attachments are shared with cancelled GRPO 2026096650.' }),
+      isLoading: false,
+      error: null,
+      dataUpdatedAt: 1,
+    });
+    renderAt('/dispatch/bilty-grpo/sap-edit/501');
+    expect(screen.getByText(/shared with cancelled GRPO 2026096650/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove bill.pdf' })).not.toBeInTheDocument();
+  });
+});
+
 describe('the screen for the other type', () => {
   it('sends a service GRPO opened under Warehouse to Dispatch', () => {
     sapGRPO.mockReturnValue({ data: serviceGRPO(), isLoading: false, error: null, dataUpdatedAt: 1 });

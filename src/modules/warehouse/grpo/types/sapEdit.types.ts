@@ -73,7 +73,11 @@ export interface SapGRPOEdit {
   status_label: string;
   message: string;
   summary: string;
-  changes: { header?: Record<string, SapGRPOHeaderChange>; lines?: SapGRPOLineChange[] };
+  changes: {
+    header?: Record<string, SapGRPOHeaderChange>;
+    lines?: SapGRPOLineChange[];
+    attachments_removed?: { filename: string; label: string }[];
+  };
   attachments: string[];
   requested_by: string;
   created_at: string | null;
@@ -107,6 +111,8 @@ export interface SapGRPODocument {
   month_options: { code: string; name: string }[];
   lines: SapGRPOLine[];
   attachments: { line: number; filename: string; date: string | null }[];
+  /** Why files cannot be removed here (the entry is shared), or "". */
+  attachments_shared_message: string;
   edits: SapGRPOEdit[];
   material_posting_id: number | null;
   service_posting_id: number | null;
@@ -132,6 +138,8 @@ export interface SapGRPOFindResult {
 export interface SapGRPOEditRequest {
   header: Record<string, { before: SapGRPOFieldValue; after: SapGRPOFieldValue }>;
   lines: { line_num: number; field: 'amount' | 'month'; before: SapGRPOFieldValue; after: SapGRPOFieldValue }[];
+  /** Files to take off the GRPO's attachments in SAP. */
+  remove_attachments?: { filename: string }[];
 }
 
 export interface SapGRPOEditResponse {

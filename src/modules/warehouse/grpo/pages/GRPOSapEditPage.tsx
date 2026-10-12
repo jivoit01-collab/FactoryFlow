@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Trash2,
   X,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
@@ -342,7 +343,10 @@ function EditForm({ config, doc }: { config: ScopeConfig; doc: SapGRPODocument }
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState('');
 
-  const built = useMemo(() => buildEdit(doc, state), [doc, state]);
+  const built = useMemo(
+    () => buildEdit(doc, state, files.map((f) => f.name)),
+    [doc, state, files],
+  );
   const waiting = doc.edits.find((e) => e.status === 'WAITING');
   const readOnly = !doc.can_edit || !!doc.blocked_reason || !!waiting;
   const isService = doc.doc_type === 'S';
@@ -351,6 +355,14 @@ function EditForm({ config, doc }: { config: ScopeConfig; doc: SapGRPODocument }
 
   const setHeader = (key: string, value: string) =>
     setState((s) => ({ ...s, header: { ...s.header, [key]: value } }));
+  const toggleRemoved = (filename: string) =>
+    setState((s) => ({
+      ...s,
+      removed: s.removed.includes(filename)
+        ? s.removed.filter((name) => name !== filename)
+        : [...s.removed, filename],
+    }));
+  const canRemove = !readOnly && !doc.attachments_shared_message;
 
   function reset() {
     setState(initialState(doc));
@@ -367,7 +379,7 @@ function EditForm({ config, doc }: { config: ScopeConfig; doc: SapGRPODocument }
       details: [
         ...built.changes.slice(0, 8).map((c) => ({ label: c.label, value: `${c.before} → ${c.after}` })),
         built.changes.length > 8 && { label: 'And', value: `${built.changes.length - 8} more` },
-        files.length > 0 && { label: 'Attachments', value: files.map((f) => f.name).join(', ') },
+        files.length > 0 && { label: 'Add attachments', value: files.map((f) => f.name).join(', ') },
       ],
       confirmLabel: 'Save to SAP',
     });
@@ -582,13 +594,41 @@ function EditForm({ config, doc }: { config: ScopeConfig; doc: SapGRPODocument }
               <p className="text-muted-foreground">No attachments in SAP yet.</p>
             ) : (
               <ul className="space-y-1">
-                {doc.attachments.map((a) => (
-                  <li key={a.line} className="flex justify-between gap-2">
-                    <span className="truncate">{a.filename}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{formatDate(a.date)}</span>
-                  </li>
-                ))}
+                {doc.attachments.map((a) => {
+                  const removing = state.removed.includes(a.filename);
+                  return (
+                    <li key={a.line} className="flex items-center justify-between gap-2">
+                      <span className={`truncate ${removing ? 'text-muted-foreground line-through' : ''}`}>
+                        {a.filename}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {removing ? 'To remove' : formatDate(a.date)}
+                        </span>
+                        {canRemove && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`${removing ? 'Keep' : 'Remove'} ${a.filename}`}
+                            onClick={() => toggleRemoved(a.filename)}
+                          >
+                            {removing ? <RotateCcw className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
+            )}
+            {doc.attachments_shared_message && !readOnly && (
+              <p className="text-xs text-muted-foreground">{doc.attachments_shared_message}</p>
+            )}
+            {canRemove && doc.attachments.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                To replace a file, remove it and add the new one: both are saved together. A GRPO
+                always keeps at least one attachment.
+              </p>
             )}
             {files.length > 0 && (
               <ul className="space-y-1 border-t pt-3">

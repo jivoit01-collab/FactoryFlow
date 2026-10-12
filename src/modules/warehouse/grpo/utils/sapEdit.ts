@@ -37,13 +37,22 @@ export interface FormState {
   header: Record<string, string>;
   amounts: Record<number, string>;
   months: Record<number, string>;
+  /** Attachments in SAP marked for removal, by file name. */
+  removed: string[];
 }
+
+/** SAP's rule 200019: a GRPO that is not cancelled must keep an attachment. */
+export const LAST_FILE_PROBLEM =
+  'A GRPO must keep at least one attachment (SAP: "Please Attach its Receiving"). To replace the last file, add the new one in the same save.';
+
+const sameFile = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 export function initialState(doc: SapGRPODocument): FormState {
   return {
     header: Object.fromEntries(doc.header_fields.map((f) => [f.key, toInput(f.value)])),
     amounts: Object.fromEntries(doc.lines.map((l) => [l.line_num, l.amount ?? ''])),
     months: Object.fromEntries(doc.lines.map((l) => [l.line_num, l.month])),
+    removed: [],
   };
 }
 
@@ -59,7 +68,11 @@ function shown(value: SapGRPOFieldValue | string): string {
   return value === null || value === '' ? '(empty)' : String(value);
 }
 
-export function buildEdit(doc: SapGRPODocument, state: FormState): BuiltEdit {
+export function buildEdit(
+  doc: SapGRPODocument,
+  state: FormState,
+  newFileNames: string[] = [],
+): BuiltEdit {
   const request: SapGRPOEditRequest = { header: {}, lines: [] };
   const changes: BuiltEdit['changes'] = [];
   const problems: string[] = [];
@@ -97,6 +110,19 @@ export function buildEdit(doc: SapGRPODocument, state: FormState): BuiltEdit {
         request.lines.push({ line_num: line.line_num, field: 'month', before: line.month, after: month });
         changes.push({ label: `Effective month, ${row}`, before: shown(line.month), after: month });
       }
+    }
+  }
+
+  if (state.removed.length > 0) {
+    request.remove_attachments = state.removed.map((filename) => ({ filename }));
+    for (const filename of state.removed) {
+      changes.push({ label: 'Remove attachment', before: filename, after: '(removed)' });
+      if (newFileNames.some((name) => sameFile(name, filename))) {
+        problems.push(`A new file is also called ${filename}. Rename it before adding it.`);
+      }
+    }
+    if (doc.attachments.length - state.removed.length + newFileNames.length < 1) {
+      problems.push(LAST_FILE_PROBLEM);
     }
   }
 

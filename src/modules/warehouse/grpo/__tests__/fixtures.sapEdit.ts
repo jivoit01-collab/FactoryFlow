@@ -59,6 +59,7 @@ export function serviceGRPO(overrides: Partial<SapGRPODocument> = {}): SapGRPODo
       },
     ],
     attachments: [],
+    attachments_shared_message: '',
     edits: [],
     material_posting_id: null,
     service_posting_id: null,
