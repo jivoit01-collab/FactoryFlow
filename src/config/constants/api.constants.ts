@@ -15,6 +15,10 @@ export const API_CONFIG = {
     import.meta.env.VITE_API_BASE_URL ||
     (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://factory.jivo.in/api/v1'),
   timeout: 30000,
+  // A file goes up over whatever signal the phone has. Camera photos on mobile
+  // data outran `timeout`, the browser gave up, and the record was kept without
+  // its photo — so uploads get a wait of their own.
+  uploadTimeout: 180000,
   retryAttempts: 3,
   retryDelay: 1000,
 } as const;

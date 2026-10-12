@@ -1,5 +1,6 @@
-import { API_ENDPOINTS } from '@/config/constants';
+import { API_CONFIG, API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
+import { shrinkPhoto } from '@/shared/utils';
 
 /** Receive posts to SAP per note; see `receive`. */
 const RECEIVE_TIMEOUT_MS = 120_000;
@@ -438,13 +439,20 @@ export const goodsReturnApi = {
     notes?: string,
   ): Promise<GoodsReturnAttachment> {
     const formData = new FormData();
-    formData.append('file', file);
+    // A phone photo is 2–4 MB; shrunk, it goes up in seconds on mobile data.
+    formData.append('file', await shrinkPhoto(file));
     formData.append('attachment_type', attachmentType);
     if (notes) formData.append('notes', notes);
     const response = await apiClient.post<GoodsReturnAttachment>(
       API_ENDPOINTS.GOODS_RETURN.ATTACHMENTS(id),
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: API_CONFIG.uploadTimeout,
+        // The pages say which file did not go up and where to add it again;
+        // the generic "may still finish, check before trying again" misleads here.
+        suppressErrorToast: true,
+      },
     );
     return response.data;
   },

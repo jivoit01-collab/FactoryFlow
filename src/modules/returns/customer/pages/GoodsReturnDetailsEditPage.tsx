@@ -11,7 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { DriverSelect, StepHeader, VehicleSelect } from '@/modules/gate/components';
@@ -56,6 +56,9 @@ export default function GoodsReturnDetailsEditPage() {
 
 function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail }) {
   const navigate = useNavigate();
+  // Step 1 sends the user here when the return was saved but a document did not
+  // go up, naming the ones to add again.
+  const failedUploads = (useLocation().state as { failedUploads?: string[] } | null)?.failedUploads;
   const isInvoiceBasis = detail.basis === 'INVOICE';
 
   const addInvoice = useAddInvoiceRef(id);
@@ -77,7 +80,14 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
   const [expectedArrival, setExpectedArrival] = useState(
     toDateInputValue(detail.expected_arrival_at),
   );
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    failedUploads?.length
+      ? `${detail.entry_no} was saved, but ${failedUploads.join(', ')} did not upload. Add ${
+          failedUploads.length === 1 ? 'it' : 'them'
+        } again below.`
+      : null,
+  );
+  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
 
   // Once the gate has marked the truck in there is nothing left to change here.
   const isGatedIn = Boolean(detail.gated_in_at);
@@ -98,18 +108,29 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
     }
   }
 
-  async function handleUpload(fileList: FileList | null) {
-    if (!fileList || fileList.length === 0) return;
-    try {
-      for (const file of Array.from(fileList)) {
+  async function handleUpload(input: HTMLInputElement) {
+    const files = Array.from(input.files ?? []);
+    // Let the same file be picked again after a failed upload.
+    input.value = '';
+    if (files.length === 0) return;
+    const failed: string[] = [];
+    for (const [index, file] of files.entries()) {
+      setUploading({ done: index, total: files.length });
+      try {
         await uploadAttachment.mutateAsync({
           file,
           attachmentType: ATTACHMENT_TYPE_BY_BASIS[detail.basis],
         });
+      } catch {
+        failed.push(file.name);
       }
-      toast.success('Document uploaded');
-    } catch (err) {
-      setError(readError(err, 'Could not upload the document.'));
+    }
+    setUploading(null);
+    if (failed.length) {
+      setError(`${failed.join(', ')} did not upload. Check the signal and add it again.`);
+    } else {
+      setError(null);
+      toast.success(files.length === 1 ? 'Document uploaded' : 'Documents uploaded');
     }
   }
 
@@ -364,17 +385,22 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
             title={`${isInvoiceBasis ? 'Invoice' : BASIS_LABELS[detail.basis]} Documents *`}
           />
           <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed p-6 text-sm text-muted-foreground hover:bg-muted/40">
-            {uploadAttachment.isPending ? (
+            {uploading ? (
               <Loader2 className="h-6 w-6 animate-spin" />
             ) : (
               <Upload className="h-6 w-6" />
             )}
-            <span>Click to upload documents (required)</span>
+            <span>
+              {uploading
+                ? `Uploading document ${uploading.done + 1} of ${uploading.total}…`
+                : 'Click to upload documents (required)'}
+            </span>
             <input
               type="file"
               multiple
               className="hidden"
-              onChange={(event) => handleUpload(event.target.files)}
+              disabled={uploading !== null}
+              onChange={(event) => handleUpload(event.target)}
             />
           </label>
           {detail.attachments.length > 0 && (
@@ -412,7 +438,10 @@ function DetailsEditForm({ id, detail }: { id: number; detail: GoodsReturnDetail
         <Button variant="ghost" onClick={() => navigate('/returns/customer')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to list
         </Button>
-        <Button onClick={handleContinue} disabled={updateHeader.isPending || setVehicle.isPending}>
+        <Button
+          onClick={handleContinue}
+          disabled={updateHeader.isPending || setVehicle.isPending || uploading !== null}
+        >
           {updateHeader.isPending || setVehicle.isPending ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (

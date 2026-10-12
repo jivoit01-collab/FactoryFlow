@@ -187,7 +187,9 @@ export function useUploadAttachment(id: number) {
   return useMutation({
     mutationFn: (input: { file: File; attachmentType: GoodsReturnAttachmentType; notes?: string }) =>
       goodsReturnApi.uploadAttachment(id, input.file, input.attachmentType, input.notes),
-    onSuccess: () => qc.invalidateQueries({ queryKey: goodsReturnKeys.detail(id) }),
+    // Also after a failure: an upload the browser gave up on may still have
+    // landed, and the list should show it rather than invite a second copy.
+    onSettled: () => qc.invalidateQueries({ queryKey: goodsReturnKeys.detail(id) }),
   });
 }
 

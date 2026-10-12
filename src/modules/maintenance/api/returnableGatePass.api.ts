@@ -1,5 +1,6 @@
-import { API_ENDPOINTS } from '@/config/constants';
+import { API_CONFIG, API_ENDPOINTS } from '@/config/constants';
 import { apiClient } from '@/core/api';
+import { shrinkPhoto } from '@/shared/utils';
 
 import type {
   ReturnableAcknowledgePayload,
@@ -115,9 +116,13 @@ export const returnableGatePassApi = {
   ): Promise<ReturnableGatePass> {
     const formData = new FormData();
     formData.append('data', JSON.stringify(payload));
-    photos.forEach((photo) => formData.append('attachments', photo));
+    // The gate takes these on a phone; shrunk, they go up in seconds on mobile data.
+    for (const photo of await Promise.all(photos.map((photo) => shrinkPhoto(photo)))) {
+      formData.append('attachments', photo);
+    }
     const response = await apiClient.post<ReturnableGatePass>(EP.RECORD_RETURN(passId), formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: API_CONFIG.uploadTimeout,
     });
     return response.data;
   },
@@ -180,11 +185,15 @@ export const returnableGatePassApi = {
   ): Promise<ReturnableGatePassAttachment> {
     const formData = new FormData();
     formData.append('gate_pass', String(passId));
-    formData.append('file', file);
+    // A phone photo is 2–4 MB; shrunk, it goes up in seconds on mobile data.
+    formData.append('file', await shrinkPhoto(file));
     formData.append('doc_type', docType);
     formData.append('caption', caption);
     const response = await apiClient.post<ReturnableGatePassAttachment>(EP.ATTACHMENTS, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: API_CONFIG.uploadTimeout,
+      // The form says what did not upload and where to add it again.
+      suppressErrorToast: true,
     });
     return response.data;
   },
@@ -197,9 +206,11 @@ export const returnableGatePassApi = {
   async uploadAttachments(
     passId: number,
     staged: StagedAttachment[],
+    onProgress?: (done: number, total: number) => void,
   ): Promise<ReturnableGatePassAttachment[]> {
     const uploaded: ReturnableGatePassAttachment[] = [];
     for (const item of staged) {
+      onProgress?.(uploaded.length, staged.length);
       uploaded.push(
         await returnableGatePassApi.uploadAttachment(passId, item.file, item.doc_type, item.caption),
       );

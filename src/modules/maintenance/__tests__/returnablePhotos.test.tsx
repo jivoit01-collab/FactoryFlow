@@ -172,9 +172,11 @@ describe('gate pass form', () => {
 
     await waitFor(() => expect(createPass).toHaveBeenCalledTimes(1));
     // A picture goes up as a photo, not under the old "Delivery Challan" default.
-    expect(uploadAttachments).toHaveBeenCalledWith(5, [
-      expect.objectContaining({ doc_type: 'PHOTO' }),
-    ]);
+    expect(uploadAttachments).toHaveBeenCalledWith(
+      5,
+      [expect.objectContaining({ doc_type: 'PHOTO' })],
+      expect.any(Function),
+    );
   });
 
   it('counts a photo already on the pass when it is edited', async () => {

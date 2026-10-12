@@ -197,8 +197,8 @@ export function ReturnableForm({
   const [attachments, setAttachments] = useState<StagedAttachment[]>([]);
   const [removedIds, setRemovedIds] = useState<number[]>([]);
   const [photoError, setPhotoError] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const isPending = createMutation.isPending || updateMutation.isPending || isUploading;
+  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
+  const isPending = createMutation.isPending || updateMutation.isPending || uploading !== null;
 
   const {
     register,
@@ -310,15 +310,17 @@ export function ReturnableForm({
     // Files need the pass id, so they upload after the save. The pass is already
     // stored — a failed upload is a warning, not a rollback.
     if (attachments.length) {
-      setIsUploading(true);
+      setUploading({ done: 0, total: attachments.length });
       try {
-        await returnableGatePassApi.uploadAttachments(saved.id, attachments);
+        await returnableGatePassApi.uploadAttachments(saved.id, attachments, (done, total) =>
+          setUploading({ done, total }),
+        );
       } catch {
         toast.warning(
-          `${saved.pass_no} was saved, but some attachments failed to upload. Add them again from the pass.`,
+          `${saved.pass_no} was saved, but some attachments failed to upload. Add them again with Edit.`,
         );
       } finally {
-        setIsUploading(false);
+        setUploading(null);
       }
     }
 
@@ -326,8 +328,8 @@ export function ReturnableForm({
     onSaved(saved.id);
   });
 
-  const saveLabel = isUploading
-    ? 'Uploading attachments…'
+  const saveLabel = uploading
+    ? `Uploading ${uploading.done + 1} of ${uploading.total}…`
     : isPending
       ? 'Saving…'
       : isEdit

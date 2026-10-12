@@ -11,7 +11,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ import { cn } from '@/shared/utils';
 import {
   goodsReturnApi,
   type GoodsReturnBasis,
+  type GoodsReturnDetail,
   type GoodsReturnInvoicePreviewLine,
   useCreateGoodsReturn,
   useInvoiceSearch,
@@ -68,6 +69,11 @@ export default function GoodsReturnStep1Page() {
   const [remarks, setRemarks] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which document is going up, once the return exists. Save stays locked
+  // until they are all through: a second tap while a photo was still uploading
+  // used to raise a second return carrying the same photos.
+  const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
+  const saving = useRef(false);
 
   const isInvoiceBasis = basis === 'INVOICE';
   // Every customer on the return, first-added first. One bill is the norm; the
@@ -152,8 +158,13 @@ export default function GoodsReturnStep1Page() {
       return;
     }
 
+    // A second tap lands before React has re-rendered the disabled button.
+    if (saving.current) return;
+    saving.current = true;
+
+    let created: GoodsReturnDetail;
     try {
-      const created = await createReturn.mutateAsync({
+      created = await createReturn.mutateAsync({
         basis,
         comes_on_vehicle: comesOnVehicle,
         vehicle_id: comesOnVehicle ? vehicleId : null,
@@ -166,24 +177,41 @@ export default function GoodsReturnStep1Page() {
         remarks: remarks.trim(),
         requires_approval: requiresApproval,
       });
-
-      // Upload staged documents against the freshly-created return.
-      for (const file of files) {
-        await goodsReturnApi.uploadAttachment(created.id, file, ATTACHMENT_TYPE_BY_BASIS[basis]);
-      }
-
-      toast.success(
-        comesOnVehicle
-          ? `${vehicleNo} is now awaiting arrival — the gate can mark it in`
-          : 'Return saved — no vehicle, so it skips the gate',
-      );
-      navigate(`/returns/customer/edit/${created.id}/items`);
     } catch (err) {
+      saving.current = false;
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
         'Could not create the goods return.';
       setError(detail);
+      return;
     }
+
+    // The return exists from here on, so a document that does not go up is
+    // added again on its details page — never by saving this page a second time.
+    const failed: string[] = [];
+    for (const [index, file] of files.entries()) {
+      setUploading({ done: index, total: files.length });
+      try {
+        await goodsReturnApi.uploadAttachment(created.id, file, ATTACHMENT_TYPE_BY_BASIS[basis]);
+      } catch {
+        failed.push(file.name);
+      }
+    }
+    setUploading(null);
+
+    if (failed.length) {
+      toast.warning(`${created.entry_no} was saved, but not every document uploaded.`);
+      navigate(`/returns/customer/edit/${created.id}/details`, {
+        state: { failedUploads: failed },
+      });
+      return;
+    }
+    toast.success(
+      comesOnVehicle
+        ? `${vehicleNo} is now awaiting arrival — the gate can mark it in`
+        : 'Return saved — no vehicle, so it skips the gate',
+    );
+    navigate(`/returns/customer/edit/${created.id}/items`);
   }
 
   return (
@@ -505,13 +533,17 @@ export default function GoodsReturnStep1Page() {
           Cancel
         </Button>
         <div className="flex flex-col items-end gap-1">
-          <Button onClick={handleContinue} disabled={createReturn.isPending}>
-            {createReturn.isPending ? (
+          <Button onClick={handleContinue} disabled={createReturn.isPending || uploading !== null}>
+            {createReturn.isPending || uploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Plus className="mr-2 h-4 w-4" />
             )}
-            {comesOnVehicle ? 'Save & Send to Gate' : 'Save & Continue'}
+            {uploading
+              ? `Uploading document ${uploading.done + 1} of ${uploading.total}…`
+              : comesOnVehicle
+                ? 'Save & Send to Gate'
+                : 'Save & Continue'}
           </Button>
           <p className="text-xs text-muted-foreground">
             {comesOnVehicle
