@@ -20,6 +20,10 @@ export const GRPO_PERMISSIONS = {
   MANAGE_ATTACHMENTS: 'grpo.can_manage_grpo_attachments',
   /** Choose whether the printed PO's approver is SAP's or a typed name */
   MANAGE_PO_PRINT_SETTINGS: 'grpo.can_manage_po_print_settings',
+  /** Change a material (item) GRPO already in SAP: header fields and attachments */
+  EDIT_IN_SAP: 'grpo.can_edit_grpo_in_sap',
+  /** Change a service GRPO already in SAP: header fields, open lines' amount and month */
+  EDIT_SERVICE_IN_SAP: 'grpo.can_edit_service_grpo_in_sap',
 } as const;
 
 /** Module prefix for sidebar filtering */

@@ -448,6 +448,10 @@ export const API_ENDPOINTS = {
     FG_PREVIEW: (vehicleEntryId: number) => `/grpo/fg/preview/${vehicleEntryId}/`,
     FG_POST: '/grpo/fg/post/',
     FG_HISTORY: '/grpo/fg/history/',
+    // Any GRPO already in SAP, changed after posting: found by its SAP number,
+    // read and saved by its DocEntry.
+    SAP_EDIT_FIND: '/grpo/sap-edit/find/',
+    SAP_EDIT: (docEntry: number) => `/grpo/sap-edit/${docEntry}/`,
   },
   // Production Planning
   PRODUCTION_PLANNING: {

@@ -1,4 +1,4 @@
-import { AlertCircle, ArrowLeft, FileCheck2, FileUp, RefreshCw, ShieldX } from 'lucide-react';
+import { AlertCircle, ArrowLeft, FileCheck2, FilePen, FileUp, RefreshCw, ShieldX } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -46,6 +46,7 @@ export default function GRPOHistoryDetailPage() {
 
   const { data: posting, isLoading, error, refetch } = useGRPODetail(id);
   const canManageAttachments = useHasPermission(GRPO_PERMISSIONS.MANAGE_ATTACHMENTS);
+  const canEditInSap = useHasPermission(GRPO_PERMISSIONS.EDIT_IN_SAP);
   const { printQCReport, printingArrivalSlipId, printOptionsModal, printPortal, printError } =
     useQCReportPrint();
 
@@ -175,6 +176,17 @@ export default function GRPOHistoryDetailPage() {
                     >
                       <FileUp className="mr-1 h-3.5 w-3.5" />
                       Create A/P invoice draft
+                    </Button>
+                  )}
+                  {grpoDocEntry && canEditInSap && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => navigate(`/warehouse/grpo/sap-edit/${grpoDocEntry}`)}
+                    >
+                      <FilePen className="mr-1 h-3.5 w-3.5" />
+                      Edit in SAP
                     </Button>
                   )}
                   {apEntry && canOpenAPDraft && (

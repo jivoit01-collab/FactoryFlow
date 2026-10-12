@@ -1,7 +1,9 @@
-import { AlertCircle, ExternalLink, FileCheck2, FileText, Printer, RefreshCw } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { AlertCircle, ExternalLink, FileCheck2, FilePen, FileText, Printer, RefreshCw } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 
+import { GRPO_PERMISSIONS } from '@/config/permissions';
 import type { ApiError } from '@/core/api/types';
+import { useHasPermission } from '@/core/auth';
 import { DocumentCodeBadge } from '@/shared/components';
 import { PageHeader } from '@/shared/components/page';
 import { Button, Card, CardContent } from '@/shared/components/ui';
@@ -65,6 +67,8 @@ export default function ServiceGRPOHistoryDetailPage() {
 
   const { data: posting, isLoading, error, refetch } = useServiceGRPODetail(id);
   const apiError = error as ApiError | null;
+  const canEditInSap = useHasPermission(GRPO_PERMISSIONS.EDIT_SERVICE_IN_SAP);
+  const sapDocEntry = posting?.status === GRPO_STATUS.POSTED ? posting.sap_doc_entry : null;
 
   const handlePrint = () => {
     window.print();
@@ -84,6 +88,14 @@ export default function ServiceGRPOHistoryDetailPage() {
             <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
+          {sapDocEntry && canEditInSap && (
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" asChild>
+              <Link to={`/dispatch/bilty-grpo/sap-edit/${sapDocEntry}`}>
+                <FilePen className="h-4 w-4 mr-2" />
+                Edit in SAP
+              </Link>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

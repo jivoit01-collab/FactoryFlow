@@ -69,3 +69,21 @@ export type {
   UpdatePOPrintSettingsRequest,
   Warehouse,
 } from './grpo.types';
+export type {
+  SapGRPODocument,
+  SapGRPOEdit,
+  SapGRPOEditRequest,
+  SapGRPOEditResponse,
+  SapGRPOEditStatus,
+  SapGRPOFieldOption,
+  SapGRPOFieldType,
+  SapGRPOFieldValue,
+  SapGRPOFindResult,
+  SapGRPOHeaderChange,
+  SapGRPOHeaderField,
+  SapGRPOLine,
+  SapGRPOLineChange,
+  SapGRPOLineField,
+  SapGRPOMatch,
+  SapGRPOType,
+} from './sapEdit.types';

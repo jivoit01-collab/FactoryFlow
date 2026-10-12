@@ -36,6 +36,7 @@ const ServiceGRPOHistoryPage = lazy(() => import('@/modules/warehouse/grpo/pages
 const ServiceGRPOHistoryDetailPage = lazy(
   () => import('@/modules/warehouse/grpo/pages/ServiceGRPOHistoryDetailPage'),
 );
+const GRPOSapEditPage = lazy(() => import('@/modules/warehouse/grpo/pages/GRPOSapEditPage'));
 const OpenBiltiesPage = lazy(() => import('./pages/OpenBiltiesPage'));
 const TransporterInvoicesPage = lazy(() => import('./pages/TransporterInvoicesPage'));
 const TransporterInvoiceQueuePage = lazy(() => import('./pages/TransporterInvoiceQueuePage'));
@@ -80,6 +81,9 @@ const dispatchViewPermissions = [
   // the dispatch-owned can_post_bilty_service_grpo, NOT the material-GRPO app
   // perms, so material-GRPO clerks don't see the whole Dispatch module (A7a).
   DISPATCH_PERMISSIONS.POST_BILTY_GRPO,
+  // Changing a service GRPO already in SAP: whoever holds only that still
+  // needs the Dispatch menu to reach it.
+  GRPO_PERMISSIONS.EDIT_SERVICE_IN_SAP,
   DISPATCH_PERMISSIONS.VIEW_OPEN_BILTIES,
   DISPATCH_PERMISSIONS.VIEW_TRANSPORTER_AP_INVOICE,
   DISPATCH_PERMISSIONS.POST_TRANSPORTER_AP_INVOICE,
@@ -320,6 +324,23 @@ export const dispatchModuleConfig: ModuleConfig = {
       ],
       breadcrumb: { label: 'Service GRPO Detail' },
     },
+    // A service GRPO already in SAP, changed after posting: the same screen as
+    // the warehouse's for material GRPOs, here because this is where the people
+    // who book transporters' bilties work.
+    {
+      path: '/dispatch/bilty-grpo/sap-edit',
+      element: <GRPOSapEditPage scope="service" />,
+      layout: 'main',
+      permissions: [GRPO_PERMISSIONS.EDIT_SERVICE_IN_SAP],
+      breadcrumb: { label: 'Edit Service GRPO in SAP' },
+    },
+    {
+      path: '/dispatch/bilty-grpo/sap-edit/:docEntry',
+      element: <GRPOSapEditPage scope="service" />,
+      layout: 'main',
+      permissions: [GRPO_PERMISSIONS.EDIT_SERVICE_IN_SAP],
+      breadcrumb: { label: 'Edit Service GRPO in SAP' },
+    },
     {
       path: '/dispatch/open-bilties',
       element: <OpenBiltiesPage />,
@@ -428,6 +449,11 @@ export const dispatchModuleConfig: ModuleConfig = {
           path: '/dispatch/bilty-grpo',
           title: 'Service GRPO',
           permissions: serviceGRPOViewPermissions,
+        },
+        {
+          path: '/dispatch/bilty-grpo/sap-edit',
+          title: 'Edit Service GRPO in SAP',
+          permissions: [GRPO_PERMISSIONS.EDIT_SERVICE_IN_SAP],
         },
         {
           path: '/dispatch/open-bilties',

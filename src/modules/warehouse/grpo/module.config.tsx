@@ -13,6 +13,7 @@ const GRPOHistoryPage = lazy(() => import('./pages/GRPOHistoryPage'));
 const GRPOHistoryDetailPage = lazy(() => import('./pages/GRPOHistoryDetailPage'));
 const FGPendingEntriesPage = lazy(() => import('./pages/FGPendingEntriesPage'));
 const FGGRPOPreviewPage = lazy(() => import('./pages/FGGRPOPreviewPage'));
+const GRPOSapEditPage = lazy(() => import('./pages/GRPOSapEditPage'));
 
 function ServicePreviewRedirect() {
   const { dispatchPlanId } = useParams<{ dispatchPlanId: string }>();
@@ -190,6 +191,22 @@ export const grpoRoutes: ModuleRoute[] = [
       GRPO_PERMISSIONS.VIEW_HISTORY,
     ],
   },
+  // A material GRPO already in SAP, changed after posting. Service GRPOs have
+  // the same screen under Dispatch, where the people who book them work.
+  {
+    path: '/warehouse/grpo/sap-edit',
+    element: <GRPOSapEditPage scope="material" />,
+    layout: 'main',
+    permissions: [GRPO_PERMISSIONS.EDIT_IN_SAP],
+    breadcrumb: { label: 'Edit GRPO in SAP' },
+  },
+  {
+    path: '/warehouse/grpo/sap-edit/:docEntry',
+    element: <GRPOSapEditPage scope="material" />,
+    layout: 'main',
+    permissions: [GRPO_PERMISSIONS.EDIT_IN_SAP],
+    breadcrumb: { label: 'Edit GRPO in SAP' },
+  },
   // Legacy `/grpo/*` links → `/warehouse/grpo/*` (keep last: matches the whole old namespace).
   {
     path: '/grpo/*',
@@ -213,5 +230,10 @@ export const grpoNavChildren: ModuleNavItem[] = [
     path: '/warehouse/grpo/fg',
     title: 'Finished Goods GRPO',
     permissions: [GRPO_PERMISSIONS.VIEW_PENDING],
+  },
+  {
+    path: '/warehouse/grpo/sap-edit',
+    title: 'Edit GRPO in SAP',
+    permissions: [GRPO_PERMISSIONS.EDIT_IN_SAP],
   },
 ];
