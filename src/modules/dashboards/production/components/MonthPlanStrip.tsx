@@ -1,10 +1,11 @@
-import { CalendarRange, ChevronRight } from 'lucide-react';
+import { CalendarRange, ChevronRight, Truck } from 'lucide-react';
 import { useState } from 'react';
 
 import { usePlantBoard } from '@/modules/dashboards/plant-board/api';
 import { cn } from '@/shared/utils';
 
 import { compact, count } from '../../dispatch/utils/format';
+import { MonthPlanDispatchDialog } from './MonthPlanDispatchDialog';
 import { MonthPlanSkuDialog } from './MonthPlanSkuDialog';
 
 /** Litres, short-scaled: "8.4 L ltr". "L" after a bare number is lakh. */
@@ -32,6 +33,7 @@ function litres(value: number): string {
 export function MonthPlanStrip({ className }: { className?: string }) {
   const { data, isLoading, isError } = usePlantBoard();
   const [open, setOpen] = useState(false);
+  const [dispatchOpen, setDispatchOpen] = useState(false);
 
   const production = data?.production ?? null;
   const plan = data?.meta.plan ?? null;
@@ -77,12 +79,21 @@ export function MonthPlanStrip({ className }: { className?: string }) {
 
   return (
     <>
-      <button
-        type="button"
+      {/* A div rather than a button: the strip holds two buttons of its own. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
         title="See the plan SKU by SKU"
         className={cn(
-          'block shrink-0 rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-5 py-3 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 dark:border-violet-400/20 dark:bg-violet-400/[0.08] dark:hover:bg-violet-400/[0.12]',
+          'block shrink-0 cursor-pointer rounded-2xl border border-violet-500/20 bg-violet-500/[0.06] px-5 py-3 text-left transition-colors hover:border-violet-500/40 hover:bg-violet-500/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 dark:border-violet-400/20 dark:bg-violet-400/[0.08] dark:hover:bg-violet-400/[0.12]',
           className,
         )}
       >
@@ -104,6 +115,19 @@ export function MonthPlanStrip({ className }: { className?: string }) {
               SKU-wise
               <ChevronRight className="h-4 w-4" />
             </span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setDispatchOpen(true);
+              }}
+              title="Set the plan against what was dispatched"
+              className="ml-2 flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-sky-700 transition-colors hover:bg-sky-500/20 dark:text-sky-300"
+            >
+              <Truck className="h-3.5 w-3.5" />
+              Plan to dispatch
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </p>
         </div>
 
@@ -154,8 +178,9 @@ export function MonthPlanStrip({ className }: { className?: string }) {
             master and {production.unweighed_lines === 1 ? 'is' : 'are'} not in these figures.
           </p>
         )}
-      </button>
+      </div>
       <MonthPlanSkuDialog open={open} onOpenChange={setOpen} />
+      <MonthPlanDispatchDialog open={dispatchOpen} onOpenChange={setDispatchOpen} />
     </>
   );
 }

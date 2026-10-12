@@ -568,6 +568,22 @@ export interface PlanSku {
   warehouses?: PlanSkuWarehouse[];
   /** False where SAP holds no litre volume: in the pieces, in no ton. */
   weighed: boolean;
+  /**
+   * Dispatch over the same window as made: deliveries, and invoices not
+   * copied from one. False when the read failed and the figures are null;
+   * absent from a backend that does not send dispatch yet.
+   */
+  dispatch_read?: boolean;
+  /** Sold to customers outside the group. */
+  dispatch_qty?: number | null;
+  dispatch_tons?: number | null;
+  /** Sold to group companies (Jivo Mart and the rest), kept apart. */
+  group_dispatch_qty?: number | null;
+  group_dispatch_tons?: number | null;
+  /** Planned less dispatched, outside the group; negative is over plan. */
+  dispatch_balance_qty?: number | null;
+  dispatch_balance_tons?: number | null;
+  dispatch_pct?: number | null;
 }
 
 export interface PlantBoardProduction {
