@@ -163,7 +163,7 @@ export default function ProductionDispatchPage() {
       ) : report ? (
         <>
           <KpiRow totals={totals} items={items} windowDays={report.settings.movement_window_days} />
-          <ReportNotices report={report} items={items} totals={totals} />
+          <ReportNotices report={report} items={items} />
 
           <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
             <TabsList>

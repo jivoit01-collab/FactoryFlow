@@ -2,7 +2,7 @@ import { Info } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { ProductionDispatchReport } from '../types';
-import { dayLabel, fmtPallet, fmtWhole, type ItemRow, type Totals } from '../utils';
+import type { ItemRow } from '../utils';
 
 function Notice({ children }: { children: ReactNode }) {
   return (
@@ -20,40 +20,22 @@ function codes(rows: ItemRow[]) {
 
 /**
  * What the figures leave out and how they were judged, said once above them
- * rather than discovered: group companies' sales, the FAST / SLOW window, and
- * any SKU SAP has not classified or given a litre factor.
+ * rather than discovered: how the units convert, and any SKU SAP has not
+ * classified or given a litre factor.
  */
 export function ReportNotices({
   report,
   items,
-  totals,
 }: {
   report: ProductionDispatchReport;
   items: ItemRow[];
-  totals: Totals;
 }) {
-  const { settings, movement_window: window } = report;
+  const { settings } = report;
   const noPacking = items.filter((row) => row.item.packing_type === null);
   const noLitres = items.filter((row) => row.item.litres_per_unit <= 0);
 
   return (
     <ul className="space-y-1.5 rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
-      {totals.groupDispatch.qty > 0 && (
-        <Notice>
-          <span className="font-medium text-foreground">
-            {fmtPallet(totals.groupDispatch.pallet)} pallets (
-            {fmtWhole(totals.groupDispatch.litres)} L)
-          </span>{' '}
-          went to Jivo Mart and the other group companies in this range. They are not counted as
-          dispatch anywhere on this page.
-        </Notice>
-      )}
-      <Notice>
-        FAST / SLOW is judged over the {settings.movement_window_days} days {dayLabel(window.from)}{' '}
-        – {dayLabel(window.to)}, whatever range is shown: a SKU is FAST when a month of its
-        production is dispatched within {settings.fast_days} days — it sold at least what it made.
-        Sold but not made is FAST; not sold is SLOW.
-      </Notice>
       <Notice>
         PALLET = litres ÷ {settings.pallet_litres}; Ton = litres × {settings.oil_density} ÷ 1000
         (net oil). Box and litre factors are SAP&apos;s own.
