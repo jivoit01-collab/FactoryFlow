@@ -1,8 +1,17 @@
 import { useMemo } from 'react';
 
+import { formatNumber } from '@/shared/utils';
+
 import type { ProductionDispatchReport } from '../types';
-import { fmtPallet, fmtWhole, type ItemRow, monthsInRange } from '../utils';
-import { flowColumns, groupQtyColumn, movementColumn, skuColumns } from './columns';
+import { fmtWhole, type ItemRow, monthsInRange } from '../utils';
+import {
+  flowColumns,
+  groupQtyColumn,
+  type MeasureKey,
+  MEASURES,
+  movementColumn,
+  skuColumns,
+} from './columns';
 import { type SheetColumn, SheetTable } from './SheetTable';
 
 /**
@@ -14,26 +23,31 @@ import { type SheetColumn, SheetTable } from './SheetTable';
 export function ItemsTab({
   report,
   items,
+  unit,
   onOpenItem,
 }: {
   report: ProductionDispatchReport;
   items: ItemRow[];
+  unit: MeasureKey;
   onOpenItem: (itemCode: string) => void;
 }) {
   const columns = useMemo<SheetColumn<ItemRow>[]>(() => {
     const months = monthsInRange(report);
     const window = report.settings.movement_window_days;
     const windowMonths = window / report.settings.month_days;
+    const label = MEASURES.find((measure) => measure.key === unit)?.label ?? unit;
+    const decimals = unit === 'ton' || unit === 'pallet' ? 2 : 0;
+    const monthly = (row: ItemRow) => (months > 0 ? row.dispatch[unit] / months : 0);
     return [
       ...skuColumns<ItemRow>((row) => onOpenItem(row.item.item_code)),
-      ...flowColumns<ItemRow>(),
+      ...flowColumns<ItemRow>(unit),
       {
-        key: 'monthly_dispatch_pallet',
-        label: 'Avg Monthly Dispatch PALLET',
-        value: (row) => fmtPallet(months > 0 ? row.dispatch.pallet / months : 0),
-        number: (row) => (months > 0 ? row.dispatch.pallet / months : 0),
+        key: `monthly_dispatch_${unit}`,
+        label: `Avg Monthly Dispatch ${label}`,
+        value: (row) => formatNumber(monthly(row), decimals),
+        number: monthly,
         align: 'right',
-        decimals: 2,
+        decimals,
       },
       {
         key: 'window_monthly_production',
@@ -60,7 +74,7 @@ export function ItemsTab({
       movementColumn<ItemRow>(),
       groupQtyColumn<ItemRow>(),
     ];
-  }, [report, onOpenItem]);
+  }, [report, unit, onOpenItem]);
 
   return (
     <SheetTable

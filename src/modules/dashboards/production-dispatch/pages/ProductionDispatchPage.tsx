@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { DashboardError, DashboardLoading } from '@/shared/components/dashboard';
 import { PageHeader } from '@/shared/components/page';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui';
-import { getErrorMessage } from '@/shared/utils';
+import { cn, getErrorMessage } from '@/shared/utils';
 
 import { productionDispatchApi } from '../api';
 import {
@@ -17,11 +17,25 @@ import {
   ReportNotices,
   SummaryTab,
 } from '../components';
+import { type MeasureKey,MEASURES } from '../components/columns';
 import { useProductionDispatch, useReportRange } from '../hooks';
 import { dayItemRows, itemRows, type ReportRange, sumTotals } from '../utils';
 import { buildWorkbook, reportFileName } from '../utils/exportWorkbook';
 
 type TabKey = 'summary' | 'items';
+
+const UNIT_STORAGE_KEY = 'production-dispatch-unit';
+
+/** The unit last picked, or PALLET, the workbook's own. */
+function storedUnit(): MeasureKey {
+  try {
+    const value = window.localStorage.getItem(UNIT_STORAGE_KEY);
+    if (MEASURES.some((measure) => measure.key === value)) return value as MeasureKey;
+  } catch {
+    // Storage blocked: the default is fine.
+  }
+  return 'pallet';
+}
 
 /** Whose documents the dialog shows, and over which days. */
 interface OpenDocuments extends ReportRange {
@@ -46,6 +60,15 @@ export default function ProductionDispatchPage() {
   const [tab, setTab] = useState<TabKey>('summary');
   const [documents, setDocuments] = useState<OpenDocuments | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [unit, setUnitState] = useState<MeasureKey>(storedUnit);
+  const setUnit = (next: MeasureKey) => {
+    setUnitState(next);
+    try {
+      window.localStorage.setItem(UNIT_STORAGE_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
+  };
 
   const days = useMemo(() => (report ? dayItemRows(report) : []), [report]);
   const items = useMemo(() => itemRows(days), [days]);
@@ -85,6 +108,24 @@ export default function ProductionDispatchPage() {
         icon={Boxes}
         accent="indigo"
       >
+        <div className="flex rounded-lg border p-0.5" role="group" aria-label="Unit">
+          {MEASURES.map((measure) => (
+            <button
+              key={measure.key}
+              type="button"
+              onClick={() => setUnit(measure.key)}
+              aria-pressed={unit === measure.key}
+              className={cn(
+                'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+                unit === measure.key
+                  ? 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {measure.label}
+            </button>
+          ))}
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -130,10 +171,10 @@ export default function ProductionDispatchPage() {
               <TabsTrigger value="items">Items</TabsTrigger>
             </TabsList>
             <TabsContent value="summary" className="mt-4">
-              <SummaryTab rows={days} onOpenItemDay={openItemDay} />
+              <SummaryTab rows={days} unit={unit} onOpenItemDay={openItemDay} />
             </TabsContent>
             <TabsContent value="items" className="mt-4">
-              <ItemsTab report={report} items={items} onOpenItem={openItem} />
+              <ItemsTab report={report} items={items} unit={unit} onOpenItem={openItem} />
             </TabsContent>
           </Tabs>
 

@@ -7,7 +7,6 @@ import {
   fmtWhole,
   type ItemRow,
   type Measure,
-  netPallet,
 } from '../utils';
 import { MovementPill } from './MovementPill';
 import type { SheetColumn } from './SheetTable';
@@ -17,7 +16,7 @@ import type { SheetColumn } from './SheetTable';
  * sheets read alike: Summary is Items with a date in front.
  */
 
-/** Item No. (opens its documents) through Liter Factor. */
+/** Item No. (opens its documents) through Pcs per Box. */
 export function skuColumns<Row extends ItemRow>(onOpen: (row: Row) => void): SheetColumn<Row>[] {
   const text = (key: string, label: string, pick: (row: Row) => string | null, wide = false) => ({
     key,
@@ -54,57 +53,63 @@ export function skuColumns<Row extends ItemRow>(onOpen: (row: Row) => void): She
       sort: (row) => row.item.pieces_per_box,
       align: 'right',
     },
+  ];
+}
+
+/** The unit the sheets show production and dispatch in, picked at the top of the page. */
+export type MeasureKey = keyof Measure;
+
+export const MEASURES: { key: MeasureKey; label: string }[] = [
+  { key: 'qty', label: 'Qty' },
+  { key: 'box', label: 'Box' },
+  { key: 'litres', label: 'Liter' },
+  { key: 'ton', label: 'Ton' },
+  { key: 'pallet', label: 'PALLET' },
+];
+
+const FORMAT: Record<MeasureKey, [(value: number) => string, number]> = {
+  qty: [fmtWhole, 0],
+  box: [fmtWhole, 0],
+  litres: [fmtWhole, 0],
+  ton: [fmtTon, 2],
+  pallet: [fmtPallet, 2],
+};
+
+/**
+ * Production, dispatch and NET in the chosen unit, then Dispatch / Production %.
+ *
+ * One unit at a time: the workbook showed each flow five times over, which
+ * made the sheet too wide to read. The Excel export still carries them all.
+ */
+export function flowColumns<Row extends ItemRow>(unit: MeasureKey): SheetColumn<Row>[] {
+  const [format, decimals] = FORMAT[unit];
+  const label = MEASURES.find((measure) => measure.key === unit)?.label ?? unit;
+  const net = (row: Row) => row.production[unit] - row.dispatch[unit];
+  return [
     {
-      key: 'litres_per_unit',
-      label: 'Liter Factor',
-      value: (row) => String(row.item.litres_per_unit),
-      sort: (row) => row.item.litres_per_unit,
+      key: `production_${unit}`,
+      label: `Prod ${label}`,
+      value: (row) => format(row.production[unit]),
+      number: (row) => row.production[unit],
       align: 'right',
+      decimals,
     },
-  ];
-}
-
-/** A flow's Qty, Box, Liter, Ton and PALLET, headed the workbook's way ("Prod Box"). */
-function measureColumns<Row>(
-  prefix: string,
-  key: string,
-  pick: (row: Row) => Measure,
-): SheetColumn<Row>[] {
-  const figure = (
-    part: keyof Measure,
-    label: string,
-    format: (value: number) => string,
-    decimals: number,
-  ): SheetColumn<Row> => ({
-    key: `${key}_${part}`,
-    label: `${prefix} ${label}`,
-    value: (row) => format(pick(row)[part]),
-    number: (row) => pick(row)[part],
-    align: 'right',
-    decimals,
-    strong: part === 'pallet',
-  });
-  return [
-    figure('qty', 'Qty', fmtWhole, 0),
-    figure('box', 'Box', fmtWhole, 0),
-    figure('litres', 'Liter', fmtWhole, 0),
-    figure('ton', 'Ton', fmtTon, 2),
-    figure('pallet', 'PALLET', fmtPallet, 2),
-  ];
-}
-
-/** Production, dispatch, NET PALLET and Dispatch / Production %. */
-export function flowColumns<Row extends ItemRow>(): SheetColumn<Row>[] {
-  return [
-    ...measureColumns<Row>('Prod', 'production', (row) => row.production),
-    ...measureColumns<Row>('Dispatch', 'dispatch', (row) => row.dispatch),
     {
-      key: 'net_pallet',
-      label: 'NET PALLET',
-      value: (row) => fmtPallet(netPallet(row)),
-      number: (row) => netPallet(row),
+      key: `dispatch_${unit}`,
+      label: `Dispatch ${label}`,
+      value: (row) => format(row.dispatch[unit]),
+      number: (row) => row.dispatch[unit],
       align: 'right',
-      decimals: 2,
+      decimals,
+      strong: true,
+    },
+    {
+      key: `net_${unit}`,
+      label: `NET ${label}`,
+      value: (row) => format(net(row)),
+      number: net,
+      align: 'right',
+      decimals,
     },
     {
       key: 'share',

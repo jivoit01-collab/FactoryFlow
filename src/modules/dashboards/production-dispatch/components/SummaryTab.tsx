@@ -1,7 +1,13 @@
 import { useMemo } from 'react';
 
 import { type DayItemRow, dayLabel } from '../utils';
-import { flowColumns, groupQtyColumn, movementColumn, skuColumns } from './columns';
+import {
+  flowColumns,
+  groupQtyColumn,
+  type MeasureKey,
+  movementColumn,
+  skuColumns,
+} from './columns';
 import { type SheetColumn, SheetTable } from './SheetTable';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -19,9 +25,11 @@ function weekday(iso: string): string {
  */
 export function SummaryTab({
   rows,
+  unit,
   onOpenItemDay,
 }: {
   rows: DayItemRow[];
+  unit: MeasureKey;
   onOpenItemDay: (itemCode: string, date: string) => void;
 }) {
   const columns = useMemo<SheetColumn<DayItemRow>[]>(
@@ -34,11 +42,11 @@ export function SummaryTab({
       },
       { key: 'weekday', label: 'Day', value: (row) => weekday(row.date) },
       ...skuColumns<DayItemRow>((row) => onOpenItemDay(row.item.item_code, row.date)),
-      ...flowColumns<DayItemRow>(),
+      ...flowColumns<DayItemRow>(unit),
       movementColumn<DayItemRow>(),
       groupQtyColumn<DayItemRow>(),
     ],
-    [onOpenItemDay],
+    [onOpenItemDay, unit],
   );
 
   return (
