@@ -7,6 +7,7 @@ import {
   type CashEntryListParams,
   type ColumnFilters,
   type EntryApprovalStatus,
+  type HandoverPayload,
   type RecordEntryPayload,
   type UpdateEntryPayload,
 } from './cashBook.api';
@@ -340,6 +341,10 @@ export function useRecordAdvance() {
       detail?: string;
     }) => cashBookApi.recordAdvance(payload),
   );
+}
+
+export function useRecordHandover() {
+  return useCashBookMutation((payload: HandoverPayload) => cashBookApi.recordHandover(payload));
 }
 
 export function useCancelAdvance() {

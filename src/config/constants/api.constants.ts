@@ -2141,6 +2141,7 @@ export const API_ENDPOINTS = {
     // Cash out with somebody who has not yet said what it went on.
     ADVANCES: '/cash-book/advances/',
     ADVANCE_DETAIL: (entryId: number) => `/cash-book/advances/${entryId}/`,
+    ADVANCE_HANDOVERS: '/cash-book/advances/handovers/',
     ADVANCE_HOLDERS: '/cash-book/advances/holders/',
     ADVANCE_STATEMENT: (personId: number) => `/cash-book/advances/holders/${personId}/`,
     // Cash given against a wage, which comes back off it. A different thing

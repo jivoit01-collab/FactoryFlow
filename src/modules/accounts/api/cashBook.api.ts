@@ -63,6 +63,9 @@ export interface AtmAccount {
  * `kind` is RECEIPT/WITHDRAWAL on a card, and GIVEN/RETURNED/EXPLAINED on a
  * person. `cash_entry_id` is set when the movement is a cash book row — a
  * withdrawal, or an expense that cleared part of an advance.
+ *
+ * A GIVEN or RETURNED row with a `counterpart_person_id` is half of a
+ * handover: the cash came from, or went to, that person rather than the box.
  */
 export interface LedgerMovement {
   kind: string;
@@ -81,6 +84,9 @@ export interface LedgerMovement {
    * same rule the register follows for a cancelled line.
    */
   is_active: boolean;
+  /** On half of a handover: who was on the other side of it. */
+  counterpart_person_id: number | null;
+  counterpart_person_name: string | null;
 }
 
 export interface AtmStatement {
@@ -100,6 +106,22 @@ export interface AdvanceEntry {
   amount: string;
   detail: string;
   is_active: boolean;
+  /** On half of a handover: the other half, and whose ledger it is on. */
+  counterpart: number | null;
+  counterpart_person: number | null;
+}
+
+/**
+ * Cash passed from one or more people straight to another.
+ *
+ * Each source becomes its own pair: taken back off the giver, given to
+ * `to_person`, each naming the other. The box is not involved.
+ */
+export interface HandoverPayload {
+  to_person: number;
+  entry_date: string;
+  detail?: string;
+  sources: { person: number; amount: string }[];
 }
 
 export interface AdvanceHolder {
@@ -574,6 +596,16 @@ export const cashBookApi = {
     return data;
   },
 
+  /** Hand cash from one or more people to another, all in one go. */
+  async recordHandover(payload: HandoverPayload): Promise<AdvanceEntry[]> {
+    const { data } = await apiClient.post<AdvanceEntry[]>(
+      API_ENDPOINTS.CASH_BOOK.ADVANCE_HANDOVERS,
+      payload,
+    );
+    return data;
+  },
+
+  /** Either half of a handover takes the other with it. */
   async cancelAdvance(entryId: number): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.CASH_BOOK.ADVANCE_DETAIL(entryId));
   },
