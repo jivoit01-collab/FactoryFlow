@@ -31,6 +31,7 @@ import {
   useLines,
   useUpdateFillingCostSheet,
 } from '../api';
+import { ScrapRatesPanel } from '../components';
 import { DEFAULT_FILLING_COST_HEADS, FILLING_COST_SHIFTS } from '../constants';
 import type {
   FillingCostDefaultEntry,
@@ -92,6 +93,32 @@ function DefaultHint({ entry }: { entry?: FillingCostDefaultEntry }) {
   return <p className="mt-1 px-1 text-xs text-muted-foreground">{entry.explain}</p>;
 }
 
+/**
+ * Under a saved head: what SAP has for it now, where that is not what the
+ * sheet says. Wastage reaches SAP days after the sheet is made, so a saved
+ * day is brought up to date by hand, once the store has posted it.
+ */
+function SapUpdate({
+  entry,
+  canEdit,
+  onUse,
+}: {
+  entry: FillingCostDefaultEntry;
+  canEdit: boolean;
+  onUse: () => void;
+}) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-2 px-1 text-xs text-sky-800 dark:text-sky-300">
+      <span title={entry.explain}>SAP now has ₹{fmt(num(entry.amount ?? ''))} for this.</span>
+      {canEdit && (
+        <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={onUse}>
+          Use SAP’s figure
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /** The head of the factory's sheet: what was filled, from the day's runs. */
 function SkuStrip({ skus }: { skus: FillingCostRunSku[] }) {
   return (
@@ -140,6 +167,8 @@ interface SheetEditorProps {
   canEdit: boolean;
   /** SKU, box size and boxes the runs filled — the head of the sheet */
   runSkus: FillingCostRunSku[];
+  /** On a saved day: the heads SAP's wastage transfers now give a figure for. */
+  sapNow: FillingCostDefaultEntry[];
 }
 
 /**
@@ -158,6 +187,7 @@ function SheetEditor({
   lineName,
   canEdit,
   runSkus,
+  sapNow,
 }: SheetEditorProps) {
   // A blank day starts from the cases its own runs produced — never
   // yesterday's, which would price the day on the wrong figure unseen.
@@ -193,6 +223,16 @@ function SheetEditor({
   // How a head's opening figure was worked out, shown under it while the sheet is new.
   const hintFor = (head: string) =>
     workedOut.find((entry) => entry.head.toLowerCase() === head.toLowerCase());
+  // On a saved day, SAP's figure for a head where it differs from the row's.
+  const sapFor = (row: Row) =>
+    sapNow.find(
+      (entry) =>
+        entry.amount !== null &&
+        [entry.head, ...entry.aliases].some(
+          (name) => name.toLowerCase() === row.head.trim().toLowerCase(),
+        ) &&
+        Math.abs(num(entry.amount) - num(row.amount)) >= 0.005,
+    );
 
   const createSheet = useCreateFillingCostSheet();
   const updateSheet = useUpdateFillingCostSheet();
@@ -353,6 +393,16 @@ function SheetEditor({
                       onChange={(e) => editRow(row.key, 'head', e.target.value)}
                     />
                     <DefaultHint entry={hintFor(row.head)} />
+                    {(() => {
+                      const sap = sapFor(row);
+                      return sap ? (
+                        <SapUpdate
+                          entry={sap}
+                          canEdit={canEdit}
+                          onUse={() => editRow(row.key, 'amount', plain(sap.amount ?? ''))}
+                        />
+                      ) : null;
+                    })()}
                   </td>
                   <td className="p-2">
                     <Input
@@ -403,8 +453,9 @@ function SheetEditor({
         {workedOut.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
             Figures are worked out from this {shift ? 'shift' : 'day'}’s production runs,
-            Electricity++ and the Beverages Cost Master, as written under each head. Change any of
-            them before saving if the {shift ? 'shift' : 'day'} was different.
+            Electricity++, the Beverages Cost Master, SAP’s wastage transfers and the scrap rates,
+            as written under each head. Change any of them before saving if the{' '}
+            {shift ? 'shift' : 'day'} was different.
           </p>
         )}
 
@@ -469,6 +520,11 @@ function FillingCostPage() {
   const defaultsQuery = useFillingCostDefaults(date, scope, shift, !dayQuery.isLoading);
   const defaults = sheet ? null : (defaultsQuery.data ?? null);
   const runSkus = defaultsQuery.data?.skus ?? [];
+  // A saved day is left as saved, but where the store has since posted the
+  // wastage to SAP the sheet offers SAP's figure.
+  const sapNow = sheet
+    ? (defaultsQuery.data?.entries ?? []).filter((entry) => entry.source === 'sap')
+    : [];
 
   const isLoading = dayQuery.isLoading || latestQuery.isLoading || defaultsQuery.isLoading;
 
@@ -558,8 +614,11 @@ function FillingCostPage() {
           lineName={lineId === null ? '' : (lines.find((l) => l.id === lineId)?.name ?? '')}
           canEdit={canEdit}
           runSkus={runSkus}
+          sapNow={sapNow}
         />
       )}
+
+      <ScrapRatesPanel canEdit={canEdit} />
     </div>
   );
 }

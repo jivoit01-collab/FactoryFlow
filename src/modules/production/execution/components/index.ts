@@ -11,6 +11,7 @@ export { ProductionTimeline } from './ProductionTimeline';
 export { RunCard } from './RunCard';
 export { RunDraftModal } from './RunDraftModal';
 export { RunSummaryCards } from './RunSummaryCards';
+export { ScrapRatesPanel } from './ScrapRatesPanel';
 export { SignatureBlock } from './SignatureBlock';
 export { WasteApprovalBadge } from './WasteApprovalBadge';
 export { WasteLogTable } from './WasteLogTable';

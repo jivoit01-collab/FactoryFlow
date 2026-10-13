@@ -81,6 +81,8 @@ import type {
   SAPProductionOrder,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
+  ScrapKind,
+  ScrapKindPayload,
   UpdateFillingCostSheetPayload,
   UpdateLineClearanceRequest,
   UpdateLineSkuConfigPayload,
@@ -1062,6 +1064,28 @@ export const executionApi = {
 
   async deleteFillingCostSheet(sheetId: number): Promise<void> {
     await apiClient.delete(EP.FILLING_COST_DETAIL(sheetId));
+  },
+
+  /** The scrap rates, each at its price on `date` (today unless given). */
+  async getScrapRates(date?: string): Promise<ScrapKind[]> {
+    const res = await apiClient.get<ScrapKind[]>(EP.SCRAP_RATES, {
+      params: date ? { date } : undefined,
+    });
+    return res.data;
+  },
+
+  async createScrapRate(data: ScrapKindPayload): Promise<ScrapKind> {
+    const res = await apiClient.post<ScrapKind>(EP.SCRAP_RATES, data);
+    return res.data;
+  },
+
+  async updateScrapRate(kindId: number, data: ScrapKindPayload): Promise<ScrapKind> {
+    const res = await apiClient.patch<ScrapKind>(EP.SCRAP_RATE_DETAIL(kindId), data);
+    return res.data;
+  },
+
+  async deleteScrapRate(kindId: number): Promise<void> {
+    await apiClient.delete(EP.SCRAP_RATE_DETAIL(kindId));
   },
 
   // =========================================================================

@@ -365,8 +365,11 @@ export const DEFAULT_FILLING_COST_HEADS = [
   'Lubrication',
   'Lab',
   'Miscellaneous',
+  'Ground Water Extraction',
+  'AMC',
+  'Servicing Cost',
   'Wastage',
-  'Scrap Recovering',
+  'Scrap Recurring',
 ] as const;
 
 /** The sheet's scopes in time. A night belongs to the date it starts on. */

@@ -35,6 +35,7 @@ import type {
   ManagerDecisionRequest,
   PlanCheckRequest,
   ResolveBreakdownRequest,
+  ScrapKindPayload,
   StopProductionRequest,
   UpdateBreakdownRemarksRequest,
   UpdateFillingCostSheetPayload,
@@ -98,6 +99,7 @@ export const EXECUTION_QUERY_KEYS = {
     [...EXECUTION_QUERY_KEYS.all, 'filling-costs', params] as const,
   fillingCostDefaults: (date: string, lineId: number | 'none', shift: FillingCostShift) =>
     [...EXECUTION_QUERY_KEYS.all, 'filling-cost-defaults', date, lineId, shift] as const,
+  scrapRates: (date?: string) => [...EXECUTION_QUERY_KEYS.all, 'scrap-rates', date] as const,
   // Settings
   settings: () => [...EXECUTION_QUERY_KEYS.all, 'settings'] as const,
   runCost: (runId: number) => [...EXECUTION_QUERY_KEYS.all, 'cost', runId] as const,
@@ -1606,6 +1608,43 @@ export function useDeleteFillingCostSheet() {
       qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-costs'] });
     },
   });
+}
+
+/**
+ * The scrap rates — the factory's scrap table — each at its price on `date`
+ * (today unless given). A sheet's Scrap Recurring is priced off them.
+ */
+export function useScrapRates(date?: string) {
+  return useQuery({
+    queryKey: EXECUTION_QUERY_KEYS.scrapRates(date),
+    queryFn: () => executionApi.getScrapRates(date),
+  });
+}
+
+/** A change to the scrap rates changes what a new sheet opens with, too. */
+function useScrapRateMutation<T>(mutationFn: (variables: T) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'scrap-rates'] });
+      qc.invalidateQueries({ queryKey: [...EXECUTION_QUERY_KEYS.all, 'filling-cost-defaults'] });
+    },
+  });
+}
+
+export function useCreateScrapRate() {
+  return useScrapRateMutation((data: ScrapKindPayload) => executionApi.createScrapRate(data));
+}
+
+export function useUpdateScrapRate() {
+  return useScrapRateMutation(({ kindId, data }: { kindId: number; data: ScrapKindPayload }) =>
+    executionApi.updateScrapRate(kindId, data),
+  );
+}
+
+export function useDeleteScrapRate() {
+  return useScrapRateMutation((kindId: number) => executionApi.deleteScrapRate(kindId));
 }
 
 // ============================================================================

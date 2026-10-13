@@ -1654,7 +1654,11 @@ export interface FillingCostDefaultEntry {
   amount: string | null;
   /** How it was worked out, e.g. '₹12,00,000 a month ÷ 26 days' */
   explain: string;
-  source: 'cost_master' | 'electricity' | 'waste_logs';
+  /**
+   * 'sap' = off the store's wastage transfers in SAP, which land days after
+   * the sheet is made; 'waste_logs' = off the app's waste logs until they do.
+   */
+  source: 'cost_master' | 'electricity' | 'waste_logs' | 'sap';
 }
 
 /** A SKU the day's (or shift's) runs filled. */
@@ -1684,6 +1688,49 @@ export interface FillingCostDefaults {
   entries: FillingCostDefaultEntry[];
   /** What could not be worked out, and why — shown above the sheet */
   warnings: string[];
+}
+
+/** An SAP item a kind of scrap is made of. */
+export interface ScrapItem {
+  code: string;
+  name: string;
+}
+
+export interface ScrapPrice {
+  id: number;
+  price_per_kg: string;
+  /** YYYY-MM-DD */
+  effective_from: string;
+  created_by_name: string;
+  created_at: string;
+}
+
+/** A row of the factory's scrap table: what a kg of it fetches, and what it is. */
+export interface ScrapKind {
+  id: number;
+  /** 'Preform 10.5 GM' */
+  name: string;
+  items: ScrapItem[];
+  /** Weight of a piece, for wastage counted in pieces; null for grams or kilos */
+  grams_per_piece: string | null;
+  /** As the factory's table has it; shown, not used in the figure */
+  pieces_per_box: number | null;
+  sort_order: number;
+  /** The price a kg on the day asked about, or null while it has none */
+  price_per_kg: string | null;
+  price_from: string | null;
+  /** Every price it has had, newest first */
+  prices: ScrapPrice[];
+}
+
+/** A new price is a new row from `effective_from` (today unless given). */
+export interface ScrapKindPayload {
+  name?: string;
+  items?: Array<{ code: string; name?: string }>;
+  grams_per_piece?: string | null;
+  pieces_per_box?: number | null;
+  price_per_kg?: string;
+  effective_from?: string;
 }
 
 export interface FillingCostSheetParams {
