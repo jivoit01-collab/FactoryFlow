@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -30,6 +31,7 @@ import {
   getPipelineStageRowClass,
 } from '@/modules/dashboards/dispatch-pipeline/utils/pipelineStatus';
 import {
+  CASH_SALE_OUT_QUERY_KEYS,
   type DockingColumnFilters,
   salesDispatchApi,
   type SalesDispatchDashboardEntry,
@@ -67,13 +69,19 @@ import {
 } from '@/shared/components/ui';
 import { cn, getErrorMessage } from '@/shared/utils';
 
+import { CashSaleOutDialog } from './CashSaleOutDialog';
+import { CashSaleOutSection } from './CashSaleOutSection';
 import {
   DOCKING_COLUMNS,
   labelColumnValues,
   pendingBookingMatchesFilters,
 } from './dockingColumns';
 import { ExpectedVehiclesSection } from './ExpectedVehiclesSection';
-import { getSalesDispatchRoutes, isSalesDispatchOutPath } from './salesDispatchRoutes';
+import {
+  getSalesDispatchRoutes,
+  isSalesDispatchOutPath,
+  SALES_DISPATCH_BASE_ROUTES,
+} from './salesDispatchRoutes';
 import {
   buildDockingVehicleGroups,
   type DockingVehicleGroup,
@@ -127,10 +135,16 @@ export default function SalesDispatchDashboardPage() {
   const location = useLocation();
   const routes = getSalesDispatchRoutes(location.pathname);
   const isGateOutMode = isSalesDispatchOutPath(location.pathname);
+  // Cash sales leave through the sales gate only -- not BST Out, not Docking.
+  const isCashSaleBoard = location.pathname.startsWith(
+    SALES_DISPATCH_BASE_ROUTES.gateSalesDispatchOut,
+  );
+  const queryClient = useQueryClient();
   const { hasPermission } = usePermission();
   const { dateRange, dateRangeAsDateObjects, setDateRange } = useGlobalDateRange();
   const [searchTerm, setSearchTerm] = useState('');
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
+  const [isCashSaleOutOpen, setIsCashSaleOutOpen] = useState(false);
   const [dockingPage, setDockingPage] = useState(1);
   // What the column headers are set to, and which board they were set on.
   // The two boards are one component and one URL apart, so a funnel carried
@@ -290,6 +304,8 @@ export default function SalesDispatchDashboardPage() {
   const canManageDockingLock = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.MANAGE_LOCK);
   const canViewDockingReports = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.VIEW_REPORTS);
   const canViewExpectedVehicles = hasPermission(DASHBOARDS_PERMISSIONS.VIEW_DISPATCH_PIPELINE);
+  const canMarkCashSaleOut = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.DISPATCH);
+  const canCancelCashSaleOut = hasPermission(GATE_PERMISSIONS.SALES_DISPATCH.CANCEL);
 
   const handleAddToDocking = async (
     booking: SalesDispatchPendingBooking,
@@ -499,6 +515,9 @@ export default function SalesDispatchDashboardPage() {
             onClick={() => {
               void refetch();
               if (!isGateOutMode) void refetchPendingBookings();
+              if (isCashSaleBoard) {
+                void queryClient.invalidateQueries({ queryKey: CASH_SALE_OUT_QUERY_KEYS.all });
+              }
             }}
             disabled={isDashboardFetching}
           >
@@ -536,8 +555,18 @@ export default function SalesDispatchDashboardPage() {
               New Entry
             </Button>
           )}
+          {isCashSaleBoard && canMarkCashSaleOut && (
+            <Button onClick={() => setIsCashSaleOutOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Cash Sale Out
+            </Button>
+          )}
         </div>
       </PageHeader>
+
+      {isCashSaleBoard && canMarkCashSaleOut && (
+        <CashSaleOutDialog open={isCashSaleOutOpen} onOpenChange={setIsCashSaleOutOpen} />
+      )}
 
       {/* Gate-pass printing lock is a supervisor control -- hidden from the
           scanning worker, who just picks a truck below and scans. It lives behind
@@ -575,6 +604,14 @@ export default function SalesDispatchDashboardPage() {
           isGateOutMode={isGateOutMode}
           dateFrom={dateRange.from}
           dateTo={dateRange.to}
+        />
+      )}
+
+      {isCashSaleBoard && (
+        <CashSaleOutSection
+          dateFrom={dateRange.from}
+          dateTo={dateRange.to}
+          canCancel={canCancelCashSaleOut}
         />
       )}
 

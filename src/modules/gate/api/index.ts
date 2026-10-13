@@ -83,6 +83,8 @@ export * from './rejectedQcReturn/rejectedQcReturn.api';
 export * from './rejectedQcReturn/rejectedQcReturn.queries';
 
 // Sales Dispatch / Docking
+export * from './salesDispatch/cashSaleOut.api';
+export * from './salesDispatch/cashSaleOut.queries';
 export * from './salesDispatch/salesDispatch.api';
 export * from './salesDispatch/salesDispatch.queries';
 

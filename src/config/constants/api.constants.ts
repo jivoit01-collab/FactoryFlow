@@ -213,6 +213,9 @@ export const API_ENDPOINTS = {
       `/gate-core/sales-dispatch/${id}/box-scans/bulk-delete/`,
     SALES_DISPATCH_PALLET_SCAN: (id: number) => `/gate-core/sales-dispatch/${id}/pallet-scan/`,
     SALES_DISPATCH_EXPECTED_VEHICLES: '/gate-core/sales-dispatch/expected-vehicles/',
+    CASH_SALE_OUTS: '/gate-core/sales-dispatch/cash-sales/',
+    CASH_SALE_OUT_PENDING_BILLS: '/gate-core/sales-dispatch/cash-sales/pending-bills/',
+    CASH_SALE_OUT_CANCEL: (id: number) => `/gate-core/sales-dispatch/cash-sales/${id}/cancel/`,
     SALES_DISPATCH_BARCODE_SCANS: (id: number) => `/gate-core/sales-dispatch/${id}/barcode-scans/`,
     SALES_DISPATCH_BARCODE_SCANS_IMPORT: (id: number) =>
       `/gate-core/sales-dispatch/${id}/barcode-scans/import/`,
