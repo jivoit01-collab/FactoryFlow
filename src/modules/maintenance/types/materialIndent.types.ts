@@ -10,6 +10,8 @@ export type MaterialIndentStatus =
   | 'PENDING_QUOTATION_SELECTION'
   | 'QUOTATION_SELECTED'
   | 'PURCHASED'
+  /** Part of the purchase came through the gate; the rest is still expected. */
+  | 'PARTIALLY_ARRIVED'
   | 'GATE_IN'
   | 'RECEIVED'
   | 'REJECTED'
@@ -46,6 +48,12 @@ export interface MaterialIndentItem {
   issued_quantity: string;
   /** quantity − issued_quantity; the amount to purchase. */
   shortfall_quantity: string;
+  /** How much of the purchased shortfall came through the gate, over every arrival. */
+  arrived_quantity: string;
+  /** shortfall − arrived: what the gate still expects. */
+  pending_arrival_quantity: string;
+  /** What came through the gate that the store has not received yet. */
+  awaiting_receipt_quantity: string;
   /** How much of the purchased shortfall was received into stock. */
   received_quantity: string;
   received_spare: number | null;
@@ -56,6 +64,33 @@ export interface MaterialIndentItem {
   updated_by: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MaterialIndentArrivalLine {
+  id: number;
+  item: number;
+  item_particulars: string;
+  item_specification: string;
+  item_unit: string;
+  quantity: string;
+}
+
+/** One vehicle bringing some or all of a purchase through the gate. */
+export interface MaterialIndentArrival {
+  id: number;
+  arrival_no: number;
+  vehicle_number: string;
+  driver_name: string;
+  driver_mobile: string;
+  remarks: string;
+  gate_in_by: number | null;
+  gate_in_by_name: string;
+  gate_in_at: string;
+  /** Set once the store has received this arrival into stock. */
+  received_by: number | null;
+  received_by_name: string;
+  received_at: string | null;
+  lines: MaterialIndentArrivalLine[];
 }
 
 export interface MaterialIndent {
@@ -89,7 +124,7 @@ export interface MaterialIndent {
   purchased_by_name: string;
   purchased_at: string | null;
   purchase_remarks: string;
-  // Gate-in of purchased goods
+  // Gate-in of purchased goods — the latest arrival; every one is in `arrivals`.
   gatein_vehicle_number: string;
   gatein_driver_name: string;
   gatein_driver_mobile: string;
@@ -100,6 +135,11 @@ export interface MaterialIndent {
   received_by: number | null;
   received_by_name: string;
   received_at: string | null;
+  // The rest of a part-arrived purchase is not coming.
+  short_closed_by: number | null;
+  short_closed_by_name: string;
+  short_closed_at: string | null;
+  short_close_reason: string;
   // Quotation round — purchaser collects company prices, approver picks one.
   quotations_submitted_by: number | null;
   quotations_submitted_by_name: string;
@@ -114,6 +154,7 @@ export interface MaterialIndent {
   items: MaterialIndentItem[];
   attachments: MaterialIndentAttachment[];
   quotations: MaterialIndentQuotation[];
+  arrivals: MaterialIndentArrival[];
   total_items: number;
   /** True when any item has a purchase shortfall. */
   has_shortfall: boolean;
@@ -241,11 +282,18 @@ export interface MaterialIndentGateInPayload {
   vehicle_number?: string;
   driver_name?: string;
   driver_mobile?: string;
+  remarks?: string;
+  /** How much of each line this vehicle brought. Omit when everything still expected came. */
+  items?: Array<{ id: number; quantity: string }>;
 }
 
 export interface MaterialIndentReceivePayload {
-  // Omit to receive each item's full shortfall.
+  // Omit to receive each line as the gate counted it.
   items?: Array<{ id: number; received_quantity: string }>;
+}
+
+export interface MaterialIndentShortClosePayload {
+  reason: string;
 }
 
 export interface MaterialIndentAttachmentUploadPayload {
@@ -259,7 +307,8 @@ export interface MaterialIndentAttachmentUploadPayload {
 
 export interface MaterialIndentFilters {
   search?: string;
-  status?: MaterialIndentStatus | 'ALL';
+  /** One status, or several joined by commas ("PARTIALLY_ARRIVED,GATE_IN"). */
+  status?: MaterialIndentStatus | 'ALL' | `${MaterialIndentStatus},${string}`;
   department?: number | 'ALL';
   date_from?: string;
   date_to?: string;

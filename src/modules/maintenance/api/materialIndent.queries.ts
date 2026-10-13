@@ -13,6 +13,7 @@ import type {
   MaterialIndentQuotationUpdatePayload,
   MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
+  MaterialIndentShortClosePayload,
   MaterialIndentUpdatePayload,
 } from '../types';
 import { materialIndentApi } from './materialIndent.api';
@@ -163,6 +164,15 @@ export function useRejectMaterialIndent() {
       indentId: number;
       payload?: MaterialIndentDecisionPayload;
     }) => materialIndentApi.rejectIndent(indentId, payload),
+    onSuccess: () => invalidateIndents(queryClient),
+  });
+}
+
+export function useShortCloseMaterialIndent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ indentId, payload }: { indentId: number; payload: MaterialIndentShortClosePayload }) =>
+      materialIndentApi.shortCloseIndent(indentId, payload),
     onSuccess: () => invalidateIndents(queryClient),
   });
 }

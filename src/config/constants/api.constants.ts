@@ -1035,6 +1035,8 @@ export const API_ENDPOINTS = {
       `/maintenance/material-indents/${indentId}/gate-in/`,
     MATERIAL_INDENT_RECEIVE: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/receive/`,
+    MATERIAL_INDENT_SHORT_CLOSE: (indentId: number) =>
+      `/maintenance/material-indents/${indentId}/short-close/`,
     MATERIAL_INDENT_REJECT: (indentId: number) =>
       `/maintenance/material-indents/${indentId}/reject/`,
     MATERIAL_INDENT_CANCEL: (indentId: number) =>

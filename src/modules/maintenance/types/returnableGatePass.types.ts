@@ -206,6 +206,8 @@ export interface ReturnableGatePassListItem {
   is_overdue: boolean;
   days_overdue: number;
   item_count: number;
+  /** Lines fully back, so a queue can say "1 of 3 back". Absent from an older backend. */
+  items_back?: number;
   pending_return_qty: string;
   gate_out_at: string | null;
   last_return_at: string | null;

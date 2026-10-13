@@ -279,6 +279,38 @@ describe('gate in', () => {
     );
   });
 
+  it('records only what came back, and says the rest stays out', async () => {
+    const base = outPass();
+    const motor = base.items[0];
+    gatePassFixture = outPass({
+      items: [
+        motor,
+        { ...motor, id: 12, line_num: 2, item_name: 'Bearing 6205', serial_no: '' },
+        { ...motor, id: 13, line_num: 3, item_name: 'Pulley', serial_no: '' },
+      ],
+    });
+    recordReturn.mockResolvedValue(outPass({ status: 'PARTIALLY_RETURNED' }));
+    renderGateIn();
+
+    expect(
+      screen.getByText('Everything still out is coming in. The pass will be marked returned.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Bearing 6205' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Pulley' }));
+    expect(screen.getByText(/Part return: 1 of 3 items coming in/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('returnable-photo-input'), {
+      target: { files: [photo('motor-back.jpg')] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Record Part Return' }));
+
+    await waitFor(() => expect(recordReturn).toHaveBeenCalled());
+    const { payload } = recordReturn.mock.calls[0][0] as {
+      payload: { lines: Array<{ pass_item: number }> };
+    };
+    expect(payload.lines.map((row) => row.pass_item)).toEqual([11]);
+  });
+
   it('shows the photos taken on an earlier trip', () => {
     gatePassFixture = outPass({
       status: 'PARTIALLY_RETURNED',

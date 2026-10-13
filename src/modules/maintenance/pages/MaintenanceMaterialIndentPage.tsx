@@ -56,10 +56,20 @@ import {
   useReceiveMaterialIndent,
   useRejectMaterialIndent,
   useReviewMaterialIndent,
+  useShortCloseMaterialIndent,
   useSubmitMaterialIndent,
   useUploadMaterialIndentAttachment,
 } from '../api';
-import { MaterialIndentQuotations, MaterialIndentStatusBadge } from '../components';
+import {
+  arrivalCountsError,
+  arrivalPayloadItems,
+  fullArrivalCounts,
+  isPartArrival,
+  MaterialIndentArrivalLines,
+  MaterialIndentQuotations,
+  MaterialIndentStatusBadge,
+} from '../components';
+import { formatQty, lineLabel, linesToReceive } from '../components/store';
 import type {
   MaterialIndent,
   MaterialIndentFilters,
@@ -70,6 +80,16 @@ import type {
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// From purchase on, each line shows how much came through the gate and the store.
+const ARRIVAL_STATUSES: MaterialIndentStatus[] = [
+  'PURCHASED',
+  'PARTIALLY_ARRIVED',
+  'GATE_IN',
+  'RECEIVED',
+];
+// The gate is still expecting some or all of the purchase.
+const EXPECTED_AT_GATE: MaterialIndentStatus[] = ['PURCHASED', 'PARTIALLY_ARRIVED'];
 
 /** Render a stored timestamp as a local YYYY-MM-DD date, matching the posting-date column. */
 function asLocalDate(value: string | null | undefined) {
@@ -496,6 +516,7 @@ function IndentDetailDialog({
   const uploadAttachment = useUploadMaterialIndentAttachment();
   const deleteAttachment = useDeleteMaterialIndentAttachment();
   const cancelIndent = useCancelMaterialIndent();
+  const shortCloseIndent = useShortCloseMaterialIndent();
   const [remarks, setRemarks] = useState('');
   const [storeRemarks, setStoreRemarks] = useState('');
   const [purchaseRemarks, setPurchaseRemarks] = useState('');
@@ -503,9 +524,17 @@ function IndentDetailDialog({
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [driverName, setDriverName] = useState('');
   const [docType, setDocType] = useState('INVOICE');
+  // What the vehicle at the gate brought; null until the gate touches a box,
+  // so it starts at everything still expected.
+  const [arrivalCounts, setArrivalCounts] = useState<Record<number, string> | null>(null);
+  const [arrivalError, setArrivalError] = useState('');
+  const [shortCloseReason, setShortCloseReason] = useState('');
 
   const indent = indentQuery.data;
   const reviewing = indent?.status === 'SUBMITTED' && canReview;
+  const showArrivals = !!indent && ARRIVAL_STATUSES.includes(indent.status);
+  const expectedAtGate = !!indent && EXPECTED_AT_GATE.includes(indent.status);
+  const counts = arrivalCounts ?? (indent ? fullArrivalCounts(indent) : {});
 
   // When the store starts reviewing, default each row to "issue the full qty".
   useEffect(() => {
@@ -583,6 +612,16 @@ function IndentDetailDialog({
                     <th className="px-3 py-2 text-right font-medium text-muted-foreground">
                       To Purchase
                     </th>
+                    {showArrivals && (
+                      <>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                          Arrived
+                        </th>
+                        <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                          In Store
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -613,21 +652,68 @@ function IndentDetailDialog({
                       <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700 dark:text-amber-400">
                         {Number(shortfallFor(item)) || '—'}
                       </td>
+                      {showArrivals && (
+                        <>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {Number(item.shortfall_quantity) > 0
+                              ? `${formatQty(item.arrived_quantity)} / ${formatQty(item.shortfall_quantity)}`
+                              : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {Number(item.shortfall_quantity) > 0
+                              ? formatQty(item.received_quantity)
+                              : '—'}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Gate-in details once the goods have arrived. */}
-            {(indent.gatein_vehicle_number || indent.gate_in_by_name) && (
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
-                <span className="font-medium">Gate-in: </span>
-                {indent.gatein_vehicle_number || '—'}
-                {indent.gatein_driver_name && ` · ${indent.gatein_driver_name}`}
-                {indent.gate_in_by_name && (
-                  <span className="text-muted-foreground"> · by {indent.gate_in_by_name}</span>
-                )}
+            {/* Every vehicle that brought part of the purchase through the gate. */}
+            {(indent.arrivals ?? []).length > 0 && (
+              <div className="space-y-2">
+                <p className="font-medium">Arrivals at the gate</p>
+                <ul className="space-y-2">
+                  {indent.arrivals.map((arrival) => (
+                    <li
+                      key={arrival.id}
+                      className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          <span className="font-medium">#{arrival.arrival_no}</span>{' '}
+                          {arrival.vehicle_number || 'No vehicle no.'}
+                          {arrival.driver_name && ` · ${arrival.driver_name}`}
+                          <span className="text-muted-foreground">
+                            {' '}
+                            · {asLocalDate(arrival.gate_in_at)}
+                            {arrival.gate_in_by_name && ` · by ${arrival.gate_in_by_name}`}
+                          </span>
+                        </span>
+                        {arrival.received_at ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-400">
+                            In store{arrival.received_by_name && ` · ${arrival.received_by_name}`}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
+                            Waiting for store
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-muted-foreground">
+                        {arrival.lines
+                          .map(
+                            (line) =>
+                              `${line.item_specification ? `${line.item_particulars} (${line.item_specification})` : line.item_particulars} ${formatQty(line.quantity)} ${line.item_unit}`,
+                          )
+                          .join(' · ')}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -672,6 +758,21 @@ function IndentDetailDialog({
                 <span className="font-medium">Received into Store / Spares</span>
                 {indent.received_by_name && ` by ${indent.received_by_name}`} — purchased items
                 added to stock.
+              </div>
+            )}
+            {indent.status === 'PARTIALLY_ARRIVED' && (
+              <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <span className="font-medium">Part arrived</span> — the rest of the purchase is
+                still expected at the gate.
+              </div>
+            )}
+            {indent.short_close_reason && (
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 dark:border-border dark:bg-muted/25">
+                <span className="font-medium">Closed short: </span>
+                {indent.short_close_reason}
+                {indent.short_closed_by_name && (
+                  <span className="text-muted-foreground"> — {indent.short_closed_by_name}</span>
+                )}
               </div>
             )}
 
@@ -859,9 +960,24 @@ function IndentDetailDialog({
                 <p className="text-sm text-muted-foreground">Waiting for the purchaser.</p>
               )}
 
-              {/* 5. Gate records vehicle + invoice/bill when purchased goods arrive */}
-              {indent.status === 'PURCHASED' && canGateIn && (
+              {/* 5. Gate records what each vehicle brought + invoice/bill. A part
+                  delivery leaves the rest expected for the next vehicle. */}
+              {expectedAtGate && canGateIn && (
                 <div className="space-y-2">
+                  <MaterialIndentArrivalLines
+                    indent={indent}
+                    counts={counts}
+                    onChange={(next) => {
+                      setArrivalCounts(next);
+                      setArrivalError('');
+                    }}
+                    disabled={gateInIndent.isPending}
+                  />
+                  {arrivalError && (
+                    <p role="alert" className="text-sm font-medium text-destructive">
+                      {arrivalError}
+                    </p>
+                  )}
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label className="text-xs">Vehicle number</Label>
@@ -908,36 +1024,57 @@ function IndentDetailDialog({
                   <Button
                     type="button"
                     onClick={async () => {
+                      const problem = arrivalCountsError(indent, counts);
+                      if (problem) {
+                        setArrivalError(problem);
+                        return;
+                      }
+                      const partial = isPartArrival(indent, counts);
                       await gateInIndent.mutateAsync({
                         indentId,
                         payload: {
                           vehicle_number: vehicleNumber.trim(),
                           driver_name: driverName.trim(),
+                          items: arrivalPayloadItems(indent, counts),
                         },
                       });
-                      toast.success('Gated in — sent to store to receive');
+                      toast.success(
+                        partial
+                          ? 'Part gated in — sent to store. The rest is still expected.'
+                          : 'Gated in — sent to store to receive',
+                      );
                       setVehicleNumber('');
                       setDriverName('');
+                      setArrivalCounts(null);
                     }}
                     disabled={gateInIndent.isPending}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Gate In
+                    {isPartArrival(indent, counts) ? 'Gate In Part' : 'Gate In'}
                   </Button>
                 </div>
               )}
-              {indent.status === 'PURCHASED' && !canGateIn && (
+              {expectedAtGate && !canGateIn && (
                 <p className="text-sm text-muted-foreground">
-                  Awaiting gate-in of the purchased goods.
+                  {indent.status === 'PARTIALLY_ARRIVED'
+                    ? 'Awaiting gate-in of the rest of the purchase.'
+                    : 'Awaiting gate-in of the purchased goods.'}
                 </p>
               )}
 
-              {/* 6. Store collects the arrival into Store/Spares stock */}
-              {indent.status === 'GATE_IN' && canReceive && (
+              {/* 6. Store collects what came through the gate into Store/Spares stock */}
+              {linesToReceive(indent).length > 0 && canReceive && (
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Collecting adds each purchased item’s quantity to Store / Spares stock (matching
-                    or creating the part).
+                    Collecting adds what came through the gate to Store / Spares stock (matching or
+                    creating the part):{' '}
+                    {linesToReceive(indent)
+                      .map(
+                        (line) =>
+                          `${lineLabel(line)} ${formatQty(line.awaiting_receipt_quantity)} ${line.unit}`,
+                      )
+                      .join(' · ')}
+                    . To count a different number, receive it from the Store page.
                   </p>
                   <Button
                     type="button"
@@ -952,8 +1089,40 @@ function IndentDetailDialog({
                   </Button>
                 </div>
               )}
-              {indent.status === 'GATE_IN' && !canReceive && (
+              {linesToReceive(indent).length > 0 && !canReceive && (
                 <p className="text-sm text-muted-foreground">Awaiting store receipt.</p>
+              )}
+
+              {/* 7. The rest of a part-arrived purchase is not coming. */}
+              {indent.status === 'PARTIALLY_ARRIVED' && (canPurchase || canReceive) && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Rest not coming? Say why and close it short</Label>
+                  <Textarea
+                    value={shortCloseReason}
+                    placeholder="e.g. vendor has no more stock; order cut to what came"
+                    onChange={(e) => setShortCloseReason(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={async () => {
+                      if (!shortCloseReason.trim()) {
+                        toast.error('Write why the rest is not coming.');
+                        return;
+                      }
+                      await shortCloseIndent.mutateAsync({
+                        indentId,
+                        payload: { reason: shortCloseReason.trim() },
+                      });
+                      toast.success('Closed short — the gate no longer expects the rest');
+                      setShortCloseReason('');
+                    }}
+                    disabled={shortCloseIndent.isPending}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Close Short
+                  </Button>
+                </div>
               )}
 
               {(indent.status === 'DRAFT' || indent.status === 'SUBMITTED') && canManage && (
@@ -1169,6 +1338,9 @@ export default function MaintenanceMaterialIndentPage() {
                 <SelectOption value="PENDING_APPROVAL">Pending Purchase Approval</SelectOption>
                 <SelectOption value="APPROVED">Approved for Purchase</SelectOption>
                 <SelectOption value="PURCHASED">Purchased</SelectOption>
+                <SelectOption value="PARTIALLY_ARRIVED">Part Arrived</SelectOption>
+                <SelectOption value="GATE_IN">Arrived at Gate</SelectOption>
+                <SelectOption value="RECEIVED">Received into Store</SelectOption>
                 <SelectOption value="REJECTED">Rejected</SelectOption>
                 <SelectOption value="CANCELLED">Cancelled</SelectOption>
               </NativeSelect>

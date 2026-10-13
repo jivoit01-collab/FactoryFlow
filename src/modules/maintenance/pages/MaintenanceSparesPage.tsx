@@ -29,6 +29,7 @@ import {
   ItemDialog,
   ItemFormDialog,
   lineLabel,
+  linesOnTheWay,
   linesToReceive,
   ReceiveDialog,
   stockLevel,
@@ -49,8 +50,10 @@ import type { MaintenanceSpare, MaterialIndent, SpareRequest } from '../types';
  */
 
 const ACTIVE_SPARES = { is_active: true };
-const AT_GATE = { status: 'GATE_IN' as const };
-const ON_THE_WAY = { status: 'PURCHASED' as const };
+// A part-arrived purchase is in both: what came waits for the store, the rest
+// is still on the way.
+const AT_GATE = { status: 'PARTIALLY_ARRIVED,GATE_IN' as const };
+const ON_THE_WAY = { status: 'PURCHASED,PARTIALLY_ARRIVED' as const };
 const OPEN_REQUESTS = { is_active: true };
 
 type StoreDialog =
@@ -60,9 +63,15 @@ type StoreDialog =
   | { kind: 'count'; spareId: number; fromItem?: boolean }
   | { kind: 'form'; spareId?: number; name?: string; fromItem?: boolean };
 
-function indentSummary(indent: MaterialIndent) {
+function atGateSummary(indent: MaterialIndent) {
   return linesToReceive(indent)
-    .map((line) => `${lineLabel(line)} ${formatQty(line.shortfall_quantity)} ${line.unit}`)
+    .map((line) => `${lineLabel(line)} ${formatQty(line.awaiting_receipt_quantity)} ${line.unit}`)
+    .join(' · ');
+}
+
+function onTheWaySummary(indent: MaterialIndent) {
+  return linesOnTheWay(indent)
+    .map((line) => `${lineLabel(line)} ${formatQty(line.pending_arrival_quantity)} ${line.unit}`)
     .join(' · ');
 }
 
@@ -99,7 +108,9 @@ export default function MaintenanceSparesPage() {
     [sparesQuery.data],
   );
   const spareById = useMemo(() => new Map(spares.map((spare) => [spare.id, spare])), [spares]);
-  const atGate = canReceive ? (atGateQuery.data ?? []) : [];
+  const atGate = canReceive
+    ? (atGateQuery.data ?? []).filter((indent) => linesToReceive(indent).length > 0)
+    : [];
   const onTheWay = canReceive ? (onTheWayQuery.data ?? []) : [];
   const waiting = canManage ? (requestsQuery.data ?? []).filter(isWaiting) : [];
   const lowCount = spares.filter((spare) => stockLevel(spare) !== 'ok').length;
@@ -151,7 +162,7 @@ export default function MaintenanceSparesPage() {
                         Goods at gate
                         {indent.requested_by_name && ` · for ${indent.requested_by_name}`}
                       </p>
-                      <p className="text-sm text-muted-foreground">{indentSummary(indent)}</p>
+                      <p className="text-sm text-muted-foreground">{atGateSummary(indent)}</p>
                       <p className="text-xs text-muted-foreground">{indent.indent_no}</p>
                     </div>
                   </div>
@@ -208,7 +219,7 @@ export default function MaintenanceSparesPage() {
                 <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200/80 bg-card text-sm dark:divide-border/60 dark:border-border">
                   {onTheWay.map((indent) => (
                     <li key={indent.id} className="px-3 py-2">
-                      <span className="font-medium">{indentSummary(indent)}</span>
+                      <span className="font-medium">{onTheWaySummary(indent)}</span>
                       <span className="block text-xs text-muted-foreground">
                         {indent.indent_no}
                         {indent.requested_by_name && ` · for ${indent.requested_by_name}`}

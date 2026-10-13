@@ -114,6 +114,7 @@ vi.mock('../api', () => ({
   useGateInMaterialIndent: fixtures.noopMutation,
   useReceiveMaterialIndent: fixtures.noopMutation,
   useCancelMaterialIndent: fixtures.noopMutation,
+  useShortCloseMaterialIndent: fixtures.noopMutation,
   useDeleteMaterialIndent: fixtures.noopMutation,
   useUploadMaterialIndentAttachment: fixtures.noopMutation,
   useDeleteMaterialIndentAttachment: fixtures.noopMutation,

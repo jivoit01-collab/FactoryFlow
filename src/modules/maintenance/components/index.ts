@@ -3,6 +3,8 @@ export * from './AssetAttachmentsField';
 export * from './AssetFormDialog';
 export * from './AssetStatusBadge';
 export * from './MasterDataDialog';
+export * from './materialIndentArrival';
+export * from './MaterialIndentArrivalLines';
 export * from './MaterialIndentQuotations';
 export * from './MaterialIndentStatusBadge';
 export * from './SafetyFineStatusBadge';

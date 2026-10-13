@@ -89,6 +89,37 @@ export default function ReturnInFormPage() {
       [itemId]: { ...draftFor(itemId, pendingQty), ...patch },
     }));
 
+  const includeAll = (include: boolean) =>
+    setDrafts((previous) =>
+      Object.fromEntries(
+        pendingItems.map((item) => [
+          item.id,
+          {
+            ...(previous[item.id] ?? {
+              include: true,
+              quantity: item.pending_return_qty,
+              condition: 'OK' as ItemReturnCondition,
+              remarks: '',
+            }),
+            include,
+            ...(include ? { quantity: item.pending_return_qty } : {}),
+          },
+        ]),
+      ),
+    );
+
+  // A part return: some line left unticked, or ticked with less than is out.
+  // The pass then stays open for the rest, which the gate should see before
+  // it records the trip.
+  const comingLines = pendingItems.filter((item) => {
+    const draft = draftFor(item.id, item.pending_return_qty);
+    return draft.include && Number(draft.quantity) > 0;
+  });
+  const isPartReturn = pendingItems.some((item) => {
+    const draft = draftFor(item.id, item.pending_return_qty);
+    return !draft.include || Number(draft.quantity) < Number(item.pending_return_qty);
+  });
+
   if (isLoading || !pass || !id) {
     return <div className="p-6 text-muted-foreground">Loading gate pass…</div>;
   }
@@ -144,7 +175,11 @@ export default function ReturnInFormPage() {
           lines,
         },
       });
-      toast.success('Return recorded. The department has been asked to collect the items.');
+      toast.success(
+        isPartReturn
+          ? 'Part return recorded. The rest stays open on this pass for a later trip.'
+          : 'Return recorded. The department has been asked to collect the items.',
+      );
       navigate('/gate/return-in');
     } catch (error) {
       const response = (error as { response?: { data?: { detail?: string; lines?: string[] } } })
@@ -196,22 +231,36 @@ export default function ReturnInFormPage() {
         <>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Items Coming Back</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Untick anything that has not arrived. Quantities are pre-filled with what is still
-            pending — reduce them for a partial return.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="text-base">What Came Back on This Trip?</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Tick only what arrived, and lower a quantity if fewer came. Anything not ticked
+                stays out on this pass for a later trip.
+              </p>
+            </div>
+            {pendingItems.length > 1 ? (
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => includeAll(true)}>
+                  All came
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => includeAll(false)}>
+                  Clear all
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[950px] text-sm">
               <thead className="bg-muted/40">
                 <tr>
-                  <th className="w-10 px-3 py-2" />
+                  <th className="w-10 px-3 py-2 text-left font-medium">Came</th>
                   <th className="px-3 py-2 text-left font-medium">Item</th>
                   <th className="px-3 py-2 text-left font-medium">Serial</th>
-                  <th className="px-3 py-2 text-right font-medium">Pending</th>
-                  <th className="px-3 py-2 text-left font-medium">Returning Qty</th>
+                  <th className="px-3 py-2 text-right font-medium">Still Out</th>
+                  <th className="px-3 py-2 text-left font-medium">Came Now</th>
                   <th className="px-3 py-2 text-left font-medium">Condition</th>
                   <th className="px-3 py-2 text-left font-medium">Remarks</th>
                 </tr>
@@ -248,6 +297,11 @@ export default function ReturnInFormPage() {
                         <td className="px-3 py-2">{item.serial_no || '—'}</td>
                         <td className="px-3 py-2 text-right">
                           {item.pending_return_qty} {item.uom}
+                          {Number(item.quantity_returned) > 0 ? (
+                            <div className="text-xs text-muted-foreground">
+                              {item.quantity_returned} already back
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-3 py-2">
                           <Input
@@ -415,16 +469,39 @@ export default function ReturnInFormPage() {
       </Card>
 
       {isOutstanding ? (
-      <div className="flex justify-end">
-        {canGateIn ? (
-          <Button
-            onClick={handleSubmit}
-            disabled={recordReturnMutation.isPending || pendingItems.length === 0}
+      <div className="space-y-3">
+        {canGateIn && pendingItems.length > 0 ? (
+          <p
+            className={
+              comingLines.length === 0
+                ? 'rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground'
+                : isPartReturn
+                  ? 'rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                  : 'rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+            }
           >
-            <Undo2 className="mr-2 h-4 w-4" />
-            {recordReturnMutation.isPending ? 'Recording…' : 'Approve & Record Return'}
-          </Button>
+            {comingLines.length === 0
+              ? 'Nothing ticked yet. Tick what came back.'
+              : isPartReturn
+                ? `Part return: ${comingLines.length} of ${pendingItems.length} item${pendingItems.length === 1 ? '' : 's'} coming in. The rest stays out on ${pass.pass_no}, and the pass stays open in Material In.`
+                : 'Everything still out is coming in. The pass will be marked returned.'}
+          </p>
         ) : null}
+        <div className="flex justify-end">
+          {canGateIn ? (
+            <Button
+              onClick={handleSubmit}
+              disabled={recordReturnMutation.isPending || pendingItems.length === 0}
+            >
+              <Undo2 className="mr-2 h-4 w-4" />
+              {recordReturnMutation.isPending
+                ? 'Recording…'
+                : isPartReturn
+                  ? 'Record Part Return'
+                  : 'Approve & Record Return'}
+            </Button>
+          ) : null}
+        </div>
       </div>
       ) : null}
     </div>

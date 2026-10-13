@@ -17,6 +17,7 @@ import type {
   MaterialIndentQuotationUpdatePayload,
   MaterialIndentReceivePayload,
   MaterialIndentReviewPayload,
+  MaterialIndentShortClosePayload,
   MaterialIndentUpdatePayload,
 } from '../types';
 
@@ -192,6 +193,18 @@ export const materialIndentApi = {
   ): Promise<MaterialIndent> {
     const response = await apiClient.post<MaterialIndent>(
       EP.MATERIAL_INDENT_RECEIVE(indentId),
+      payload,
+    );
+    return response.data;
+  },
+
+  // The rest of a part-arrived purchase is not coming.
+  async shortCloseIndent(
+    indentId: number,
+    payload: MaterialIndentShortClosePayload,
+  ): Promise<MaterialIndent> {
+    const response = await apiClient.post<MaterialIndent>(
+      EP.MATERIAL_INDENT_SHORT_CLOSE(indentId),
       payload,
     );
     return response.data;

@@ -18,9 +18,14 @@ export function formatDay(iso: string) {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(iso));
 }
 
-/** The lines that were bought: what the store is waiting to count in. */
+/** The lines the gate let in that the store has not received yet. */
 export function linesToReceive(indent: MaterialIndent) {
-  return indent.items.filter((item) => toNumber(item.shortfall_quantity) > 0);
+  return indent.items.filter((item) => toNumber(item.awaiting_receipt_quantity) > 0);
+}
+
+/** The bought lines that have not all come through the gate yet. */
+export function linesOnTheWay(indent: MaterialIndent) {
+  return indent.items.filter((item) => toNumber(item.pending_arrival_quantity) > 0);
 }
 
 /**

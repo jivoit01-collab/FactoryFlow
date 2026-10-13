@@ -19,9 +19,10 @@ import type { MaterialIndent } from '../../types';
 import { formatQty, linesToReceive, parseCount, toNumber } from './storeFormat';
 
 /**
- * Count in a delivery that the gate let in. Each box starts at what was
- * bought, so a full delivery is one tap; the store only changes a box when
- * less (or more) came.
+ * Count in what the gate let in. Each box starts at what the gate recorded,
+ * so a full delivery is one tap; the store only changes a box when it counts
+ * less (or more). Lines still on their way are not here; they come with a
+ * later vehicle.
  */
 export function ReceiveDialog({
   indent,
@@ -33,7 +34,9 @@ export function ReceiveDialog({
   const receive = useReceiveMaterialIndent();
   const lines = linesToReceive(indent);
   const [counts, setCounts] = useState<Record<number, string>>(() =>
-    Object.fromEntries(lines.map((line) => [line.id, String(toNumber(line.shortfall_quantity))])),
+    Object.fromEntries(
+      lines.map((line) => [line.id, String(toNumber(line.awaiting_receipt_quantity))]),
+    ),
   );
   const [error, setError] = useState('');
 
@@ -91,7 +94,9 @@ export function ReceiveDialog({
                     </span>
                   )}
                   <span className="block text-xs text-muted-foreground">
-                    Bought {formatQty(line.shortfall_quantity)} {line.unit}
+                    Came in {formatQty(line.awaiting_receipt_quantity)} {line.unit}
+                    {toNumber(line.awaiting_receipt_quantity) < toNumber(line.shortfall_quantity) &&
+                      ` · bought ${formatQty(line.shortfall_quantity)}`}
                   </span>
                 </label>
                 <Input

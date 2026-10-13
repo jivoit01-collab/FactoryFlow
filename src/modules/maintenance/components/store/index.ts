@@ -8,6 +8,7 @@ export {
   formatDay,
   formatQty,
   lineLabel,
+  linesOnTheWay,
   linesToReceive,
   stockLevel,
   toNumber,

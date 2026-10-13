@@ -10,8 +10,16 @@ import {
   useMaterialIndents,
   useUploadMaterialIndentAttachment,
 } from '@/modules/maintenance/api';
-import { MaterialIndentStatusBadge } from '@/modules/maintenance/components';
+import {
+  arrivalCountsError,
+  arrivalPayloadItems,
+  fullArrivalCounts,
+  isPartArrival,
+  MaterialIndentArrivalLines,
+  MaterialIndentStatusBadge,
+} from '@/modules/maintenance/components';
 import { ReturnableStatusBadge } from '@/modules/maintenance/components/returnable';
+import type { MaterialIndent } from '@/modules/maintenance/types';
 import { DashboardHeader } from '@/shared/components/dashboard';
 import {
   Button,
@@ -44,22 +52,34 @@ const STATUS_OPTIONS = [
 const OUTSTANDING: string[] = ['OUT', 'PARTIALLY_RETURNED'];
 
 // The material-indent statuses that concern the gate's inbound screen.
-const INDENT_GATE_STATUSES = 'PURCHASED,GATE_IN,RECEIVED';
+const INDENT_GATE_STATUSES = 'PURCHASED,PARTIALLY_ARRIVED,GATE_IN,RECEIVED';
+// A purchase the gate is still expecting (some or all of it).
+const INDENT_EXPECTED: string[] = ['PURCHASED', 'PARTIALLY_ARRIVED'];
+
+/** "2 items still to come": the bought lines the gate is still waiting for. */
+function indentArrivalProgress(indent: MaterialIndent) {
+  const left = indent.items.filter((item) => Number(item.pending_arrival_quantity) > 0).length;
+  return `${left} item${left === 1 ? '' : 's'} still to come`;
+}
 
 type TypeFilter = 'ALL' | 'RETURNABLE' | 'MATERIAL_INDENT';
 
-/** Gate-in dialog for a purchased material indent — vehicle + invoice/bill. */
+/**
+ * Gate-in dialog for a purchased material indent: what this vehicle brought,
+ * the vehicle, and the invoice/bill. A part delivery leaves the rest open here
+ * for the next vehicle.
+ */
 function IndentGateInDialog({
-  indentId,
-  indentNo,
+  indent,
   onOpenChange,
 }: {
-  indentId: number;
-  indentNo: string;
+  indent: MaterialIndent;
   onOpenChange: (open: boolean) => void;
 }) {
   const gateIn = useGateInMaterialIndent();
   const uploadAttachment = useUploadMaterialIndentAttachment();
+  const [counts, setCounts] = useState<Record<number, string>>(() => fullArrivalCounts(indent));
+  const [countsError, setCountsError] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [driverName, setDriverName] = useState('');
   const [driverMobile, setDriverMobile] = useState('');
@@ -69,11 +89,25 @@ function IndentGateInDialog({
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Gate In — {indentNo}</DialogTitle>
+          <DialogTitle>Gate In — {indent.indent_no}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <MaterialIndentArrivalLines
+            indent={indent}
+            counts={counts}
+            onChange={(next) => {
+              setCounts(next);
+              setCountsError('');
+            }}
+            disabled={busy}
+          />
+          {countsError && (
+            <p role="alert" className="text-sm font-medium text-destructive">
+              {countsError}
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label className="text-xs">Vehicle number</Label>
@@ -125,24 +159,35 @@ function IndentGateInDialog({
             type="button"
             disabled={busy}
             onClick={async () => {
+              const problem = arrivalCountsError(indent, counts);
+              if (problem) {
+                setCountsError(problem);
+                return;
+              }
+              const partial = isPartArrival(indent, counts);
               setBusy(true);
               try {
                 for (const file of files) {
                   await uploadAttachment.mutateAsync({
-                    indent: indentId,
+                    indent: indent.id,
                     file,
                     doc_type: docType as 'INVOICE' | 'BILL' | 'OTHER',
                   });
                 }
                 await gateIn.mutateAsync({
-                  indentId,
+                  indentId: indent.id,
                   payload: {
                     vehicle_number: vehicleNumber.trim(),
                     driver_name: driverName.trim(),
                     driver_mobile: driverMobile.trim(),
+                    items: arrivalPayloadItems(indent, counts),
                   },
                 });
-                toast.success('Gated in — sent to store to receive');
+                toast.success(
+                  partial
+                    ? 'Part gated in — sent to store. The rest stays open here.'
+                    : 'Gated in — sent to store to receive',
+                );
                 onOpenChange(false);
               } finally {
                 setBusy(false);
@@ -150,7 +195,7 @@ function IndentGateInDialog({
             }}
           >
             <CheckCircle2 className="h-4 w-4" />
-            {busy ? 'Saving…' : 'Confirm Gate In'}
+            {busy ? 'Saving…' : isPartArrival(indent, counts) ? 'Gate In Part' : 'Confirm Gate In'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -168,7 +213,7 @@ export default function ReturnInListPage() {
   const [status, setStatus] = useState('ALL');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
-  const [gateInFor, setGateInFor] = useState<{ id: number; no: string } | null>(null);
+  const [gateInFor, setGateInFor] = useState<MaterialIndent | null>(null);
 
   const filters = useMemo(
     () => ({
@@ -196,7 +241,7 @@ export default function ReturnInListPage() {
 
   const outstandingCount = passes?.filter((pass) => OUTSTANDING.includes(pass.status)).length ?? 0;
   const overdueCount = passes?.filter((pass) => pass.is_overdue).length ?? 0;
-  const arrivingCount = indentArrivals.filter((i) => i.status === 'PURCHASED').length;
+  const arrivingCount = indentArrivals.filter((i) => INDENT_EXPECTED.includes(i.status)).length;
 
   const empty = (!passes?.length || !showReturnable) && (!indentArrivals.length || !showIndents);
 
@@ -319,6 +364,12 @@ export default function ReturnInListPage() {
                             isOverdue={pass.is_overdue}
                             daysOverdue={pass.days_overdue}
                           />
+                          {pass.status === 'PARTIALLY_RETURNED' && pass.items_back !== undefined && (
+                            <span className="mt-1 block text-xs text-muted-foreground">
+                              {pass.item_count - pass.items_back} item
+                              {pass.item_count - pass.items_back === 1 ? '' : 's'} still out
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-2">{pass.party_name || '—'}</td>
                         <td className="max-w-[220px] px-3 py-2">
@@ -345,7 +396,7 @@ export default function ReturnInListPage() {
                             {isOutstanding ? (
                               <>
                                 <Undo2 className="mr-2 h-4 w-4" />
-                                Record Return
+                                {pass.status === 'PARTIALLY_RETURNED' ? 'Record Rest' : 'Record Return'}
                               </>
                             ) : (
                               <>
@@ -370,6 +421,11 @@ export default function ReturnInListPage() {
                       </td>
                       <td className="px-3 py-2">
                         <MaterialIndentStatusBadge status={indent.status} />
+                        {indent.status === 'PARTIALLY_ARRIVED' && (
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {indentArrivalProgress(indent)}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         {indent.requested_by_name || indent.created_by_name || '—'}
@@ -381,13 +437,10 @@ export default function ReturnInListPage() {
                       </td>
                       <td className="px-3 py-2 text-muted-foreground">—</td>
                       <td className="px-3 py-2 text-right">
-                        {indent.status === 'PURCHASED' && canGateIn ? (
-                          <Button
-                            size="sm"
-                            onClick={() => setGateInFor({ id: indent.id, no: indent.indent_no })}
-                          >
+                        {INDENT_EXPECTED.includes(indent.status) && canGateIn ? (
+                          <Button size="sm" onClick={() => setGateInFor(indent)}>
                             <PackageOpen className="mr-2 h-4 w-4" />
-                            Gate In
+                            {indent.status === 'PARTIALLY_ARRIVED' ? 'Gate In Rest' : 'Gate In'}
                           </Button>
                         ) : (
                           <span className="text-xs text-muted-foreground">
@@ -405,8 +458,7 @@ export default function ReturnInListPage() {
 
       {gateInFor && (
         <IndentGateInDialog
-          indentId={gateInFor.id}
-          indentNo={gateInFor.no}
+          indent={gateInFor}
           onOpenChange={(open) => {
             if (!open) setGateInFor(null);
           }}

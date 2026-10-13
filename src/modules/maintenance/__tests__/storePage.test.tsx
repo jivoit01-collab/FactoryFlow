@@ -7,7 +7,16 @@ import { MAINTENANCE_PERMISSIONS } from '@/config/permissions';
 import MaintenanceSparesPage from '../pages/MaintenanceSparesPage';
 
 const fixtures = vi.hoisted(() => {
-  const item = (id: number, particulars: string, specification: string, qty: string) => ({
+  // `arrived` is how much came through the gate, `awaiting` how much of that
+  // the store has not received yet.
+  const item = (
+    id: number,
+    particulars: string,
+    specification: string,
+    qty: string,
+    arrived = qty,
+    awaiting = arrived,
+  ) => ({
     id,
     indent: 7,
     line_num: id,
@@ -18,6 +27,9 @@ const fixtures = vi.hoisted(() => {
     priority: 'NORMAL',
     issued_quantity: '0.000',
     shortfall_quantity: qty,
+    arrived_quantity: arrived,
+    pending_arrival_quantity: String(Number(qty) - Number(arrived)),
+    awaiting_receipt_quantity: awaiting,
     received_quantity: '0.000',
     received_spare: null,
     received_spare_name: '',
@@ -69,7 +81,7 @@ const fixtures = vi.hoisted(() => {
         item(2, 'Seals', '', '10.000'),
       ]),
     ],
-    onTheWay: [indent(8, 'PURCHASED', [item(3, 'Starter', '', '1.000')])],
+    onTheWay: [indent(8, 'PURCHASED', [item(3, 'Starter', '', '1.000', '0.000')])],
     spares: [spare(21, 'Bearing 6205', '5.000', 'Rack A'), spare(22, 'Tissue roll', '0.000')],
     photos: {
       21: [
@@ -92,6 +104,8 @@ const fixtures = vi.hoisted(() => {
   const mutation = (fn: ReturnType<typeof vi.fn>) => () => ({ mutateAsync: fn, isPending: false });
   const noop = () => ({ mutateAsync: vi.fn(), isPending: false });
   return {
+    item,
+    indent,
     state,
     receive,
     giveOut,
@@ -109,7 +123,7 @@ vi.mock('../api', () => ({
   useMaterialIndents: (filters: { status: string }, enabled: boolean) => ({
     data: !enabled
       ? undefined
-      : filters.status === 'GATE_IN'
+      : filters.status === 'PARTIALLY_ARRIVED,GATE_IN'
         ? fixtures.state.atGate
         : fixtures.state.onTheWay,
     isLoading: false,
@@ -175,7 +189,7 @@ describe('Store page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Receive' }));
     const dialog = await screen.findByRole('dialog');
-    // Each box starts at what was bought; only 90 of the tiles came.
+    // Each box starts at what the gate let in; the store counts only 90 tiles.
     const tiles = within(dialog).getByLabelText(/Zig zag tile/);
     expect(tiles).toHaveValue(100);
     fireEvent.change(tiles, { target: { value: '90' } });
@@ -191,6 +205,37 @@ describe('Store page', () => {
         ],
       },
     });
+  });
+
+  it('receives only what the gate let in from a part delivery, and lists the rest as on the way', async () => {
+    const saved = { atGate: fixtures.state.atGate, onTheWay: fixtures.state.onTheWay };
+    // 60 of 100 tiles came; the seals have not come at all.
+    const part = fixtures.indent(9, 'PARTIALLY_ARRIVED', [
+      fixtures.item(4, 'Zig zag tile', 'Red', '100.000', '60.000'),
+      fixtures.item(5, 'Seals', '', '10.000', '0.000'),
+    ]);
+    fixtures.state.atGate = [part];
+    fixtures.state.onTheWay = [part];
+    try {
+      renderPage();
+      expect(screen.getByText('Zig zag tile (Red) 60 NOS')).toBeInTheDocument();
+      expect(screen.getByText('1 bought, not at gate yet')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Receive' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).getByLabelText(/Zig zag tile/)).toHaveValue(60);
+      expect(within(dialog).queryByLabelText(/Seals/)).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Put in store' }));
+
+      await vi.waitFor(() => expect(fixtures.receive).toHaveBeenCalled());
+      expect(fixtures.receive).toHaveBeenCalledWith({
+        indentId: 9,
+        payload: { items: [{ id: 4, received_quantity: '60' }] },
+      });
+    } finally {
+      fixtures.state.atGate = saved.atGate;
+      fixtures.state.onTheWay = saved.onTheWay;
+    }
   });
 
   it('will not receive when every count is zero', async () => {
