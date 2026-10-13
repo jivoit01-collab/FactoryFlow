@@ -56,7 +56,7 @@ export const fuelEntrySchema = z.object({
   station_name: z.string().trim().optional(),
   bill_number: z.string().trim().optional(),
   payment_mode: z.string().optional(),
-  filled_by: z.string().trim().optional(),
+  filled_by: requiredText('Filled by'),
   remarks: z.string().trim().optional(),
   odometer_note: z.string().trim().optional(),
 });

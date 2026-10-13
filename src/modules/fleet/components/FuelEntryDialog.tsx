@@ -31,12 +31,17 @@ import { VehiclePicker } from './VehiclePicker';
 /**
  * Record one filling.
  *
- * Three boxes get typed into: the meter reading, how much went in, and what
- * was paid. Everything else is either a tap (which vehicle, and petrol or CNG
- * on the one kind of vehicle that can be either) or already correct (the date
- * is today, the tank was filled full). The other nine fields sit behind "More
- * details", the date among them — this is the screen somebody fills in
- * standing next to a pump with a paper slip in one hand.
+ * Four boxes get typed into: the meter reading, how much went in, what was
+ * paid, and who filled it — plus a photo of the slip. Everything else is
+ * either a tap (which vehicle, and petrol or CNG on the one kind of vehicle
+ * that can be either) or already correct (the date is today, the tank was
+ * filled full). The other seven fields sit behind "More details", the date
+ * among them — this is the screen somebody fills in standing next to a pump
+ * with a paper slip in one hand.
+ *
+ * The photo is asked for on a new filling only. An old one saved before it
+ * was required can still be corrected without one, and an edit never sends
+ * the photo it already has, so the box is optional there.
  *
  * Two of its behaviours come from the server rather than from here, and both
  * are questions rather than refusals: a meter reading below the last one wants
@@ -77,7 +82,7 @@ export function FuelEntryDialog({
     control,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<FuelEntryFormData>({
     resolver: zodResolver(fuelEntrySchema),
     defaultValues: {
@@ -90,6 +95,7 @@ export function FuelEntryDialog({
       rate: '',
       is_tank_full: true,
       payment_mode: 'CASH',
+      filled_by: '',
     },
   });
 
@@ -157,6 +163,7 @@ export function FuelEntryDialog({
             rate: '',
             is_tank_full: true,
             payment_mode: 'CASH',
+            filled_by: '',
           },
     );
   }, [open, entry, vehicleId, reset]);
@@ -171,7 +178,15 @@ export function FuelEntryDialog({
     }
   }, [vehicle, selectedFuel, setValue]);
 
+  // The file lives outside the form, so zod cannot see it. Shown with the
+  // other errors once Save has been pressed, not before.
+  const photoMissing = !isEdit && !billPhoto;
+  const photoError =
+    (isSubmitted && photoMissing ? 'Attach a photo of the bill' : undefined) ||
+    apiErrors.bill_photo;
+
   const onSubmit = async (data: FuelEntryFormData) => {
+    if (photoMissing) return;
     setApiErrors({});
     const payload: WritePayload = {
       ...data,
@@ -208,7 +223,9 @@ export function FuelEntryDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit filling' : 'Add fuel'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Change what was entered.' : 'Meter, quantity, price. That is all.'}
+            {isEdit
+              ? 'Change what was entered.'
+              : 'Meter, quantity, price, who filled it and the slip.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -307,6 +324,33 @@ export function FuelEntryDialog({
               </FieldRow>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldRow
+                label="Filled by"
+                htmlFor="filled_by"
+                required
+                error={errors.filled_by?.message || apiErrors.filled_by}
+              >
+                <Input id="filled_by" placeholder="Driver's name" {...register('filled_by')} />
+              </FieldRow>
+
+              <FieldRow
+                label="Bill photo"
+                htmlFor="bill_photo"
+                required={!isEdit}
+                hint={isEdit && entry?.bill_photo_url ? 'Pick one to replace it' : undefined}
+                error={photoError}
+              >
+                <Input
+                  id="bill_photo"
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  onChange={(event) => setBillPhoto(event.target.files?.[0] ?? null)}
+                />
+              </FieldRow>
+            </div>
+
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <Label htmlFor="is_tank_full">Tank filled full</Label>
@@ -368,33 +412,18 @@ export function FuelEntryDialog({
                   </FieldRow>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <FieldRow label="Paid by" htmlFor="payment_mode">
-                    <NativeSelect id="payment_mode" {...register('payment_mode')}>
-                      {(options?.payment_modes ?? []).map((mode) => (
-                        <SelectOption key={mode.value} value={mode.value}>
-                          {mode.label}
-                        </SelectOption>
-                      ))}
-                    </NativeSelect>
-                  </FieldRow>
-                  <FieldRow label="Filled by" htmlFor="filled_by">
-                    <Input id="filled_by" placeholder="Driver's name" {...register('filled_by')} />
-                  </FieldRow>
-                </div>
+                <FieldRow label="Paid by" htmlFor="payment_mode">
+                  <NativeSelect id="payment_mode" {...register('payment_mode')}>
+                    {(options?.payment_modes ?? []).map((mode) => (
+                      <SelectOption key={mode.value} value={mode.value}>
+                        {mode.label}
+                      </SelectOption>
+                    ))}
+                  </NativeSelect>
+                </FieldRow>
 
                 <FieldRow label="Rate per unit" htmlFor="rate" hint="Worked out if left blank">
                   <Input id="rate" type="number" step="0.01" inputMode="decimal" {...register('rate')} />
-                </FieldRow>
-
-                <FieldRow label="Bill photo" htmlFor="bill_photo">
-                  <Input
-                    id="bill_photo"
-                    type="file"
-                    accept="image/*,application/pdf"
-                    capture="environment"
-                    onChange={(event) => setBillPhoto(event.target.files?.[0] ?? null)}
-                  />
                 </FieldRow>
 
                 <FieldRow label="Remarks" htmlFor="remarks">
