@@ -7,7 +7,7 @@ import { Button, Input } from '@/shared/components/ui';
 
 import type { ServiceEntry } from '../api';
 import { useDecideServiceEntry, useFleetOptions, usePendingApprovals } from '../api';
-import { money, shortDate } from '../utils/format';
+import { dateTime, money } from '../utils/format';
 
 /**
  * The workshop bills waiting to be passed, oldest first.
@@ -150,7 +150,7 @@ export default function FleetApprovalsPage() {
                 id={entry.id}
                 title={`${entry.vehicle_number}${entry.vehicle_nickname ? ` · ${entry.vehicle_nickname}` : ''}`}
                 lines={[
-                  `${shortDate(entry.entry_date)} · ${entry.kind_label}${entry.workshop_name ? ` · ${entry.workshop_name}` : ''}`,
+                  `${dateTime(entry.entry_date, entry.entry_time)} · ${entry.kind_label}${entry.workshop_name ? ` · ${entry.workshop_name}` : ''}`,
                   entry.description || '',
                 ].filter(Boolean)}
                 amount={entry.total_amount}

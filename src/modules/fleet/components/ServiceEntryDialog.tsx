@@ -21,7 +21,7 @@ import {
 import type { FleetOptions, FleetVehicle, ServiceEntry, WritePayload } from '../api';
 import { useCreateServiceEntry, useUpdateServiceEntry } from '../api';
 import { type ServiceEntryFormData, serviceEntrySchema } from '../schemas/fleet.schema';
-import { fieldErrors, km, money, today } from '../utils/format';
+import { fieldErrors, km, money, nowTime, timeInput, today } from '../utils/format';
 import { FieldRow, FormError } from './FieldRow';
 import { VehiclePicker } from './VehiclePicker';
 
@@ -31,6 +31,9 @@ import { VehiclePicker } from './VehiclePicker';
  * Parts and labour are asked for separately because most garage bills split
  * them, but the total is what counts: leave the two blank and type the one
  * figure the workshop handed over, and the server takes that.
+ *
+ * The time is required on a new bill only, as on the fuel form: an old one
+ * saved before times were asked for can be corrected without inventing one.
  */
 export function ServiceEntryDialog({
   open,
@@ -61,12 +64,13 @@ export function ServiceEntryDialog({
     control,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<ServiceEntryFormData>({
     resolver: zodResolver(serviceEntrySchema),
     defaultValues: {
       vehicle: vehicleId ?? 0,
       entry_date: today(),
+      entry_time: nowTime(),
       kind: 'ROUTINE',
       payment_mode: 'CASH',
     },
@@ -77,6 +81,7 @@ export function ServiceEntryDialog({
   const parts = useWatch({ control, name: 'parts_amount' });
   const labour = useWatch({ control, name: 'labour_amount' });
   const total = useWatch({ control, name: 'total_amount' });
+  const entryTime = useWatch({ control, name: 'entry_time' });
 
   const vehicle = useMemo(
     () => vehicles.find((row) => row.id === selectedVehicleId) ?? null,
@@ -100,6 +105,7 @@ export function ServiceEntryDialog({
         ? {
             vehicle: entry.vehicle,
             entry_date: entry.entry_date,
+            entry_time: timeInput(entry.entry_time),
             odometer: entry.odometer != null ? String(entry.odometer) : '',
             kind: entry.kind,
             workshop_name: entry.workshop_name,
@@ -118,13 +124,19 @@ export function ServiceEntryDialog({
         : {
             vehicle: vehicleId ?? 0,
             entry_date: today(),
+            entry_time: nowTime(),
             kind: 'ROUTINE',
             payment_mode: 'CASH',
           },
     );
   }, [open, entry, vehicleId, reset]);
 
+  const timeMissing = !entryTime && (!isEdit || !!entry?.entry_time);
+  const timeError =
+    (isSubmitted && timeMissing ? 'Time is required' : undefined) || apiErrors.entry_time;
+
   const onSubmit = async (data: ServiceEntryFormData) => {
+    if (timeMissing) return;
     setApiErrors({});
     const payload: WritePayload = { ...data, bill_photo: billPhoto };
     try {
@@ -164,7 +176,7 @@ export function ServiceEntryDialog({
               </FieldRow>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <FieldRow
                 label="Date"
                 htmlFor="service_date"
@@ -172,6 +184,15 @@ export function ServiceEntryDialog({
                 error={errors.entry_date?.message || apiErrors.entry_date}
               >
                 <Input id="service_date" type="date" max={today()} {...register('entry_date')} />
+              </FieldRow>
+
+              <FieldRow
+                label="Time"
+                htmlFor="service_time"
+                required={!isEdit || !!entry?.entry_time}
+                error={timeError}
+              >
+                <Input id="service_time" type="time" {...register('entry_time')} />
               </FieldRow>
 
               <FieldRow

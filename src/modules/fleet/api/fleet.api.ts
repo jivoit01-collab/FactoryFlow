@@ -96,6 +96,8 @@ export interface FuelEntry {
   vehicle_number: string;
   vehicle_nickname: string;
   entry_date: string;
+  /** `HH:MM:SS`. Null on a filling saved before times were asked for. */
+  entry_time: string | null;
   fuel_type: FuelTypeCode;
   fuel_type_label: string;
   /** `L` or `Kg` — follows the fuel, never stored separately. */
@@ -128,6 +130,8 @@ export interface ServiceEntry {
   vehicle_number: string;
   vehicle_nickname: string;
   entry_date: string;
+  /** `HH:MM:SS`. Null on a bill saved before times were asked for. */
+  entry_time: string | null;
   odometer: number | null;
   kind: string;
   kind_label: string;
@@ -159,6 +163,8 @@ export interface DailyReading {
   vehicle_number: string;
   vehicle_nickname: string;
   reading_date: string;
+  /** `HH:MM:SS`. Null on a reading saved before times were asked for. */
+  reading_time: string | null;
   odometer: number;
   remarks: string;
   entered_by_name: string | null;

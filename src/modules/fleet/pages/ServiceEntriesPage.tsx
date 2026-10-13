@@ -24,8 +24,8 @@ import {
   useFleetVehicles,
   useServiceEntries,
 } from '../api';
-import { type EntryDetail, EntryDetailDialog, ServiceEntryDialog } from '../components';
-import { fieldErrors, km, money, monthStart, shortDate, today } from '../utils/format';
+import { type EntryDetail, EntryDetailDialog, EntryWhen, ServiceEntryDialog } from '../components';
+import { dateTime, fieldErrors, km, money, monthStart, shortDate, today } from '../utils/format';
 
 function approvalTone(status: ApprovalStatusCode) {
   if (status === 'APPROVED') return 'done' as const;
@@ -58,7 +58,7 @@ export default function ServiceEntriesPage() {
     .reduce((sum, entry) => sum + Number(entry.total_amount), 0);
 
   const remove = async (entry: ServiceEntry) => {
-    if (!window.confirm(`Delete the ${shortDate(entry.entry_date)} bill for ${entry.vehicle_number}?`))
+    if (!window.confirm(`Delete the ${dateTime(entry.entry_date, entry.entry_time)} bill for ${entry.vehicle_number}?`))
       return;
     try {
       await deleteEntry.mutateAsync(entry.id);
@@ -171,7 +171,9 @@ export default function ServiceEntriesPage() {
                     }
                   }}
                 >
-                  <Td>{shortDate(entry.entry_date)}</Td>
+                  <Td>
+                    <EntryWhen date={entry.entry_date} time={entry.entry_time} />
+                  </Td>
                   <Td className="font-medium">{entry.vehicle_number}</Td>
                   <Td>
                     {entry.kind_label}

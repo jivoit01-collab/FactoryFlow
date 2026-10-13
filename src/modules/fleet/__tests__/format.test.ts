@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { fieldErrors, km, money, quantity, rupees, shortDate } from '../utils/format';
+import {
+  dateTime,
+  fieldErrors,
+  km,
+  money,
+  quantity,
+  rupees,
+  shortDate,
+  shortTime,
+  timeInput,
+} from '../utils/format';
 
 describe('fleet formatting', () => {
   it('shows a bill as whole rupees', () => {
@@ -31,6 +41,24 @@ describe('fleet formatting', () => {
 
   it('hands back an unparseable date unchanged rather than showing rubbish', () => {
     expect(shortDate('not-a-date')).toBe('not-a-date');
+  });
+
+  it('reads a time on the twelve-hour clock', () => {
+    expect(shortTime('14:05:00')).toBe('2:05 pm');
+    expect(shortTime('09:30')).toBe('9:30 am');
+    expect(shortTime('00:15:00')).toBe('12:15 am');
+    expect(shortTime('12:00:00')).toBe('12:00 pm');
+  });
+
+  it('puts the time after the date, or leaves it off where none was recorded', () => {
+    expect(dateTime('2026-09-23', '14:05:00')).toMatch(/^23 Sept? 2026, 2:05 pm$/);
+    expect(dateTime('2026-09-23', null)).toMatch(/^23 Sept? 2026$/);
+    expect(dateTime('2026-09-23', undefined)).toMatch(/^23 Sept? 2026$/);
+  });
+
+  it('gives a time box the hours and minutes only', () => {
+    expect(timeInput('14:05:00')).toBe('14:05');
+    expect(timeInput(null)).toBe('');
   });
 });
 

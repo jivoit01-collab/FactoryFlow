@@ -26,9 +26,9 @@ import {
   useFleetVehicles,
   useSaveDailyReading,
 } from '../api';
-import { FieldRow, FormError, VehiclePicker } from '../components';
+import { EntryWhen, FieldRow, FormError, VehiclePicker } from '../components';
 import { type DailyReadingFormData,dailyReadingSchema } from '../schemas/fleet.schema';
-import { fieldErrors, km, shortDate, today } from '../utils/format';
+import { dateTime, fieldErrors, km, nowTime, today } from '../utils/format';
 
 /**
  * Write the meter down. One vehicle, one day, one number.
@@ -36,8 +36,8 @@ import { fieldErrors, km, shortDate, today } from '../utils/format';
  * A page of its own rather than a box on the log, because this is a job
  * somebody does — walk the yard, read four dials, type them in — not something
  * they stumble into while reading a report. Pick the vehicle, the form is
- * already dated today, and the last reading is shown beside the box so a wrong
- * digit is obvious before it is saved.
+ * already dated today and timed now, and the last reading is shown beside the
+ * box so a wrong digit is obvious before it is saved.
  *
  * These readings are the ONLY thing the running log measures distance from.
  * The meter on a fuel slip is a different record kept for a different reason,
@@ -63,7 +63,13 @@ export default function DailyReadingsPage() {
     formState: { errors },
   } = useForm<DailyReadingFormData>({
     resolver: zodResolver(dailyReadingSchema),
-    defaultValues: { vehicle: 0, reading_date: today(), odometer: '', remarks: '' },
+    defaultValues: {
+      vehicle: 0,
+      reading_date: today(),
+      reading_time: nowTime(),
+      odometer: '',
+      remarks: '',
+    },
   });
 
   useEffect(() => {
@@ -93,10 +99,13 @@ export default function DailyReadingsPage() {
       await saveReading.mutateAsync(data as WritePayload);
       toast.success(`${vehicle?.vehicle_number} — reading saved`);
       // The vehicle and the date stay put: the next thing somebody does is
-      // read the next vehicle, or correct this one.
+      // read the next vehicle, or correct this one. The time moves on to now
+      // when the readings are today's, and stays put when somebody is copying
+      // an earlier day off paper.
       reset({
         vehicle: data.vehicle,
         reading_date: data.reading_date,
+        reading_time: data.reading_date === today() ? nowTime() : data.reading_time,
         odometer: '',
         remarks: '',
       });
@@ -106,7 +115,12 @@ export default function DailyReadingsPage() {
   };
 
   const remove = async (reading: DailyReading) => {
-    if (!window.confirm(`Delete the reading for ${shortDate(reading.reading_date)}?`)) return;
+    if (
+      !window.confirm(
+        `Delete the reading for ${dateTime(reading.reading_date, reading.reading_time)}?`,
+      )
+    )
+      return;
     try {
       await deleteReading.mutateAsync(reading.id);
       toast.success('Reading deleted');
@@ -141,7 +155,7 @@ export default function DailyReadingsPage() {
             title={`${vehicle.vehicle_number}${vehicle.nickname ? ` · ${vehicle.nickname}` : ''}`}
             description={
               lastReading
-                ? `Last logged ${km(lastReading.odometer)} on ${shortDate(lastReading.reading_date)}`
+                ? `Last logged ${km(lastReading.odometer)} on ${dateTime(lastReading.reading_date, lastReading.reading_time)}`
                 : 'Nothing logged for this vehicle yet'
             }
           >
@@ -151,7 +165,7 @@ export default function DailyReadingsPage() {
             >
               <FormError message={apiErrors.general} />
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <FieldRow
                   label="Meter reading"
                   htmlFor="odometer"
@@ -182,6 +196,20 @@ export default function DailyReadingsPage() {
                     max={today()}
                     disabled={!canWrite}
                     {...register('reading_date')}
+                  />
+                </FieldRow>
+
+                <FieldRow
+                  label="Time"
+                  htmlFor="reading_time"
+                  required
+                  error={errors.reading_time?.message || apiErrors.reading_time}
+                >
+                  <Input
+                    id="reading_time"
+                    type="time"
+                    disabled={!canWrite}
+                    {...register('reading_time')}
                   />
                 </FieldRow>
 
@@ -229,7 +257,9 @@ export default function DailyReadingsPage() {
                 ) : (
                   rows.map(({ reading, ran }) => (
                     <tr key={reading.id} className={ROW_CLASSES}>
-                      <Td>{shortDate(reading.reading_date)}</Td>
+                      <Td>
+                        <EntryWhen date={reading.reading_date} time={reading.reading_time} />
+                      </Td>
                       <Td numeric>{km(reading.odometer)}</Td>
                       <Td numeric>{ran !== null ? km(ran) : '—'}</Td>
                       <Td className="text-xs">{reading.remarks}</Td>

@@ -47,6 +47,9 @@ export type FleetVehicleFormData = z.infer<typeof fleetVehicleSchema>;
 export const fuelEntrySchema = z.object({
   vehicle: z.number().positive('Choose the vehicle'),
   entry_date: requiredText('Date'),
+  // Required on a new filling only — the dialog checks it, since an old one
+  // saved before times were asked for has none to show.
+  entry_time: z.string().optional(),
   fuel_type: z.string().optional(),
   odometer: positiveNumber('Meter reading'),
   quantity: positiveNumber('Quantity'),
@@ -66,6 +69,8 @@ export type FuelEntryFormData = z.infer<typeof fuelEntrySchema>;
 export const serviceEntrySchema = z.object({
   vehicle: z.number().positive('Choose the vehicle'),
   entry_date: requiredText('Date'),
+  // As on the fuel form: the dialog requires it on a new bill only.
+  entry_time: z.string().optional(),
   odometer: optionalNumber,
   kind: requiredText('Type of work'),
   workshop_name: z.string().trim().optional(),
@@ -99,6 +104,7 @@ export type VehicleDocumentFormData = z.infer<typeof vehicleDocumentSchema>;
 export const dailyReadingSchema = z.object({
   vehicle: z.number().positive('Choose the vehicle'),
   reading_date: requiredText('Date'),
+  reading_time: requiredText('Time'),
   odometer: positiveNumber('Meter reading'),
   remarks: z.string().trim().optional(),
 });

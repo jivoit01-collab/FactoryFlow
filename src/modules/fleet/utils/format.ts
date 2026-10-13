@@ -35,6 +35,32 @@ export function shortDate(value: string | null | undefined): string {
   return parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+/** `14:05:00` or `14:05` as `2:05 pm`. Null for an entry saved before times were asked for. */
+export function shortTime(value: string | null | undefined): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value ?? '');
+  if (!match) return '';
+  const hours = Number(match[1]);
+  const suffix = hours < 12 ? 'am' : 'pm';
+  return `${hours % 12 || 12}:${match[2]} ${suffix}`;
+}
+
+/** `23 Sep 2026, 2:05 pm`, or just the date where no time was recorded. */
+export function dateTime(date: string | null | undefined, time: string | null | undefined): string {
+  const at = shortTime(time);
+  return at ? `${shortDate(date)}, ${at}` : shortDate(date);
+}
+
+/** The time now as a time box wants it, `HH:MM`, for a box that should default to now. */
+export function nowTime(): string {
+  const now = new Date();
+  return `${`${now.getHours()}`.padStart(2, '0')}:${`${now.getMinutes()}`.padStart(2, '0')}`;
+}
+
+/** The `HH:MM` a time box takes, from the API's `HH:MM:SS`. */
+export function timeInput(value: string | null | undefined): string {
+  return value ? value.slice(0, 5) : '';
+}
+
 /** Today as the API wants it, for a date box that should default to now. */
 export function today(): string {
   const now = new Date();

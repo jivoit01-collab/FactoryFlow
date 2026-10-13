@@ -39,6 +39,7 @@ import {
   DocumentDialog,
   type EntryDetail,
   EntryDetailDialog,
+  EntryWhen,
   FuelEntryDialog,
   ServiceEntryDialog,
 } from '../components';
@@ -211,7 +212,9 @@ export default function FleetVehicleDetailPage() {
                         }
                       }}
                     >
-                      <Td>{shortDate(entry.entry_date)}</Td>
+                      <Td>
+                        <EntryWhen date={entry.entry_date} time={entry.entry_time} />
+                      </Td>
                       <Td numeric>{km(entry.odometer)}</Td>
                       <Td numeric>{quantity(entry.quantity, entry.unit)}</Td>
                       <Td numeric>{rupees(entry.rate)}</Td>
@@ -261,7 +264,9 @@ export default function FleetVehicleDetailPage() {
                         }
                       }}
                     >
-                      <Td>{shortDate(entry.entry_date)}</Td>
+                      <Td>
+                        <EntryWhen date={entry.entry_date} time={entry.entry_time} />
+                      </Td>
                       <Td>
                         {entry.kind_label}
                         {entry.description && (

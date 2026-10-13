@@ -24,7 +24,7 @@ import {
 import type { FleetOptions, FleetVehicle, FuelEntry, WritePayload } from '../api';
 import { useCreateFuelEntry, useUpdateFuelEntry } from '../api';
 import { type FuelEntryFormData, fuelEntrySchema } from '../schemas/fleet.schema';
-import { fieldErrors, km, rupees, today } from '../utils/format';
+import { fieldErrors, km, nowTime, rupees, timeInput, today } from '../utils/format';
 import { FieldRow, FormError } from './FieldRow';
 import { VehiclePicker } from './VehiclePicker';
 
@@ -34,14 +34,15 @@ import { VehiclePicker } from './VehiclePicker';
  * Four boxes get typed into: the meter reading, how much went in, what was
  * paid, and who filled it — plus a photo of the slip. Everything else is
  * either a tap (which vehicle, and petrol or CNG on the one kind of vehicle
- * that can be either) or already correct (the date is today, the tank was
- * filled full). The other seven fields sit behind "More details", the date
- * among them — this is the screen somebody fills in standing next to a pump
- * with a paper slip in one hand.
+ * that can be either) or already correct (the date is today and the time is
+ * now, the tank was filled full). The other eight fields sit behind "More
+ * details", the date and time among them — this is the screen somebody fills
+ * in standing next to a pump with a paper slip in one hand.
  *
- * The photo is asked for on a new filling only. An old one saved before it
- * was required can still be corrected without one, and an edit never sends
- * the photo it already has, so the box is optional there.
+ * The photo and the time are asked for on a new filling only. An old one
+ * saved before they were required can still be corrected without them, and
+ * an edit never sends the photo it already has, so that box is optional
+ * there.
  *
  * Two of its behaviours come from the server rather than from here, and both
  * are questions rather than refusals: a meter reading below the last one wants
@@ -88,6 +89,7 @@ export function FuelEntryDialog({
     defaultValues: {
       vehicle: vehicleId ?? 0,
       entry_date: today(),
+      entry_time: nowTime(),
       fuel_type: '',
       odometer: '',
       quantity: '',
@@ -106,6 +108,7 @@ export function FuelEntryDialog({
   const isTankFull = useWatch({ control, name: 'is_tank_full' });
   const quantityValue = useWatch({ control, name: 'quantity' });
   const amountValue = useWatch({ control, name: 'amount' });
+  const entryTime = useWatch({ control, name: 'entry_time' });
 
   const vehicle = useMemo(
     () => vehicles.find((row) => row.id === selectedVehicleId) ?? null,
@@ -140,6 +143,7 @@ export function FuelEntryDialog({
         ? {
             vehicle: entry.vehicle,
             entry_date: entry.entry_date,
+            entry_time: timeInput(entry.entry_time),
             fuel_type: entry.fuel_type,
             odometer: String(entry.odometer),
             quantity: entry.quantity,
@@ -156,6 +160,7 @@ export function FuelEntryDialog({
         : {
             vehicle: vehicleId ?? 0,
             entry_date: today(),
+            entry_time: nowTime(),
             fuel_type: '',
             odometer: '',
             quantity: '',
@@ -185,8 +190,18 @@ export function FuelEntryDialog({
     (isSubmitted && photoMissing ? 'Attach a photo of the bill' : undefined) ||
     apiErrors.bill_photo;
 
+  // Same rule for the time: a new filling must have one, and one already
+  // given cannot be cleared. An old filling that never had one may stay so.
+  const timeMissing = !entryTime && (!isEdit || !!entry?.entry_time);
+  const timeError =
+    (isSubmitted && timeMissing ? 'Time is required' : undefined) || apiErrors.entry_time;
+
   const onSubmit = async (data: FuelEntryFormData) => {
     if (photoMissing) return;
+    if (timeMissing) {
+      setShowMore(true);
+      return;
+    }
     setApiErrors({});
     const payload: WritePayload = {
       ...data,
@@ -211,7 +226,7 @@ export function FuelEntryDialog({
       if (flat.confirm_duplicate) setConfirmDuplicate(true);
       // Both of these are answered by a box inside "More details", so open it
       // rather than leaving the message pointing at something hidden.
-      if (flat.odometer || flat.entry_date) setShowMore(true);
+      if (flat.odometer || flat.entry_date || flat.entry_time) setShowMore(true);
     }
   };
 
@@ -378,15 +393,26 @@ export function FuelEntryDialog({
 
             {showMore && (
               <div className="space-y-4 rounded-lg border p-3">
-                <FieldRow
-                  label="Date"
-                  htmlFor="entry_date"
-                  required
-                  hint="Today unless you change it"
-                  error={errors.entry_date?.message || apiErrors.entry_date}
-                >
-                  <Input id="entry_date" type="date" max={today()} {...register('entry_date')} />
-                </FieldRow>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FieldRow
+                    label="Date"
+                    htmlFor="entry_date"
+                    required
+                    hint="Today unless you change it"
+                    error={errors.entry_date?.message || apiErrors.entry_date}
+                  >
+                    <Input id="entry_date" type="date" max={today()} {...register('entry_date')} />
+                  </FieldRow>
+                  <FieldRow
+                    label="Time"
+                    htmlFor="entry_time"
+                    required={!isEdit || !!entry?.entry_time}
+                    hint={isEdit ? undefined : 'Now unless you change it'}
+                    error={timeError}
+                  >
+                    <Input id="entry_time" type="time" {...register('entry_time')} />
+                  </FieldRow>
+                </div>
 
                 {apiErrors.odometer && (
                   <FieldRow

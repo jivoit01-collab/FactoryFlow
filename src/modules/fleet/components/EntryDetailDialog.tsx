@@ -16,7 +16,7 @@ import {
 
 import type { ApprovalStatusCode, FuelEntry, ServiceEntry } from '../api';
 import { useOpenAttachment } from '../api';
-import { km, money, quantity, rupees, shortDate } from '../utils/format';
+import { dateTime, km, money, quantity, rupees, shortDate } from '../utils/format';
 
 /** One entry, whichever register it came from. */
 export type EntryDetail =
@@ -102,7 +102,7 @@ export function EntryDetailDialog({
           </DialogTitle>
           <DialogDescription>
             {isFuel ? 'Filling' : (entry as ServiceEntry).kind_label} on{' '}
-            {shortDate(entry.entry_date)}
+            {dateTime(entry.entry_date, entry.entry_time)}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +111,7 @@ export function EntryDetailDialog({
             {/* Only a workshop bill has an approval to show. */}
             {isFuel ? (
               <span className="text-sm text-muted-foreground">
-                {shortDate(entry.entry_date)}
+                {dateTime(entry.entry_date, entry.entry_time)}
               </span>
             ) : (
               <StatusPill tone={approvalTone((entry as ServiceEntry).approval_status)} dot>

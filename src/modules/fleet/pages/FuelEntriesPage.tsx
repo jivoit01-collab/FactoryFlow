@@ -18,8 +18,8 @@ import { Button, Input, NativeSelect, SelectOption } from '@/shared/components/u
 
 import type { FuelEntry } from '../api';
 import { useDeleteFuelEntry, useFleetOptions, useFleetVehicles, useFuelEntries } from '../api';
-import { type EntryDetail, EntryDetailDialog, FuelEntryDialog } from '../components';
-import { fieldErrors, km, money, monthStart, quantity, rupees, shortDate, today } from '../utils/format';
+import { type EntryDetail, EntryDetailDialog, EntryWhen, FuelEntryDialog } from '../components';
+import { dateTime, fieldErrors, km, money, monthStart, quantity, rupees, today } from '../utils/format';
 
 /**
  * Every filling, filterable.
@@ -49,7 +49,7 @@ export default function FuelEntriesPage() {
   const total = entries.reduce((sum, entry) => sum + Number(entry.amount), 0);
 
   const remove = async (entry: FuelEntry) => {
-    if (!window.confirm(`Delete the ${shortDate(entry.entry_date)} filling of ${entry.vehicle_number}?`))
+    if (!window.confirm(`Delete the ${dateTime(entry.entry_date, entry.entry_time)} filling of ${entry.vehicle_number}?`))
       return;
     try {
       await deleteEntry.mutateAsync(entry.id);
@@ -147,7 +147,9 @@ export default function FuelEntriesPage() {
                     }
                   }}
                 >
-                  <Td>{shortDate(entry.entry_date)}</Td>
+                  <Td>
+                    <EntryWhen date={entry.entry_date} time={entry.entry_time} />
+                  </Td>
                   <Td>
                     <span className="font-medium">{entry.vehicle_number}</span>
                     {entry.vehicle_nickname && (
