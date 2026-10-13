@@ -9,6 +9,7 @@ import { artworkModuleConfig } from '@/modules/artwork/module.config';
 import { authModuleConfig } from '@/modules/auth/module.config';
 import { barcodeModuleConfig } from '@/modules/barcode/module.config';
 import { bomChangesModuleConfig } from '@/modules/bom-changes/module.config';
+import { cashSapModuleConfig } from '@/modules/cash-sap/module.config';
 import { constructionModuleConfig } from '@/modules/construction/module.config';
 import { dashboardModuleConfig } from '@/modules/dashboard/module.config';
 import { dashboardsModuleConfig } from '@/modules/dashboards/module.config';
@@ -17,6 +18,7 @@ import { employeesModuleConfig } from '@/modules/employees/module.config';
 import { etpModuleConfig } from '@/modules/etp/module.config';
 import { eximModuleConfig } from '@/modules/exim/module.config';
 import { fireModuleConfig } from '@/modules/fire/module.config';
+import { fixedAssetGrpoModuleConfig } from '@/modules/fixed-asset-grpo/module.config';
 import { fleetModuleConfig } from '@/modules/fleet/module.config';
 import { gateModuleConfig } from '@/modules/gate/module.config';
 import { issuesModuleConfig } from '@/modules/issues/module.config';
@@ -81,6 +83,9 @@ export const moduleRegistry: ModuleConfig[] = [
   // Sits by Maintenance: the treatment plants' own registers.
   etpModuleConfig,
   warehouseModuleConfig,
+  // Sits after Warehouse: the GRPO into the fixed-asset warehouses, with the
+  // SAP PO linked late to the gate's fixed-asset entry.
+  fixedAssetGrpoModuleConfig,
   wmsModuleConfig,
   barcodeModuleConfig,
   marketplaceModuleConfig,
@@ -100,6 +105,9 @@ export const moduleRegistry: ModuleConfig[] = [
   // other thing the office keeps a book of, and it is nobody's shop-floor
   // screen.
   accountsModuleConfig,
+  // Sits after Accounts: a bunch of approved vouchers posted to SAP as the
+  // imprest PO, a GRPO per voucher and the A/P drafts.
+  cashSapModuleConfig,
   // One sidebar entry for everything that came over from SAP Portal. It holds
   // no routes of its own: the five modules below keep theirs, and hand it
   // their menu items instead of each taking a line of the sidebar.

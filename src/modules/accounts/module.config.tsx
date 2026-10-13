@@ -51,6 +51,10 @@ import {
 } from '@/config/permissions';
 import { lazyWithRetry as lazy } from '@/core/pwa/chunkReload';
 import type { ModuleConfig } from '@/core/types';
+import { CASH_SAP_MODULE_PREFIX } from '@/modules/cash-sap/constants/permissions';
+import { CASH_SAP_NAV_ITEMS } from '@/modules/cash-sap/module.config';
+import { FA_GRPO_MODULE_PREFIX } from '@/modules/fixed-asset-grpo/constants/permissions';
+import { FA_GRPO_NAV_ITEMS } from '@/modules/fixed-asset-grpo/module.config';
 
 const CashBookPage = lazy(() => import('./pages/CashBookPage'));
 const CashApprovalsPage = lazy(() => import('./pages/CashApprovalsPage'));
@@ -149,7 +153,14 @@ export const accountsModuleConfig: ModuleConfig = {
       icon: IndianRupee,
       showInSidebar: true,
       hasSubmenu: true,
-      modulePrefix: [CASH_BOOK_MODULE_PREFIX, EXPENSE_CLAIM_MODULE_PREFIX],
+      // The SAP posting modules hand their menu items to this group (below), so
+      // their rights open it too.
+      modulePrefix: [
+        CASH_BOOK_MODULE_PREFIX,
+        EXPENSE_CLAIM_MODULE_PREFIX,
+        CASH_SAP_MODULE_PREFIX,
+        FA_GRPO_MODULE_PREFIX,
+      ],
       children: [
         {
           path: '/accounts/cash-book',
@@ -205,6 +216,11 @@ export const accountsModuleConfig: ModuleConfig = {
           icon: UserCheck,
           permissions: EXPENSE_APPROVAL_ACCESS,
         },
+        // Posting to SAP: Bunches → SAP, Cash → SAP settings and Fixed Asset
+        // GRPO. Their own modules keep the pages and the items, as SAP
+        // Portal's do; each item checks its own rights.
+        ...CASH_SAP_NAV_ITEMS,
+        ...FA_GRPO_NAV_ITEMS,
       ],
     },
   ],
