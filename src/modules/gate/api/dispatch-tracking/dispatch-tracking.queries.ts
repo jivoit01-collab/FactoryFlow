@@ -51,10 +51,11 @@ export function useTruckDispatchUpdates(arrivalId?: number | null) {
   });
 }
 
-/** The bills on a truck — the rows the partial-delivery form splits.
+/** The bills on a truck — the stops a delivery can cover, and the rows the
+ * partial-delivery form splits.
  *
- * Only fetched when the operator actually picks Partially Delivered, so the
- * timeline panel doesn't pay for it on every truck it opens. */
+ * Only fetched when the operator picks a delivery status, so the timeline
+ * panel doesn't pay for it on every truck it opens. */
 export function useTruckDispatchBills(arrivalId?: number | null, enabled = true) {
   return useQuery({
     queryKey: DISPATCH_TRACKING_QUERY_KEYS.bills(arrivalId),

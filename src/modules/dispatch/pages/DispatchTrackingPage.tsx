@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Building2,
   CalendarClock,
+  CheckCircle2,
   ChevronRight,
   Download,
   MapPin,
@@ -18,11 +19,20 @@ import { toast } from 'sonner';
 import { DISPATCH_PERMISSIONS } from '@/config/permissions';
 import { usePermission } from '@/core/auth/hooks/usePermission';
 import { useGlobalDateRange } from '@/core/store/hooks';
+import {
+  addressLines,
+  coveredDocuments,
+  deliveredStopsSummary,
+  groupBillsByStop,
+  openStops,
+  stopPlace,
+} from '@/modules/dispatch/components/tracking/billLocations';
 import { DeliverySapReceipts } from '@/modules/dispatch/components/tracking/DeliverySapReceipts';
 import { sapReceiptSummary } from '@/modules/dispatch/components/tracking/sapReceiptSummary';
 import { downloadTrackingSheet } from '@/modules/dispatch/components/tracking/trackingExport';
 import {
   type CreateTruckDispatchUpdateRequest,
+  type DeliveryStatus,
   type DispatchTrackingCustomerLocation,
   type DispatchTrackingFilters,
   type DispatchTrackingTruck,
@@ -41,6 +51,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Input,
   Label,
   NativeSelect as Select,
@@ -104,6 +115,25 @@ function StatusBadge({ status, label }: { status: TruckDispatchStatus; label: st
       )}
     >
       {label}
+    </span>
+  );
+}
+
+/** Where a stop stands — delivered, or short — and when. Nothing until a
+ *  delivery has reached it. */
+function DeliveryStatusBadge({ status, date }: { status?: DeliveryStatus; date?: string | null }) {
+  if (!status) return null;
+  const delivered = status === 'DELIVERED';
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium',
+        delivered ? STATUS_CLASS.DELIVERED : STATUS_CLASS.PARTIALLY_DELIVERED,
+      )}
+    >
+      <CheckCircle2 className="h-3 w-3" />
+      {delivered ? 'Delivered' : 'Partially delivered'}
+      {date ? ` ${formatDate(date)}` : ''}
     </span>
   );
 }
@@ -200,11 +230,7 @@ export default function DispatchTrackingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={Navigation}
-        accent="sky"
-        title="Dispatch Tracking"
-      >
+      <PageHeader icon={Navigation} accent="sky" title="Dispatch Tracking">
         <Button
           type="button"
           variant="outline"
@@ -388,24 +414,17 @@ export default function DispatchTrackingPage() {
   );
 }
 
-/** SAP's address block as display lines: CR-separated, closing on the country
- *  code ("IN"), which is dropped — every customer here is in India. */
-function addressLines(address: string) {
-  const lines = address
-    .split(/\r\n|\r|\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines.length > 1 && lines[lines.length - 1] === 'IN' ? lines.slice(0, -1) : lines;
-}
-
-/** Where the truck is delivering — each customer's ship-to address off its bills. */
+/** Where the truck is delivering — each customer's ship-to address off its
+ *  bills — and, on a truck delivered stop by stop, which stops are made. */
 function CustomerLocations({ locations }: { locations: DispatchTrackingCustomerLocation[] }) {
+  const progress = deliveredStopsSummary(locations);
   return (
     <div className="space-y-2 rounded-md border p-3">
       <p className="flex items-center gap-1.5 text-sm font-medium">
         <MapPin className="h-4 w-4 text-muted-foreground" />
         Customer location{locations.length === 1 ? '' : 's'}
       </p>
+      {progress ? <p className="text-xs text-muted-foreground">{progress}</p> : null}
       {locations.length === 0 ? (
         <p className="text-sm text-muted-foreground">No customer address on this truck’s bills.</p>
       ) : (
@@ -422,6 +441,10 @@ function CustomerLocations({ locations }: { locations: DispatchTrackingCustomerL
                   {location.place_of_supply ? (
                     <Badge variant="outline">{location.place_of_supply}</Badge>
                   ) : null}
+                  <DeliveryStatusBadge
+                    status={location.delivery_status}
+                    date={location.delivered_date}
+                  />
                 </div>
                 {location.ship_to_code && location.ship_to_code !== location.customer_name ? (
                   <p className="text-xs text-muted-foreground">Ship to {location.ship_to_code}</p>
@@ -453,6 +476,7 @@ function CustomerLocations({ locations }: { locations: DispatchTrackingCustomerL
 }
 
 function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () => void }) {
+  const stopsMade = deliveredStopsSummary(truck.customer_locations ?? []);
   return (
     <Card
       role="button"
@@ -484,6 +508,7 @@ function TruckRow({ truck, onOpen }: { truck: DispatchTrackingTruck; onOpen: () 
               </Badge>
             ) : null}
             <StatusBadge status={truck.current_status} label={truck.current_status_display} />
+            {stopsMade ? <span className="text-xs text-muted-foreground">{stopsMade}</span> : null}
             {truck.is_late ? (
               <Badge className="gap-1 bg-red-600 hover:bg-red-600">
                 <AlertTriangle className="h-3 w-3" />
@@ -612,8 +637,29 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
 
   const isPartial = form.status === 'PARTIALLY_DELIVERED';
   const showDeliveredDate = DELIVERY_STATUSES.includes(form.status as TruckDispatchStatus);
-  const billsQuery = useTruckDispatchBills(arrivalId, isPartial);
-  const bills = billsQuery.data ?? [];
+  const billsQuery = useTruckDispatchBills(arrivalId, showDeliveredDate);
+  const bills = useMemo(() => billsQuery.data ?? [], [billsQuery.data]);
+
+  // The truck's stops, and the ones this delivery covers. Until the operator
+  // touches the list it is the stops not delivered yet, so a truck dropping at
+  // five locations logs each in turn without re-ticking the ones already made.
+  const stops = useMemo(() => groupBillsByStop(bills), [bills]);
+  const [pickedStops, setPickedStops] = useState<Set<string> | null>(null);
+  const picked = useMemo(
+    () => pickedStops ?? new Set(openStops(stops).map((stop) => stop.key)),
+    [pickedStops, stops],
+  );
+  const choosingStops = showDeliveredDate && stops.length > 1;
+  const toggleStop = (key: string, on: boolean) => {
+    const next = new Set(picked);
+    if (on) next.add(key);
+    else next.delete(key);
+    setPickedStops(next);
+  };
+  // What came back is asked only for the bills being delivered now.
+  const coveredBills = choosingStops
+    ? stops.filter((stop) => picked.has(stop.key)).flatMap((stop) => stop.bills)
+    : bills;
 
   const updates = updatesQuery.data ?? [];
 
@@ -629,6 +675,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
     setReturnNote(null);
     setSplits({});
     setOpenBills({});
+    setPickedStops(null);
   };
 
   const handleSubmit = async () => {
@@ -637,10 +684,17 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
       return;
     }
 
+    if (choosingStops && picked.size === 0) {
+      toast.error('Tick at least one location the truck delivered at.');
+      return;
+    }
+    // A strict subset of the stops names its bills; every stop is the whole truck.
+    const documents = choosingStops ? coveredDocuments(stops, picked) : undefined;
+
     // Only items the operator actually filled are sent; a bill with no filled
     // item — and any bill left untouched — went out in full.
     const partial_lines = isPartial
-      ? bills
+      ? coveredBills
           .map((bill) => ({
             document: bill.id,
             items: bill.items
@@ -675,6 +729,7 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
           ? { delivered_date: form.delivered_date }
           : {}),
         ...(isPartial ? { partial_lines, return_note: returnNote } : {}),
+        ...(documents ? { documents } : {}),
       };
       const result = await addUpdate.mutateAsync({ arrivalId, data: payload });
       toast.success('Status update added', {
@@ -699,12 +754,13 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               <Select
                 id={`status-${arrivalId}`}
                 value={form.status}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     status: event.target.value as TruckDispatchStatus,
-                  }))
-                }
+                  }));
+                  setPickedStops(null);
+                }}
               >
                 <SelectOption value="">Select a status…</SelectOption>
                 {ADDABLE_STATUSES.map((option) => (
@@ -767,6 +823,54 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
               </span>
             </div>
           ) : null}
+          {choosingStops ? (
+            <div className="flex flex-col gap-2 rounded-md border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/10 p-3">
+              <div>
+                <p className="text-xs font-medium">Delivered at which locations?</p>
+                <p className="text-[11px] text-muted-foreground">
+                  This truck drops at {stops.length} locations. Tick the ones delivered now — the
+                  rest stay on the road until their own update, and SAP is told only about the bills
+                  ticked here.
+                </p>
+              </div>
+              <ul className="flex flex-col gap-1.5">
+                {stops.map((stop, index) => {
+                  const id = `stop-${arrivalId}-${index}`;
+                  const name = stop.ship_to_code || stop.customer_name || 'Unnamed location';
+                  return (
+                    <li key={stop.key} className="flex items-start gap-2">
+                      <Checkbox
+                        id={id}
+                        className="mt-0.5"
+                        checked={picked.has(stop.key)}
+                        onCheckedChange={(on) => toggleStop(stop.key, on)}
+                        aria-label={`Delivered at ${name}`}
+                      />
+                      <Label
+                        htmlFor={id}
+                        className="flex flex-1 cursor-pointer flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-normal"
+                      >
+                        <span className="font-medium">{name}</span>
+                        {stop.place_of_supply ? (
+                          <Badge variant="outline">{stop.place_of_supply}</Badge>
+                        ) : null}
+                        {stopPlace(stop) ? (
+                          <span className="text-muted-foreground">{stopPlace(stop)}</span>
+                        ) : null}
+                        {stop.documents.length ? (
+                          <span className="text-muted-foreground">{stop.documents.join(', ')}</span>
+                        ) : null}
+                        <DeliveryStatusBadge
+                          status={stop.delivery_status}
+                          date={stop.delivered_date}
+                        />
+                      </Label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
           {isPartial ? (
             <div className="flex flex-col gap-2 rounded-md border border-orange-200 dark:border-orange-500/30 bg-orange-50/50 dark:bg-orange-500/10 p-3">
               <div>
@@ -781,9 +885,13 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                 <p className="text-xs text-muted-foreground">Loading the truck’s bills…</p>
               ) : bills.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No bills found on this truck.</p>
+              ) : coveredBills.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Tick a location above to list its bills.
+                </p>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {bills.map((bill) => {
+                  {coveredBills.map((bill) => {
                     const open = !!openBills[bill.id];
                     const filled = bill.items.filter((item) => {
                       const split = splits[item.id];
@@ -969,6 +1077,23 @@ function TruckTrackingPanel({ arrivalId, canUpdate }: { arrivalId: number; canUp
                   <p className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
                     <CalendarClock className="h-3 w-3" />
                     Delivered on {formatDate(update.delivered_date)}
+                  </p>
+                ) : null}
+                {update.locations?.length ? (
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    <span>At</span>
+                    {update.locations.map((stop) => (
+                      <Badge
+                        key={`${stop.customer_name}|${stop.ship_to_code}|${stop.ship_to_address}`}
+                        variant="outline"
+                        className="font-normal"
+                      >
+                        {stop.ship_to_code || stop.customer_name || 'Unnamed location'}
+                        {stop.place_of_supply ? ` (${stop.place_of_supply})` : ''}
+                        {stop.documents.length ? ` · ${stop.documents.join(', ')}` : ''}
+                      </Badge>
+                    ))}
                   </p>
                 ) : null}
                 {update.remarks ? <p className="mt-1 text-sm">{update.remarks}</p> : null}

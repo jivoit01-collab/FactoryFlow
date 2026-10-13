@@ -13,9 +13,13 @@ export type TruckDispatchStatus =
   | 'DELAYED'
   | 'CLOSED';
 
-/** A customer's delivery point on a dispatched truck, as the bills name it —
- *  the same Location / State the Dispatch Sheet shows. */
-export interface DispatchTrackingCustomerLocation {
+/** Where a delivery stands: covered by a Delivered update, by a Partially
+ *  Delivered (short) one, or not reached yet. */
+export type DeliveryStatus = 'DELIVERED' | 'PARTIALLY_DELIVERED' | null;
+
+/** A customer's ship-to on a dispatched truck, as the bills name it — the same
+ *  Location / State the Dispatch Sheet shows — with the bills bound there. */
+export interface DispatchShipTo {
   customer_name: string;
   /** SAP ship-to name, e.g. "R K WORLDINFOCOM PVT LTD GURUGRAM". */
   ship_to_code: string;
@@ -24,6 +28,15 @@ export interface DispatchTrackingCustomerLocation {
   /** State code, e.g. "HR". */
   place_of_supply: string;
   documents: string[];
+}
+
+/** A customer's delivery point on a dispatched truck, and whether the truck
+ *  has delivered there yet. */
+export interface DispatchTrackingCustomerLocation extends DispatchShipTo {
+  /** From the delivery updates that covered this stop's bills; null until one has. */
+  delivery_status: DeliveryStatus;
+  /** The date it was delivered on (YYYY-MM-DD), if it has been. */
+  delivered_date: string | null;
 }
 
 /** One dispatched truck (trip) on the tracking board. */
@@ -70,15 +83,22 @@ export interface TruckDispatchBillItem {
   uom: string;
 }
 
-/** One bill riding on a dispatched truck, with its items. */
+/** One bill riding on a dispatched truck, with its items, its ship-to (the
+ *  stop it is bound for) and where its delivery stands. */
 export interface TruckDispatchBill {
   id: number;
   sap_doc_num: string;
   sap_doc_entry: number;
   customer_name: string;
+  ship_to_code: string;
+  ship_to_address: string;
+  place_of_supply: string;
   company: string;
   total_quantity: string | null;
   sap_doc_total: string | null;
+  /** Set once a delivery update covered this bill. */
+  delivery_status: DeliveryStatus;
+  delivered_date: string | null;
   items: TruckDispatchBillItem[];
 }
 
@@ -164,6 +184,11 @@ export interface TruckDispatchUpdate {
   proof: string | null;
   /** Signed return note for the stock that came back on a partial delivery. */
   return_note: string | null;
+  /** The bills a delivery at one stop covered — empty when the update speaks
+   *  for the whole truck. */
+  documents: number[];
+  /** Those bills' stops, as the customer locations name them. */
+  locations: DispatchShipTo[];
   partial_lines: TruckDispatchPartialLine[];
   /** A delivery, bill by bill, as SAP has it. Empty for every other status. */
   sap_receipts: TruckDispatchSapReceipt[];
@@ -186,6 +211,9 @@ export interface CreateTruckDispatchUpdateRequest {
   return_note?: File | Blob | null;
   /** Per-bill delivered/returned split — set on a Partially Delivered update. */
   partial_lines?: TruckDispatchPartialLineInput[];
+  /** The bills this delivery covers, when the truck is delivered one stop at a
+   *  time. Left out, the update speaks for the whole truck. */
+  documents?: number[];
 }
 
 /** Query params accepted by the dispatch-tracking list endpoint. */
@@ -342,6 +370,9 @@ export const dispatchTrackingApi = {
     // The per-bill rows ride along as JSON — multipart can't carry nested arrays.
     if (data.partial_lines?.length) {
       formData.append('partial_lines', JSON.stringify(data.partial_lines));
+    }
+    if (data.documents?.length) {
+      formData.append('documents', JSON.stringify(data.documents));
     }
 
     const response = await apiClient.post<TruckDispatchUpdate>(
