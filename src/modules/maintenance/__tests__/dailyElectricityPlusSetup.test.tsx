@@ -103,6 +103,7 @@ describe('Meter tree — who pays', () => {
       in_service: true,
       parent: GROUND.id,
       basis: 'FIXED',
+      short_stop_hours: null,
       shares: [{ company: 'JIVO_OIL', percent: '100' }],
       drivers: [],
       note: '',
@@ -156,6 +157,54 @@ describe('Meter tree — who pays', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /save the change/i }));
     expect(calls.create).toHaveBeenCalledWith(
       expect.objectContaining({ basis: 'RUN_HOURS', drivers: [{ blowing_machine: 2, weight: '1' }] }),
+    );
+  });
+
+  it('counts stops under 4 hours as running unless told otherwise', () => {
+    renderTree();
+    const dialog = openWhoPays(2);
+    fireEvent.change(within(dialog).getByLabelText('Who pays for its own units'), { target: { value: 'RUN_HOURS' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: /add a line or machine/i }));
+    fireEvent.change(within(dialog).getByLabelText('Line or machine'), { target: { value: 'LINE:8' } });
+    const stops = within(dialog).getByLabelText('Stops shorter than');
+    expect(stops).toHaveValue('4');
+
+    fireEvent.change(stops, { target: { value: '30' } });
+    expect(within(dialog).getByText(/0 to 24 hours/)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /save the change/i })).toBeDisabled();
+
+    fireEvent.change(stops, { target: { value: '6' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: /save the change/i }));
+    expect(calls.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ basis: 'RUN_HOURS', short_stop_hours: '6' }),
+    );
+
+    // Blank keeps the old rule: running time only.
+    fireEvent.change(stops, { target: { value: '' } });
+    expect(within(dialog).getByText(/every stop and breakdown is taken off/)).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: /save the change/i }));
+    expect(calls.create).toHaveBeenLastCalledWith(expect.objectContaining({ short_stop_hours: null }));
+  });
+
+  it('keeps a version that counted only running time that way when correcting it', () => {
+    calls.versions = [
+      {
+        ...LAB.tree?.setup,
+        basis: 'RUN_HOURS',
+        short_stop_hours: null,
+        shares: [],
+        drivers: [
+          { kind: 'LINE', source: 'line:8', id: 8, name: 'Sidel', company: 'JIVO_BEVERAGES', company_name: 'Jivo Beverages', weight: '1' },
+        ],
+      },
+    ];
+    renderTree();
+    const dialog = openWhoPays(2);
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Correct' }));
+    expect(within(dialog).getByLabelText('Stops shorter than')).toHaveValue('');
+    fireEvent.click(within(dialog).getByRole('button', { name: /save the correction/i }));
+    expect(calls.update).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ short_stop_hours: null }) }),
     );
   });
 

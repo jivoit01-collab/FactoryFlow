@@ -49,16 +49,21 @@ interface SetupForm {
   in_service: boolean;
   parent: string; // '' = a main meter
   basis: AllocationBasis;
+  /** Run hours only: '' = only running time counts, each line on its own. */
+  short_stop_hours: string;
   shares: ShareRow[];
   drivers: DriverRow[];
   note: string;
 }
 
+/** What a new run-hours split counts a stop up to, unless somebody changes it. */
+const DEFAULT_SHORT_STOP_HOURS = '4';
+
 const BASIS_HELP: Record<AllocationBasis, string> = {
   UNASSIGNED: 'Its own units show as unassigned on the split until somebody decides.',
   FIXED: 'The same percentages every day.',
   RUN_HOURS:
-    'Split each day by how long the chosen lines and machines ran. Oil 24 h and Beverages 12 h means two thirds to Oil.',
+    'Split each day by how long each company kept the chosen lines and machines on. Oil 24 h and Beverages 12 h means two thirds to Oil.',
   METER_RATIO:
     'Split each day in the ratio of what other meters read — a chiller that follows the machines it cools.',
 };
@@ -70,6 +75,7 @@ function formFromSetup(setup: MeterSetup | null): SetupForm {
       in_service: true,
       parent: '',
       basis: 'UNASSIGNED',
+      short_stop_hours: '',
       shares: [],
       drivers: [],
       note: '',
@@ -80,6 +86,7 @@ function formFromSetup(setup: MeterSetup | null): SetupForm {
     in_service: setup.in_service,
     parent: setup.parent != null ? String(setup.parent) : '',
     basis: setup.basis,
+    short_stop_hours: setup.short_stop_hours ?? '',
     shares: setup.shares.map((share) => ({ party: share.party, percent: share.percent })),
     drivers: setup.drivers.map((driver) => ({
       source: driver.kind === 'METER' ? String(driver.id) : `${driver.kind}:${driver.id}`,
@@ -119,6 +126,10 @@ function toPayload(form: SetupForm): MeterSetupPayload {
     in_service: form.in_service,
     parent: form.in_service && form.parent ? Number(form.parent) : null,
     basis: form.in_service ? form.basis : 'UNASSIGNED',
+    short_stop_hours:
+      form.in_service && form.basis === 'RUN_HOURS' && form.short_stop_hours.trim() !== ''
+        ? form.short_stop_hours.trim()
+        : null,
     shares: form.in_service && form.basis !== 'UNASSIGNED' ? shares : [],
     drivers: form.in_service ? drivers : [],
     note: form.note,
@@ -140,6 +151,12 @@ function problem(form: SetupForm): string | null {
   if (form.basis === 'RUN_HOURS' && !form.drivers.some((row) => row.source)) {
     return 'Pick the lines or machines whose run hours this meter follows.';
   }
+  if (form.basis === 'RUN_HOURS' && form.short_stop_hours.trim() !== '') {
+    const hours = Number(form.short_stop_hours);
+    if (!Number.isFinite(hours) || hours < 0 || hours > 24) {
+      return 'A stop can count as running for 0 to 24 hours — or leave it blank.';
+    }
+  }
   if (form.basis === 'METER_RATIO') {
     const rows = form.drivers.filter((row) => row.source);
     if (rows.length === 0) return 'Pick the meters this meter follows.';
@@ -153,6 +170,18 @@ interface MeterSetupDialogProps {
   meters: TreeMeter[];
   canEdit: boolean;
   onClose: () => void;
+}
+
+/**
+ * A change from a date starts from what is in force. A run-hours split counts
+ * stops from now on, so an old version that did not still gets the default.
+ */
+function changeFrom(setup: MeterSetup | null): SetupForm {
+  const form = { ...formFromSetup(setup), effective_from: todayISO(), note: '' };
+  if (form.basis === 'RUN_HOURS' && form.short_stop_hours === '') {
+    form.short_stop_hours = DEFAULT_SHORT_STOP_HOURS;
+  }
+  return form;
 }
 
 /**
@@ -187,7 +216,7 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
     setFormKey(resetKey);
     if (open) {
       setTarget('new');
-      setForm({ ...formFromSetup(current), effective_from: todayISO(), note: '' });
+      setForm(changeFrom(current));
     }
   }
 
@@ -197,7 +226,7 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
   };
   const startChange = () => {
     setTarget('new');
-    setForm({ ...formFromSetup(current), effective_from: todayISO(), note: '' });
+    setForm(changeFrom(current));
   };
 
   const partyOptions = useMemo(
@@ -406,7 +435,14 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
                       value={form.basis}
                       disabled={readOnly}
                       onChange={(e) =>
-                        setForm((f) => ({ ...f, basis: e.target.value as AllocationBasis, drivers: [] }))
+                        setForm((f) => {
+                          const basis = e.target.value as AllocationBasis;
+                          const short_stop_hours =
+                            basis === 'RUN_HOURS' && f.short_stop_hours === ''
+                              ? DEFAULT_SHORT_STOP_HOURS
+                              : f.short_stop_hours;
+                          return { ...f, basis, short_stop_hours, drivers: [] };
+                        })
                       }
                     >
                       {(Object.keys(ALLOCATION_BASIS_LABELS) as AllocationBasis[]).map((basis) => (
@@ -473,8 +509,24 @@ export function MeterSetupDialog({ meter, meters, canEdit, onClose }: MeterSetup
                       >
                         <Plus className="mr-1 h-4 w-4" /> Add a line or machine
                       </Button>
+                      <div className="flex flex-wrap items-center gap-2 pt-2 text-sm">
+                        <Label htmlFor="setup-short-stop" className="font-normal">
+                          Stops shorter than
+                        </Label>
+                        <Input
+                          id="setup-short-stop"
+                          className="w-20"
+                          inputMode="decimal"
+                          placeholder="blank"
+                          value={form.short_stop_hours}
+                          onChange={(e) => setForm((f) => ({ ...f, short_stop_hours: e.target.value }))}
+                        />
+                        <span>hours count as running</span>
+                      </div>
                       <p className="text-xs text-muted-foreground">
-                        Hours come from the production and blowing runs' start and stop times. Each line counts its own hours; a weight above 1 makes a heavier line count for more.
+                        {form.short_stop_hours.trim() === ''
+                          ? "Blank: only the time the lines were actually running counts — every stop and breakdown is taken off, and each line counts its own hours. A weight above 1 makes a heavier line count for more."
+                          : `Hours run from the production and blowing runs' start to their stop, the way a shift does: a stop shorter than ${form.short_stop_hours} h (lunch, a changeover, a pause nobody logged) still counts, and a logged breakdown always does. A longer stop nobody logged — overnight, a run left paused — does not. A company counts as on while any of its lines is, so two lines side by side count once; a weight above 1 makes a heavier line count for more.`}
                       </p>
                     </div>
                   )}

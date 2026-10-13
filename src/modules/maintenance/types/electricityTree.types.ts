@@ -59,6 +59,12 @@ export interface MeterSetup {
   parent_name: string | null;
   basis: AllocationBasis;
   basis_label: string;
+  /**
+   * Run hours only. Set: each company counts its shift hours, a stop shorter
+   * than this many hours (and any logged breakdown) counting as running.
+   * Null: only running time, each line on its own.
+   */
+  short_stop_hours: string | null;
   shares: MeterShare[];
   drivers: MeterDriver[];
   /** "Jivo Oil 50% · Jivo Beverages 50%" — the rule in one line. */
@@ -91,6 +97,7 @@ export interface MeterSetupPayload {
   in_service?: boolean;
   parent?: number | null;
   basis?: AllocationBasis;
+  short_stop_hours?: string | null;
   shares?: MeterSharePayload[];
   drivers?: MeterDriverPayload[];
   note?: string;

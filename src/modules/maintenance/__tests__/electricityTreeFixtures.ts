@@ -17,6 +17,7 @@ export function setup(overrides: Partial<MeterSetup> = {}): MeterSetup {
     parent_name: null,
     basis: 'FIXED',
     basis_label: 'Fixed shares',
+    short_stop_hours: null,
     shares: [
       {
         party: 'company:JIVO_BEVERAGES',
