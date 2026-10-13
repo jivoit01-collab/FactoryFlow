@@ -44,7 +44,9 @@ export interface DispatchVehicleLinkPayload {
   driver_id?: number | null;
   linked_vehicle_entry_id?: number | null;
   booking_status: DispatchPlanStatus;
-  dispatch_date: string | null;
+  /* No dispatch date either: this payload is applied to every bill on the
+     vehicle, and one bill's date would overwrite the rest. Each bill keeps its
+     own; the server dates the ones with none (or one already past) today. */
   transporter_name: string;
   transporter_gstin: string;
   contact_person: string;

@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { Loader2, Plus, Save, Unlink } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -239,6 +240,32 @@ export function DispatchLinkingSheet({
   );
   const isBatchLink = activeBills.length > 1;
 
+  /* What the link does to planning, said before it happens. Each bill keeps its
+     own dispatch date, but one with none -- or one already past, unless it is a
+     re-save of this same truck -- is dated today so the gate expects the truck;
+     a bill never ticked on Bill Selection is ticked so the Plan page shows it.
+     The server applies both; this only counts them. */
+  const planningNote = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const dated = activeBills.filter((item) => {
+      const date = item.plan.dispatch_date;
+      if (!date) return true;
+      const relinking =
+        item.plan.booking_status === 'BOOKED' && item.plan.vehicle_id === form.vehicle_id;
+      return date < today && !relinking;
+    }).length;
+    const unselected = activeBills.filter((item) => item.is_selected === false).length;
+    const bills = (count: number) => (count === 1 ? '1 bill' : `${count} bills`);
+    const parts: string[] = [];
+    if (dated > 0) {
+      parts.push(
+        `dates ${bills(dated)} today (no dispatch date yet, or one already past) so the gate expects this truck`,
+      );
+    }
+    if (unselected > 0) parts.push(`adds ${bills(unselected)} to Bill Selection`);
+    return parts.length > 0 ? `Linking ${parts.join(' and ')}.` : '';
+  }, [activeBills, form.vehicle_id]);
+
   /* A bilty (LR) is issued per consignee, so the truck is asked for one per
      distinct customer rather than one overall. Keyed on the SAP customer code,
      falling back to the name for the rare bill that carries no code. */
@@ -422,7 +449,6 @@ export function DispatchLinkingSheet({
       vehicle_id: form.vehicle_id,
       transporter_id: form.transporter_id,
       booking_status: 'BOOKED',
-      dispatch_date: bill.plan.dispatch_date,
       transporter_name: form.transporter_name.trim(),
       transporter_gstin: form.transporter_gstin.trim(),
       contact_person: form.contact_person.trim(),
@@ -467,7 +493,10 @@ export function DispatchLinkingSheet({
 
         {bill && (
           <div className="mt-4 grid gap-3 rounded-md border bg-muted/20 p-4 text-sm sm:grid-cols-3">
-            <InfoItem label="Dispatch Date" value={bill.plan.dispatch_date} />
+            <InfoItem
+              label="Dispatch Date"
+              value={isBatchLink ? 'Multiple invoices' : bill.plan.dispatch_date}
+            />
             <InfoItem
               label="SAP Location"
               value={
@@ -501,6 +530,12 @@ export function DispatchLinkingSheet({
           </div>
         )}
 
+        {planningNote && (
+          <p className="mt-3 rounded-md border bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
+            {planningNote}
+          </p>
+        )}
+
         {activeBills.length > 1 && (
           <div className="mt-4 rounded-md border bg-primary/5 p-4 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -521,6 +556,7 @@ export function DispatchLinkingSheet({
                     <th className="px-2 py-1 text-left font-medium">Customer</th>
                     <th className="px-2 py-1 text-left font-medium">State</th>
                     <th className="px-2 py-1 text-left font-medium">Delivery Point</th>
+                    <th className="px-2 py-1 text-left font-medium">Dispatch</th>
                     <th className="px-2 py-1 text-right font-medium">Litres</th>
                     <th className="px-2 py-1 text-right font-medium">Weight</th>
                     <th className="px-2 py-1 text-right font-medium">Amount</th>
@@ -533,6 +569,9 @@ export function DispatchLinkingSheet({
                       <td className="px-2 py-1">{selected.card_name}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.state)}</td>
                       <td className="px-2 py-1 whitespace-nowrap">{compactText(selected.city)}</td>
+                      <td className="px-2 py-1 whitespace-nowrap">
+                        {compactText(selected.plan.dispatch_date)}
+                      </td>
                       <td className="px-2 py-1 text-right tabular-nums">
                         {selected.total_litres > 0
                           ? `${formatNumber(selected.total_litres, 2)} L`
