@@ -39,7 +39,9 @@ const po = {
   po_number: '220826133',
   supplier_code: 'VENDA000936',
   supplier_name: 'Test Vendor',
-  items: [{ po_item_code: 'PM0000914' }],
+  // The preview sends a received line's code as `item_code`; only the open-PO
+  // lines call it `po_item_code`.
+  items: [{ item_code: 'PM0000914' }],
 } as any;
 
 function poOption(po_number: string, lines: Array<[string, string]>) {

@@ -40,7 +40,7 @@ export function RepointPODialog({
   const { data: openPOs = [], isLoading } = useOpenPOs(po.supplier_code, open);
 
   const itemCodes = useMemo(
-    () => new Set(po.items.map((item) => item.po_item_code)),
+    () => new Set(po.items.map((item) => item.item_code)),
     [po.items],
   );
 
@@ -87,11 +87,8 @@ export function RepointPODialog({
   };
 
   const serverError = repoint.error as ApiError | null;
-  const errorMessage =
-    formError ??
-    (serverError
-      ? ((serverError.data as { detail?: string })?.detail ?? serverError.message)
-      : null);
+  // The client already lifts the server's `detail` into `message`.
+  const errorMessage = formError ?? serverError?.message ?? null;
 
   return (
     <Dialog open={open} onOpenChange={close}>
