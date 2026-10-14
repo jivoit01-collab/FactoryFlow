@@ -106,80 +106,180 @@ function gapNote(gap: { unit: Unit; sap: number; app: number }): string {
   }`;
 }
 
+/** One day's made, SAP's receipt beside the lines' own runs. */
+interface MadeDay {
+  date: string;
+  sap: { pieces: number; tons: number } | null;
+  app: PlanSkuMadeDay | null;
+}
+
+/** Whether a day's two figures part, in pieces where the app knows them. */
+function dayDiffers(row: PlanSku, day: MadeDay): boolean {
+  const sapPieces = day.sap?.pieces ?? 0;
+  if (!day.app) return sapPieces >= 1;
+  if (day.app.pieces != null) return Math.abs(day.app.pieces - sapPieces) >= 1;
+  if (!row.pieces_per_case) return false;
+  return Math.abs(day.app.cases - sapPieces / row.pieces_per_case) >= 0.5;
+}
+
 /**
- * The days the lines packed the SKU, off Production Execution.
- *
- * Dated by the run, not by SAP's receipt, which is posted after the shift, so
- * these need not add up to Made on the row above — a run not yet posted is
- * here and not there.
+ * Made day by day: SAP's receipt by posting date beside Production
+ * Execution's runs by run date, so a day packed but posted late, or never
+ * posted, reads as two rows that disagree.
  */
-export function SkuMadeDays({ row, unit }: { row: PlanSku; unit: Unit }) {
-  if (row.made_days === undefined) return null;
-  if (row.made_days === null) {
+function SkuMadeDays({ row, unit }: { row: PlanSku; unit: Unit }) {
+  if (row.made_days === undefined && row.sap_made_days === undefined) {
     return (
       <p className="ml-5 text-sm text-muted-foreground">
-        The days made could not be read from Production Execution just now.
+        This server does not send made by date yet.
       </p>
     );
   }
-  const days = row.made_days;
-  if (days.length === 0) {
-    return (
-      <p className="ml-5 text-sm text-muted-foreground">
-        No production run packed this SKU this month in Production Execution.
-      </p>
-    );
-  }
+  const byDate = new Map<string, MadeDay>();
+  const day = (date: string) => {
+    const held = byDate.get(date) ?? { date, sap: null, app: null };
+    byDate.set(date, held);
+    return held;
+  };
+  for (const sap of row.sap_made_days ?? []) day(sap.date).sap = sap;
+  for (const app of row.made_days ?? []) day(app.date).app = app;
+  const days = [...byDate.values()].sort((x, y) => x.date.localeCompare(y.date));
+
+  const sapRead = row.sap_made_days != null;
+  const appRead = row.made_days != null;
+  const sapAmount = (value: { pieces: number; tons: number } | null) =>
+    sapRead ? amount(row, value?.pieces ?? 0, value?.tons ?? 0, unit) : null;
+  const appAmount = (value: PlanSkuMadeDay | null) =>
+    !appRead ? null : value ? dayAmount(value, unit) : 0;
+
   return (
-    <div className="ml-5 overflow-hidden rounded-lg border bg-card">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-3 py-1.5 text-left font-semibold">Made on</th>
-            <th className="px-3 py-1.5 text-left font-semibold">Line</th>
-            <th className="px-3 py-1.5 text-right font-semibold">Runs</th>
-            <th className="px-3 py-1.5 text-right font-semibold">
-              {UNITS.find((u) => u.key === unit)?.label}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {days.map((day) => (
-            <tr key={day.date} className="border-t">
-              <td className="whitespace-nowrap px-3 py-1.5 font-medium">
-                {new Date(`${day.date}T00:00:00`).toLocaleDateString('en-IN', {
-                  weekday: 'short',
-                  day: 'numeric',
-                  month: 'short',
-                })}
-              </td>
-              <td className="px-3 py-1.5 text-muted-foreground">{day.lines.join(', ') || '—'}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{whole(day.runs)}</td>
-              <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
-                {show(dayAmount(day, unit), unit)}
-              </td>
-            </tr>
-          ))}
-          <tr className="border-t bg-muted/30 font-semibold">
-            <td className="px-3 py-1.5" colSpan={2}>
-              Total · {whole(days.length)} day{days.length === 1 ? '' : 's'}, per Production
-              Execution
-            </td>
-            <td className="px-3 py-1.5 text-right tabular-nums">
-              {whole(days.reduce((acc, day) => acc + day.runs, 0))}
-            </td>
-            <td className="px-3 py-1.5 text-right tabular-nums">
-              {show(madeInApp(row, unit), unit)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div className="ml-5 space-y-2">
+      {(!sapRead || !appRead) && (
+        <p className="text-sm text-muted-foreground">
+          {!sapRead
+            ? "SAP's receipts by date could not be read just now."
+            : 'Production Execution could not be read just now.'}
+        </p>
+      )}
+      {days.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nothing made this month in SAP or the app.</p>
+      ) : (
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-1.5 text-left font-semibold">Date</th>
+                <th className="px-3 py-1.5 text-left font-semibold">Line (app)</th>
+                <th className="px-3 py-1.5 text-right font-semibold">Runs</th>
+                <th className="px-3 py-1.5 text-right font-semibold">Made (SAP)</th>
+                <th className="px-3 py-1.5 text-right font-semibold">Made (app)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((entry) => {
+                const differs = sapRead && appRead && dayDiffers(row, entry);
+                return (
+                  <tr key={entry.date} className={cn('border-t', differs && GAP_CLASSES)}>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-medium">
+                      {new Date(`${entry.date}T00:00:00`).toLocaleDateString('en-IN', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </td>
+                    <td className="px-3 py-1.5 text-muted-foreground">
+                      {entry.app?.lines.join(', ') || '—'}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {entry.app ? whole(entry.app.runs) : '—'}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
+                      {show(sapAmount(entry.sap), unit)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
+                      {show(appAmount(entry.app), unit)}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t bg-muted/30 font-semibold">
+                <td className="px-3 py-1.5" colSpan={2}>
+                  Total · {whole(days.length)} day{days.length === 1 ? '' : 's'}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {whole(days.reduce((acc, entry) => acc + (entry.app?.runs ?? 0), 0))}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {show(
+                    sapRead ? amount(row, row.produced_qty, row.produced_tons, unit) : null,
+                    unit,
+                  )}
+                </td>
+                <td className="px-3 py-1.5 text-right tabular-nums">
+                  {show(madeInApp(row, unit), unit)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export type Breakdown = 'warehouse' | 'date';
+
+/**
+ * What opens under a SKU: its warehouses, or its made day by day. The view is
+ * held by the popup, so the next SKU opened shows the one last picked.
+ */
+export function SkuBreakdown({
+  row,
+  unit,
+  view,
+  setView,
+}: {
+  row: PlanSku;
+  unit: Unit;
+  view: Breakdown;
+  setView: (next: Breakdown) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="ml-5 flex w-fit rounded-lg border p-0.5" role="group" aria-label="Breakdown">
+        {(
+          [
+            ['warehouse', 'Warehouse wise'],
+            ['date', 'Date wise'],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setView(key)}
+            aria-pressed={view === key}
+            className={cn(
+              'rounded-md px-3 py-1 text-xs font-semibold transition-colors',
+              view === key
+                ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === 'date' ? (
+        <SkuMadeDays row={row} unit={unit} />
+      ) : (
+        <SkuWarehouses row={row} unit={unit} />
+      )}
     </div>
   );
 }
 
 /** Every warehouse a SKU stands in, opened under its row. */
-export function SkuWarehouses({ row, unit }: { row: PlanSku; unit: Unit }) {
+function SkuWarehouses({ row, unit }: { row: PlanSku; unit: Unit }) {
   if (row.stock_read === false) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -255,6 +355,7 @@ export function MonthPlanSkuDialog({
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Show>('all');
   const [openSku, setOpenSku] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState<Breakdown>('warehouse');
   const [settings, setSettings] = useState(false);
   const [unit, setUnit] = usePlanUnit();
   // Only for the label of what "In stock" counts.
@@ -554,8 +655,12 @@ export function MonthPlanSkuDialog({
                             {openSku === row.item_code && (
                               <tr className="border-b bg-violet-500/[0.03]">
                                 <td colSpan={columns} className="space-y-3 px-4 py-3">
-                                  <SkuMadeDays row={row} unit={unit} />
-                                  <SkuWarehouses row={row} unit={unit} />
+                                  <SkuBreakdown
+                                    row={row}
+                                    unit={unit}
+                                    view={breakdown}
+                                    setView={setBreakdown}
+                                  />
                                 </td>
                               </tr>
                             )}

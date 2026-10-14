@@ -27,7 +27,7 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { SkuMadeDays, SkuWarehouses } from './MonthPlanSkuDialog';
+import { type Breakdown, SkuBreakdown } from './MonthPlanSkuDialog';
 import { amount, show, total, UNITS, usePlanUnit } from './planUnits';
 
 /** One row's dispatch, with or without the group companies' share. */
@@ -88,6 +88,7 @@ export function MonthPlanDispatchDialog({
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Show>('all');
   const [openSku, setOpenSku] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState<Breakdown>('warehouse');
   const [withGroup, setWithGroup] = useState(false);
   const [unit, setUnit] = usePlanUnit();
   // Only for the label of what "In stock" counts.
@@ -441,8 +442,12 @@ export function MonthPlanDispatchDialog({
                                   {withGroup ? ', counted above.' : ', not counted above.'}
                                 </p>
                               )}
-                              <SkuMadeDays row={row} unit={unit} />
-                              <SkuWarehouses row={row} unit={unit} />
+                              <SkuBreakdown
+                                row={row}
+                                unit={unit}
+                                view={breakdown}
+                                setView={setBreakdown}
+                              />
                             </td>
                           </tr>
                         )}

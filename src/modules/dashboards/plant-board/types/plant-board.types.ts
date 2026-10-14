@@ -586,6 +586,8 @@ export interface PlanSku {
    * Null when that read failed; absent from a backend that does not send it.
    */
   made_days?: PlanSkuMadeDay[] | null;
+  /** SAP's production receipts by posting date, oldest first; null on a failed read. */
+  sap_made_days?: { date: string; pieces: number; tons: number }[] | null;
   /**
    * Dispatch over the same window as made: deliveries, and invoices not
    * copied from one. False when the read failed and the figures are null;
