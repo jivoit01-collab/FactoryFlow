@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { debtAge, longDate, managerList, quantity, shareOf } from './amounts';
+import { debtAge, longDate, managerList, quantity, shareOf, unitPrice } from './amounts';
 
 describe('shareOf', () => {
   it('is a percentage of the whole', () => {
@@ -53,5 +53,17 @@ describe('quantity', () => {
     expect(quantity(0.4)).toBe('0.4');
     expect(quantity(2.456)).toBe('2.46');
     expect(quantity(null)).toBe('—');
+  });
+});
+
+describe('unitPrice', () => {
+  it('shows rupees to the paisa', () => {
+    expect(unitPrice(2.141)).toBe('₹2.14');
+    expect(unitPrice(12098.6887)).toBe('₹12,098.69');
+  });
+
+  it('says so when SAP has no price', () => {
+    expect(unitPrice(0)).toBe('no price');
+    expect(unitPrice(null)).toBe('—');
   });
 });

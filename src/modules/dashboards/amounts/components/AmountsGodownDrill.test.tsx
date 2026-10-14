@@ -70,6 +70,7 @@ describe('AmountsGodownDrill', () => {
             item_name: 'CRUDE MUSTARD OIL',
             uom: 'KG',
             quantity: 120_000,
+            price: 1250,
             value: 150_000_000,
           },
         ],
@@ -85,5 +86,6 @@ describe('AmountsGodownDrill', () => {
     expect(screen.getByText('BH-LO · Raw Material')).toBeInTheDocument();
     expect(screen.getByText('CRUDE MUSTARD OIL')).toBeInTheDocument();
     expect(screen.getByText('1,20,000 KG')).toBeInTheDocument();
+    expect(screen.getByText('₹1,250.00')).toBeInTheDocument();
   });
 });

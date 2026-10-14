@@ -17,7 +17,7 @@ export interface AmountsPerson {
 export interface AmountsGodown {
   code: string;
   name: string;
-  /** Rupees at SAP stock value, stock on hand only. */
+  /** Rupees: stock on hand at the last purchase price. */
   value: number;
   items: number;
   /** Admin -> Warehouse Managers for this godown, by name. */
@@ -113,6 +113,8 @@ export interface AmountsGodownItem {
   item_name: string;
   uom: string;
   quantity: number;
+  /** SAP's last purchase price, in rupees per `uom`; 0 when SAP has none. */
+  price: number;
   value: number;
 }
 

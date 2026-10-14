@@ -4,7 +4,7 @@ import { money, NO_VALUE, pctRough, whole } from '../../admin-control/utils';
 import { OpsDrill } from '../../logistics-control/components';
 import { useAmountsGodownItems } from '../api';
 import type { AmountsCategory, AmountsGodown, AmountsGodownItem, AmountsPerson } from '../types';
-import { managerList, quantity, shareOf } from '../utils';
+import { managerList, quantity, shareOf, unitPrice } from '../utils';
 
 export interface AmountsGodownDrillProps {
   companyCode: string;
@@ -53,7 +53,7 @@ export function AmountsGodownDrill({
     <OpsDrill
       title={`${plantLabel} · ${category.label}`}
       domain="warehouse"
-      subtitle="Every godown holding it, at SAP stock value, largest first. Open a godown for its items."
+      subtitle="Every godown holding it, at last purchase price, largest first. Open a godown for its items."
       onClose={onClose}
       stats={[
         { label: 'Value', value: money(category.value) },
@@ -112,7 +112,7 @@ export function AmountsGodownItemsPanel({
     <OpsDrill
       title={`${godown.code} · ${category.label}`}
       domain="warehouse"
-      subtitle={`${godown.name} · ${plantLabel} · stock on hand at SAP value`}
+      subtitle={`${godown.name} · ${plantLabel} · stock on hand at last purchase price`}
       onBack={onBack}
       backLabel={`${plantLabel} · ${category.label}`}
       onClose={onClose}
@@ -137,6 +137,12 @@ export function AmountsGodownItemsPanel({
           cell: (item: AmountsGodownItem) =>
             item.uom ? `${quantity(item.quantity)} ${item.uom}` : quantity(item.quantity),
           numeric: true,
+        },
+        {
+          label: 'Price',
+          cell: (item: AmountsGodownItem) => unitPrice(item.price),
+          numeric: true,
+          dim: true,
         },
         { label: 'Value', cell: (item: AmountsGodownItem) => money(item.value), numeric: true },
         {

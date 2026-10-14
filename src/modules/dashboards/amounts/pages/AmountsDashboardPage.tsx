@@ -119,7 +119,7 @@ export default function AmountsDashboardPage() {
       <div className="ops-board__inner">
         <OpsTopbar
           title="Amounts"
-          scope="Stock at SAP value · what customers owe"
+          scope="Stock at last purchase price · what customers owe"
           chips={[
             {
               label: 'Read',

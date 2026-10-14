@@ -45,6 +45,18 @@ export function quantity(value: number | null | undefined): string {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
+/**
+ * A last purchase price, to the paisa: '₹2.14', '₹12,098.69'.
+ *
+ * Zero means SAP has no purchase on record for the item, so its stock counts
+ * for nothing on the board -- said in words, since '₹0.00' reads as free.
+ */
+export function unitPrice(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  if (value === 0) return 'no price';
+  return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 /** 'Shahrukh Khan, Ravi +2' -- the managers column, kept to one line. */
 export function managerList(names: string[], shown = 2): string {
   if (names.length === 0) return 'none assigned';
