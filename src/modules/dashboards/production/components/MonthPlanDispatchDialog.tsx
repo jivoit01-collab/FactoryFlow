@@ -27,7 +27,7 @@ import {
 } from '@/shared/components/ui';
 import { cn } from '@/shared/utils';
 
-import { SkuWarehouses } from './MonthPlanSkuDialog';
+import { SkuMadeDays, SkuWarehouses } from './MonthPlanSkuDialog';
 import { amount, show, total, UNITS, usePlanUnit } from './planUnits';
 
 /** One row's dispatch, with or without the group companies' share. */
@@ -155,8 +155,8 @@ export function MonthPlanDispatchDialog({
             </DialogTitle>
             <DialogDescription>
               {plan?.name ? `${plan.name} · ` : ''}Planned against dispatched off SAP's deliveries
-              and invoices, {span} · group companies {withGroup ? 'included' : 'left out'} ·
-              stock in {countedLabel} as it stands now
+              and invoices, {span} · group companies {withGroup ? 'included' : 'left out'} · stock
+              in {countedLabel} as it stands now
             </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -298,7 +298,10 @@ export function MonthPlanDispatchDialog({
               </thead>
               <tbody>
                 {isLoading ? (
-                  <TableLoading colSpan={columns} message="Reading the plan and dispatch from SAP…" />
+                  <TableLoading
+                    colSpan={columns}
+                    message="Reading the plan and dispatch from SAP…"
+                  />
                 ) : isError || !production ? (
                   <TableEmpty
                     colSpan={columns}
@@ -438,6 +441,7 @@ export function MonthPlanDispatchDialog({
                                   {withGroup ? ', counted above.' : ', not counted above.'}
                                 </p>
                               )}
+                              <SkuMadeDays row={row} unit={unit} />
                               <SkuWarehouses row={row} unit={unit} />
                             </td>
                           </tr>

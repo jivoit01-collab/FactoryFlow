@@ -3,7 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 
 import { usePlanStockWarehouses, usePlantBoard } from '@/modules/dashboards/plant-board/api';
 import { decimal, whole } from '@/modules/dashboards/plant-board/components/drills/format';
-import type { PlanSku } from '@/modules/dashboards/plant-board/types';
+import type { PlanSku, PlanSkuMadeDay } from '@/modules/dashboards/plant-board/types';
 import {
   ROW_CLASSES,
   StatTile,
@@ -30,20 +30,152 @@ import { cn } from '@/shared/utils';
 import { PlanStockSettings } from './PlanStockSettings';
 import { amount, show, total, type Unit, UNITS, usePlanUnit } from './planUnits';
 
-type Show = 'all' | 'pending' | 'done' | 'off-plan';
+type Show = 'all' | 'pending' | 'done' | 'off-plan' | 'mismatch';
 
 const SHOW: { key: Show; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Still to make' },
   { key: 'done', label: 'Done' },
   { key: 'off-plan', label: 'Not on plan' },
+  { key: 'mismatch', label: 'SAP ≠ app' },
 ];
 
 function matches(row: PlanSku, show: Show): boolean {
   if (show === 'pending') return row.on_plan && row.balance_qty > 0;
   if (show === 'done') return row.on_plan && row.balance_qty <= 0;
   if (show === 'off-plan') return !row.on_plan;
+  if (show === 'mismatch') return madeGap(row) != null;
   return true;
+}
+
+/** The Made and Made (app) cells of a row where the two disagree. */
+const GAP_CLASSES = 'bg-rose-500/10 text-rose-700 dark:text-rose-300';
+
+/** One made day in the chosen unit; null where the run carried no factor. */
+function dayAmount(day: PlanSkuMadeDay, unit: Unit): number | null {
+  if (unit === 'cases') return day.cases;
+  if (unit === 'pcs') return day.pieces;
+  if (day.tons == null) return null;
+  return unit === 'litres' ? day.tons * 1000 : day.tons;
+}
+
+/**
+ * What the lines packed this month per Production Execution, in the chosen
+ * unit. Null where the backend sent no made days, the read failed, or a day
+ * cannot be put into the unit — "—", never a part total.
+ */
+function madeInApp(row: PlanSku, unit: Unit): number | null {
+  if (!row.made_days) return null;
+  return row.made_days.reduce<number | null>((acc, day) => {
+    const value = dayAmount(day, unit);
+    return acc == null || value == null ? null : acc + value;
+  }, 0);
+}
+
+/**
+ * How far SAP's Made and the app's Made part, or null where they agree or
+ * cannot be set side by side.
+ *
+ * Compared in PIECES whatever the unit on screen, so switching to tonnes never
+ * hides a gap a rounding swallowed. Cases where a run's pieces are unknown and
+ * the plan carries a case factor; otherwise not compared at all, rather than
+ * flagged on a guess. ``app`` less ``sap``: positive is not yet posted to SAP.
+ */
+function madeGap(row: PlanSku): { unit: Unit; sap: number; app: number } | null {
+  if (!row.made_days) return null;
+  const pieces = madeInApp(row, 'pcs');
+  if (pieces != null) {
+    return Math.abs(pieces - row.produced_qty) >= 1
+      ? { unit: 'pcs', sap: row.produced_qty, app: pieces }
+      : null;
+  }
+  const cases = madeInApp(row, 'cases');
+  if (cases == null || row.produced_cases == null) return null;
+  return Math.abs(cases - row.produced_cases) >= 0.5
+    ? { unit: 'cases', sap: row.produced_cases, app: cases }
+    : null;
+}
+
+/** The gap, said in words for the cells' tooltip. */
+function gapNote(gap: { unit: Unit; sap: number; app: number }): string {
+  const diff = gap.app - gap.sap;
+  return `SAP ${show(gap.sap, gap.unit)} · app ${show(gap.app, gap.unit)} · ${
+    diff > 0
+      ? `${show(diff, gap.unit)} more in the app (not yet posted to SAP?)`
+      : `${show(-diff, gap.unit)} more in SAP`
+  }`;
+}
+
+/**
+ * The days the lines packed the SKU, off Production Execution.
+ *
+ * Dated by the run, not by SAP's receipt, which is posted after the shift, so
+ * these need not add up to Made on the row above — a run not yet posted is
+ * here and not there.
+ */
+export function SkuMadeDays({ row, unit }: { row: PlanSku; unit: Unit }) {
+  if (row.made_days === undefined) return null;
+  if (row.made_days === null) {
+    return (
+      <p className="ml-5 text-sm text-muted-foreground">
+        The days made could not be read from Production Execution just now.
+      </p>
+    );
+  }
+  const days = row.made_days;
+  if (days.length === 0) {
+    return (
+      <p className="ml-5 text-sm text-muted-foreground">
+        No production run packed this SKU this month in Production Execution.
+      </p>
+    );
+  }
+  return (
+    <div className="ml-5 overflow-hidden rounded-lg border bg-card">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className="px-3 py-1.5 text-left font-semibold">Made on</th>
+            <th className="px-3 py-1.5 text-left font-semibold">Line</th>
+            <th className="px-3 py-1.5 text-right font-semibold">Runs</th>
+            <th className="px-3 py-1.5 text-right font-semibold">
+              {UNITS.find((u) => u.key === unit)?.label}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {days.map((day) => (
+            <tr key={day.date} className="border-t">
+              <td className="whitespace-nowrap px-3 py-1.5 font-medium">
+                {new Date(`${day.date}T00:00:00`).toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </td>
+              <td className="px-3 py-1.5 text-muted-foreground">{day.lines.join(', ') || '—'}</td>
+              <td className="px-3 py-1.5 text-right tabular-nums">{whole(day.runs)}</td>
+              <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
+                {show(dayAmount(day, unit), unit)}
+              </td>
+            </tr>
+          ))}
+          <tr className="border-t bg-muted/30 font-semibold">
+            <td className="px-3 py-1.5" colSpan={2}>
+              Total · {whole(days.length)} day{days.length === 1 ? '' : 's'}, per Production
+              Execution
+            </td>
+            <td className="px-3 py-1.5 text-right tabular-nums">
+              {whole(days.reduce((acc, day) => acc + day.runs, 0))}
+            </td>
+            <td className="px-3 py-1.5 text-right tabular-nums">
+              {show(madeInApp(row, unit), unit)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /** Every warehouse a SKU stands in, opened under its row. */
@@ -157,7 +289,8 @@ export function MonthPlanSkuDialog({
   );
   const inStock = total(all, unit, (row) => [row.stock_qty ?? 0, row.stock_tons ?? 0]);
   const atFloor = total(all, unit, (row) => [row.pf_qty ?? 0, row.pf_tons ?? 0]);
-  const columns = 7;
+  const gaps = all.filter((row) => madeGap(row) != null).length;
+  const columns = 8;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,8 +386,8 @@ export function MonthPlanSkuDialog({
                 summary={
                   rows
                     ? `${whole(visible.length)} of ${whole(all.length)} SKUs${
-                        unit === 'cases' ? ' · "—" where the plan has no case factor' : ''
-                      }${
+                        gaps > 0 ? ` · ${whole(gaps)} where SAP and the app disagree` : ''
+                      }${unit === 'cases' ? ' · "—" where the plan has no case factor' : ''}${
                         unit === 'tons' || unit === 'litres'
                           ? ' · "—" where SAP has no litre volume'
                           : ''
@@ -299,6 +432,11 @@ export function MonthPlanSkuDialog({
                       <Th>Item</Th>
                       <Th align="right">Planned</Th>
                       <Th align="right">Made</Th>
+                      <Th align="right">
+                        <span title="Packed per Production Execution, including runs not yet posted to SAP">
+                          Made (app)
+                        </span>
+                      </Th>
                       <Th align="right">Planned − made</Th>
                       <Th align="right">% done</Th>
                       <Th align="right">In stock</Th>
@@ -321,86 +459,109 @@ export function MonthPlanSkuDialog({
                     ) : visible.length === 0 ? (
                       <TableEmpty colSpan={columns} message="No SKUs match" />
                     ) : (
-                      visible.map((row) => (
-                        <Fragment key={row.item_code}>
-                          <tr
-                            className={cn(
-                              ROW_CLASSES,
-                              'cursor-pointer',
-                              openSku === row.item_code && 'bg-violet-500/[0.06]',
-                            )}
-                            onClick={() =>
-                              setOpenSku((current) =>
-                                current === row.item_code ? null : row.item_code,
-                              )
-                            }
-                            aria-expanded={openSku === row.item_code}
-                          >
-                            <Td className="whitespace-nowrap text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <ChevronRight
-                                  className={cn(
-                                    'h-3.5 w-3.5 shrink-0 transition-transform',
-                                    openSku === row.item_code && 'rotate-90 text-violet-500',
-                                  )}
-                                />
-                                {row.item_code}
-                              </span>
-                            </Td>
-                            <Td>
-                              <span className="flex flex-col leading-tight">
-                                <span className="font-medium">{row.item_name || '—'}</span>
-                                {!row.on_plan && (
-                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                                    not on plan
-                                  </span>
-                                )}
-                              </span>
-                            </Td>
-                            <Td numeric className="font-semibold">
-                              {show(amount(row, row.planned_qty, row.planned_tons, unit), unit)}
-                            </Td>
-                            <Td numeric className="font-semibold">
-                              {show(amount(row, row.produced_qty, row.produced_tons, unit), unit)}
-                            </Td>
-                            <Td
-                              numeric
+                      visible.map((row) => {
+                        const gap = madeGap(row);
+                        return (
+                          <Fragment key={row.item_code}>
+                            <tr
                               className={cn(
-                                'font-semibold',
-                                row.balance_qty < 0
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : row.balance_qty > 0
-                                    ? 'text-amber-600 dark:text-amber-400'
-                                    : undefined,
+                                ROW_CLASSES,
+                                'cursor-pointer',
+                                openSku === row.item_code && 'bg-violet-500/[0.06]',
                               )}
+                              onClick={() =>
+                                setOpenSku((current) =>
+                                  current === row.item_code ? null : row.item_code,
+                                )
+                              }
+                              aria-expanded={openSku === row.item_code}
                             >
-                              {(() => {
-                                const value = amount(row, row.balance_qty, row.balance_tons, unit);
-                                return value != null && value < 0
-                                  ? `${show(-value, unit)} over`
-                                  : show(value, unit);
-                              })()}
-                            </Td>
-                            <Td numeric className="font-semibold">
-                              {row.attainment_pct == null
-                                ? '—'
-                                : `${decimal(row.attainment_pct, 0)}%`}
-                            </Td>
-                            <Td numeric className="font-semibold">
-                              {row.stock_qty == null || row.stock_tons == null
-                                ? '—'
-                                : show(amount(row, row.stock_qty, row.stock_tons, unit), unit)}
-                            </Td>
-                          </tr>
-                          {openSku === row.item_code && (
-                            <tr className="border-b bg-violet-500/[0.03]">
-                              <td colSpan={columns} className="px-4 py-3">
-                                <SkuWarehouses row={row} unit={unit} />
-                              </td>
+                              <Td className="whitespace-nowrap text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <ChevronRight
+                                    className={cn(
+                                      'h-3.5 w-3.5 shrink-0 transition-transform',
+                                      openSku === row.item_code && 'rotate-90 text-violet-500',
+                                    )}
+                                  />
+                                  {row.item_code}
+                                </span>
+                              </Td>
+                              <Td>
+                                <span className="flex flex-col leading-tight">
+                                  <span className="font-medium">{row.item_name || '—'}</span>
+                                  {!row.on_plan && (
+                                    <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                                      not on plan
+                                    </span>
+                                  )}
+                                </span>
+                              </Td>
+                              <Td numeric className="font-semibold">
+                                {show(amount(row, row.planned_qty, row.planned_tons, unit), unit)}
+                              </Td>
+                              <Td
+                                numeric
+                                className={cn('font-semibold', gap && GAP_CLASSES)}
+                                title={gap ? gapNote(gap) : undefined}
+                              >
+                                {show(amount(row, row.produced_qty, row.produced_tons, unit), unit)}
+                              </Td>
+                              <Td
+                                numeric
+                                className={cn(
+                                  'font-semibold',
+                                  gap ? GAP_CLASSES : 'text-sky-700 dark:text-sky-300',
+                                )}
+                                title={gap ? gapNote(gap) : undefined}
+                              >
+                                {show(madeInApp(row, unit), unit)}
+                              </Td>
+                              <Td
+                                numeric
+                                className={cn(
+                                  'font-semibold',
+                                  row.balance_qty < 0
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : row.balance_qty > 0
+                                      ? 'text-amber-600 dark:text-amber-400'
+                                      : undefined,
+                                )}
+                              >
+                                {(() => {
+                                  const value = amount(
+                                    row,
+                                    row.balance_qty,
+                                    row.balance_tons,
+                                    unit,
+                                  );
+                                  return value != null && value < 0
+                                    ? `${show(-value, unit)} over`
+                                    : show(value, unit);
+                                })()}
+                              </Td>
+                              <Td numeric className="font-semibold">
+                                {row.attainment_pct == null
+                                  ? '—'
+                                  : `${decimal(row.attainment_pct, 0)}%`}
+                              </Td>
+                              <Td numeric className="font-semibold">
+                                {row.stock_qty == null || row.stock_tons == null
+                                  ? '—'
+                                  : show(amount(row, row.stock_qty, row.stock_tons, unit), unit)}
+                              </Td>
                             </tr>
-                          )}
-                        </Fragment>
-                      ))
+                            {openSku === row.item_code && (
+                              <tr className="border-b bg-violet-500/[0.03]">
+                                <td colSpan={columns} className="space-y-3 px-4 py-3">
+                                  <SkuMadeDays row={row} unit={unit} />
+                                  <SkuWarehouses row={row} unit={unit} />
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

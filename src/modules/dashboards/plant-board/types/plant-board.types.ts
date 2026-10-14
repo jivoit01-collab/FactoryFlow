@@ -538,6 +538,19 @@ export interface PlanSkuWarehouse {
   tons: number;
 }
 
+/** One day a plan SKU was packed, summed over that day's runs. */
+export interface PlanSkuMadeDay {
+  date: string;
+  /** What the floor typed; always present. */
+  cases: number;
+  /** Null when a run that day carried no case factor. */
+  pieces: number | null;
+  /** Null where the run holds no litre volume. */
+  tons: number | null;
+  runs: number;
+  lines: string[];
+}
+
 export interface PlanSku {
   item_code: string;
   item_name: string;
@@ -568,6 +581,11 @@ export interface PlanSku {
   warehouses?: PlanSkuWarehouse[];
   /** False where SAP holds no litre volume: in the pieces, in no ton. */
   weighed: boolean;
+  /**
+   * The days the lines packed it, off Production Execution, oldest first.
+   * Null when that read failed; absent from a backend that does not send it.
+   */
+  made_days?: PlanSkuMadeDay[] | null;
   /**
    * Dispatch over the same window as made: deliveries, and invoices not
    * copied from one. False when the read failed and the figures are null;
